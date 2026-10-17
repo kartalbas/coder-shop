@@ -20,7 +20,7 @@ export function CompareToggle({
     <button
       type="button"
       aria-pressed={active}
-      aria-label={active ? `${name} aus dem Vergleich entfernen` : `${name} vergleichen`}
+      aria-label={active ? `${name} aus dem Vergleich entfernen` : `${name} compare`}
       title={active ? "Aus dem Vergleich entfernen" : "Vergleichen"}
       onClick={(event) => {
         event.preventDefault();

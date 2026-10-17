@@ -44,7 +44,7 @@ export async function recordInvoicePaymentAction(
   if (!result.ok) return { error: result.error };
 
   revalidatePath("/admin/invoices");
-  revalidatePath("/konto/rechnungen");
+  revalidatePath("/account/invoices");
   return { ok: true };
 }
 

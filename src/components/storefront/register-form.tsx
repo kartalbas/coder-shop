@@ -114,7 +114,7 @@ export function RegisterForm() {
       <p className="text-center text-sm text-muted-foreground">
         Bereits ein Konto?{" "}
         <Link
-          href="/konto/anmelden"
+          href="/account/login"
           className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
         >
           Anmelden

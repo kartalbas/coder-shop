@@ -44,7 +44,7 @@ export default async function RechnungenPage() {
             <div className="min-w-0">
               <p className="font-medium">
                 <Link
-                  href={`/bestellung/${invoice.orderNumber}`}
+                  href={`/orders/${invoice.orderNumber}`}
                   className="underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   {invoice.orderNumber}
@@ -73,7 +73,7 @@ export default async function RechnungenPage() {
                 {invoice.paid ? "Bezahlt" : invoice.overdue ? "Überfällig" : "Offen"}
               </span>
               <Link
-                href={`/bestellung/${invoice.orderNumber}/rechnung`}
+                href={`/orders/${invoice.orderNumber}/invoice`}
                 className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <FileText className="size-4" aria-hidden />

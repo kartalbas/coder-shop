@@ -1244,3 +1244,25 @@ Done — M1–M6 + QA complete.
   midway failure can no longer poison later specs; the CHF regexes match the NBSP
   `formatChf` renders, and the restore check disables the browser HTTP cache via
   routing). `npm run build`/lint/knip ✅, `npm test` ✅ 472, `npm run test:e2e` ✅ 49/49.
+
+## ISSUES — queue session 14 (2026-10-18)
+
+### #63 — Everything in code is English: routes and URLs too ✅
+- **Routes are English:** the storefront route folders are renamed to their English names
+  (`account/` with `(auth)/login|register|forgot-password|reset-password` and
+  `(portal)/orders|invoices|wishlist|addresses|profile`, `orders/[number]` +
+  `orders/[number]/invoice`, `products/compare`) — the former German URLs were only rewrites
+  over English folders plus `konto/…`; now URL and route are identical, no indirection.
+- **Old URLs redirect permanently:** `rewrites` in `next.config.ts` became `redirects()` with
+  `permanent: true` (308) for every former German URL (`/produkte`, `/produkte/vergleichen`,
+  `/produkt/:slug`, `/warenkorb`, `/kasse`, `/bestellung/:number[/rechnung]`, `/konto/…`);
+  the mapping stays configuration, not code. Redirects run before the proxy, so guarded
+  areas never see the old paths.
+- **Proxy:** gate and slug-404 checks now match `/account/*` and `/products/*`
+  (`/products` and `/products/compare` are routes, not slugs); matcher updated.
+- **Links/redirects/tests:** every internal link, redirect target and metadata URL in
+  components, pages, actions and mails is English; new e2e `english-urls.spec.ts` asserts
+  each old URL answers 308 to its exact English counterpart (query preserved) and that
+  `/products` answers 200 directly while `/account` gates guests to `/account/login`;
+  the specs that still asserted `/bestellung/…` / `/produkt/…` URLs updated.
+- Verified: `npm run build`/lint ✅, `npm test` ✅ 474, `npm run test:e2e` ✅ 51/51.

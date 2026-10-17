@@ -315,7 +315,7 @@ async function sendCheckoutMails(
   result: { orderNumber: string; totals: Totals; invoiceDueAt?: Date },
 ): Promise<void> {
   const { orderNumber, totals } = result;
-  const link = absoluteUrl(`/bestellung/${orderNumber}`);
+  const link = absoluteUrl(`/orders/${orderNumber}`);
   try {
     await sendMail({
       to: customer.email,
@@ -334,7 +334,7 @@ async function sendCheckoutMails(
           orderNumber,
           totalCents: totals.totalCents,
           dueDate: result.invoiceDueAt.toLocaleDateString("de-CH"),
-          pdfLink: absoluteUrl(`/bestellung/${orderNumber}/rechnung`),
+          pdfLink: absoluteUrl(`/orders/${orderNumber}/invoice`),
         }),
       });
     }

@@ -48,7 +48,7 @@ export function CartPageView() {
           Entdecken Sie unser Sortiment an Smartphones, Schuhen und Kleidung.
         </p>
         <Button asChild size="lg">
-          <Link href="/produkte">Weiter einkaufen</Link>
+          <Link href="/products">Weiter einkaufen</Link>
         </Button>
       </div>
     );
@@ -72,7 +72,7 @@ export function CartPageView() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link
-                          href={`/produkt/${line.slug}`}
+                          href={`/products/${line.slug}`}
                           className="block truncate font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                         >
                           {line.name}
@@ -153,10 +153,10 @@ export function CartPageView() {
                 {vatLabel(settings.vatRatePercent)}.
               </p>
               <Button asChild size="lg" className="w-full">
-                <Link href="/kasse">Zur Kasse</Link>
+                <Link href="/checkout">Zur Kasse</Link>
               </Button>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/produkte">Weiter einkaufen</Link>
+                <Link href="/products">Weiter einkaufen</Link>
               </Button>
             </CardContent>
           </Card>

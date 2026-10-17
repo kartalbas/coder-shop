@@ -29,16 +29,16 @@ test("four smartphones compared side by side with differences highlighted (issue
   const phones = await findPhones(page, 4);
 
   // Toggle „Vergleichen" on the cards of four phones.
-  await page.goto("/produkte?type=smartphone");
+  await page.goto("/products?type=smartphone");
   for (const phone of phones) {
-    await page.getByRole("button", { name: `${phone.name} vergleichen` }).first().click();
+    await page.getByRole("button", { name: `${phone.name} compare` }).first().click();
   }
   const tray = page.getByTestId("compare-tray");
   await expect(tray).toContainText("4 im Vergleich");
 
   // The tray opens the comparison page with the selection in the URL.
   await tray.getByRole("link", { name: "Vergleichen" }).click();
-  await expect(page).toHaveURL(/\/produkte\/vergleichen\?slugs=/);
+  await expect(page).toHaveURL(/\/products\/compare\?slugs=/);
 
   // All four phones are columns of the table.
   for (const phone of phones) {
@@ -63,7 +63,7 @@ test("four smartphones compared side by side with differences highlighted (issue
 
 test("comparison needs at least two phones (issue #48)", async ({ page }) => {
   const [phone] = await findPhones(page, 1);
-  await page.goto(`/produkte/vergleichen?slugs=${phone!.slug}`);
+  await page.goto(`/products/compare?slugs=${phone!.slug}`);
   await expect(
     page.getByText("Für einen Vergleich braucht es mindestens zwei Smartphones."),
   ).toBeVisible();

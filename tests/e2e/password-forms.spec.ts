@@ -4,7 +4,7 @@ import { loginAsAdmin } from "./helpers";
 // Issue #60 — password forms keep the input after errors and show the rules live.
 
 test("registration: live rule checklist and submit reflects the rules", async ({ page }) => {
-  await page.goto("/konto/registrieren");
+  await page.goto("/account/register");
   await page.fill("#password", "kurz1");
   const hints = page.locator("#password-hints");
   await expect(hints).toContainText("mindestens 10 Zeichen");
@@ -21,7 +21,7 @@ test("a failed registration keeps every field and shows the error at the e-mail"
   // A one-character name fails server-side validation (a rejected registration does
   // not consume the shared per-IP rate limit, unlike a submit that reaches the core).
   const email = `neu-${Date.now()}@example.ch`;
-  await page.goto("/konto/registrieren");
+  await page.goto("/account/register");
   await page.fill("#name", "A");
   await page.fill("#email", email);
   await page.fill("#password", "Gueltig1234");
@@ -38,7 +38,7 @@ test("a failed registration keeps every field and shows the error at the e-mail"
 });
 
 test("password reset form shows the rules live and gates the submit", async ({ page }) => {
-  await page.goto("/konto/passwort-zuruecksetzen?token=ungueltiger-token-1234567890");
+  await page.goto("/account/reset-password?token=ungueltiger-token-1234567890");
   await page.fill("#password", "abc");
   await expect(page.locator("#password-hints")).toContainText("noch nicht erfüllt");
   await expect(page.getByRole("button", { name: "Passwort setzen" })).toBeDisabled();

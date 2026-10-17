@@ -28,7 +28,7 @@ test("wishlist: heart on cards, rail, account sync across logout/login (issue #4
   // Guest: put the first listing card on the wishlist. The label matches both states
   // ("… auf die Wunschliste" / "… von der Wunschliste entfernen"), so the locator keeps
   // pointing at the same heart after the toggle.
-  await page.goto("/produkte?type=shoes");
+  await page.goto("/products?type=shoes");
   const heart = page.locator('main button[aria-label*="Wunschliste"]').first();
   await heart.click();
   await expect(heart).toHaveAttribute("aria-pressed", "true");
@@ -36,8 +36,8 @@ test("wishlist: heart on cards, rail, account sync across logout/login (issue #4
   // Open that product — the page heart shows the same state. (During the view
   // transition both pages are briefly mounted, so the name comes from the heart's
   // accessible name rather than from an `h1` lookup.)
-  await page.locator("main a[href^='/produkt/']").first().click();
-  await expect(page).toHaveURL(/\/produkt\//);
+  await page.locator("main a[href^='/products/']").first().click();
+  await expect(page).toHaveURL(/\/products\//);
   const pageHeart = page.getByRole("button", { name: /von der Wunschliste entfernen/ }).first();
   await expect(pageHeart).toHaveAttribute("aria-pressed", "true");
   const heartLabel = await pageHeart.getAttribute("aria-label");
@@ -50,28 +50,28 @@ test("wishlist: heart on cards, rail, account sync across logout/login (issue #4
   await expect(rail.getByText(productName).first()).toBeVisible();
 
   // Register — the local wishlist merges into the new account.
-  await page.goto("/konto/registrieren");
+  await page.goto("/account/register");
   await page.fill("#name", "Wunsch Person");
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
   await page.getByRole("checkbox", { name: /AGB/ }).check();
   await page.getByRole("button", { name: "Konto erstellen" }).click();
-  await expect(page).toHaveURL(/\/konto$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
 
   await page.getByRole("link", { name: "Wunschliste", exact: true }).click();
-  await expect(page).toHaveURL(/\/konto\/wunschliste/);
+  await expect(page).toHaveURL(/\/account\/wishlist/);
   await expect(page.getByText(productName).first()).toBeVisible();
 
   // Logout → login: the wishlist survives (it lives on the account now).
-  await page.goto("/konto/profil");
+  await page.goto("/account/profile");
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
-  await page.goto("/konto/anmelden");
+  await page.goto("/account/login");
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
   await page.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page).toHaveURL(/\/konto$/, { timeout: 30_000 });
-  await page.goto("/konto/wunschliste");
+  await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
+  await page.goto("/account/wishlist");
   await expect(page.getByText(productName).first()).toBeVisible();
 
   // Remove it from the portal — it is gone from the account and the heart follows.
@@ -85,7 +85,7 @@ test("sold-out variant offers the back-in-stock notification (issue #46)", async
   const target = await soldOutVariant(page);
   test.skip(target === null, "seed has no sold-out variant");
 
-  await page.goto(`/produkt/${target!.slug}`);
+  await page.goto(`/products/${target!.slug}`);
   const attributes = target!.attributes;
   const picks: [string, string][] = [];
   if (attributes.color !== undefined) picks.push(["Farbe", String(attributes.color)]);

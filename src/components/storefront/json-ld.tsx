@@ -14,8 +14,8 @@ export function JsonLd({
   categoryLabel: string;
   aggregateRating?: { average: number; count: number };
 }) {
-  const productUrl = absoluteUrl(`/produkt/${product.slug}`);
-  const categoryUrl = absoluteUrl(`/produkte?type=${product.type}`);
+  const productUrl = absoluteUrl(`/products/${product.slug}`);
+  const categoryUrl = absoluteUrl(`/products?type=${product.type}`);
   const json = {
     "@context": "https://schema.org",
     "@graph": [

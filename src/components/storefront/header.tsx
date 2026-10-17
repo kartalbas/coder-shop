@@ -27,7 +27,7 @@ export function Header({ categories }: { categories: readonly MenuCategory[] }) 
           <ThemeToggle />
           {/* Issue #39: the portal itself decides between account and login page. */}
           <Link
-            href="/konto"
+            href="/account"
             aria-label="Mein Konto"
             className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
           >
@@ -43,7 +43,7 @@ export function Header({ categories }: { categories: readonly MenuCategory[] }) 
         {categories.map((category) => (
           <Link
             key={category.type}
-            href={`/produkte?type=${encodeURIComponent(category.type)}`}
+            href={`/products?type=${encodeURIComponent(category.type)}`}
             className="chip"
           >
             {category.label}

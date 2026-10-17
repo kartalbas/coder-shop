@@ -64,7 +64,7 @@ describe("product slug guard (src/proxy.ts, issue #28)", () => {
   });
 
   function productRequest(slug: string): NextRequest {
-    return new NextRequest(`http://localhost:3000/produkt/${slug}`);
+    return new NextRequest(`http://localhost:3000/products/${slug}`);
   }
 
   it("answers a real 404 for an unknown slug", async () => {
@@ -76,6 +76,15 @@ describe("product slug guard (src/proxy.ts, issue #28)", () => {
     const response = await proxy(productRequest("bekanntes-produkt"));
     expect(response.status).toBe(200);
   });
+
+  // Issue #63: /products is public now — the listing and the comparison page are
+  // routes, not slugs, and must never fall into the admin gate.
+  for (const pathname of ["/products", "/products/compare"]) {
+    it(`lets the public route ${pathname} through without a session`, async () => {
+      const response = await proxy(new NextRequest(`http://localhost:3000${pathname}`));
+      expect(response.status).toBe(200);
+    });
+  }
 });
 
 describe("label path containment (label download route)", () => {

@@ -7,7 +7,7 @@ export default async function PortalLayout({ children }: { children: React.React
   await connection();
   // The proxy already redirects unauthenticated visitors; this is defense in depth
   // (revoked sessions pass the signature-only proxy check).
-  if ((await getCustomerSessionUserId()) === null) redirect("/konto/anmelden");
+  if ((await getCustomerSessionUserId()) === null) redirect("/account/login");
   return (
     <>
       <h1 className="mb-4 text-2xl font-bold tracking-tight sm:text-3xl">Mein Konto</h1>

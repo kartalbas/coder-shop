@@ -11,7 +11,7 @@ async function addOneProductToCart(page: Page): Promise<void> {
   const body = (await response.json()) as { items: { slug: string; variants: unknown[] }[] };
   const product = body.items.find((item) => item.variants.length > 0);
   expect(product).toBeDefined();
-  await page.goto(`/produkt/${product!.slug}`);
+  await page.goto(`/products/${product!.slug}`);
   for (const group of ["Farbe", "Grösse", "Speicher", "Material"]) {
     const buttons = page.getByRole("group", { name: group }).locator("button");
     if ((await buttons.count()) > 0) await buttons.first().click();
@@ -38,13 +38,13 @@ test("admin edits VAT rate and a shipping price — the storefront follows (issu
     await saveSettings(page, "7,7", "5.50");
 
     // Footer copy of every storefront page carries the configured VAT wording.
-    await page.goto("/produkte");
+    await page.goto("/products");
     await expect(page.getByText(/inklusive 7,7 % MwSt/).first()).toBeVisible();
 
     // Cart summary: the edited standard price. formatChf renders a no-break space
     // between "CHF" and the amount, so the regexes match any whitespace there.
     await addOneProductToCart(page);
-    await page.goto("/warenkorb");
+    await page.goto("/cart");
     await expect(page.getByText(/Standard CHF\s5\.50/).first()).toBeVisible();
     await expect(page.getByText(/7,7 % MwSt/).first()).toBeVisible();
   } finally {
@@ -55,7 +55,7 @@ test("admin edits VAT rate and a shipping price — the storefront follows (issu
   // /api/shop-settings is cached for a minute; enabling routing disables the
   // browser's HTTP cache (Playwright), so this really refetches the restored price.
   await page.route("/api/shop-settings", (route) => route.continue());
-  await page.goto("/warenkorb");
+  await page.goto("/cart");
   await expect(page.getByText(/Standard CHF\s4\.90/).first()).toBeVisible();
 });
 
@@ -75,11 +75,11 @@ test("admin renames a catalog type — the mega-menu follows (issue #64)", async
 
   try {
     await rename("Handys");
-    await page.goto("/produkte");
+    await page.goto("/products");
     await expect(page.getByText("Handys").first()).toBeVisible({ timeout: 30_000 });
   } finally {
     await rename("Smartphones").catch(() => undefined);
   }
-  await page.goto("/produkte");
+  await page.goto("/products");
   await expect(page.getByText("Smartphones").first()).toBeVisible({ timeout: 30_000 });
 });

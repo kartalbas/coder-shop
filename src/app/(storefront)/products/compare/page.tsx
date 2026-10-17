@@ -14,7 +14,7 @@ import { getCatalogTypes } from "@/server/catalog-types";
 import { getProductsBySlugs } from "@/server/search";
 
 export const metadata: Metadata = {
-  title: "Produkte vergleichen",
+  title: "Produkte compare",
   description: "Bis zu vier Produkte Seite an Seite — Preise, Marken und die Attribute des Typs.",
 };
 
@@ -52,13 +52,13 @@ export default async function ComparePage({
   // compare at all, which is the same hint.
   const comparableLabel = comparableTypes[0]?.label ?? "Produkte";
   const comparableHref = comparableTypes[0]
-    ? `/produkte?type=${encodeURIComponent(comparableTypes[0].key)}`
-    : "/produkte";
+    ? `/products?type=${encodeURIComponent(comparableTypes[0].key)}`
+    : "/products";
 
   if (products.length < 2) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">{comparableLabel} vergleichen</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{comparableLabel} compare</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           Für einen Vergleich braucht es mindestens zwei {comparableLabel}. Über das
           Vergleichs-Symbol auf einem Produkt legen Sie die Liste an.
@@ -80,7 +80,7 @@ export default async function ComparePage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-2xl font-bold tracking-tight">{comparableLabel} vergleichen</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{comparableLabel} compare</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         {products.length} von maximal {COMPARE_MAX_PRODUCTS} {comparableLabel} — Zeilen mit
         Unterschieden sind hervorgehoben.
@@ -99,7 +99,7 @@ export default async function ComparePage({
               {products.map((product) => (
                 <th key={product.id} scope="col" className="min-w-44 p-3 align-bottom">
                   <Link
-                    href={`/produkt/${product.slug}`}
+                    href={`/products/${product.slug}`}
                     className="block focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     <span className="mx-auto block h-28 w-28 overflow-hidden rounded-md bg-muted">

@@ -112,7 +112,7 @@ async function DashboardView() {
                       >
                         <td className="px-4 py-2">
                           <Link
-                            href={`/produkt/${row.slug}`}
+                            href={`/products/${row.slug}`}
                             target="_blank"
                             className="font-medium underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                           >

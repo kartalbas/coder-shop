@@ -6,10 +6,11 @@ currency CHF (de-CH), Swiss VAT included in prices (rate is shop configuration, 
 
 **Language rule (one language for code):** all identifiers, statuses, model fields, sort values,
 query params and route-segment code names are **English** (`new`, `paid`, `picking`, `packed`,
-`shipped`, `delivered`, `cancelled`; `customer`, `lines`, `totals`…). German appears **only** in
-UI copy and in the public URL paths `/produkte`, `/produkt/…`, `/warenkorb`, `/kasse`,
-`/bestellung/…`, which are mapped to English-named routes via `rewrites` in `next.config.ts`
-(§7).
+`shipped`, `delivered`, `cancelled`; `customer`, `lines`, `totals`…) — **routes and public URLs
+too** (`/account/profile`, `/products`, `/cart`, `/checkout`, `/orders/…`, #63). German appears
+**only** as the base language of the content (UI copy from the translation table, #58); the
+former German URLs answer a permanent 308 redirect to their English counterparts via
+`redirects()` in `next.config.ts` (§7).
 
 ## 1. Stack (exact newest stable versions, verified with `npm view <pkg> version` on 2026-10-17)
 
@@ -78,8 +79,8 @@ scripts/
     api.ts                  # image API client (fetch, retry w/ backoff, b64/url → WebP via sharp)
 src/
   proxy.ts                  # Next 16 Proxy (Node runtime): /admin/* admin-scope session gate,
-                            # /konto/* customer-scope gate (#39) + real 404 for unknown
-                            # /produkt/[slug] before any bytes stream (§4, #28)
+                            # /account/* customer-scope gate (#39) + real 404 for unknown
+                            # /products/[slug] before any bytes stream (§4, #28, #63)
   app/
     layout.tsx              # root: fonts, ThemeProvider, Toaster, <RouteTransition>, metadata (§2 site.ts)
     globals.css             # Tailwind v4 @theme, light/dark tokens, @media print (packing slip)
@@ -87,23 +88,21 @@ src/
     (storefront)/
       layout.tsx            # Header (mega-menu, search, cart badge) + CartDrawer + Footer
       page.tsx              # home
-      products/page.tsx     # listing — public URL /produkte (rewrite)
-      products/vergleichen/page.tsx  # smartphone comparison — public URL
-                            # /produkte/vergleichen?slugs=… (#48)
-      products/[slug]/page.tsx      # public URL /produkt/[slug]
-      cart/page.tsx         # full cart page — public URL /warenkorb (drawer is global)
-      checkout/page.tsx     # public URL /kasse (prefill + login/guest choice, #39)
-      order/[number]/page.tsx      # confirmation + status — public URL /bestellung/[nummer]
-      order/[number]/rechnung/route.ts  # GET invoice PDF behind the confirmation URL
-                            # /bestellung/[nummer]/rechnung — same visibility rule as the
-                            # order details (#40, §4)
-      konto/                # customer portal (#39), guarded by the proxy + portal layout
-        (auth)/             # public: anmelden, registrieren, passwort-vergessen,
-                            # passwort-zuruecksetzen
+      products/page.tsx     # listing — public URL /products (#63)
+      products/compare/page.tsx     # smartphone comparison —
+                            # /products/compare?slugs=… (#48)
+      products/[slug]/page.tsx      # product detail — /products/[slug]
+      cart/page.tsx         # full cart page — /cart (drawer is global)
+      checkout/page.tsx     # /checkout (prefill + login/guest choice, #39)
+      orders/[number]/page.tsx      # confirmation + status — /orders/[number]
+      orders/[number]/invoice/route.ts  # GET invoice PDF behind /orders/[number]/invoice
+                            # — same visibility rule as the order details (#40, §4)
+      account/              # customer portal (#39), guarded by the proxy + portal layout
+        (auth)/             # public: login, register, forgot-password, reset-password
         (portal)/           # session-guarded: layout (nav), page (overview),
-                            # bestellungen (list+search+claim+reorder), adressen, profil,
-                            # rechnungen (offene Rechnungen mit Fälligkeit/Überfällig, #40),
-                            # wunschliste (gemerkte Produkte, #46)
+                            # orders (list+search+claim+reorder), addresses, profile,
+                            # invoices (offene Rechnungen mit Fälligkeit/Überfällig, #40),
+                            # wishlist (gemerkte Produkte, #46)
     admin/                  # admin URLs stay English (internal)
       (auth)/login/page.tsx
       (panel)/              # session-guarded group (layout requires the admin session)
@@ -609,7 +608,7 @@ Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
 - `GET /admin/labels/[orderId]` → serves the label PDF (`Content-Type: application/pdf`)
   **behind the admin session guard** — the only way to read a label.
 - `GET /admin/invoices/[orderId]` → invoice PDF behind the admin session guard (#40).
-- `GET /bestellung/[nummer]/rechnung` → the same invoice PDF behind the **order visibility
+- `GET /orders/[number]/invoice` → the same invoice PDF behind the **order visibility
   rule** (`mayViewOrderDetails`: access cookie, verified e-mail, owning account or admin,
   #3/#40) — strangers are redirected back to the confirmation.
 - `GET /api/health` → `{ ok: true, db: 'memory-server' | 'external' }`.
@@ -715,16 +714,18 @@ all use **`MongoMemoryReplSet` (single-node)** — no compensation scheme anywhe
 
 ## 7. Client/server split (SPA feel)
 
-- **Public URLs are German, code names English:** `next.config.ts` `rewrites` map
-  `/produkte` → `/products`, `/produkt/:slug` → `/products/:slug`, `/warenkorb` → `/cart`,
-  `/kasse` → `/checkout`, `/bestellung/:number` → `/order/:number`. Query params are English
+- **Routes and public URLs are English (#63):** the app routes themselves are `/products`,
+  `/products/:slug`, `/cart`, `/checkout`, `/orders/:number`… — no rewrite indirection.
+  `next.config.ts` `redirects()` answers every former German URL (`/produkte`, `/produkt/:slug`,
+  `/warenkorb`, `/kasse`, `/bestellung/:number`, `/konto/…`) with a permanent 308 to its English
+  counterpart; the mapping is configuration, not code. Query params are English
   (`type, brand, size, color, storage, material, sort, page`) because they are code-facing.
 - **Server Components** own data fetching: home, listing first paint, product page, all admin
   pages render from Mongoose directly (no client fetch waterfall, no API keys in bundle).
 - **Client islands**: header + mega-menu + instant search, cart drawer/button, theme toggle,
   gallery, variant picker, filter sidebar/sort/pagination, route transition wrapper, admin
   editors.
-- **Listing SPA pattern**: `/produkte` server-renders page 1 and hydrates a `ListingShell`
+- **Listing SPA pattern**: `/products` server-renders page 1 and hydrates a `ListingShell`
   (client) that owns subsequent updates: facet clicks call `router.replace(url, { scroll:
   false })` and fetch `/api/products` in parallel; results cross-fade with motion; skeletons
   while pending; `history` back/forward works because URL is the single source of truth.
@@ -764,32 +765,32 @@ at standard CHF 4.90, express CHF 12.90, free from CHF 100 (docs/DECISIONS.md).
 - **Header** — sticky, blur backdrop; logo, mega-menu (type → brand/attribute columns + promo
   tile), instant search (debounce 200 ms, `⌘K`/`/` focus, arrow-key + Enter navigation,
   `role="combobox"`/`aria-expanded`), theme toggle, cart button with animated count badge.
-- **Listing /produkte** — left facet sidebar (checkbox groups per type: brand, size, color,
+- **Listing /products** — left facet sidebar (checkbox groups per type: brand, size, color,
   storage, material; counts per facet), top bar (result count, sort select, mobile filter
   sheet), responsive product grid (2/3/4 cols), skeleton cards, empty state with reset action,
   numbered pagination + "Zeige 1–24 von 70". URL params: `type, brand, size, color, storage,
   material, sort, page`.
-- **Product page /produkt/[slug]** — breadcrumbs; gallery (main image + thumbnails, swipe via
+- **Product page /products/[slug]** — breadcrumbs; gallery (main image + thumbnails, swipe via
   drag, click-to-zoom dialog, crossfade on variant color change); title, price (animated on
   variant change), variant pickers (color/size/storage chips, disabled when out of stock),
   stock indicator (grün/gelb/rot text + dot), qty stepper, "In den Warenkorb" (opens drawer),
   weight/description accordion, related products (same type+brand first), JSON-LD `Product`
   with offers per variant.
-- **Cart drawer / /warenkorb** — drawer from right (sheet), line items with variant label, qty
+- **Cart drawer / /cart** — drawer from right (sheet), line items with variant label, qty
   steppers (optimistic), subtotal, free-shipping progress bar, "Zur Kasse"; full page mirrors
   drawer for deep links.
-- **Checkout /kasse** — single column, 3 anchored steps (Adresse → Versand → Zahlung),
+- **Checkout /checkout** — single column, 3 anchored steps (Adresse → Versand → Zahlung),
   zod-validated client + server, mock payment (card form stub), summary sidebar sticky;
   success → confetti-light motion → redirect confirmation. Issue #39: logged-in customers
   start prefilled from profile + default shipping address and their orders carry `userId`;
   guests see an "Anmelden / Konto erstellen / als Gast bestellen" banner.
-- **Konto /konto (customer portal, #39)** — proxy-guarded (customer-scope cookie) with a
-  login/register/forgot-password/reset area under `/konto/(auth)`. Portal: overview,
+- **Account /account (customer portal, #39)** — proxy-guarded (customer-scope cookie) with a
+  login/register/forgot-password/reset area under `/account/(auth)`. Portal: overview,
   Bestellungen (newest first, search by number/article, guest-order claim by e-mail,
   „Erneut bestellen" with today's prices/stock), Adressen (address book, one default per
   kind), Profil (data, password change, logout). E-mail + password are the identity; the
   order confirmation page shows full PII to the owning account too (`order-visibility.ts`).
-- **Bestellung/[nummer]** — big confirmation, status timeline (state machine steps), items,
+- **Order confirmation /orders/[number]** — big confirmation, status timeline (state machine steps), items,
   totals incl. VAT note from the shop settings ("8,1 % MwSt. inbegriffen" with the seed rate), tracking number once shipped. **Buyer-only
   PII:** order numbers are sequential/guessable, so address/e-mail/phone/items/tracking are
   rendered only for a browser with the per-order access cookie (HMAC cookie set at checkout,

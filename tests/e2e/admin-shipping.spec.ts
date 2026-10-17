@@ -37,6 +37,6 @@ test("admin: paid order → picking → packed → UPS label (mock) → shipped 
   await expect(page.getByText("Versandt").first()).toBeVisible();
 
   // The customer confirmation shows the tracking number once shipped.
-  await page.goto(`/bestellung/${orderNumber}`);
+  await page.goto(`/orders/${orderNumber}`);
   await expect(page.getByText(`Sendungsverfolgung: ${tracking}`)).toBeVisible();
 });

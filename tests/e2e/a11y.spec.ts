@@ -3,16 +3,16 @@ import { expect, test } from "@playwright/test";
 // Issue #26 — accessibility regressions found by axe and keyboard testing.
 
 test("listing has a German <h1> following the active tab/collection", async ({ page }) => {
-  await page.goto("/produkte");
+  await page.goto("/products");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Alle Produkte");
-  await page.goto("/produkte?type=shoes");
+  await page.goto("/products?type=shoes");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Schuhe");
 });
 
 test("breadcrumb list contains only <li> children", async ({ page }) => {
   const response = await page.request.get("/api/products");
   const body = (await response.json()) as { items: { slug: string }[] };
-  await page.goto(`/produkt/${body.items[0].slug}`);
+  await page.goto(`/products/${body.items[0].slug}`);
   const breadcrumbs = page.getByRole("navigation", { name: "Brotkrumen-Navigation" });
   await expect(breadcrumbs).toBeVisible();
   const invalid = await breadcrumbs
@@ -27,7 +27,7 @@ test("gallery zooms via keyboard and the dialog closes in German", async ({ page
   const body = (await response.json()) as { items: { slug: string; images: unknown[] }[] };
   const product = body.items.find((item) => item.images.length >= 2);
   expect(product, "seed must contain an Apple phone with ≥2 images").toBeDefined();
-  await page.goto(`/produkt/${product!.slug}`);
+  await page.goto(`/products/${product!.slug}`);
 
   const mainImage = page.locator("main img[tabindex='0']").first();
   await expect(mainImage).toBeVisible();
@@ -62,7 +62,7 @@ test("search reports no hits and its options are no tab stops", async ({ page })
 test("stock indicator and admin badges use the 700 contrast tones", async ({ page }) => {
   const response = await page.request.get("/api/products");
   const body = (await response.json()) as { items: { slug: string }[] };
-  await page.goto(`/produkt/${body.items[0].slug}`);
+  await page.goto(`/products/${body.items[0].slug}`);
   // The indicator only appears once a concrete variant exists (issue #18):
   // pick the first option of every variant group.
   const groups = page.locator("main fieldset");

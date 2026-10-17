@@ -11,19 +11,19 @@ import { requireCustomerSession } from "@/server/session";
 
 const SECTIONS = [
   {
-    href: "/konto/bestellungen",
+    href: "/account/orders",
     icon: Package,
     title: "Bestellungen",
     text: "Bestellhistorie mit Status, Sendungsverfolgung und „Erneut bestellen“.",
   },
   {
-    href: "/konto/adressen",
+    href: "/account/addresses",
     icon: MapPin,
     title: "Adressen",
     text: "Liefer- und Rechnungsadressen verwalten.",
   },
   {
-    href: "/konto/profil",
+    href: "/account/profile",
     icon: UserRound,
     title: "Profil",
     text: "Name, E-Mail und Passwort ändern.",

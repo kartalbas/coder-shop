@@ -32,7 +32,7 @@ export function CartDrawer() {
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
             <p className="text-muted-foreground">Ihr Warenkorb ist leer.</p>
             <Button asChild variant="outline">
-              <Link href="/produkte" onClick={closeCartDrawer}>Weiter einkaufen</Link>
+              <Link href="/products" onClick={closeCartDrawer}>Weiter einkaufen</Link>
             </Button>
           </div>
         ) : (
@@ -47,7 +47,7 @@ export function CartDrawer() {
                   />
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={`/produkt/${line.slug}`}
+                      href={`/products/${line.slug}`}
                       onClick={closeCartDrawer}
                       className="block truncate text-sm font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                     >
@@ -102,7 +102,7 @@ export function CartDrawer() {
               </div>
               <Separator className="mb-3" />
               <Button asChild className="w-full" size="lg">
-                <Link href="/kasse" onClick={closeCartDrawer}>Zur Kasse</Link>
+                <Link href="/checkout" onClick={closeCartDrawer}>Zur Kasse</Link>
               </Button>
             </div>
           </>

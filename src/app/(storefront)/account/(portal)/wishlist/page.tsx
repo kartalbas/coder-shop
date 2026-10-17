@@ -37,7 +37,7 @@ export default async function WishlistPage() {
             hier.
           </p>
           <Button asChild variant="outline" className="mt-4">
-            <Link href="/produkte">Produkte entdecken</Link>
+            <Link href="/products">Produkte entdecken</Link>
           </Button>
         </div>
       ) : (

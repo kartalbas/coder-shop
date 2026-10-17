@@ -53,14 +53,14 @@ export default async function CheckoutPage() {
             Sie haben bereits ein Konto?
           </span>
           <Link
-            href="/konto/anmelden?next=%2Fkasse"
+            href="/account/login?next=%2Fcheckout"
             className="font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           >
             Anmelden
           </Link>
           <span className="text-muted-foreground">oder</span>
           <Link
-            href="/konto/registrieren"
+            href="/account/register"
             className="font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           >
             Konto erstellen

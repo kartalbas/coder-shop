@@ -29,7 +29,7 @@ async function Categories() {
         {categories.map((category) => (
           <Link
             key={category.type}
-            href={`/produkte?type=${encodeURIComponent(category.type)}`}
+            href={`/products?type=${encodeURIComponent(category.type)}`}
             className="group rounded-xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
           >
             <p className="text-lg font-semibold group-hover:text-primary">{category.label}</p>
@@ -70,7 +70,7 @@ async function FeaturedRail() {
           Beliebte Produkte
         </h2>
         <Link
-          href="/produkte"
+          href="/products"
           className="text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
         >
           Alle ansehen
@@ -112,7 +112,7 @@ async function Collections() {
           <div className="mb-2 flex items-baseline justify-between gap-4">
             <h2 className="text-2xl font-semibold tracking-tight">{collection}</h2>
             <Link
-              href={`/produkte?collection=${encodeURIComponent(collection)}`}
+              href={`/products?collection=${encodeURIComponent(collection)}`}
               className="text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
             >
               Alle ansehen
@@ -180,12 +180,12 @@ export default function HomePage() {
           </p>
           <div className="flex gap-3">
             <Button asChild size="lg">
-              <Link href="/produkte">
+              <Link href="/products">
                 Jetzt entdecken <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/produkte?collection=Neuheiten">Neuheiten</Link>
+              <Link href="/products?collection=Neuheiten">Neuheiten</Link>
             </Button>
           </div>
         </div>

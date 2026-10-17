@@ -15,7 +15,7 @@ async function facetGroupNames(page: import("@playwright/test").Page): Promise<s
 }
 
 test("smartphones offer only their own facets", async ({ page }) => {
-  await page.goto("/produkte?type=smartphone");
+  await page.goto("/products?type=smartphone");
   const groups = await facetGroupNames(page);
   expect(groups).toEqual(expect.arrayContaining(["Marke", "Farbe", "Speicher"]));
   expect(groups).not.toContain("Grösse");
@@ -23,14 +23,14 @@ test("smartphones offer only their own facets", async ({ page }) => {
 });
 
 test("shoes offer EU size but no storage", async ({ page }) => {
-  await page.goto("/produkte?type=shoes");
+  await page.goto("/products?type=shoes");
   const groups = await facetGroupNames(page);
   expect(groups).toEqual(expect.arrayContaining(["Marke", "Farbe", "Grösse"]));
   expect(groups).not.toContain("Speicher");
 });
 
 test("clothing offers size and material but no storage", async ({ page }) => {
-  await page.goto("/produkte?type=clothing");
+  await page.goto("/products?type=clothing");
   const groups = await facetGroupNames(page);
   expect(groups).toEqual(expect.arrayContaining(["Marke", "Farbe", "Grösse", "Material"]));
   expect(groups).not.toContain("Speicher");
@@ -38,7 +38,7 @@ test("clothing offers size and material but no storage", async ({ page }) => {
 
 test("a configured facet filters the listing when clicked", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto("/produkte?type=smartphone");
+  await page.goto("/products?type=smartphone");
   const sidebar = page.getByRole("complementary", { name: "Filter" });
   const storageGroup = sidebar.locator("fieldset", { has: page.locator("legend", { hasText: "Speicher" }) });
   const firstCheckbox = storageGroup.getByRole("checkbox").first();

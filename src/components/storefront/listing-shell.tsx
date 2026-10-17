@@ -58,7 +58,7 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
       if (!("page" in updates)) next.delete("page");
       const qs = next.toString();
       startTransition(() => {
-        router.replace(qs ? `/produkte?${qs}` : "/produkte", { scroll: false });
+        router.replace(qs ? `/products?${qs}` : "/products", { scroll: false });
       });
     },
     [router, searchParams],
@@ -100,7 +100,7 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
     if (type) next.set("type", type);
     const qs = next.toString();
     startTransition(() => {
-      router.replace(qs ? `/produkte?${qs}` : "/produkte", { scroll: false });
+      router.replace(qs ? `/products?${qs}` : "/products", { scroll: false });
     });
   };
 

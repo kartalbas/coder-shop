@@ -200,7 +200,7 @@ export async function adminResetPasswordCore(id: string): Promise<CustomerAction
     userId: user._id,
     expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
   });
-  const link = absoluteUrl(`/konto/passwort-zuruecksetzen?token=${token}`);
+  const link = absoluteUrl(`/account/reset-password?token=${token}`);
   await sendMail({ to: user.email, ...passwordResetMail(user.name, link) });
   return { ok: true };
 }

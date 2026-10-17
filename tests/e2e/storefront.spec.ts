@@ -31,7 +31,7 @@ test("browse → filter → product page → cart → checkout → confirmation"
   ).toBeVisible();
 
   // Listing with a faceted filter (brand checkbox in the sidebar).
-  await page.goto("/produkte?type=smartphone");
+  await page.goto("/products?type=smartphone");
   const sidebar = page.getByRole("complementary", { name: "Filter" });
   await expect(sidebar).toBeVisible();
   // The checkbox is controlled by the URL (router.replace), so click and wait for the
@@ -40,13 +40,13 @@ test("browse → filter → product page → cart → checkout → confirmation"
   await appleCheckbox.click();
   await expect(page).toHaveURL(/brand=Apple/);
   await expect(appleCheckbox).toHaveAttribute("aria-checked", "true");
-  const productLinks = page.locator('main a[href^="/produkt/"]');
+  const productLinks = page.locator('main a[href^="/products/"]');
   await expect(productLinks.first()).toBeVisible();
   expect(await productLinks.count()).toBeGreaterThan(0);
 
   // Product page picked so the gallery and variant assertions are deterministic.
   const target = await findTestProduct(page);
-  await page.goto(`/produkt/${target.slug}`);
+  await page.goto(`/products/${target.slug}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(target.name);
 
   // Gallery: main image plus working thumbnail navigation. Whether the slot's photo
@@ -81,11 +81,11 @@ test("browse → filter → product page → cart → checkout → confirmation"
   await page.keyboard.press("Escape");
 
   // Cart page shows the line, then continue to checkout.
-  await page.goto("/warenkorb");
+  await page.goto("/cart");
   await expect(page.getByRole("heading", { name: "Warenkorb" })).toBeVisible();
   await expect(page.getByText(target.name)).toBeVisible();
   await page.getByRole("link", { name: "Zur Kasse" }).click();
-  await expect(page).toHaveURL(/\/kasse/);
+  await expect(page).toHaveURL(/\/checkout/);
 
   // Checkout: address, shipping, mock payment.
   await page.fill("#name", "Erika Test");
@@ -97,7 +97,7 @@ test("browse → filter → product page → cart → checkout → confirmation"
   await page.getByRole("button", { name: /Jetzt kaufen/ }).click();
 
   // Confirmation with the order number.
-  await expect(page).toHaveURL(/\/bestellung\/B-\d{4}-\d{6}$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/orders\/B-\d{4}-\d{6}$/, { timeout: 30_000 });
   const orderNumber = decodeURIComponent(new URL(page.url()).pathname.split("/").pop()!);
   await expect(page.getByText("Vielen Dank für Ihre Bestellung!")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(orderNumber);

@@ -138,7 +138,7 @@ export async function createLabelCore(
         name: order.customer.name,
         orderNumber: order.orderNumber,
         trackingNumber: label.trackingNumber,
-        link: absoluteUrl(`/bestellung/${order.orderNumber}`),
+        link: absoluteUrl(`/orders/${order.orderNumber}`),
       }),
     });
   } catch (error) {

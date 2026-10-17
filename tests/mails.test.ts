@@ -71,7 +71,7 @@ describe("mail templates (issue #44)", () => {
       name: "Lena",
       orderNumber: "B-2026-000123",
       totalCents: 12_345,
-      link: "https://shop.example/bestellung/B-2026-000123",
+      link: "https://shop.example/orders/B-2026-000123",
     });
     expect(mail.subject).toBe("Vielen Dank für Ihre Bestellung");
     for (const body of [mail.html, mail.text]) {
@@ -79,7 +79,7 @@ describe("mail templates (issue #44)", () => {
       expect(body).toContain("B-2026-000123");
       expect(body).toContain(formatChf(12_345));
     }
-    expect(mail.html).toContain("https://shop.example/bestellung/B-2026-000123");
+    expect(mail.html).toContain("https://shop.example/orders/B-2026-000123");
   });
 
   it("invoice carries the amount, the due date and the PDF link", () => {
@@ -88,7 +88,7 @@ describe("mail templates (issue #44)", () => {
       orderNumber: "B-2026-000124",
       totalCents: 50_000,
       dueDate: "16.11.2026",
-      pdfLink: "https://shop.example/bestellung/B-2026-000124/rechnung",
+      pdfLink: "https://shop.example/orders/B-2026-000124/invoice",
     });
     expect(mail.subject).toBe("Ihre Rechnung");
     for (const body of [mail.html, mail.text]) {
@@ -96,7 +96,7 @@ describe("mail templates (issue #44)", () => {
       expect(body).toContain(formatChf(50_000));
       expect(body).toContain("16.11.2026");
     }
-    expect(mail.html).toContain("/rechnung");
+    expect(mail.html).toContain("/invoice");
   });
 
   it("shipment mail contains the tracking number", () => {
@@ -104,7 +104,7 @@ describe("mail templates (issue #44)", () => {
       name: "Lena",
       orderNumber: "B-2026-000125",
       trackingNumber: "1ZTESTTRACKING01",
-      link: "https://shop.example/bestellung/B-2026-000125",
+      link: "https://shop.example/orders/B-2026-000125",
     });
     expect(mail.subject).toBe("Ihre Sendung ist unterwegs");
     for (const body of [mail.html, mail.text]) {
@@ -157,7 +157,7 @@ describe("workflow mails land in the dev outbox (issue #44)", () => {
     expect(mails).toHaveLength(1); // card payment: no invoice mail
     expect(mails[0]?.subject).toBe("Vielen Dank für Ihre Bestellung");
     expect(mails[0]?.html).toContain(result.orderNumber);
-    expect(mails[0]?.html).toContain("/bestellung/" + result.orderNumber);
+    expect(mails[0]?.html).toContain("/orders/" + result.orderNumber);
 
     // Rechnung order of a registered customer → confirmation + invoice with PDF link.
     const user = await UserModel.create({
@@ -183,7 +183,7 @@ describe("workflow mails land in the dev outbox (issue #44)", () => {
       "Vielen Dank für Ihre Bestellung",
       "Ihre Rechnung",
     ]);
-    expect(invoiceMails[1]?.html).toContain("/rechnung");
+    expect(invoiceMails[1]?.html).toContain("/invoice");
   });
 
   it("label creation mails the tracking number once the order shipped", async () => {

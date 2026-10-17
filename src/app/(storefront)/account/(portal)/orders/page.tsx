@@ -36,7 +36,7 @@ export default async function AccountOrdersPage({ searchParams }: PageProps) {
         <ClaimOrderForm />
       </div>
 
-      <form method="get" action="/konto/bestellungen" className="flex max-w-sm gap-2">
+      <form method="get" action="/account/orders" className="flex max-w-sm gap-2">
         <label htmlFor="order-search" className="sr-only">
           Bestellungen durchsuchen
         </label>
@@ -64,7 +64,7 @@ export default async function AccountOrdersPage({ searchParams }: PageProps) {
           </p>
           {!q && (
             <Button asChild variant="outline">
-              <Link href="/produkte">Jetzt einkaufen</Link>
+              <Link href="/products">Jetzt einkaufen</Link>
             </Button>
           )}
         </div>
@@ -75,7 +75,7 @@ export default async function AccountOrdersPage({ searchParams }: PageProps) {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <Link
-                    href={`/bestellung/${order.orderNumber}`}
+                    href={`/orders/${order.orderNumber}`}
                     className="font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     {order.orderNumber}

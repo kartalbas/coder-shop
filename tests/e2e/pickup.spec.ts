@@ -7,7 +7,7 @@ async function addOneProductToCart(page: Page): Promise<void> {
   const body = (await response.json()) as { items: { slug: string; variants: { sku: string }[] }[] };
   const product = body.items.find((item) => item.variants.length > 0);
   expect(product).toBeDefined();
-  await page.goto(`/produkt/${product!.slug}`);
+  await page.goto(`/products/${product!.slug}`);
   for (const group of ["Farbe", "Grösse", "Speicher", "Material"]) {
     const buttons = page.getByRole("group", { name: group }).locator("button");
     if ((await buttons.count()) > 0) await buttons.first().click();
@@ -23,7 +23,7 @@ test("pickup order: checkout → ready → handover with code → abgeholt und b
 
   // Guest checkout with pickup shipping and pay-on-pickup.
   await addOneProductToCart(page);
-  await page.goto("/kasse");
+  await page.goto("/checkout");
   await page.fill("#name", "Hans Abholung");
   await page.fill("#email", "hans.abholung@example.ch");
   await page.fill("#phone", "079 555 98 76");
@@ -35,7 +35,7 @@ test("pickup order: checkout → ready → handover with code → abgeholt und b
   await page.getByRole("radio", { name: /Bei Abholung/ }).check();
   await expect(page.getByText("Bar oder Karte vor Ort")).toBeVisible();
   await page.getByRole("button", { name: /Bestellen —|Jetzt kaufen/ }).click();
-  await expect(page).toHaveURL(/\/bestellung\/B-\d{4}-\d{6}$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/orders\/B-\d{4}-\d{6}$/, { timeout: 30_000 });
   const orderNumber = decodeURIComponent(new URL(page.url()).pathname.split("/").pop()!);
 
   // Confirmation: pickup block with store address, code and QR — and no tracking.

@@ -11,7 +11,7 @@ async function addOneProductToCart(page: Page): Promise<void> {
   const body = (await response.json()) as { items: { slug: string; variants: { sku: string }[] }[] };
   const product = body.items.find((item) => item.variants.length > 0);
   expect(product).toBeDefined();
-  await page.goto(`/produkt/${product!.slug}`);
+  await page.goto(`/products/${product!.slug}`);
   for (const group of ["Farbe", "Grösse", "Speicher", "Material"]) {
     const buttons = page.getByRole("group", { name: group }).locator("button");
     if ((await buttons.count()) > 0) await buttons.first().click();
@@ -26,17 +26,17 @@ test("invoice order: open for customer and admin, markable as paid (issue #40)",
   test.setTimeout(180_000);
 
   // Registered customer — invoice is only offered to accounts.
-  await page.goto("/konto/registrieren");
+  await page.goto("/account/register");
   await page.fill("#name", "Rechnung Kunde");
   await page.fill("#email", EMAIL);
   await page.fill("#password", PASSWORD);
   await page.getByRole("checkbox", { name: /AGB/ }).check();
   await page.getByRole("button", { name: "Konto erstellen" }).click();
-  await expect(page).toHaveURL(/\/konto$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
 
   // Checkout with „Rechnung“.
   await addOneProductToCart(page);
-  await page.goto("/kasse");
+  await page.goto("/checkout");
   await page.fill("#phone", "079 555 12 12");
   await page.fill("#street", "Rechnungsweg 9");
   await page.fill("#postalCode", "8001");
@@ -44,18 +44,18 @@ test("invoice order: open for customer and admin, markable as paid (issue #40)",
   await page.getByRole("radio", { name: /Rechnung/ }).check();
   await expect(page.getByText(/Zahlbar innert 30 Tagen/)).toBeVisible();
   await page.getByRole("button", { name: /Bestellen —/ }).click();
-  await expect(page).toHaveURL(/\/bestellung\/B-\d{4}-\d{6}$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/orders\/B-\d{4}-\d{6}$/, { timeout: 30_000 });
   const orderNumber = decodeURIComponent(new URL(page.url()).pathname.split("/").pop()!);
 
   // Confirmation: invoice block with reference, and the PDF is served.
   await expect(page.getByText("Zahlung per Rechnung")).toBeVisible();
   await expect(page.getByText(/Referenz/)).toBeVisible();
-  const pdf = await page.request.get(`/bestellung/${orderNumber}/rechnung`);
+  const pdf = await page.request.get(`/orders/${orderNumber}/invoice`);
   expect(pdf.ok()).toBeTruthy();
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
 
   // Portal: the invoice is open.
-  await page.goto("/konto/rechnungen");
+  await page.goto("/account/invoices");
   await expect(page.getByText(orderNumber)).toBeVisible();
   await expect(page.getByText("Überfällig").first()).toBeHidden();
   await expect(page.getByText(/^Offen /).first()).toBeVisible();
@@ -87,7 +87,7 @@ test("invoice order: open for customer and admin, markable as paid (issue #40)",
   await admin.close();
 
   // Portal: settled.
-  await page.goto("/konto/rechnungen");
+  await page.goto("/account/invoices");
   await expect(page.getByText(orderNumber)).toBeVisible();
   await expect(page.getByText(/Bezahlt · Total/)).toBeVisible();
 });

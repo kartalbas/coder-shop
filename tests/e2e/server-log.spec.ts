@@ -15,7 +15,7 @@ test("product pages render without prerender errors in the server log", async ({
   const slugs = body.items.slice(0, 3).map((item) => item.slug);
   expect(slugs.length).toBeGreaterThan(0);
   for (const slug of slugs) {
-    expect((await request.get(`/produkt/${slug}`)).status()).toBe(200);
+    expect((await request.get(`/products/${slug}`)).status()).toBe(200);
   }
 
   // The server pipes its log asynchronously — give it a moment to flush the

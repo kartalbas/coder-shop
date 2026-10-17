@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const ACCOUNT_LINKS = [
-  { href: "/konto", label: "Übersicht" },
-  { href: "/konto/bestellungen", label: "Bestellungen" },
-  { href: "/konto/rechnungen", label: "Rechnungen" },
-  { href: "/konto/wunschliste", label: "Wunschliste" },
-  { href: "/konto/adressen", label: "Adressen" },
-  { href: "/konto/profil", label: "Profil" },
+  { href: "/account", label: "Übersicht" },
+  { href: "/account/orders", label: "Bestellungen" },
+  { href: "/account/invoices", label: "Rechnungen" },
+  { href: "/account/wishlist", label: "Wunschliste" },
+  { href: "/account/addresses", label: "Adressen" },
+  { href: "/account/profile", label: "Profil" },
 ];
 
 export function AccountNav() {
@@ -18,7 +18,7 @@ export function AccountNav() {
   return (
     <nav aria-label="Konto-Navigation" className="flex gap-1 overflow-x-auto border-b">
       {ACCOUNT_LINKS.map(({ href, label }) => {
-        const active = href === "/konto" ? pathname === "/konto" : pathname.startsWith(href);
+        const active = href === "/account" ? pathname === "/account" : pathname.startsWith(href);
         return (
           <Link
             key={href}

@@ -150,7 +150,7 @@ export function CheckoutForm({
       redirected.current = true;
       clearCart();
       toast.success("Bestellung aufgegeben", { description: `Bestellung ${state.orderNumber}` });
-      router.push(`/bestellung/${state.orderNumber}`);
+      router.push(`/orders/${state.orderNumber}`);
     }
   }, [state, router]);
 
@@ -183,7 +183,7 @@ export function CheckoutForm({
         <p className="text-2xl font-bold">Es gibt nichts zu bezahlen</p>
         <p className="text-muted-foreground">Ihr Warenkorb ist leer.</p>
         <Button asChild size="lg" variant="outline">
-          <Link href="/produkte">Weiter einkaufen</Link>
+          <Link href="/products">Weiter einkaufen</Link>
         </Button>
       </div>
     );
@@ -333,7 +333,7 @@ export function CheckoutForm({
                 <p>
                   Sie erhalten eine Swiss QR-Rechnung mit Referenz und Zahlungsfrist von{" "}
                   {INVOICE_DUE_DAYS} Tagen — offen sichtbar unter{" "}
-                  <Link href="/konto/rechnungen" className="underline underline-offset-2">
+                  <Link href="/account/invoices" className="underline underline-offset-2">
                     Mein Konto → Rechnungen
                   </Link>
                   .

@@ -12,7 +12,7 @@ export async function GET(
 
   const { number } = await context.params;
   if (!(await mayViewOrderDetails(number))) {
-    return NextResponse.redirect(new URL(`/bestellung/${encodeURIComponent(number)}`, request.url), 307);
+    return NextResponse.redirect(new URL(`/orders/${encodeURIComponent(number)}`, request.url), 307);
   }
 
   const file = await getInvoiceFileCore(number);

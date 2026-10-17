@@ -41,7 +41,7 @@ async function seedCart(page: Page): Promise<ApiProduct> {
   return product;
 }
 
-test("reloading /warenkorb with items never flashes the empty state", async ({ page }) => {
+test("reloading /cart with items never flashes the empty state", async ({ page }) => {
   await seedCart(page);
   // Record whether the empty-state text is ever in the DOM during load/hydration.
   await page.addInitScript(() => {
@@ -56,7 +56,7 @@ test("reloading /warenkorb with items never flashes the empty state", async ({ p
       characterData: true,
     });
   });
-  await page.goto("/warenkorb");
+  await page.goto("/cart");
   await expect(page.getByRole("heading", { level: 1, name: "Warenkorb" })).toBeVisible();
   await expect(page.locator("main li").first()).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { __sawEmpty: boolean }).__sawEmpty)).toBe(
@@ -64,7 +64,7 @@ test("reloading /warenkorb with items never flashes the empty state", async ({ p
   );
 });
 
-test("reloading /kasse with items never flashes the empty state and has one <h1>", async ({
+test("reloading /checkout with items never flashes the empty state and has one <h1>", async ({
   page,
 }) => {
   await seedCart(page);
@@ -80,7 +80,7 @@ test("reloading /kasse with items never flashes the empty state and has one <h1>
       characterData: true,
     });
   });
-  await page.goto("/kasse");
+  await page.goto("/checkout");
   await expect(page.getByRole("button", { name: /Jetzt kaufen/ })).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { __sawEmpty: boolean }).__sawEmpty)).toBe(
     false,
@@ -88,8 +88,8 @@ test("reloading /kasse with items never flashes the empty state and has one <h1>
   await expect(page.locator("h1")).toHaveCount(1);
 });
 
-test("empty /kasse keeps a single <h1>", async ({ page }) => {
-  await page.goto("/kasse");
+test("empty /checkout keeps a single <h1>", async ({ page }) => {
+  await page.goto("/checkout");
   await expect(page.getByRole("heading", { level: 1, name: "Kasse" })).toBeVisible();
   await expect(page.locator("h1")).toHaveCount(1);
 });
@@ -101,12 +101,12 @@ test("the drawer's „Zur Kasse“ goes to the checkout", async ({ page }) => {
   const drawer = page.getByRole("dialog");
   await expect(drawer).toBeVisible();
   await drawer.getByRole("link", { name: "Zur Kasse" }).click();
-  await expect(page).toHaveURL(/\/kasse$/);
+  await expect(page).toHaveURL(/\/checkout$/);
 });
 
 test("mock card fields are not part of the submitted form", async ({ page }) => {
   await seedCart(page);
-  await page.goto("/kasse");
+  await page.goto("/checkout");
   await expect(page.getByRole("button", { name: /Jetzt kaufen/ })).toBeVisible();
   for (const id of ["cardName", "cardNumber", "cardExpiry", "cardCvc"]) {
     await expect(page.locator(`#${id}`)).not.toHaveAttribute("name");

@@ -40,7 +40,7 @@ export function Footer({
               <li key={category.type}>
                 <Link
                   className="hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-                  href={`/produkte?type=${encodeURIComponent(category.type)}`}
+                  href={`/products?type=${encodeURIComponent(category.type)}`}
                 >
                   {category.label}
                 </Link>

@@ -29,6 +29,6 @@ export async function removeWishlistItemAction(slug: string): Promise<{ ok: bool
   const parsed = z.string().trim().min(1).max(120).safeParse(slug);
   if (!parsed.success) return { ok: false };
   const removed = await removeFromWishlistCore(userId, parsed.data);
-  revalidatePath("/konto/wunschliste");
+  revalidatePath("/account/wishlist");
   return { ok: removed };
 }

@@ -89,7 +89,7 @@ export async function registerAction(
     ip: await clientIp(),
   });
   if (login.ok) await setSessionCookie(login.token, "customer");
-  redirect("/konto");
+  redirect("/account");
 }
 
 export async function customerLoginAction(
@@ -104,7 +104,7 @@ export async function customerLoginAction(
   if (!result.ok) return { ok: false, error: result.error };
   await setSessionCookie(result.token, "customer");
   const next = formData.get("next");
-  redirect(typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/konto");
+  redirect(typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/account");
 }
 
 export async function customerLogoutAction(): Promise<void> {
@@ -209,5 +209,5 @@ export async function changePasswordAction(
     const field = result.reason === "current_password" ? "currentPassword" : "newPassword";
     return { error: result.error, fieldErrors: { [field]: result.error } };
   }
-  redirect("/konto/anmelden");
+  redirect("/account/login");
 }

@@ -121,7 +121,7 @@ async function OrderView({ params }: PagePropsLocal) {
                 </p>
               </div>
               <Link
-                href={`/bestellung/${order.orderNumber}/rechnung`}
+                href={`/orders/${order.orderNumber}/invoice`}
                 className="text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 Rechnung als PDF

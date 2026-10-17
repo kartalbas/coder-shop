@@ -62,7 +62,7 @@ async function ProductView({ params }: PagePropsLocal) {
       <Breadcrumbs
         items={[
           { label: "Start", href: "/" },
-          { label: categoryLabel, href: `/produkte?type=${encodeURIComponent(product.type)}` },
+          { label: categoryLabel, href: `/products?type=${encodeURIComponent(product.type)}` },
           { label: product.name },
         ]}
       />

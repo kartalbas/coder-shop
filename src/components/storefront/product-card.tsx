@@ -12,7 +12,7 @@ export function ProductCard({ product }: { product: ProductDto }) {
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md">
       <Link
-        href={`/produkt/${product.slug}`}
+        href={`/products/${product.slug}`}
         className="flex flex-1 flex-col focus-visible:outline-2 focus-visible:outline-ring"
         aria-label={product.name}
       >

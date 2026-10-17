@@ -40,6 +40,6 @@ export async function submitReviewAction(
   }
   const result = await submitReviewCore({ userId, ...parsed.data });
   if (!result.ok) return { error: result.error };
-  if (result.slug) revalidatePath(`/produkt/${result.slug}`);
+  if (result.slug) revalidatePath(`/products/${result.slug}`);
   return { ok: true };
 }

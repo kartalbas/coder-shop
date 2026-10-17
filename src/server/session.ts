@@ -285,7 +285,7 @@ export async function requireCustomerSession(): Promise<string> {
   const userId = await getCustomerSessionUserId();
   if (!userId) {
     const { redirect } = await import("next/navigation");
-    return redirect("/konto/anmelden");
+    return redirect("/account/login");
   }
   return userId;
 }

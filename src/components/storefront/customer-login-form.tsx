@@ -43,7 +43,7 @@ export function CustomerLoginForm() {
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Passwort</Label>
           <Link
-            href="/konto/passwort-vergessen"
+            href="/account/forgot-password"
             className="text-sm text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
           >
             Vergessen?
@@ -65,7 +65,7 @@ export function CustomerLoginForm() {
       <p className="text-center text-sm text-muted-foreground">
         Noch kein Konto?{" "}
         <Link
-          href="/konto/registrieren"
+          href="/account/register"
           className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
         >
           Registrieren

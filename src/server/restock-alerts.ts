@@ -76,7 +76,7 @@ export async function notifyRestockedCore(skus: string[]): Promise<number> {
         ...restockAlertMail({
           productName: product?.name ?? alert.productSlug,
           variantLabel: alert.variantLabel,
-          link: absoluteUrl(`/produkt/${alert.productSlug}`),
+          link: absoluteUrl(`/products/${alert.productSlug}`),
         }),
       });
       await RestockAlertModel.updateOne({ _id: alert._id }, { $set: { notifiedAt: new Date() } });

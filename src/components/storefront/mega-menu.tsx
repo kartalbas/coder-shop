@@ -43,7 +43,7 @@ export function MegaMenu({ categories }: { categories: readonly MenuCategory[] }
                       {category.brands.map((brand) => (
                         <li key={brand}>
                           <Link
-                            href={`/produkte?type=${category.type}&brand=${encodeURIComponent(brand)}`}
+                            href={`/products?type=${category.type}&brand=${encodeURIComponent(brand)}`}
                             className="block rounded-md px-2 py-1 text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
                             onClick={() => setOpenCategory(null)}
                           >
@@ -53,7 +53,7 @@ export function MegaMenu({ categories }: { categories: readonly MenuCategory[] }
                       ))}
                     </ul>
                     <Link
-                      href={`/produkte?type=${category.type}`}
+                      href={`/products?type=${category.type}`}
                       className="mt-2 block rounded-md px-2 py-1 text-sm font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring"
                       onClick={() => setOpenCategory(null)}
                     >
@@ -66,7 +66,7 @@ export function MegaMenu({ categories }: { categories: readonly MenuCategory[] }
                       Die neuesten Modelle, frisch eingetroffen.
                     </p>
                     <Link
-                      href="/produkte?collection=Neuheiten"
+                      href="/products?collection=Neuheiten"
                       className="mt-3 text-sm font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring"
                       onClick={() => setOpenCategory(null)}
                     >

@@ -73,7 +73,7 @@ export function SearchInstant() {
     (slug: string) => {
       setOpen(false);
       setQuery("");
-      router.push(`/produkt/${slug}`);
+      router.push(`/products/${slug}`);
     },
     [router],
   );

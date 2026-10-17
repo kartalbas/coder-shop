@@ -14,7 +14,7 @@ test("order confirmation: PII is hidden until the buyer proves ownership", async
   // Issue #36: the seed mints numbers with the current Swiss year — derive it,
   // do not hard-code "2026" (which would 404 from 1 January 2027 on).
   const orderNumber = `B-${swissYear(new Date())}-000001`;
-  await page.goto(`/bestellung/${orderNumber}`);
+  await page.goto(`/orders/${orderNumber}`);
   await expect(page.getByRole("heading", { name: `Bestellung ${orderNumber}` })).toBeVisible();
   await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
 

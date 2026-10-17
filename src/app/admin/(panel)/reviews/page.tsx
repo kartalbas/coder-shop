@@ -82,7 +82,7 @@ async function ReviewsView({
               <p className="mt-1 text-xs text-muted-foreground">
                 {review.authorName} ·{" "}
                 <a
-                  href={`/produkt/${review.productSlug}`}
+                  href={`/products/${review.productSlug}`}
                   target="_blank"
                   rel="noreferrer"
                   className="underline decoration-muted-foreground/40 underline-offset-2 hover:text-foreground"

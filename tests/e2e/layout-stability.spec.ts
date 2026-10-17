@@ -43,11 +43,11 @@ test("navigating never transforms (shifts) the page and the header stays put", a
   const listingLink = page.getByRole("link", { name: "Smartphones" }).first();
   const shifts = await clickAndWatchForShift(page, () => listingLink.click());
   expect(shifts).toEqual([]);
-  await expect(page).toHaveURL(/\/produkte/);
+  await expect(page).toHaveURL(/\/products/);
   const afterListing = await snapshotGeometry(page);
   expect(afterListing).toEqual(before);
 
-  const productLink = page.locator("main a[href*='/produkt/']").first();
+  const productLink = page.locator("main a[href*='/products/']").first();
   const href = await productLink.getAttribute("href");
   const shifts2 = await clickAndWatchForShift(page, () => productLink.click());
   expect(shifts2).toEqual([]);
@@ -71,7 +71,7 @@ test("adding to the cart opens the drawer without a toast over „Zur Kasse“",
   // Walk candidates until one accepts a full in-stock selection (issue #18 picker).
   let added = false;
   for (const candidate of body.items.slice(0, 8)) {
-    await page.goto(`/produkt/${candidate.slug}`);
+    await page.goto(`/products/${candidate.slug}`);
     const fieldsets = page.locator("main fieldset");
     const count = await fieldsets.count();
     for (let i = 0; i < count; i += 1) {
@@ -107,7 +107,7 @@ test("adding to the cart opens the drawer without a toast over „Zur Kasse“",
 
 test("a toast never covers the buttons near it", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/konto/anmelden");
+  await page.goto("/account/login");
   await page.fill("#email", "niemals@beispiel.ch");
   await page.fill("#password", "FalschesPasswort1");
   const submit = page.getByRole("button", { name: "Anmelden" });
