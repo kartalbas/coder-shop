@@ -56,8 +56,10 @@ async function seedProduct(stock: number, tag: string, priceCents = 10_000) {
 }
 
 async function outbox(to?: string) {
+  // _id (ObjectId) is the insertion order — two mails written in the same millisecond
+  // would sort nondeterministically by sentAt.
   const messages = await MailMessageModel.find(to ? { to } : {})
-    .sort({ sentAt: 1 })
+    .sort({ _id: 1 })
     .lean()
     .exec();
   return messages;
