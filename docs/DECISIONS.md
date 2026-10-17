@@ -565,6 +565,10 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **The proxy 404 gate moved with the routes** (was #34): unknown `/products/<slug>`
   still answers a real HTTP 404 via a rewrite to `/_not-found`, now on the English path;
   the redirect rules run before it, so a German URL never hits the slug check.
+- **#58 will prefix the language in front of the English paths** (`/fr/account/profile`) —
+  the path segments stay English in every language; only the prefix is added, so this
+  decision and the redirect mapping need no change when the languages arrive.
 - **Proven by e2e** (`tests/e2e/english-urls.spec.ts`): every former German URL is
-  requested and must `308` to its exact English target and then serve 200 there — the
-  spec fails on the pre-#63 build.
+  requested without following redirects and must answer `308` with its exact English
+  target in `Location` (query preserved); `200` is checked directly on `/products`, and
+  guest `/account` must `307` to `/account/login` — the spec fails on the pre-#63 build.
