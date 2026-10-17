@@ -50,6 +50,7 @@ gate() {
   run_check "npm test" npm test || rc=1
   run_check "npm run lint" npm run lint || rc=1
   run_check "npm run build" npm run build || rc=1
+  if [[ "$m" == QA ]]; then run_check "npm run test:e2e" npm run test:e2e || rc=1; fi
   if (( rc == 0 )); then
     # its own process group, so stopping it also stops next-server and the mongod it started
     setsid npx next start -p "$GATE_PORT" >"$LOGS/gate-server.log" 2>&1 & pid=$!
@@ -85,7 +86,11 @@ gate() {
 prompt_for() {  # prompt_for M GATEFILE OUT
   local m="$1" gatef="$2" outp="$3" report="(none — first session of $1)"
   [[ -s "$gatef" ]] && report="$(cat "$gatef")"
-  if [[ "$m" == M6 ]]; then cp .agent/prompts/6-images.md "$outp"; else sed "s|{{M}}|$m|g" .agent/prompts/4-milestone.md >"$outp"; fi
+  case "$m" in
+    M6) cp .agent/prompts/6-images.md "$outp" ;;
+    QA) cp .agent/prompts/qa.md "$outp" ;;
+    *)  sed "s|{{M}}|$m|g" .agent/prompts/4-milestone.md >"$outp" ;;
+  esac
   python3 - "$outp" "$report" <<'PY'
 import sys; p, r = sys.argv[1], sys.argv[2]
 s = open(p).read().replace("{{GATE}}", r); open(p, "w").write(s)
