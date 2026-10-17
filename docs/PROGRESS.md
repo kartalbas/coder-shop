@@ -495,3 +495,14 @@ Done — M1–M6 + QA complete.
 - Transient-retry loop: 6 attempts with exponential backoff + jitter (was 3 immediate).
 - Verified: new integration test — 10 parallel checkouts, all succeed, unique gap-free
   numbers, stock exact; `npm test` ✅ 209, e2e ✅ 7/7.
+
+### #12 — checkout could charge a different price than displayed ✅
+- Every checkout line now carries `expectedUnitPriceCents` (the cart/displayed price,
+  required by `checkoutLineSchema`); `createOrderCore` compares it against the current DB
+  price **before** decrementing stock and refuses with `reason: "price_changed"` + the
+  current prices (duplicated SKUs: the lower expectation wins); the form shows a warning
+  toast and `syncPrices` adopts the new prices in the cart so the re-confirmed total is
+  what will be booked.
+- Verified: `tests/create-order.test.ts` price-change test (stale price refused, stock
+  untouched; raise → refused with new price; after sync → booked at exactly that price),
+  schema test (line without price rejected); `npm test` ✅ 211, lint/build ✅, e2e ✅ 7/7.

@@ -17,7 +17,11 @@ const customer = {
 };
 
 function payload(lines: { sku: string; qty: number }[]) {
-  return { lines, customer, shippingMethod: "standard" as const };
+  return {
+    lines: lines.map((line) => ({ ...line, expectedUnitPriceCents: 1000 })),
+    customer,
+    shippingMethod: "standard" as const,
+  };
 }
 
 describe("checkout schema anti-abuse caps (issue #8)", () => {
@@ -26,6 +30,16 @@ describe("checkout schema anti-abuse caps (issue #8)", () => {
       checkoutSchema.safeParse(payload([{ sku: "A", qty: 2 }, { sku: "B", qty: MAX_QTY_PER_LINE }]))
         .success,
     ).toBe(true);
+  });
+
+  it("rejects a line without the displayed unit price (issue #12)", () => {
+    expect(
+      checkoutSchema.safeParse({
+        lines: [{ sku: "A", qty: 1 }],
+        customer,
+        shippingMethod: "standard",
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects a quantity above the per-line cap", () => {

@@ -16,6 +16,8 @@ export interface CheckoutActionState {
   ok: boolean;
   error?: string;
   orderNumber?: string;
+  reason?: "price_changed";
+  changed?: { sku: string; unitPriceCents: number }[];
 }
 
 export async function createOrderAction(
@@ -46,7 +48,9 @@ export async function createOrderAction(
 
   // createOrderCore validates the payload with the same zod schema — no second parse here.
   const result = await createOrderCore(json);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    return { ok: false, error: result.error, reason: result.reason, changed: result.changed };
+  }
   // The buyer's browser gets the cookie that unlocks the confirmation page.
   await grantOrderAccess(result.orderNumber);
   return { ok: true, orderNumber: result.orderNumber };

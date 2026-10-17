@@ -13,12 +13,25 @@ export function formatOrderNumber(year: number, seq: number): string {
 
 export type CreateOrderResult =
   | { ok: true; orderNumber: string; totals: Totals }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      reason?: "price_changed";
+      changed?: { sku: string; unitPriceCents: number }[];
+    };
 
 class InsufficientStockError extends Error {
   constructor(readonly sku: string) {
     super(`Not enough stock for ${sku}`);
     this.name = "InsufficientStockError";
+  }
+}
+
+// The database price no longer matches what the checkout page displayed (issue #12).
+class PriceChangedError extends Error {
+  constructor(readonly changed: { sku: string; unitPriceCents: number }[]) {
+    super(`Prices changed for: ${changed.map((c) => c.sku).join(", ")}`);
+    this.name = "PriceChangedError";
   }
 }
 
@@ -42,17 +55,28 @@ interface ResolvedLine {
   name: string;
   variantLabel: string;
   unitPriceCents: number;
+  expectedUnitPriceCents: number;
   weightGrams: number;
 }
 
-function mergeQuantities(lines: CheckoutInput["lines"]): Map<string, number> {
-  const bySku = new Map<string, number>();
-  for (const line of lines) bySku.set(line.sku, (bySku.get(line.sku) ?? 0) + line.qty);
+function mergeLines(lines: CheckoutInput["lines"]): Map<string, { qty: number; expectedUnitPriceCents: number }> {
+  const bySku = new Map<string, { qty: number; expectedUnitPriceCents: number }>();
+  for (const line of lines) {
+    const existing = bySku.get(line.sku);
+    bySku.set(line.sku, {
+      qty: (existing?.qty ?? 0) + line.qty,
+      // Duplicate lines: the stricter (lower) expectation wins, so any stale display fails.
+      expectedUnitPriceCents: Math.min(
+        existing?.expectedUnitPriceCents ?? line.expectedUnitPriceCents,
+        line.expectedUnitPriceCents,
+      ),
+    });
+  }
   return bySku;
 }
 
 async function resolveLines(
-  bySku: Map<string, number>,
+  bySku: Map<string, { qty: number; expectedUnitPriceCents: number }>,
   session: ClientSession,
 ): Promise<ResolvedLine[]> {
   const skus = [...bySku.keys()];
@@ -69,17 +93,18 @@ async function resolveLines(
     ),
   );
   const resolved: ResolvedLine[] = [];
-  for (const [sku, qty] of bySku) {
-    const entry = byVariant.get(sku);
-    if (!entry) throw new InsufficientStockError(sku);
-    const { product, variant } = entry;
+  for (const [sku, entry2] of bySku) {
+    const found = byVariant.get(sku);
+    if (!found) throw new InsufficientStockError(sku);
+    const { product, variant } = found;
     resolved.push({
       productId: product._id,
       sku,
-      qty,
+      qty: entry2.qty,
       name: product.name,
       variantLabel: variant.label,
       unitPriceCents: product.priceCents + variant.priceDeltaCents,
+      expectedUnitPriceCents: entry2.expectedUnitPriceCents,
       weightGrams: variant.weightGrams,
     });
   }
@@ -101,12 +126,18 @@ async function decrementStock(lines: ResolvedLine[], session: ClientSession): Pr
 }
 
 async function runCheckout(
-  bySku: Map<string, number>,
+  bySku: Map<string, { qty: number; expectedUnitPriceCents: number }>,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
   session: ClientSession,
 ): Promise<{ orderNumber: string; totals: Totals }> {
   const lines = await resolveLines(bySku, session);
+
+  const changed = lines
+    .filter((line) => line.unitPriceCents !== line.expectedUnitPriceCents)
+    .map((line) => ({ sku: line.sku, unitPriceCents: line.unitPriceCents }));
+  if (changed.length > 0) throw new PriceChangedError(changed);
+
   await decrementStock(lines, session);
 
   const minted = await mintNumber("order", formatOrderNumber, session);
@@ -164,7 +195,7 @@ export async function createOrderCore(
   const { lines, customer, shippingMethod } = parsed.data;
 
   await connectDB();
-  const bySku = mergeQuantities(lines);
+  const bySku = mergeLines(lines);
 
   // Concurrent checkouts serialize on the counter document; the loser of a write conflict
   // must back off (issue #11) — immediate retries just collide again.
@@ -182,6 +213,14 @@ export async function createOrderCore(
         return {
           ok: false,
           error: `Nicht genügend Lager für ${error.sku}. Bitte Menge reduzieren.`,
+        };
+      }
+      if (error instanceof PriceChangedError) {
+        return {
+          ok: false,
+          reason: "price_changed",
+          changed: error.changed,
+          error: "Ein Preis hat sich geändert. Bitte prüfen Sie die neue Summe und bestätigen Sie erneut.",
         };
       }
       if (isTransientError(error) && attempt < maxAttempts) {

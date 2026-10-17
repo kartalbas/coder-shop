@@ -286,7 +286,10 @@ results and are covered by Vitest integration tests against the real replica set
   conditions; QA regression test in `tests/create-order.test.ts`), mint `orderNumber` from the
   counter, insert the order `status: 'new'`, mock payment → `paid` immediately. Any failure
   aborts the transaction — **no compensation scheme** (removed; the transaction is the
-  rollback). Stock model decision (docs/DECISIONS.md): decrement at `createOrder`, restock on
+  rollback). Each line carries `expectedUnitPriceCents` (the price the checkout displayed);
+  if the database price differs, the order is refused with `reason: 'price_changed'` and the
+  current prices, so the customer is never charged other than what was shown (issue #12).
+  Stock model decision (docs/DECISIONS.md): decrement at `createOrder`, restock on
   cancel — **no reservations**; `lib/stock.ts` stays pure (predicates only), the DB loop lives
   here.
 - `transitionOrderCore(orderId, to, note, by)` — delegates to the state machine; cancel from

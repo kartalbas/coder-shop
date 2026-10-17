@@ -57,7 +57,7 @@ describe("createOrderCore", () => {
   it("creates a paid order with a B-YYYY-###### number and decrements stock", async () => {
     await seedProduct(5, "valid");
     const result = await createOrderCore({
-      lines: [{ sku: "CT-valid", qty: 2 }],
+      lines: [{ sku: "CT-valid", qty: 2, expectedUnitPriceCents: 10500 }],
       customer: CUSTOMER,
       shippingMethod: "standard",
     });
@@ -90,7 +90,7 @@ describe("createOrderCore", () => {
   it("mints gap-free incrementing order numbers", async () => {
     const first = await OrderModel.findOne().sort({ orderNumber: 1 }).lean();
     const result = await createOrderCore({
-      lines: [{ sku: "CT-valid", qty: 1 }],
+      lines: [{ sku: "CT-valid", qty: 1, expectedUnitPriceCents: 10500 }],
       customer: CUSTOMER,
       shippingMethod: "express",
     });
@@ -107,7 +107,7 @@ describe("createOrderCore", () => {
     const counterBefore = await CounterModel.findById("order").lean();
 
     const result = await createOrderCore({
-      lines: [{ sku: "CT-oversell", qty: 5 }],
+      lines: [{ sku: "CT-oversell", qty: 5, expectedUnitPriceCents: 10500 }],
       customer: CUSTOMER,
       shippingMethod: "standard",
     });
@@ -123,7 +123,7 @@ describe("createOrderCore", () => {
 
   it("rejects an unknown sku", async () => {
     const result = await createOrderCore({
-      lines: [{ sku: "CT-gibt-es-nicht", qty: 1 }],
+      lines: [{ sku: "CT-gibt-es-nicht", qty: 1, expectedUnitPriceCents: 10500 }],
       customer: CUSTOMER,
       shippingMethod: "standard",
     });
@@ -132,7 +132,7 @@ describe("createOrderCore", () => {
 
   it("rejects invalid customer data", async () => {
     const result = await createOrderCore({
-      lines: [{ sku: "CT-valid", qty: 1 }],
+      lines: [{ sku: "CT-valid", qty: 1, expectedUnitPriceCents: 10500 }],
       customer: { ...CUSTOMER, email: "keine-mail" },
       shippingMethod: "standard",
     });
@@ -183,7 +183,7 @@ describe("createOrderCore", () => {
     });
 
     const result = await createOrderCore({
-      lines: [{ sku: "CT-empty", qty: 5 }],
+      lines: [{ sku: "CT-empty", qty: 5, expectedUnitPriceCents: 10500 }],
       customer: CUSTOMER,
       shippingMethod: "standard",
     });
@@ -199,12 +199,12 @@ describe("createOrderCore", () => {
 
     const [a, b] = await Promise.all([
       createOrderCore({
-        lines: [{ sku: "CT-race", qty: 1 }],
+        lines: [{ sku: "CT-race", qty: 1, expectedUnitPriceCents: 10500 }],
         customer: CUSTOMER,
         shippingMethod: "standard",
       }),
       createOrderCore({
-        lines: [{ sku: "CT-race", qty: 1 }],
+        lines: [{ sku: "CT-race", qty: 1, expectedUnitPriceCents: 10500 }],
         customer: CUSTOMER,
         shippingMethod: "standard",
       }),
@@ -214,6 +214,48 @@ describe("createOrderCore", () => {
     expect(successes).toHaveLength(1);
     expect(await stockOf("CT-race")).toBe(0);
     expect(await OrderModel.countDocuments()).toBe(ordersBefore + 1);
+  });
+
+  it("refuses the order when the database price differs from the displayed price (issue #12)", async () => {
+    await seedProduct(5, "pricechange");
+    const stale = await createOrderCore({
+      lines: [{ sku: "CT-pricechange", qty: 2, expectedUnitPriceCents: 9500 }],
+      customer: CUSTOMER,
+      shippingMethod: "standard",
+    });
+    expect(stale.ok).toBe(false);
+    if (stale.ok) return;
+    expect(stale.reason).toBe("price_changed");
+    expect(stale.changed).toEqual([{ sku: "CT-pricechange", unitPriceCents: 10500 }]);
+    expect(await stockOf("CT-pricechange")).toBe(5);
+
+    // The admin raises the price; the customer who saw CHF 105.00 must not be charged 125.
+    await ProductModel.updateOne(
+      { "variants.sku": "CT-pricechange" },
+      { $set: { priceCents: 12000 } },
+    );
+    const raised = await createOrderCore({
+      lines: [{ sku: "CT-pricechange", qty: 2, expectedUnitPriceCents: 10500 }],
+      customer: CUSTOMER,
+      shippingMethod: "standard",
+    });
+    expect(raised.ok).toBe(false);
+    if (raised.ok) return;
+    expect(raised.changed).toEqual([{ sku: "CT-pricechange", unitPriceCents: 12500 }]);
+    expect(await stockOf("CT-pricechange")).toBe(5);
+
+    // After the UI adopted the new price, the order goes through at exactly that price.
+    const accepted = await createOrderCore({
+      lines: [{ sku: "CT-pricechange", qty: 2, expectedUnitPriceCents: 12500 }],
+      customer: CUSTOMER,
+      shippingMethod: "standard",
+    });
+    expect(accepted.ok).toBe(true);
+    const order = await OrderModel.findOne({ "lines.sku": "CT-pricechange" }).lean<Order>().exec();
+    expect(order?.lines[0].unitPriceCents).toBe(12500);
+    expect(order?.totals.totalCents).toBe(
+      computeTotals([{ unitPriceCents: 12500, qty: 2 }], "standard").totalCents,
+    );
   });
 
   it("lets 10 concurrent checkouts of different products all succeed (issue #11)", async () => {
@@ -226,7 +268,7 @@ describe("createOrderCore", () => {
     const results = await Promise.all(
       Array.from({ length: n }, (_, i) =>
         createOrderCore({
-          lines: [{ sku: `CT-parallel-${i}`, qty: 1 }],
+          lines: [{ sku: `CT-parallel-${i}`, qty: 1, expectedUnitPriceCents: 10500 }],
           customer: { ...CUSTOMER, email: `kaeufer-${i}@example.ch` },
           shippingMethod: "standard",
         }),

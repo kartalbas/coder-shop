@@ -28,6 +28,10 @@ export const MAX_QTY_PER_SKU = 10;
 export const checkoutLineSchema = z.object({
   sku: z.string().min(1).max(64),
   qty: z.number().int().min(1).max(MAX_QTY_PER_LINE),
+  // The unit price the checkout page showed the customer (issue #12). The server books
+  // current database prices and refuses the order if they differ — the customer must
+  // never be charged something other than what was displayed.
+  expectedUnitPriceCents: z.number().int().min(0).max(100_000_000),
 });
 
 export const checkoutSchema = z

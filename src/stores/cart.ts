@@ -145,6 +145,17 @@ export function removeLine(sku: string): void {
   setState({ lines: state.lines.filter((l) => l.sku !== sku) });
 }
 
+// Issue #12: when the server refuses a checkout because prices changed, the cart adopts
+// the current prices so the summary the customer re-confirms is the price they will pay.
+export function syncPrices(prices: { sku: string; unitPriceCents: number }[]): void {
+  const bySku = new Map(prices.map((p) => [p.sku, p.unitPriceCents]));
+  setState({
+    lines: state.lines.map((l) =>
+      bySku.has(l.sku) ? { ...l, unitPriceCents: bySku.get(l.sku)! } : l,
+    ),
+  });
+}
+
 export function clearCart(): void {
   setState({ lines: [] });
 }

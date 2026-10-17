@@ -275,3 +275,11 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   backoff with jitter (10 ms doubling, capped 320 ms, 6 attempts), so 10 parallel
   checkouts all succeed (integration test). The number stays minted **inside** the
   transaction — gap-free numbering is kept.
+
+### #12 — checkout prices are verified server-side, never trusted from the cart
+- The cart keeps the price from when the item was added, so the displayed total can be
+  stale. Instead of silently booking DB prices, every checkout line now carries
+  `expectedUnitPriceCents`; `createOrderCore` refuses (before touching stock) when the DB
+  price differs and returns the current prices. The form shows a warning and updates the
+  cart (`syncPrices`), so the customer always pays exactly what the last displayed total
+  showed — or is told prices changed and confirms the new total.

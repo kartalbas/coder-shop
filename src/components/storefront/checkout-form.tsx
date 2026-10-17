@@ -19,7 +19,7 @@ import {
   type ShippingMethodParam,
 } from "@/lib/validations/checkout";
 import { createOrderAction, type CheckoutActionState } from "@/server/actions/checkout";
-import { cartSubtotalCents, clearCart, useCart } from "@/stores/cart";
+import { cartSubtotalCents, clearCart, syncPrices, useCart } from "@/stores/cart";
 
 const CUSTOMER_FIELDS: {
   key: keyof CheckoutCustomer;
@@ -86,7 +86,13 @@ export function CheckoutForm() {
 
   useEffect(() => {
     if (state && !state.ok && state.error) {
-      toast.error(state.error);
+      if (state.reason === "price_changed" && state.changed) {
+        // Show the current prices immediately; the customer confirms the new total (issue #12).
+        syncPrices(state.changed);
+        toast.warning(state.error);
+      } else {
+        toast.error(state.error);
+      }
     }
   }, [state]);
 
@@ -113,7 +119,11 @@ export function CheckoutForm() {
       country: "CH",
     };
     const payload = {
-      lines: cart.lines.map((line) => ({ sku: line.sku, qty: line.qty })),
+      lines: cart.lines.map((line) => ({
+        sku: line.sku,
+        qty: line.qty,
+        expectedUnitPriceCents: line.unitPriceCents,
+      })),
       customer,
       shippingMethod,
     };
