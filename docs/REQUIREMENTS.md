@@ -86,3 +86,12 @@ packing + UPS label; purchasing + dashboard + polish). After each one `npm run b
 `npm run lint` and `npm test` pass, docs/PROGRESS.md is updated (done / open / known issues), and a
 git commit "M<n>: …" is made. Never start a long-running server in the foreground; to check
 pages, start it in the background, curl it, and stop it again.
+
+PORTAL, PAYMENTS AND MORE (phase 2; each item is a GitHub issue with its acceptance criteria):
+- Requested by the user: customer portal with registration, login, order history, order status
+  and tracking; payment on invoice with open invoices (Swiss QR-bill); payment on pickup;
+  a keyboard-driven picker dialog for articles and suppliers in purchasing (type to search,
+  arrows, Enter selects, Esc cancels).
+- Ideas of the lead: customer accounts in the admin; e-mails for every step with a dev
+  outbox; discount codes; wishlist, recently viewed and back-in-stock alerts; product reviews
+  from verified buyers; smartphone comparison; an admin command palette with shortcuts.
