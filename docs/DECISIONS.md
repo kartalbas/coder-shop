@@ -322,3 +322,17 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   first (the product page was the only offender; all page bodies already do). The
   driver-internal `new Date()` is not ours to remove — the fix is to run the query in
   the dynamic stage, where time is allowed.
+
+### #38 — LAN run: `.env.local` + `npm run setup:lan` instead of hand-set secrets
+- Production requires `SESSION_SECRET` (#2) and the admin password is no longer a
+  source-code constant (#4) — together that made the LAN shop unstartable and the
+  login unrecoverable. The repeatable answer is `npm run setup:lan`: it ensures
+  `.env.local` (gitignored, mode 600) contains a generated `SESSION_SECRET` (48 random
+  bytes) and `ADMIN_PASSWORD`, seeds with them and prints the login. Idempotent —
+  existing values are never changed, so the printed password stays the valid one.
+- `.env.local` is the single secret source: `next start` loads it natively; the tsx
+  scripts load it via `scripts/load-env.ts` (`process.loadEnvFile`, which — like
+  `--env-file` — lets already-set variables win). No dotenv dependency, no secrets in git.
+- An admin that already exists keeps its password (re-seeds never touch it, #4/#14);
+  if that password is unknown from a pre-#38 setup, `npm run seed -- --fresh` is the
+  documented reset.

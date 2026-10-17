@@ -808,3 +808,18 @@ Done — M1–M6 + QA complete.
   prerender error — **fails on the pre-fix build**, green with the fix; live repro
   run (throw-away replica set + `next start`) logged the error twice before the fix
   and nothing after; `npm test` ✅ 303, lint/build ✅, `npm run test:e2e` ✅ 22/22.
+
+### #38 — repeatable LAN run: setup:lan + .env.local ✅
+- `npm run setup:lan` (`scripts/setup/setup-lan.ts` + pure `env-file.ts`): ensures
+  `.env.local` (gitignored, chmod 600) has a generated `SESSION_SECRET` (≥ 32 chars)
+  and `ADMIN_PASSWORD`, seeds the database with them and prints the start command and
+  the admin login; re-runs keep existing values. `scripts/load-env.ts`
+  (`process.loadEnvFile`, existing env wins) makes the tsx scripts (seed, images) read
+  the same file `next start` loads natively — no dotenv, no secrets in git.
+- Verified: `tests/setup-lan.test.ts` (4: parser, plan keep/generate, CLI run seeds an
+  admin whose hash verifies against the printed password + mode 600, second run keeps
+  secret/password/hash); live check of the issue scenario — production `next start`
+  with **no** environment variables and only `.env.local`: health 200, `/admin` → 307
+  `/admin/login` (was "Internal Server Error"), login page 200, no SESSION_SECRET
+  error in the log; README "Run on the LAN" section; `npm test` ✅ 307, lint/knip/
+  build ✅, e2e ✅ 22/22.

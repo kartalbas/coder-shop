@@ -1,3 +1,4 @@
+import "../load-env"; // issue #38: ADMIN_PASSWORD & friends from .env.local
 import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
 import { swissYear } from "@/lib/dates";

@@ -23,6 +23,24 @@ npm run dev    # http://localhost:3000
 `npm run build && npm run start` runs the production server. Set `MONGODB_URI` to use an
 external replica-set-capable MongoDB instead of the embedded one (required in production).
 
+## Run on the LAN (production, repeatable)
+
+```bash
+npm run setup:lan   # one-time: creates .env.local (gitignored, mode 600) with a strong
+                    # SESSION_SECRET and a known ADMIN_PASSWORD, then seeds the database
+npm run build
+npm run start -- -H 0.0.0.0 -p 4000   # http://<this machine's IP>:4000
+```
+
+Production requires `SESSION_SECRET` (≥ 32 chars) — without it `/admin` refuses to start
+sessions. `setup:lan` generates one and keeps it out of git in `.env.local`, together with
+the admin password, so the login is always recoverable: the command prints both and is
+idempotent (a re-run never changes existing values). `next start` loads `.env.local`
+itself; `npm run seed` and `npm run images` load it too (variables already set in the
+environment win). The embedded database and the photos in `public/products/` work as
+they do locally; over plain http the session cookie is correctly not `Secure` (see
+`SESSION_COOKIE_SECURE` below).
+
 ## Seed
 
 ```bash
@@ -70,9 +88,10 @@ npm run test:e2e  # Playwright (Chromium): full journeys against a production bu
 
 `/admin` — login with the seeded admin user `admin@codershop.ch`. Its password is **not** a
 source-code constant: `npm run seed` uses `ADMIN_PASSWORD` if set and otherwise generates a
-random one, printed exactly once in the seed output. A re-seed never resets the password of
-an existing admin; change it later under Dashboard → „Passwort ändern". The login page shows
-a demo hint only in development builds, never in production.
+random one, printed exactly once in the seed output. For a recoverable login use
+`npm run setup:lan` (stores the password in `.env.local` and prints it). A re-seed never
+resets the password of an existing admin; change it later under Dashboard → „Passwort
+ändern". The login page shows a demo hint only in development builds, never in production.
 Dashboard (revenue, open orders, low stock), products (search, edit core data, variants with
 price delta/stock/weight/attributes, images, featured toggle), orders, packing + UPS labels,
 purchasing (suppliers, purchase orders with goods receipt).
@@ -84,7 +103,7 @@ All optional for local development (sensible defaults / embedded database):
 | Variable | Purpose |
 |---|---|
 | `MONGODB_URI` | External MongoDB. **Required in production** — must be a replica-set-capable URI (core functions use transactions). Without it, the embedded `mongodb-memory-server` replica set is used (dev/seed/test only). |
-| `SESSION_SECRET` | Secret for the admin session cookie HMAC. **Required in production** (≥ 32 characters, e.g. `openssl rand -base64 48`); outside production a random per-process secret is generated. |
+| `SESSION_SECRET` | Secret for the admin session cookie HMAC. **Required in production** (≥ 32 characters, e.g. `openssl rand -base64 48` — or just run `npm run setup:lan`, which generates and stores it in `.env.local`); outside production a random per-process secret is generated. |
 | `SESSION_COOKIE_SECURE` | `true`/`false` to pin the admin session cookie's `Secure` flag. Unset (default) sets it per request from the browser's own Origin/Referer scheme (https → `Secure`, plain http → not), so the admin also works from other machines on the LAN over http; `x-forwarded-proto` is only trusted with `TRUST_PROXY_HEADERS=true`. See DECISIONS. |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Used by `npm run seed` only, for the initial admin user. Without `ADMIN_PASSWORD` a random password is generated and printed once; an existing admin's password is never changed by the seed. |
 | `TRUST_PROXY_HEADERS` | `true` only when the app always sits behind your own reverse proxy: then the login throttle uses the **last** `X-Forwarded-For` entry (the address your proxy saw). Unset (default), the header is ignored — the per-account throttle limits guesses regardless of spoofed headers. |

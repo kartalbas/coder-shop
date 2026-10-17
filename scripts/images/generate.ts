@@ -1,3 +1,4 @@
+import "../load-env"; // issue #38: LLAMA_API_KEY & friends from .env.local
 import fs from "node:fs/promises";
 import path from "node:path";
 import { ProductModel, type ProductType } from "@/models/product";
