@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatChf } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { ProductImage } from "@/components/storefront/product-image";
 import type { ProductDto } from "@/server/search";
 
 export function ProductCard({ product }: { product: ProductDto }) {
@@ -12,10 +13,9 @@ export function ProductCard({ product }: { product: ProductDto }) {
     >
       <div className="relative aspect-square overflow-hidden bg-muted">
         {product.images[0] ? (
-          <img
+          <ProductImage
             src={product.images[0].src}
             alt={product.images[0].alt}
-            loading="lazy"
             className="size-full object-contain transition-transform duration-300 group-hover:scale-105"
           />
         ) : null}

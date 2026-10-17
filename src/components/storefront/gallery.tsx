@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ProductImage } from "@/components/storefront/product-image";
 import { cn } from "@/lib/utils";
+import { isPhotoSrc } from "@/lib/images";
 import type { ProductDto } from "@/server/search";
 
 interface GalleryProps {
@@ -30,24 +32,39 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
     <div className="flex flex-col gap-3">
       <div className="group relative overflow-hidden rounded-xl border bg-muted">
         <AnimatePresence mode="wait">
-          <motion.img
-            key={current.src}
-            src={current.src}
-            alt={current.alt}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_, info) => {
-              if (info.offset.x < -60) step(1);
-              else if (info.offset.x > 60) step(-1);
-            }}
-            onClick={() => setOpenIndex(imageIndex)}
-            className="aspect-square w-full cursor-zoom-in object-contain"
-          />
+          {isPhotoSrc(current.src) ? (
+            <motion.img
+              key={current.src}
+              src={current.src}
+              alt={current.alt}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(_, info) => {
+                if (info.offset.x < -60) step(1);
+                else if (info.offset.x > 60) step(-1);
+              }}
+              onClick={() => setOpenIndex(imageIndex)}
+              className="aspect-square w-full cursor-zoom-in object-contain"
+            />
+          ) : (
+            <motion.div
+              key={current.src}
+              role="img"
+              aria-label={current.alt}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex aspect-square w-full items-center justify-center"
+            >
+              <ImageOff className="size-16 text-muted-foreground/40" aria-hidden />
+            </motion.div>
+          )}
         </AnimatePresence>
         {images.length > 1 && (
           <>
@@ -86,7 +103,7 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
                 index === imageIndex ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100",
               )}
             >
-              <img src={image.src} alt="" className="size-full object-contain" />
+              <ProductImage src={image.src} alt="" className="size-full object-contain" />
             </button>
           ))}
         </div>
@@ -95,9 +112,10 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
         <DialogContent className="max-w-3xl" aria-describedby={undefined}>
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
           {openIndex !== null && images[openIndex] && (
-            <img
+            <ProductImage
               src={images[openIndex].src}
               alt={images[openIndex].alt}
+              loading="eager"
               className="max-h-[80vh] w-full object-contain"
             />
           )}

@@ -52,3 +52,21 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `key={pathname}`: re-keying the wrapper that contains the PPR suspense holes breaks
   React's resume ("Couldn't find all resumable slots … during replaying") and the dynamic
   content never reaches the HTML.
+
+## Product photos (M6)
+
+- Generated photos are normalized to **WebP** via `sharp` (already present in
+  `node_modules` as Next's optional image-optimizer dependency — now declared explicitly),
+  whatever the API returns; requirements allow WebP/JPEG only, so the seed SVGs are never
+  served as product imagery.
+- One photo per view: image index n (1–5) maps to front/side/back/detail/lifestyle; the
+  variant colour for image n is `variants[n % variants.length]`, mirroring the seed's SVG
+  assignment. Prompts name only type/colour/material/view — never brands or trademarks.
+- Per-image determinism via a 32-bit FNV-1a hash of `<slug>-<n>` as the API seed, so a
+  restarted run reproduces the same image for a slot.
+- Idempotency is file-based: an existing `<slug>-<n>.<webp|jpg|jpeg|png>` on disk means the
+  slot is done (the document path is repaired if it drifted); `--limit` counts only actual
+  generations. Exit code 0 iff no generation failed in this run.
+- Storefront placeholder rule lives in one component (`product-image.tsx`): photo extensions
+  render `<img>`, anything else (seed `.svg`) renders a neutral muted panel — no cartoon SVG
+  is ever shown.

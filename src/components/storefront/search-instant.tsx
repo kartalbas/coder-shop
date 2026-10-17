@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { ProductImage } from "@/components/storefront/product-image";
 import { formatChf } from "@/lib/format";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -144,7 +145,11 @@ export function SearchInstant() {
                 }`}
               >
                 {hit.image ? (
-                  <img src={hit.image} alt="" className="size-8 shrink-0 rounded object-contain" />
+                  <ProductImage
+                    src={hit.image}
+                    alt=""
+                    className="size-8 shrink-0 rounded object-contain"
+                  />
                 ) : null}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{hit.name}</span>

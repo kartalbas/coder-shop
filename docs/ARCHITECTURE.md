@@ -62,7 +62,7 @@ Everything with I/O lives in `src/server`: db connection, session, search querie
 providers, server actions. The seed and image generator live in `scripts/`.
 
 ```
-public/products/            # generated SVG product images (seed output; content gitignored, .gitkeep kept)
+public/products/            # product images: seed SVG placeholders + generated photos (content gitignored, .gitkeep kept)
 data/mongo/                 # persistent mongod dbPath (gitignored)
 data/labels/                # generated shipping label PDFs (gitignored; NOT under public/ — PII, §4)
 .cache/mongod/              # mongodb-memory-server binary download cache (gitignored)
@@ -71,6 +71,10 @@ scripts/
     seed.ts                 # deterministic seed entry (npm run seed → tsx scripts/seed/seed.ts)
     catalog.ts              # deterministic product data generation (mulberry32 PRNG)
     svg.ts                  # SVG image generator (silhouettes, colors, angles)
+  images/
+    generate.ts             # image pipeline entry (npm run images → tsx scripts/images/generate.ts)
+    prompt.ts               # pure prompt/seed/view logic (unit-tested)
+    api.ts                  # image API client (fetch, retry w/ backoff, b64/url → WebP via sharp)
 src/
   app/
     layout.tsx              # root: fonts, ThemeProvider, Toaster, <RouteTransition>
@@ -103,7 +107,8 @@ src/
       header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx
       cart-drawer.tsx, cart-button.tsx, product-card.tsx
       filter-sidebar.tsx, sort-select.tsx, pagination.tsx, skeletons.tsx, empty-state.tsx
-      gallery.tsx, variant-picker.tsx, stock-indicator.tsx, related-products.tsx
+      gallery.tsx, variant-picker.tsx, stock-indicator.tsx, related-products.tsx,
+      product-image.tsx            # photo vs neutral placeholder (§11)
       breadcrumbs.tsx, json-ld.tsx, route-transition.tsx
     admin/
       sidebar.tsx, order-status-badge.tsx, status-timeline.tsx, product-form.tsx,
@@ -478,3 +483,35 @@ target (long-running Node server, `runtime='nodejs'`, prod needs `MONGODB_URI`),
 prices (4.90/12.90, free ≥ 100) and VAT rounding rule, MMS binary pinning + download cache +
 `MONGOMS_SYSTEM_BINARY` fallback, English-code/German-URL rule with rewrites, no German
 stemming in the text index, toolchain fallback rule (M1 task 1).
+
+## 11. Image pipeline (M6 — product photos)
+
+Photorealistic studio product photos replace the seed SVG placeholders (which are never shown
+in the storefront). Generator: `scripts/images/generate.ts` (`npm run images`, `--limit N`
+caps generations per run; resumable, stop/restart anytime).
+
+- **API:** `POST http://192.168.10.210:8080/v1/images/generations` (OpenAI images API shape:
+  `{ prompt, size: "768x768", seed }`, `Authorization: Bearer $LLAMA_API_KEY` from the
+  environment; missing key → clear error, exit 1). Response `data[0].b64_json` (or `url`,
+  fetched) → decoded, normalized to **WebP** via sharp, written to
+  `public/products/<slug>-<n>.webp` (n = 1–5), then the path + German alt
+  (`"<name> – Front-/Seiten-/Rück-/Detail-/Lifestyle-Ansicht"`) is recorded on the product
+  document (`images[n].src/.alt`) — generated files are never committed.
+- **Prompt (one per image, pure in `prompt.ts`, unit-tested):** product type noun, variant
+  colour (image n uses `variants[n % variants.length]`, mirroring the seed), material
+  (clothing), view = image index (1 front, 2 side, 3 back, 4 detail, 5 lifestyle), "studio
+  product photography, soft studio lighting, clean neutral background, photorealistic",
+  negatives "no logos, no text, no watermark". **No brand names or trademarks** in prompts.
+  **Seed:** deterministic 32-bit FNV-1a hash of `<slug>-<n>` → restarts reproduce images.
+- **Resumability:** a slot whose `<slug>-<n>.<webp|jpg|jpeg|png>` file exists on disk is
+  never re-generated; if the document path drifted from the file on disk it is repaired.
+  `--limit N` counts only actual generations (skips are free).
+- **Failure handling:** retries with exponential backoff (1 s/2 s/4 s, 4 attempts total) on
+  network errors, 429 and 5xx; other 4xx fail fast with the response body excerpt. One
+  progress line per image (`[done/total] <file> <view>/<colour> ✓|✗ …`); exit 0 iff no
+  generation failed, 1 otherwise.
+- **Storefront rule:** `components/storefront/product-image.tsx` renders `<img>` when
+  `images[].src` is a photo extension (`.webp/.jpg/.jpeg/.png/.avif`), otherwise a neutral
+  placeholder (muted panel + icon). Used by product cards, gallery (main/thumbs/zoom),
+  instant search and the cart drawer — photos appear everywhere product images show, and no
+  cartoon SVG is ever rendered.

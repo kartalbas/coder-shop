@@ -103,6 +103,48 @@ Open / known issues
   the unique `variants.sku` index otherwise).
 - Cart page `/warenkorb`, checkout and order pages are M3 scope (rewrites already in place).
 
+## M6 — Product photos (image pipeline) ✅ (2026-10-17)
+
+Done
+- `scripts/images/` behind `npm run images` (`tsx scripts/images/generate.ts`):
+  `prompt.ts` (pure: view per image index front/side/back/detail/lifestyle, German
+  colour/material translated into the prompt, no brand names, no logos/text/watermark,
+  deterministic FNV-1a seed per `<slug>-<n>`), `api.ts` (POST
+  `$IMAGE_API_URL` default `http://192.168.10.210:8080/v1/images/generations`, OpenAI
+  images shape `{ prompt, size: "768x768", seed }`, `Bearer $LLAMA_API_KEY`; retries 4×
+  with 1 s/2 s/4 s backoff on network errors/429/5xx, other 4xx fail fast; b64_json or
+  url → sharp → WebP), `generate.ts` (walks all product image slots sorted by slug,
+  writes `public/products/<slug>-<n>.webp`, records path + German alt on the product
+  document, repairs drifted paths, `--limit N` counts only actual generations, one
+  progress line per image, exit 0 iff no failure; missing `LLAMA_API_KEY` → clear error).
+- `sharp@0.35.5` declared as a dependency (was already in `node_modules` via Next).
+- Storefront: `product-image.tsx` + pure `lib/images.ts` (`isPhotoSrc`) — photo extensions
+  render `<img>`, anything else (seed `.svg`) renders a neutral muted placeholder; used in
+  product cards, gallery (main/thumbs/zoom dialog), instant search and cart drawer, so
+  photos appear everywhere product images show and no cartoon SVG is ever rendered.
+- Docs: PLAN M6, ARCHITECTURE §11 + §2, DECISIONS (WebP normalization, view/colour
+  assignment, FNV-1a seed, file-based idempotency, placeholder rule).
+
+Verified (acceptance)
+- `npm run images -- --limit 2` → 2 new valid WebP files (`file` reports RIFF WebP
+  768×768), documents updated, progress lines, exit 0; re-run printed
+  "skipped (already on disk)" for them (skips do not consume `--limit`), exit 0.
+  4 images total exist (`adidas-gazelle-071-1…4.webp`) — the lead runs the full
+  generation after the gate (576 slots).
+- Background `npm run start`: `/produkt/adidas-gazelle-071` HTML has 5 `<img>` sources
+  all `/products/…-<n>.webp` with German alts ("… – Frontansicht"); listing HTML contains
+  0 `<img>` with `.svg` sources — products without photos render the neutral placeholder
+  (`role="img"` + aria-label); `.svg` paths appear only in the RSC data payload, never in
+  image markup. Server + mongod stopped again.
+- `npm run build` ✅ (no mongod, no env); `npm run lint` ✅; `npm test` ✅ 100 tests /
+  11 files (new `tests/image-pipeline.test.ts`: views, seed determinism/range, prompt
+  content incl. no-brand/no-logo/no-text, German alts, `isPhotoSrc`).
+
+Open / known issues
+- Full generation (576 slots) is the lead's run after the gate; until a slot's photo
+  exists its product shows the neutral placeholder.
+- The 4 proof images are gitignored (`public/products/*`) like all generated content.
+
 ## Next
 
-M3 — Cart, checkout, orders.
+M3 — Cart, checkout, orders (M6 product photos done ahead of it).

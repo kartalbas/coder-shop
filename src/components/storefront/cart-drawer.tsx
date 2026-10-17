@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ProductImage } from "@/components/storefront/product-image";
 import { formatChf } from "@/lib/format";
 import { FREE_SHIPPING_FROM_CENTS } from "@/lib/pricing";
 import {
@@ -41,7 +42,7 @@ export function CartDrawer() {
             <ul className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
               {cart.lines.map((line) => (
                 <li key={line.sku} className="flex gap-3">
-                  <img
+                  <ProductImage
                     src={line.imageSrc}
                     alt=""
                     className="size-16 shrink-0 rounded-lg border object-contain"

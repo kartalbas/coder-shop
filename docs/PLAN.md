@@ -1,4 +1,4 @@
-# coder-shop — PLAN (milestones M1–M5)
+# coder-shop — PLAN (milestones M1–M6)
 
 Every milestone ends with: `npm run build` ✅ (no mongod running, no env set), `npm run lint` ✅,
 `npm test` ✅, `docs/PROGRESS.md` updated (done / open / known issues), git commit `M<n>: …`.
@@ -154,3 +154,39 @@ Acceptance
   recorded in `docs/PROGRESS.md`).
 - `npm run build && npm run lint && npm test` green; full smoke: seed → start → curl
   home/listing/product/confirmation/admin → stop.
+
+## M6 — Product photos (image pipeline)
+
+Tasks
+1. `scripts/images/` (`prompt.ts`, `api.ts`, `generate.ts`) behind `npm run images`
+   (`tsx scripts/images/generate.ts`): for every product image slot `<slug>-<n>` (n = 1–5)
+   generate one photo via `POST http://192.168.10.210:8080/v1/images/generations` (OpenAI
+   images API: `prompt`, `size: "768x768"`, `seed`; `Authorization: Bearer $LLAMA_API_KEY`),
+   normalize to WebP (sharp) and write `public/products/<slug>-<n>.webp`, then record the
+   path + German alt on the product document (`images[n]`). One prompt per image: product
+   type, variant colour, material (clothing), view (`front | side | back | detail |
+   lifestyle` = image 1–5), studio lighting, clean background, **no brand names, no logos,
+   no text**; deterministic per-image seed from slug + index.
+2. Idempotent/resumable: a slot whose photo file already exists on disk is never re-generated
+   (the document path is still repaired if it drifted); `--limit N` generates at most N
+   images per run; retries with exponential backoff on network errors / 429 / 5xx (other 4xx
+   fail fast); one clear progress line per image; exit 0 iff no generation failed, 1 otherwise.
+3. Storefront: shared `ProductImage` component renders the photo when `images[].src` is a
+   photo file (`.webp/.jpg/.jpeg/.png/.avif`) and a **neutral placeholder** otherwise (seed
+   SVGs are never shown); used in product cards, gallery (main/thumbs/zoom), instant search
+   and cart drawer — photos appear everywhere product images show.
+4. Unit tests for the pure prompt/seed logic (`prompt.ts`); `LLAMA_API_KEY` missing → clear
+   error before any work. Generated images stay gitignored (already covered by
+   `public/products/*`).
+
+Acceptance
+- `npm run images -- --limit 2` (the only generation runs before the gate): exactly 2 new
+  `.webp` files under `public/products/`, product documents updated, progress lines printed,
+  exit 0; a re-run prints "skipped (already on disk)" for the existing files (skips are free,
+  they do not consume `--limit`) and exits 0.
+- Prompt unit tests: every view name appears, colour/material/type in the prompt, no brand
+  name, no-logo/no-text constraints present, seed deterministic.
+- Storefront HTML: products with photos render `/products/<slug>-<n>.webp` `<img>` sources;
+  products without photos render the neutral placeholder (no `.svg` in product image markup).
+- Full generation is run by the lead after the gate (not part of this milestone's checks).
+- `npm run build && npm run lint && npm test` green.
