@@ -5,6 +5,7 @@ import {
   getProductForAdmin,
   listProductsAdmin,
   toggleFeaturedCore,
+  updateImagesCore,
   updateProductCore,
   updateVariantCore,
 } from "@/server/products-admin";
@@ -210,6 +211,62 @@ describe("admin product management", () => {
     const fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
     expect(fresh?.name).toBe("Nach Verkauf umbenannt");
     expect(fresh?.variants.find((v) => v.sku === "AP-alpha-w")?.stock).toBe(1);
+  });
+
+  it("manages product images: add, remove, reorder, alt texts (issue #22)", async () => {
+    const product = await ProductModel.findOne({ slug: "alpha" }).exec();
+    const id = product!._id.toString();
+
+    const ok = await updateImagesCore(id, {
+      images: [
+        { src: "/products/alpha-2.webp", alt: "Alpha – Seitenansicht" },
+        { src: "/products/alpha-1.webp", alt: "Alpha – Frontansicht" },
+      ],
+    });
+    expect(ok.ok).toBe(true);
+    let fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
+    expect(fresh?.images.map((i) => i.src)).toEqual([
+      "/products/alpha-2.webp",
+      "/products/alpha-1.webp",
+    ]);
+    expect(fresh?.images[0]?.alt).toBe("Alpha – Seitenansicht");
+
+    const empty = await updateImagesCore(id, { images: [] });
+    expect(empty.ok).toBe(false);
+
+    const tooMany = await updateImagesCore(id, {
+      images: Array.from({ length: 6 }, (_, n) => ({
+        src: `/products/alpha-${n}.webp`,
+        alt: `Alpha – Ansicht ${n}`,
+      })),
+    });
+    expect(tooMany.ok).toBe(false);
+
+    const notAPhoto = await updateImagesCore(id, {
+      images: [{ src: "/products/alpha-1.svg", alt: "Zeichnung" }],
+    });
+    expect(notAPhoto.ok).toBe(false);
+
+    const foreign = await updateImagesCore(id, {
+      images: [{ src: "https://evil.example/x.webp", alt: "Fremdquelle" }],
+    });
+    expect(foreign.ok).toBe(false);
+
+    const duplicate = await updateImagesCore(id, {
+      images: [
+        { src: "/products/alpha-1.webp", alt: "Alpha – Frontansicht" },
+        { src: "/products/alpha-1.webp", alt: "Alpha – Duplikat" },
+      ],
+    });
+    expect(duplicate.ok).toBe(false);
+
+    const unknown = await updateImagesCore("000000000000000000000000", {
+      images: [{ src: "/products/alpha-1.webp", alt: "Alpha – Frontansicht" }],
+    });
+    expect(unknown.ok).toBe(false);
+
+    fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
+    expect(fresh?.images).toHaveLength(2);
   });
 
   it("toggles featured", async () => {

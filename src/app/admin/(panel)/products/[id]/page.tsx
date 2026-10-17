@@ -6,8 +6,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { FeaturedToggle, ProductCoreForm } from "@/components/admin/product-core-form";
+import { ImageEditor } from "@/components/admin/image-editor";
 import { VariantEditor } from "@/components/admin/variant-editor";
-import { ProductImage } from "@/components/storefront/product-image";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getProductForAdmin } from "@/server/products-admin";
 
@@ -61,24 +61,7 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
 
       <section className="mt-6" aria-label="Bilder">
         <h2 className="mb-3 text-sm font-semibold">Bilder ({product.images.length})</h2>
-        <ul className="flex flex-wrap gap-3">
-          {product.images.map((image) => (
-            <li key={image.src} className="w-28">
-              <ProductImage
-                src={image.src}
-                alt={image.alt}
-                className="aspect-square w-full rounded-lg border object-cover"
-              />
-              <p className="mt-1 truncate text-xs text-muted-foreground" title={image.src}>
-                {image.src.split("/").pop()}
-              </p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Fotos erzeugt das Bild-Tool (<code>npm run images</code>) und schreibt die Pfade auf das
-          Produkt; hier werden sie kontrolliert.
-        </p>
+        <ImageEditor product={product} />
       </section>
     </div>
   );

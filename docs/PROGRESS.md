@@ -602,6 +602,15 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #22 — admin can manage product images ✅
+- New `ImageEditor` on the product edit page: edit src + Alt-Text per image, reorder
+  (up/down), remove, add (1–5 slots, live preview) → `updateImagesCore` (atomic `$set` of
+  `images`) behind `updateImagesAction`; `productImagesSchema` enforces 1–5 unique photo
+  paths under `/products/` (extension rule shared with `isPhotoSrc`) and non-empty alts.
+- Verified: integration test in `tests/admin-products.test.ts` (reorder/alt persisted;
+  empty, 6 images, `.svg`, foreign URL, duplicate src and unknown product refused);
+  `npm test` ✅ 259, lint/build ✅, e2e ✅ 8/8.
+
 ### #21 — admin is usable on tablets and phones ✅
 - Shared `ADMIN_NAV` source; below `lg` the panel layout renders a sticky top bar with a
   Sheet menu (hamburger) containing all six sections (current page marked) and logout —

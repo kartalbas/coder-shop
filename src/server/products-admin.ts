@@ -3,7 +3,11 @@ import { deriveFilter } from "@/lib/facets";
 import { escapeRegex } from "@/lib/regex";
 import type { ProductType } from "@/models/product";
 import { ProductModel, type Product, type Variant } from "@/models/product";
-import { productCoreSchema, variantCoreSchema } from "@/lib/validations/product";
+import {
+  productCoreSchema,
+  productImagesSchema,
+  variantCoreSchema,
+} from "@/lib/validations/product";
 import { toProductDto, type ProductDto } from "./search";
 import { connectDB } from "./db";
 
@@ -176,6 +180,22 @@ export async function updateVariantCore(
       error: `Der Lagerbestand von ${sku} hat sich seit dem Laden geändert. Bitte Seite neu laden und erneut speichern.`,
     };
   }
+  return { ok: true };
+}
+
+export async function updateImagesCore(productId: string, input: unknown): Promise<ProductAdminResult> {
+  const parsed = productImagesSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+  }
+  await connectDB();
+  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: "Produkt nicht gefunden." };
+
+  const result = await ProductModel.updateOne(
+    { _id: productId },
+    { $set: { images: parsed.data.images } },
+  );
+  if (result.matchedCount === 0) return { ok: false, error: "Produkt nicht gefunden." };
   return { ok: true };
 }
 

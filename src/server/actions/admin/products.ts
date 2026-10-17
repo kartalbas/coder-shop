@@ -5,6 +5,7 @@ import { z } from "zod";
 import { objectIdSchema } from "@/lib/validations/common";
 import {
   toggleFeaturedCore,
+  updateImagesCore,
   updateProductCore,
   updateVariantCore,
 } from "@/server/products-admin";
@@ -59,6 +60,22 @@ export async function updateVariantAction(
   }
 
   const result = await updateVariantCore(productId.data, sku.data, payload);
+  if (!result.ok) return { error: result.error };
+
+  revalidateProducts(productId.data);
+  return { ok: true };
+}
+
+export async function updateImagesAction(
+  _previous: ProductActionState | null,
+  formData: FormData,
+): Promise<ProductActionState> {
+  await requireAdminSession();
+  const productId = objectIdSchema.safeParse(formData.get("productId"));
+  const payload = parsePayload(formData);
+  if (!productId.success || payload === null) return { error: "Ungültige Anfrage." };
+
+  const result = await updateImagesCore(productId.data, payload);
   if (!result.ok) return { error: result.error };
 
   revalidateProducts(productId.data);

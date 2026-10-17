@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isPhotoSrc } from "@/lib/images";
 
 export const productCoreSchema = z.object({
   name: z.string().trim().min(2, "Name ist erforderlich.").max(120),
@@ -26,3 +27,32 @@ export const variantCoreSchema = z.object({
 });
 
 export type VariantCoreInput = z.infer<typeof variantCoreSchema>;
+
+export const MIN_PRODUCT_IMAGES = 1;
+export const MAX_PRODUCT_IMAGES = 5;
+
+const productImageSchema = z.object({
+  src: z
+    .string()
+    .trim()
+    .min(1, "Bildpfad ist erforderlich.")
+    .max(300)
+    .refine(
+      (src) => src.startsWith("/products/") && isPhotoSrc(src),
+      "Bildpfad muss mit /products/ beginnen und ein Foto sein (.webp/.jpg/.jpeg/.png/.avif).",
+    ),
+  alt: z.string().trim().min(3, "Alt-Text ist erforderlich.").max(200),
+});
+
+export const productImagesSchema = z.object({
+  images: z
+    .array(productImageSchema)
+    .min(MIN_PRODUCT_IMAGES, `Mindestens ${MIN_PRODUCT_IMAGES} Bild ist erforderlich.`)
+    .max(MAX_PRODUCT_IMAGES, `Maximal ${MAX_PRODUCT_IMAGES} Bilder sind erlaubt.`)
+    .refine(
+      (images) => new Set(images.map((image) => image.src)).size === images.length,
+      "Bildpfade müssen eindeutig sein.",
+    ),
+});
+
+export type ProductImagesInput = z.infer<typeof productImagesSchema>;
