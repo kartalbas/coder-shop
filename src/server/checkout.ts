@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import mongoose, { type ClientSession } from "mongoose";
 import { formatOrderNumber, formatPaymentReference } from "@/lib/numbers";
 import { transition, type OrderStatus } from "@/lib/orders/state-machine";
 import { computeTotals, type ShippingMethodName, type Totals } from "@/lib/pricing";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
+import { CheckoutClaimModel } from "@/models/checkout-claim";
 import { OrderModel, type OrderCustomer, type OrderLine, type StatusLogEntry } from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
 import { connectDB } from "./db";
@@ -182,17 +184,60 @@ async function runCheckout(
   return { orderNumber, totals };
 }
 
-export async function createOrderCore(
-  input: unknown,
-): Promise<CreateOrderResult> {
-  const parsed = checkoutSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben" };
-  }
-  const { lines, customer, shippingMethod } = parsed.data;
+type MergedLines = Map<string, { qty: number; expectedUnitPriceCents: number }>;
 
-  await connectDB();
-  const bySku = mergeLines(lines);
+// Issue #15: identical checkout submissions (double click, second tab, retry after a lost
+// response) share a fingerprint; the unique claim on it makes "at most one order" hold
+// server-side, not just via the disabled button.
+function checkoutFingerprint(
+  bySku: MergedLines,
+  customer: OrderCustomer,
+  shippingMethod: ShippingMethodName,
+): string {
+  const canonical = JSON.stringify({
+    customer,
+    shippingMethod,
+    lines: [...bySku.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([sku, entry]) => `${sku}:${entry.qty}`),
+  });
+  return createHash("sha256").update(canonical).digest("hex");
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return (error as { code?: number } | null)?.code === 11000;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Waits for the winning submission to record its order; null once the claim is gone
+// (the winner failed and released it, so this call may claim and run itself).
+async function resolveExistingClaim(key: string): Promise<CreateOrderResult | null> {
+  for (let poll = 0; poll < 40; poll++) {
+    const claim = await CheckoutClaimModel.findById(key).lean().exec();
+    if (!claim) return null;
+    if (claim.orderNumber) {
+      const order = await OrderModel.findOne({ orderNumber: claim.orderNumber })
+        .select("orderNumber totals")
+        .lean()
+        .exec();
+      if (order) return { ok: true, orderNumber: order.orderNumber, totals: order.totals };
+    }
+    await sleep(250);
+  }
+  return {
+    ok: false,
+    error: "Diese Bestellung wird bereits verarbeitet. Bitte prüfen Sie Ihre Bestellungen.",
+  };
+}
+
+async function runClaimedCheckout(
+  key: string,
+  bySku: MergedLines,
+  customer: OrderCustomer,
+  shippingMethod: ShippingMethodName,
+): Promise<CreateOrderResult> {
+  const release = () => CheckoutClaimModel.deleteOne({ _id: key }).catch(() => {});
 
   // Concurrent checkouts serialize on the counter document; the loser of a write conflict
   // must back off (issue #11) — immediate retries just collide again.
@@ -203,9 +248,11 @@ export async function createOrderCore(
       session.startTransaction();
       const result = await runCheckout(bySku, customer, shippingMethod, session);
       await session.commitTransaction();
+      await CheckoutClaimModel.updateOne({ _id: key }, { $set: { orderNumber: result.orderNumber } });
       return { ok: true, ...result };
     } catch (error) {
       if (session.inTransaction()) await session.abortTransaction();
+      await release();
       if (error instanceof InsufficientStockError) {
         return {
           ok: false,
@@ -221,8 +268,7 @@ export async function createOrderCore(
         };
       }
       if (isTransientError(error) && attempt < maxAttempts) {
-        const backoffMs = Math.min(10 * 2 ** (attempt - 1), 320) + Math.random() * 10;
-        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        await sleep(Math.min(10 * 2 ** (attempt - 1), 320) + Math.random() * 10);
         continue;
       }
       return {
@@ -233,4 +279,36 @@ export async function createOrderCore(
       session.endSession();
     }
   }
+}
+
+export async function createOrderCore(input: unknown): Promise<CreateOrderResult> {
+  const parsed = checkoutSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben" };
+  }
+  const { lines, customer, shippingMethod } = parsed.data;
+
+  await connectDB();
+  const bySku = mergeLines(lines);
+  const key = checkoutFingerprint(bySku, customer, shippingMethod);
+
+  // Two rounds: if a duplicate claim vanishes while we wait (its owner failed), we claim
+  // once more ourselves instead of erroring out.
+  for (let round = 0; round < 2; round++) {
+    try {
+      await CheckoutClaimModel.create({ _id: key });
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) {
+        return { ok: false, error: "Bestellung konnte nicht erstellt werden. Bitte erneut versuchen." };
+      }
+      const existing = await resolveExistingClaim(key);
+      if (existing) return existing;
+      continue;
+    }
+    return runClaimedCheckout(key, bySku, customer, shippingMethod);
+  }
+  return {
+    ok: false,
+    error: "Diese Bestellung wird bereits verarbeitet. Bitte prüfen Sie Ihre Bestellungen.",
+  };
 }

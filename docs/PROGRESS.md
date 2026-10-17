@@ -602,6 +602,17 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #15 — one checkout creates at most one order ✅
+- Idempotent checkout: `checkoutFingerprint` (SHA-256 over customer, shipping method and
+  merged `sku:qty` lines) keys a `checkout_claims` document (unique `_id`, 1 h TTL) claimed
+  **before** the transaction; the winner records its `orderNumber` on the claim, a duplicate
+  submit waits for it and returns the same order, and any failure releases the claim so a
+  corrected resubmit works. Server-side guarantee, not just the disabled button.
+- Verified: `tests/create-order.test.ts` — concurrent + sequential identical submits return
+  the same order number with exactly one order and one stock decrement; failed submit
+  releases the claim; the last-item race test now uses two customers (real race);
+  `npm test` ✅ 261, lint/build ✅, e2e ✅ 8/8.
+
 ### #22 — admin can manage product images ✅
 - New `ImageEditor` on the product edit page: edit src + Alt-Text per image, reorder
   (up/down), remove, add (1–5 slots, live preview) → `updateImagesCore` (atomic `$set` of

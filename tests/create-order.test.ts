@@ -206,7 +206,7 @@ describe("createOrderCore", () => {
       }),
       createOrderCore({
         lines: [{ sku: "CT-race", qty: 1, expectedUnitPriceCents: 10500 }],
-        customer: CUSTOMER,
+        customer: { ...CUSTOMER, email: "zweite.kaeuferin@example.ch" },
         shippingMethod: "standard",
       }),
     ]);
@@ -215,6 +215,52 @@ describe("createOrderCore", () => {
     expect(successes).toHaveLength(1);
     expect(await stockOf("CT-race")).toBe(0);
     expect(await OrderModel.countDocuments()).toBe(ordersBefore + 1);
+  });
+
+  it("creates at most one order per identical checkout, even concurrently (issue #15)", async () => {
+    await seedProduct(10, "dedupe");
+    const ordersBefore = await OrderModel.countDocuments();
+    const payload = {
+      lines: [{ sku: "CT-dedupe", qty: 2, expectedUnitPriceCents: 10500 }],
+      customer: CUSTOMER,
+      shippingMethod: "standard" as const,
+    };
+
+    const [a, b] = await Promise.all([createOrderCore(payload), createOrderCore(payload)]);
+    expect(a.ok).toBe(true);
+    expect(b.ok).toBe(true);
+    if (!a.ok || !b.ok) return;
+    expect(b.orderNumber).toBe(a.orderNumber);
+    expect(b.totals).toEqual(a.totals);
+
+    // A sequential resubmit (retry after a lost response) hits the same claim too.
+    const again = await createOrderCore(payload);
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.orderNumber).toBe(a.orderNumber);
+
+    expect(await OrderModel.countDocuments()).toBe(ordersBefore + 1);
+    expect(await stockOf("CT-dedupe")).toBe(8);
+  });
+
+  it("releases the claim on failure so a corrected resubmit can succeed (issue #15)", async () => {
+    await seedProduct(1, "release");
+    const payload = {
+      lines: [{ sku: "CT-release", qty: 3, expectedUnitPriceCents: 10500 }],
+      customer: CUSTOMER,
+      shippingMethod: "standard" as const,
+    };
+
+    const failed = await createOrderCore(payload);
+    expect(failed.ok).toBe(false);
+
+    await ProductModel.updateOne(
+      { "variants.sku": "CT-release" },
+      { $set: { "variants.$.stock": 5 } },
+    );
+    const retry = await createOrderCore(payload);
+    expect(retry.ok).toBe(true);
+    expect(await stockOf("CT-release")).toBe(2);
   });
 
   it("refuses the order when the database price differs from the displayed price (issue #12)", async () => {
