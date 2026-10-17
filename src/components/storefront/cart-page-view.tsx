@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ProductImage } from "@/components/storefront/product-image";
+import { DiscountInput } from "@/components/storefront/discount-input";
 import { formatChf } from "@/lib/format";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import {
@@ -143,6 +144,8 @@ export function CartPageView() {
                 <span className="text-muted-foreground">Zwischensumme</span>
                 <span className="text-lg font-semibold">{formatChf(subtotal)}</span>
               </div>
+              {/* Issue #45: the code is remembered here and applied in the checkout. */}
+              <DiscountInput subtotalCents={subtotal} />
               <p className="text-xs text-muted-foreground">
                 Versand: Standard {formatChf(SHIPPING_CENTS.standard)}, Express{" "}
                 {formatChf(SHIPPING_CENTS.express)} — ab {formatChf(FREE_SHIPPING_FROM_CENTS)}{" "}

@@ -63,6 +63,10 @@ export async function buildInvoicePdf(order: Order): Promise<Uint8Array> {
   y -= 12;
   const totals: [string, string][] = [
     ["Zwischensumme", formatChf(order.totals.subtotalCents)],
+    // Issue #45: a booked discount code is a line on the invoice too.
+    ...(order.discount && order.discount.cents > 0
+      ? ([[`Rabatt (${order.discount.code})`, `− ${formatChf(order.discount.cents)}`]] as [string, string][])
+      : []),
     ["Versand", order.totals.shippingCents === 0 ? "Gratis" : formatChf(order.totals.shippingCents)],
     ["Total", formatChf(order.totals.totalCents)],
   ];

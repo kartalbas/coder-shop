@@ -43,6 +43,8 @@ export const checkoutSchema = z
     // Issue #40: "invoice" is only honored for a logged-in customer within their credit
     // limit — that is a server decision; the schema only bounds the choice itself.
     paymentMethod: z.enum(PAYMENT_METHODS).default("mock"),
+    // Issue #45: the code is validated and redeemed server-side inside the transaction.
+    discountCode: z.string().trim().max(32).optional(),
   })
   .refine(
     // Issue #41: „Bei Abholung“ is paid at the counter, so it only exists together with

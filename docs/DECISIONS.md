@@ -416,3 +416,23 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   marked ready directly from `new`, and a milestone chain must not contain a step that
   can be skipped.
 - **Cancelling a `ready` order restocks** — the goods never left the shop.
+
+### #45 — discount codes: redemption inside the checkout transaction
+- **The code is checked and redeemed inside the order transaction, not before it.**
+  The usage-limit increment is a conditional `$inc` (`usedCount < usageLimit`) and the
+  once-per-customer rule is a unique `_id` (`code|customerKey`) — the loser of a race
+  modifies 0 documents / hits the duplicate-key error and the whole order aborts, so a
+  limit can never be exceeded and a failed order never burns a redemption (the
+  transaction is the rollback, same rule as the stock decrement).
+- **customerKey is the userId when logged in, else the lower-case e-mail.** The e-mail
+  is what checkout already requires and what the #39 claim flow proves, so the rule
+  works for guests and accounts without a new identity concept.
+- **The discount lowers the taxable gross.** VAT is computed over the discounted total
+  (`vatFromGross(total − discount)`), consistent with the gross-price rule (§8): the
+  customer pays 8.1 % VAT on what they actually pay.
+- **The cart only remembers the code; the server owns the truth.** The client shows the
+  reduction from a feedback call (`validateDiscountAction`), but `createOrderCore`
+  re-validates and recomputes it against the DB subtotal — a tampered or stale client
+  value can never change the booked price. The normalized code is part of the #15
+  idempotency fingerprint: the same cart with and without a code are different
+  submissions.

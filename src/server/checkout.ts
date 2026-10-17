@@ -4,7 +4,12 @@ import { DEFAULT_CREDIT_LIMIT_CENTS, invoiceDueAt, qrReferenceForOrder } from "@
 import { formatOrderNumber, formatPaymentReference } from "@/lib/numbers";
 import type { PaymentMethodName } from "@/lib/payments";
 import { transition, type OrderStatus } from "@/lib/orders/state-machine";
-import { computeTotals, type ShippingMethodName, type Totals } from "@/lib/pricing";
+import {
+  computeTotals,
+  subtotalCents,
+  type ShippingMethodName,
+  type Totals,
+} from "@/lib/pricing";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
 import { CheckoutClaimModel } from "@/models/checkout-claim";
 import {
@@ -19,6 +24,12 @@ import { UserModel } from "@/models/user";
 import { absoluteUrl } from "@/lib/site";
 import { invoiceMail, orderConfirmationMail } from "@/lib/mail-templates";
 import { connectDB } from "./db";
+import {
+  checkDiscountCore,
+  DiscountRejectedError,
+  normalizeDiscountCode,
+  redeemDiscount,
+} from "./discounts";
 import { getInvoiceCreditUsageCents } from "./invoices";
 import { sendMail } from "./mail";
 import { mintNumber } from "./numbers";
@@ -168,6 +179,7 @@ async function runCheckout(
   shippingMethod: ShippingMethodName,
   paymentMethod: PaymentMethodName,
   userId: string | undefined,
+  discountCode: string | undefined,
   session: ClientSession,
 ): Promise<{ orderNumber: string; totals: Totals; invoiceDueAt?: Date }> {
   const lines = await resolveLines(bySku, session);
@@ -177,10 +189,34 @@ async function runCheckout(
     .map((line) => ({ sku: line.sku, unitPriceCents: line.unitPriceCents }));
   if (changed.length > 0) throw new PriceChangedError(changed);
 
+  // Issue #45: the code is checked against the database subtotal before anything moves;
+  // the redemption itself is booked below, once the order number exists.
+  const customerKey = (userId ?? customer.email).toLowerCase();
+  let discount: { code: string; cents: number } | undefined;
+  let discountDoc: Awaited<ReturnType<typeof checkDiscountCore>>["doc"];
+  if (discountCode) {
+    const check = await checkDiscountCore(
+      discountCode,
+      subtotalCents(lines.map((line) => ({ unitPriceCents: line.unitPriceCents, qty: line.qty }))),
+      customerKey,
+      new Date(),
+      session,
+    );
+    if (!check.ok || !check.doc) throw new DiscountRejectedError(check.error ?? "Ungültiger Code.");
+    discount = { code: check.doc.code, cents: check.discountCents ?? 0 };
+    discountDoc = check.doc;
+  }
+
   await decrementStock(lines, session);
 
   const minted = await mintNumber("order", formatOrderNumber, session);
   const orderNumber = minted.value;
+
+  // Book the redemption now that the order number exists — a later abort of this
+  // transaction rolls the counter and the usage document back as well.
+  if (discount && discountDoc) {
+    await redeemDiscount(discountDoc, customerKey, orderNumber, session);
+  }
 
   const orderLines: OrderLine[] = lines.map((line) => ({
     productId: line.productId,
@@ -192,7 +228,7 @@ async function runCheckout(
     totalCents: line.unitPriceCents * line.qty,
     weightGrams: line.weightGrams,
   }));
-  const totals = computeTotals(orderLines, shippingMethod);
+  const totals = computeTotals(orderLines, shippingMethod, discount?.cents ?? 0);
 
   const now = new Date();
   const statusLog: StatusLogEntry[] = [{ status: "new", at: now }];
@@ -243,6 +279,7 @@ async function runCheckout(
         customer,
         lines: orderLines,
         totals,
+        ...(discount !== undefined && { discount }),
         shipping: {
           method: shippingMethod,
           // Pickup orders carry the handover code from the start (issue #41).
@@ -306,6 +343,7 @@ function checkoutFingerprint(
   shippingMethod: ShippingMethodName,
   paymentMethod: PaymentMethodName,
   userId: string | undefined,
+  discountCode: string | undefined,
 ): string {
   const canonical = JSON.stringify({
     customer,
@@ -314,6 +352,8 @@ function checkoutFingerprint(
     // Issue #39: the same cart from a guest and from a logged-in customer are different
     // submissions — they must not share an idempotency claim.
     ...(userId !== undefined && { userId }),
+    // Issue #45: with and without a code are different submissions too.
+    ...(discountCode !== undefined && { discountCode }),
     lines: [...bySku.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([sku, entry]) => `${sku}:${entry.qty}`),
@@ -355,6 +395,7 @@ async function runClaimedCheckout(
   shippingMethod: ShippingMethodName,
   paymentMethod: PaymentMethodName,
   userId: string | undefined,
+  discountCode: string | undefined,
 ): Promise<CreateOrderResult> {
   const release = () => CheckoutClaimModel.deleteOne({ _id: key }).catch(() => {});
 
@@ -373,6 +414,7 @@ async function runClaimedCheckout(
         shippingMethod,
         paymentMethod,
         userId,
+        discountCode,
         session,
       );
       await session.commitTransaction();
@@ -405,6 +447,10 @@ async function runClaimedCheckout(
               : "Das Kreditlimit für Rechnungszahlung ist erreicht. Bitte eine andere Zahlungsart wählen.",
         };
       }
+      // Issue #45: a rejected code is a clean user error, not a retryable failure.
+      if (error instanceof DiscountRejectedError) {
+        return { ok: false, error: error.message };
+      }
       if (isTransientError(error) && attempt < maxAttempts) {
         await sleep(Math.min(10 * 2 ** (attempt - 1), 200) + Math.random() * 20);
         continue;
@@ -427,11 +473,19 @@ export async function createOrderCore(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben" };
   }
-  const { lines, customer, shippingMethod, paymentMethod } = parsed.data;
+  const { lines, customer, shippingMethod, paymentMethod, discountCode } = parsed.data;
+  const normalizedCode = discountCode ? normalizeDiscountCode(discountCode) : undefined;
 
   await connectDB();
   const bySku = mergeLines(lines);
-  const key = checkoutFingerprint(bySku, customer, shippingMethod, paymentMethod, opts.userId);
+  const key = checkoutFingerprint(
+    bySku,
+    customer,
+    shippingMethod,
+    paymentMethod,
+    opts.userId,
+    normalizedCode,
+  );
 
   // Two rounds: if a duplicate claim vanishes while we wait (its owner failed), we claim
   // once more ourselves instead of erroring out.
@@ -446,7 +500,15 @@ export async function createOrderCore(
       if (existing) return existing;
       continue;
     }
-    return runClaimedCheckout(key, bySku, customer, shippingMethod, paymentMethod, opts.userId);
+    return runClaimedCheckout(
+      key,
+      bySku,
+      customer,
+      shippingMethod,
+      paymentMethod,
+      opts.userId,
+      normalizedCode,
+    );
   }
   return {
     ok: false,

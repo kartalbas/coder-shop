@@ -196,6 +196,12 @@ async function OrderView({ params }: PagePropsLocal) {
               <dt className="text-muted-foreground">Zwischensumme</dt>
               <dd className="tabular-nums">{formatChf(order.totals.subtotalCents)}</dd>
             </div>
+            {order.discount && order.discount.cents > 0 && (
+              <div className="flex justify-between text-primary">
+                <dt>Rabatt ({order.discount.code})</dt>
+                <dd className="tabular-nums">−{formatChf(order.discount.cents)}</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt className="text-muted-foreground">
                 {SHIPPING_LABELS[order.shipping.method]}

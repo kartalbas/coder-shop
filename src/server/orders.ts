@@ -17,6 +17,8 @@ export interface OrderDto {
     totalCents: number;
   }[];
   totals: Order["totals"];
+  // Applied discount code (issue #45).
+  discount?: { code: string; cents: number };
   shipping: {
     method: Order["shipping"]["method"];
     trackingNumber?: string;
@@ -55,6 +57,7 @@ export async function getOrderByNumber(orderNumber: string): Promise<OrderDto | 
       totalCents: line.totalCents,
     })),
     totals: order.totals,
+    ...(order.discount !== undefined && { discount: order.discount }),
     shipping: {
       method: order.shipping.method,
       ...(order.shipping.trackingNumber !== undefined && {

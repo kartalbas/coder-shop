@@ -115,6 +115,7 @@ src/
                             # reminder + credit-limit actions (#40)
         pickup/page.tsx     # pickup queue: bereitstellen, Code-Übergabe + Zahlung (#41)
         customers/page.tsx, customers/[id]/page.tsx  # customer list + detail (#43)
+        discounts/page.tsx  # discount codes: create, activate/deactivate, usage stats (#45)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
       invoices/[orderId]/route.ts  # GET invoice PDF (session-guarded, §4, #40)
     api/
@@ -135,7 +136,8 @@ src/
       order-status-chain.tsx, order-access-form.tsx  # confirmation (#3, #32)
       account-nav.tsx, customer-login-form.tsx, register-form.tsx, password-reset-forms.tsx,
       claim-order-form.tsx, reorder-button.tsx, address-book.tsx, customer-password-form.tsx,
-      account-logout-button.tsx                      # customer portal (#39)
+      account-logout-button.tsx,                     # customer portal (#39)
+      discount-input.tsx                             # code field with live feedback (#45)
     admin/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
@@ -144,10 +146,13 @@ src/
       po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
        revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx,
        invoice-actions.tsx,         # payment / reminder / credit-limit forms (#40)
-       customer-actions.tsx,        # block / notes / password-reset forms (#43)
-       pickup-actions.tsx           # mark-ready + handover (code, cash/card) forms (#41)
+        customer-actions.tsx,        # block / notes / password-reset forms (#43)
+        pickup-actions.tsx,          # mark-ready + handover (code, cash/card) forms (#41)
+        discount-forms.tsx           # create + activate/deactivate codes (#45)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
+    discount-code.ts        # marketing codes: percent/fixed, window, limits (#45)
+    discount-usage.ts       # (code, customer) redemptions — unique _id enforces once-each (#45)
     password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
     mail-message.ts         # dev outbox messages (#39/#44)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
@@ -177,6 +182,7 @@ src/
     payments.ts             # PaymentMethodName ('mock' | 'invoice' | 'pickup') + labels,
                             # pickup payment types (cash/card) (#40/#41)
     store.ts                # pickup store address + opening hours (single source, #41)
+    discounts.ts            # pure discount math + validity window (#45)
     invoices.ts             # pure invoice rules: due date, open amount, overdue, credit
                             # default, ISO-11649 QRR reference + SPC QR payload (#40)
     mail-templates.ts       # German e-mail templates as pure functions (#39/#44),
@@ -200,7 +206,10 @@ src/
     secure-path.ts          # resolveInsideDir — path containment (label download)
     order-access.ts         # per-order HMAC access cookie + e-mail verification (#3)
     checkout.ts             # createOrderCore (transaction, idempotency claim, price check,
-                            # invoice eligibility + credit check, #40)
+                            # invoice eligibility + credit check, #40; discount code check +
+                            # redemption inside the transaction, #45)
+    discounts.ts            # checkDiscountCore / redeemDiscount (conditional writes in the
+                            # checkout txn) + admin create/toggle/list with usage stats (#45)
     invoices.ts             # invoice cores: lists (admin/portal), credit usage/limits,
                             # recordInvoicePaymentCore, sendInvoiceReminderCore,
                             # getInvoiceFileCore (transaction + conditional writes, #40)
@@ -220,6 +229,7 @@ src/
     shipping/label.ts       # createLabelCore + getLabelFileCore (packed-only, idempotent)
     actions/
       checkout.ts           # thin action wrapper → createOrderCore (transaction, + userId #39)
+      discounts.ts          # validateDiscountAction — live feedback for the code field (#45)
       order-access.ts       # verifyOrderEmailAction (#3)
       account.ts            # register/login/logout, password reset, claim, addresses,
                             # reorder, change password (#39)
@@ -235,6 +245,7 @@ src/
       admin/customers.ts    # setBlocked, setNotes, adminResetPassword → *Core fns (#43)
                             # → *Core fns (#40)
       admin/pickup.ts       # markPickupReady, handoverPickup → *Core fns (#41)
+      admin/discounts.ts    # createDiscount, setDiscountActive → *Core fns (#45)
   stores/
     cart.ts                 # useSyncExternalStore store, localStorage-persisted
   hooks/
@@ -323,6 +334,7 @@ Indexes:
               pickup?: { code, readyAt?, pickedUpAt?, paymentType?: 'cash'|'card' } }
   payment: { method: 'mock' | 'invoice' | 'pickup', reference: string, paidAt?: Date,
              invoice?: { dueAt, paidCents, qrReference, reminder1At?, reminder2At? } }
+  discount?: { code, cents }   // applied discount code + booked reduction (#45)
   createdAt, updatedAt
 }
 ```
@@ -371,6 +383,18 @@ Indexes: `{ poNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`.
 ### Counter (`counters`)
 `{ _id: 'order'|'po', seq: number }` with `findOneAndUpdate({$inc})` for gap-free numbers.
 
+### DiscountCode (`discount_codes`, #45)
+`{ code (unique, upper-case), description?, kind: 'percent'|'fixed', percent?, amountCents?,
+minOrderCents, validFrom?, validTo?, usageLimit?, usedCount, perCustomerOnce, active }` —
+`usedCount` is incremented by a **conditional** `$inc` inside the checkout transaction
+(`usedCount < usageLimit` guard), so a race cannot exceed the limit.
+
+### DiscountUsage (`discount_usages`, #45)
+One document per (code, customer) redemption: `_id` is `code|customerKey`
+(customerKey = userId or lower-case e-mail), so the unique `_id` enforces
+"once per customer" inside the transaction; the collection doubles as the
+per-code usage statistic (distinct customers on the admin page).
+
 ## 4. Server functions, actions and route handlers
 
 Every action is a thin wrapper over a pure-ish **core function** in `src/server` (B1):
@@ -391,6 +415,15 @@ results and are covered by Vitest integration tests against the real replica set
   Stock model decision (docs/DECISIONS.md): decrement at `createOrder`, restock on
   cancel — **no reservations**; `lib/stock.ts` stays pure (predicates only), the DB loop lives
   here.
+- Discount codes (issue #45, `src/server/discounts.ts`): an optional `discountCode` on the
+  checkout payload is normalized (trim + upper-case, part of the #15 idempotency fingerprint)
+  and checked **inside the transaction** against the DB subtotal — window/active, minimum
+  order, usage limit, once-per-customer; `redeemDiscount` then books the redemption with a
+  conditional `$inc` (`usedCount < usageLimit`) and the unique usage document, so a race
+  loser aborts the whole order. The reduction lowers the taxable gross: VAT is computed over
+  the discounted total (`computeTotals(items, method, discountCents)`). A rejected code is a
+  clean user error (claim released, nothing written). Shown on cart, checkout, confirmation,
+  invoice PDF and admin order detail; managed under `/admin/discounts`.
 - `transitionOrderCore(orderId, to, note, by)` — delegates to the state machine; cancel from
   `new`/`paid`/`picking`/`ready` restocks **in the same transaction** (§5). The order's
   `payment.method` and `shipping.method` are part of the transition context (§5, #40/#41).

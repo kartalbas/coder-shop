@@ -15,6 +15,9 @@ export interface CartLine {
 
 export interface CartState {
   lines: CartLine[];
+  // Applied discount code (issue #45) — carried from the cart to the checkout; the
+  // server re-validates and books it, the store only remembers the customer's input.
+  discountCode?: string;
 }
 
 export const CART_STORAGE_KEY = "cart:v1";
@@ -46,7 +49,11 @@ function setState(next: CartState): void {
 }
 
 export function serializeCart(cart: CartState): string {
-  return JSON.stringify({ v: 1, lines: cart.lines });
+  return JSON.stringify({
+    v: 1,
+    lines: cart.lines,
+    ...(cart.discountCode !== undefined && { discountCode: cart.discountCode }),
+  });
 }
 
 function isCartLine(value: unknown): value is CartLine {
@@ -71,9 +78,14 @@ export function deserializeCart(raw: string | null): CartState {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return EMPTY_CART;
-    const data = parsed as { v?: unknown; lines?: unknown };
+    const data = parsed as { v?: unknown; lines?: unknown; discountCode?: unknown };
     if (data.v !== 1 || !Array.isArray(data.lines)) return EMPTY_CART;
-    return { lines: data.lines.filter(isCartLine) };
+    return {
+      lines: data.lines.filter(isCartLine),
+      ...(typeof data.discountCode === "string" &&
+        data.discountCode.length > 0 &&
+        data.discountCode.length <= 32 && { discountCode: data.discountCode }),
+    };
   } catch {
     return EMPTY_CART;
   }
@@ -136,7 +148,7 @@ export function addToCart(line: Omit<CartLine, "qty">, qty = 1): void {
         l.sku === line.sku ? { ...l, qty: Math.min(l.qty + clamped, line.stock) } : l,
       )
     : [...state.lines, { ...line, qty: clamped }];
-  setState({ lines });
+  setState({ lines, discountCode: state.discountCode });
 }
 
 export function updateQty(sku: string, qty: number): void {
@@ -148,11 +160,12 @@ export function updateQty(sku: string, qty: number): void {
     lines: state.lines.map((l) =>
       l.sku === sku ? { ...l, qty: Math.min(qty, l.stock) } : l,
     ),
+    discountCode: state.discountCode,
   });
 }
 
 export function removeLine(sku: string): void {
-  setState({ lines: state.lines.filter((l) => l.sku !== sku) });
+  setState({ lines: state.lines.filter((l) => l.sku !== sku), discountCode: state.discountCode });
 }
 
 // Issue #12: when the server refuses a checkout because prices changed, the cart adopts
@@ -163,11 +176,21 @@ export function syncPrices(prices: { sku: string; unitPriceCents: number }[]): v
     lines: state.lines.map((l) =>
       bySku.has(l.sku) ? { ...l, unitPriceCents: bySku.get(l.sku)! } : l,
     ),
+    discountCode: state.discountCode,
   });
 }
 
 export function clearCart(): void {
   setState({ lines: [] });
+}
+
+// Issue #45: remember/clear the discount code the customer entered.
+export function setDiscountCode(code: string | undefined): void {
+  const normalized = code?.trim().toUpperCase();
+  setState({
+    lines: state.lines,
+    ...(normalized ? { discountCode: normalized } : {}),
+  });
 }
 
 function getDrawerSnapshot(): boolean {

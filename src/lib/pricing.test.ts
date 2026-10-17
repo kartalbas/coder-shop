@@ -58,9 +58,19 @@ describe("computeTotals", () => {
     expect(totals).toEqual({
       subtotalCents: 5000,
       shippingCents: 490,
+      discountCents: 0,
       totalCents: 5490,
       vatCents: vatFromGross(5490),
     });
+  });
+
+  it("a discount reduces the total and the VAT base (issue #45)", () => {
+    const totals = computeTotals([{ unitPriceCents: 5000, qty: 1 }], "standard", 1000);
+    expect(totals.discountCents).toBe(1000);
+    expect(totals.totalCents).toBe(4490);
+    expect(totals.vatCents).toBe(vatFromGross(4490));
+    // Never more than the subtotal.
+    expect(computeTotals([{ unitPriceCents: 500, qty: 1 }], "standard", 9999).totalCents).toBe(490);
   });
 
   it("free shipping applies to the total", () => {

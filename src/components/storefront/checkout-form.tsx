@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatChf } from "@/lib/format";
 import { INVOICE_DUE_DAYS } from "@/lib/invoices";
 import { PAYMENT_LABELS, type PaymentMethodName } from "@/lib/payments";
-import { computeTotals, shippingCents, VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
+import { computeTotals, shippingCents, subtotalCents, VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
 import { STORE } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +22,8 @@ import {
   type ShippingMethodParam,
 } from "@/lib/validations/checkout";
 import { createOrderAction, type CheckoutActionState } from "@/server/actions/checkout";
+import { validateDiscountAction } from "@/server/actions/discounts";
+import { DiscountInput } from "@/components/storefront/discount-input";
 import Link from "next/link";
 import { cartSubtotalCents, clearCart, syncPrices, useCart, useCartHydrated } from "@/stores/cart";
 
@@ -84,6 +86,9 @@ export function CheckoutForm({
   const [shippingMethod, setShippingMethod] = useState<ShippingMethodParam>("standard");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodName>("mock");
   const [errors, setErrors] = useState<FieldErrors>({});
+  // Issue #45: the reduction of the applied code, for the summary display only — the
+  // server recomputes it inside the transaction.
+  const [discountCents, setDiscountCents] = useState(0);
   const [state, formAction, pending] = useActionState<CheckoutActionState | null, FormData>(
     createOrderAction,
     null,
@@ -96,9 +101,23 @@ export function CheckoutForm({
       computeTotals(
         cart.lines.map((line) => ({ unitPriceCents: line.unitPriceCents, qty: line.qty })),
         shippingMethod,
+        discountCents,
       ),
-    [cart.lines, shippingMethod],
+    [cart.lines, shippingMethod, discountCents],
   );
+
+  // A code carried over from the cart is re-validated so the summary can show its
+  // reduction; if it stopped working the server will refuse it at order time anyway.
+  const revalidated = useRef(false);
+  const carriedCode = cart.discountCode;
+  const cartLines = cart.lines;
+  useEffect(() => {
+    if (!carriedCode || revalidated.current || cartLines.length === 0) return;
+    revalidated.current = true;
+    validateDiscountAction(carriedCode, subtotalCents(cartLines)).then((result) => {
+      setDiscountCents(result.ok ? (result.discountCents ?? 0) : 0);
+    });
+  }, [carriedCode, cartLines]);
 
   useEffect(() => {
     if (state?.ok && state.orderNumber && !redirected.current) {
@@ -163,6 +182,7 @@ export function CheckoutForm({
       customer,
       shippingMethod,
       paymentMethod,
+      ...(cart.discountCode !== undefined && { discountCode: cart.discountCode }),
     };
     const parsed = checkoutSchema.safeParse(payload);
     if (!parsed.success) {
@@ -389,11 +409,21 @@ export function CheckoutForm({
               ))}
             </ul>
             <Separator />
+            <DiscountInput
+              subtotalCents={totals.subtotalCents}
+              onDiscountChange={setDiscountCents}
+            />
             <dl className="space-y-1.5 text-sm">
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Zwischensumme</dt>
                 <dd className="tabular-nums">{formatChf(totals.subtotalCents)}</dd>
               </div>
+              {totals.discountCents > 0 && (
+                <div className="flex justify-between text-primary">
+                  <dt>Rabatt{cart.discountCode ? ` (${cart.discountCode})` : ""}</dt>
+                  <dd className="tabular-nums">−{formatChf(totals.discountCents)}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Versand</dt>
                 <dd className="tabular-nums">

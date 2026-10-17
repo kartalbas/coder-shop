@@ -43,6 +43,8 @@ export interface OrderLine {
 interface OrderTotals {
   subtotalCents: number;
   shippingCents: number;
+  // Discount code reduction (issue #45); absent/0 when no code was used.
+  discountCents?: number;
   totalCents: number;
   vatCents: number;
 }
@@ -95,6 +97,8 @@ export interface Order {
   totals: OrderTotals;
   shipping: OrderShipping;
   payment: OrderPayment;
+  // Applied discount code (issue #45) — the code as typed and the booked reduction.
+  discount?: { code: string; cents: number };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -142,6 +146,7 @@ const totalsSchema = new Schema<OrderTotals>(
   {
     subtotalCents: { type: Number, required: true },
     shippingCents: { type: Number, required: true },
+    discountCents: { type: Number, min: 0 },
     totalCents: { type: Number, required: true },
     vatCents: { type: Number, required: true },
   },
@@ -202,6 +207,12 @@ const orderSchema = new Schema<Order>(
     totals: { type: totalsSchema, required: true },
     shipping: { type: shippingSchema, required: true },
     payment: { type: paymentSchema, required: true },
+    discount: {
+      type: new Schema(
+        { code: { type: String, required: true }, cents: { type: Number, required: true } },
+        { _id: false },
+      ),
+    },
   },
   { versionKey: false, timestamps: true },
 );

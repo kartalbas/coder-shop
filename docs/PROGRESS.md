@@ -989,3 +989,32 @@ Done — M1–M6 + QA complete.
   sessions revoked + wrong-password stays generic→unblock works + admins untouchable;
   notes trim/limits; reset mail → token works once, then refused, new password logs
   in); `npm test` ✅ 383, lint/knip/build ✅.
+
+## ISSUES — queue session 8 (2026-10-17)
+
+### #45 — discount codes and promotions ✅
+- Pure rules in `src/lib/discounts.ts` (`discountForSubtotal` — percent/fixed, minimum
+  order, capped at the subtotal; `isDiscountInWindow` — active flag + from/to), money
+  flows through `computeTotals(items, method, discountCents)`: the reduction lowers the
+  taxable gross, VAT over the discounted total.
+- Models `discount_codes` (unique upper-case code, limits, window, atomic `usedCount`)
+  and `discount_usages` (`_id = code|customerKey` — unique index enforces once-per-
+  customer, doubles as the usage statistic).
+- `src/server/discounts.ts`: `checkDiscountCore` (window, minimum, limit, once-per-
+  customer — no booking) and `redeemDiscount` **inside the checkout transaction**
+  (conditional `$inc` + unique usage document; a race loser aborts the order, a failed
+  order never burns a redemption). `createOrderCore` takes an optional `discountCode`
+  (normalized, part of the #15 fingerprint), refuses a bad code as a clean user error
+  with nothing written, and records `{ code, cents }` on the order.
+- Storefront: `DiscountInput` with live server feedback in cart and checkout; the cart
+  store persists the code (`cart:v1`) and the checkout re-validates it; the reduction
+  shows in the summary, confirmation, admin order detail and the invoice PDF.
+- Admin `/admin/discounts` („Aktionen" in the nav): create form (percent/fixed, CHF
+  amounts, window, usage limit, once-per-customer), activate/deactivate, table with
+  used/limit and distinct-customer counts.
+- Verified: `tests/discounts.test.ts` (10: pure rounding/cap/minimum/window, VAT over
+  the reduced gross, valid code on the order + `usedCount`, usage limit exhausted,
+  once-per-customer (same e-mail refused, other e-mail works), expired window, minimum
+  order, unknown code, refused code writes nothing, admin stats, bad create input,
+  failed redemption releases the claim for a corrected resubmit); pricing test for the
+  discount parameter. `npm test` ✅ 395, lint/knip/build ✅, `npm run test:e2e` ✅ 27/27.

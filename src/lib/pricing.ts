@@ -24,6 +24,8 @@ export interface CartItem {
 export interface Totals {
   subtotalCents: number;
   shippingCents: number;
+  // Discount code reduction (issue #45); 0 when no code was applied.
+  discountCents: number;
   totalCents: number;
   vatCents: number;
 }
@@ -67,13 +69,21 @@ export function freeShippingProgress(subtotal: number): {
   };
 }
 
-export function computeTotals(items: CartItem[], method: ShippingMethodName): Totals {
+// The discount (issue #45) reduces the taxable gross — VAT is computed over the
+// discounted total, exactly like every other price in this gross-price shop.
+export function computeTotals(
+  items: CartItem[],
+  method: ShippingMethodName,
+  discountCents = 0,
+): Totals {
   const subtotal = subtotalCents(items);
+  const discount = Math.max(0, Math.min(discountCents, subtotal));
   const shipping = shippingCents(subtotal, method);
-  const total = subtotal + shipping;
+  const total = subtotal - discount + shipping;
   return {
     subtotalCents: subtotal,
     shippingCents: shipping,
+    discountCents: discount,
     totalCents: total,
     vatCents: vatFromGross(total),
   };
