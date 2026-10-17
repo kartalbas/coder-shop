@@ -1,3 +1,4 @@
+import { swissYear } from "@/lib/dates";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CounterModel } from "@/models/counter";
 import { ProductModel, type Product } from "@/models/product";
@@ -127,7 +128,7 @@ describe("purchase order core", () => {
     if (!result.ok) return;
 
     expect(result.poNumber).toMatch(/^E-\d{4}-\d{6}$/);
-    expect(result.poNumber).toBe(formatPoNumber(new Date().getUTCFullYear(), 1));
+    expect(result.poNumber).toBe(formatPoNumber(swissYear(new Date()), 1));
 
     const po = await PurchaseOrderModel.findById(result.poId).lean<PurchaseOrder>().exec();
     expect(po?.status).toBe("draft");
@@ -143,7 +144,7 @@ describe("purchase order core", () => {
     });
     expect(second.ok).toBe(true);
     if (!second.ok) return;
-    expect(second.poNumber).toBe(formatPoNumber(new Date().getUTCFullYear(), 2));
+    expect(second.poNumber).toBe(formatPoNumber(swissYear(new Date()), 2));
   });
 
   it("rejects unknown skus, empty lines and unknown suppliers", async () => {

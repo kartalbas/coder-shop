@@ -109,6 +109,10 @@ describe("dashboard data", () => {
     await seedOrder("B-2026-700006", "paid", 77777, new Date(NOW.getTime() - 40 * DAY_MS));
     await seedOrder("B-2026-700007", "picking", 1000, new Date(NOW.getTime() - 5 * DAY_MS));
     await seedOrder("B-2026-700008", "packed", 2000, new Date(NOW.getTime() - 6 * DAY_MS));
+    // Issue #17: 2026-09-15T22:30Z is 00:30 on 16 Sep in Zurich — the first instant of the
+    // oldest window day; 21:30Z is still 15 Sep in Zurich and must stay outside the window.
+    await seedOrder("B-2026-700009", "paid", 3000, new Date("2026-09-15T22:30:00.000Z"));
+    await seedOrder("B-2026-700010", "paid", 4444, new Date("2026-09-15T21:30:00.000Z"));
   });
 
   afterAll(disconnectTestDB);
@@ -116,18 +120,21 @@ describe("dashboard data", () => {
   it("sums revenue over paid|picking|packed|shipped|delivered within 30 days", async () => {
     const data = await getDashboardData(NOW);
 
-    expect(data.revenueCents).toBe(10000 + 20000 + 5000 + 1000 + 2000);
+    expect(data.revenueCents).toBe(10000 + 20000 + 5000 + 1000 + 2000 + 3000);
     expect(data.revenueCents).toBeGreaterThan(0);
     expect(data.revenueSeries).toHaveLength(30);
     expect(data.revenueSeries.reduce((sum, value) => sum + value, 0)).toBe(data.revenueCents);
     // the day 2 days ago holds exactly the 10000 order
     expect(data.revenueSeries[27]).toBe(10000);
+    // the oldest Swiss day starts at 22:00 UTC the evening before — its orders count (issue #17):
+    // the 5000 order (12:00Z) and the 3000 order (00:30 Zurich) share that Swiss day
+    expect(data.revenueSeries[0]).toBe(5000 + 3000);
   });
 
   it("counts open orders and pending shipments", async () => {
     const data = await getDashboardData(NOW);
-    // new(1) + paid(2) + picking(1) + packed(1) — cancelled excluded
-    expect(data.openOrders).toBe(5);
+    // new(1) + paid(4, incl. the two issue #17 boundary orders) + picking(1) + packed(1)
+    expect(data.openOrders).toBe(7);
     expect(data.pendingShipments).toBe(1);
   });
 

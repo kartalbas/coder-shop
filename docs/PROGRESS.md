@@ -602,6 +602,17 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #17 — revenue and number years follow Swiss calendar days ✅
+- New pure `src/lib/dates.ts`: `swissDayKey`/`swissYear` (Intl, Europe/Zurich),
+  `addDaysToDayKey`, `swissDayStartUtc` (DST-safe). The dashboard window is now exactly 30
+  Swiss days: `$match` starts at Swiss midnight of the oldest day and `$dateToString`
+  buckets with `timezone: Europe/Zurich` — the oldest day is never cut in half and the
+  series always sums to the matched revenue. `mintNumber` (orders + POs) and the seed use
+  the Swiss year, so an order at 00:30 on 1 January (Zurich) gets the new year.
+- Verified: `src/lib/dates.test.ts` (9 tests incl. DST round-trips); dashboard test now
+  counts an order at 22:30Z (= 00:30 Zürich) on the oldest day and excludes one an hour
+  earlier; number tests use `swissYear`; `npm test` ✅ 267, lint/build ✅, e2e ✅ 8/8.
+
 ### #16 — an order ships only with a stored label ✅
 - `createLabelCore` writes the label PDF **before** the conditional `packed → shipped`
   move: a failed write returns `reason: "storage_error"` and leaves the order `packed`

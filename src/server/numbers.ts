@@ -1,4 +1,5 @@
 import { type ClientSession } from "mongoose";
+import { swissYear } from "@/lib/dates";
 import { CounterModel } from "@/models/counter";
 
 export interface MintedNumber {
@@ -17,5 +18,6 @@ export async function mintNumber(
     { upsert: true, returnDocument: "after", session },
   );
   if (!counter) throw new Error(`Could not mint a number from the "${counterId}" counter`);
-  return { value: format(new Date().getUTCFullYear(), counter.seq), seq: counter.seq };
+  // Issue #17: the number year is the Swiss calendar year, not the UTC one.
+  return { value: format(swissYear(new Date()), counter.seq), seq: counter.seq };
 }

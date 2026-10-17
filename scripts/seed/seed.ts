@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
+import { swissYear } from "@/lib/dates";
 import { formatOrderNumber, formatPaymentReference, formatPoNumber } from "@/lib/numbers";
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { computeTotals, type ShippingMethodName } from "@/lib/pricing";
@@ -114,7 +115,7 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
     return;
   }
   const products = await ProductModel.find().sort({ slug: 1 }).lean();
-  const year = now.getUTCFullYear();
+  const year = swissYear(now);
   const orders = [];
   for (let i = 0; i < STATUS_PLAN.length; i++) {
     const status = STATUS_PLAN[i];
@@ -210,7 +211,7 @@ async function seedPurchaseOrders(
   const products = await ProductModel.find().sort({ slug: 1 }).lean();
   const statuses = ["draft", "ordered", "received"] as const;
   const supplierNames = [...suppliers.keys()];
-  const year = now.getUTCFullYear();
+  const year = swissYear(now);
   const pos = [];
   for (let i = 0; i < statuses.length; i++) {
     const status = statuses[i];

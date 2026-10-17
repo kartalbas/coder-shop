@@ -1,4 +1,5 @@
 import type { Types } from "mongoose";
+import { addDaysToDayKey, swissDayKey, swissDayStartUtc } from "@/lib/dates";
 import { isLowStock } from "@/lib/stock";
 import { OrderModel, type OrderStatus } from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
@@ -36,20 +37,24 @@ export interface DashboardData {
   recentOrders: OrderListItem[];
 }
 
-function dayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
+// Issue #17: the window is exactly `days` Swiss calendar days — it starts at Swiss
+// midnight of the oldest day (so the oldest day is never cut in half) and buckets are
+// Swiss days too.
 async function revenueLastDays(
   days: number,
   now: Date,
 ): Promise<{ totalCents: number; series: number[] }> {
-  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const todayKey = swissDayKey(now);
+  const oldestKey = addDaysToDayKey(todayKey, -(days - 1));
+  const cutoff = swissDayStartUtc(oldestKey);
+
   const rows = await OrderModel.aggregate<{ _id: string; cents: number }>([
     { $match: { status: { $in: REVENUE_STATUSES }, createdAt: { $gte: cutoff } } },
     {
       $group: {
-        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        _id: {
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Europe/Zurich" },
+        },
         cents: { $sum: "$totals.totalCents" },
       },
     },
@@ -58,9 +63,8 @@ async function revenueLastDays(
 
   const series: number[] = [];
   let totalCents = 0;
-  for (let offset = days - 1; offset >= 0; offset--) {
-    const key = dayKey(new Date(now.getTime() - offset * 24 * 60 * 60 * 1000));
-    const cents = byDay.get(key) ?? 0;
+  for (let offset = 0; offset < days; offset++) {
+    const cents = byDay.get(addDaysToDayKey(oldestKey, offset)) ?? 0;
     series.push(cents);
     totalCents += cents;
   }

@@ -1,3 +1,4 @@
+import { swissYear } from "@/lib/dates";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { computeTotals } from "@/lib/pricing";
 import { CounterModel } from "@/models/counter";
@@ -67,7 +68,7 @@ describe("createOrderCore", () => {
     if (!result.ok) return;
 
     expect(result.orderNumber).toMatch(/^B-\d{4}-\d{6}$/);
-    expect(result.orderNumber).toBe(formatOrderNumber(new Date().getUTCFullYear(), 1));
+    expect(result.orderNumber).toBe(formatOrderNumber(swissYear(new Date()), 1));
     expect(result.totals).toEqual(
       computeTotals([{ unitPriceCents: 10500, qty: 2 }], "standard"),
     );
@@ -98,7 +99,7 @@ describe("createOrderCore", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const previousSeq = Number(first?.orderNumber.slice(-6));
-    expect(result.orderNumber).toBe(formatOrderNumber(new Date().getUTCFullYear(), previousSeq + 1));
+    expect(result.orderNumber).toBe(formatOrderNumber(swissYear(new Date()), previousSeq + 1));
     expect(await stockOf("CT-valid")).toBe(2);
   });
 
@@ -334,7 +335,7 @@ describe("createOrderCore", () => {
 
 describe("order number format", () => {
   it("pads the sequence to six digits", () => {
-    expect(formatOrderNumber(new Date().getUTCFullYear(), 1)).toBe("B-2026-000001");
+    expect(formatOrderNumber(swissYear(new Date()), 1)).toBe("B-2026-000001");
     expect(formatOrderNumber(2026, 123456)).toBe("B-2026-123456");
   });
 });
