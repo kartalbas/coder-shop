@@ -1265,4 +1265,7 @@ Done — M1–M6 + QA complete.
   each old URL answers 308 to its exact English counterpart (query preserved) and that
   `/products` answers 200 directly while `/account` gates guests to `/account/login`;
   the specs that still asserted `/bestellung/…` / `/produkt/…` URLs updated.
+- **DECISIONS:** the superseded "German public URLs via rewrites" decision is marked as
+  such and a #63 entry records the rename, the 308-as-configuration choice and the
+  proxy-gate move (reopened finding).
 - Verified: `npm run build`/lint ✅, `npm test` ✅ 474, `npm run test:e2e` ✅ 51/51.

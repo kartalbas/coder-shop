@@ -35,7 +35,8 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - Labels under `data/labels/` (outside the web root — PII).
 - Deployment target: long-running Node server, all routes `runtime = 'nodejs'`, production
   requires `MONGODB_URI`.
-- English code / German public URLs via `next.config.ts` rewrites; **no text index** — search
+- English code **and English public URLs** (superseded by #63 — see the #63 entry; the
+  German-URL rewrites are gone); **no text index** — search
   is a regex-escaped literal prefix on `name`/`brand` (enough at 200 docs; a text index would
   be pure write-time cost and German stemming was never wanted).
 
@@ -475,7 +476,7 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   under even if the account changes or the aggregate is re-sorted later.
 
 ### #48 — comparison: URL is the truth, selection is local
-- **The comparison page reads its slugs from the URL** (`/produkte/vergleichen?slugs=…`),
+- **The comparison page reads its slugs from the URL** (`/products/compare?slugs=…`),
   so a comparison is shareable and reload-safe; the localStorage list (`compare:v1`,
   ≤ 4 slugs) only feeds the tray and the link. Unknown/non-smartphone slugs are dropped
   server-side (`comparableProducts`), a selection below two phones shows a German hint
@@ -548,3 +549,22 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **The catalog-type editor** (`/admin/catalog-types`) writes through #61's
   `saveCatalogTypeCore` guards; the seed hands out the **stored** configs (#64 review), so
   the filter repair derives from the rows an admin may have changed, not from the defaults.
+
+### #63 — code and public URLs are English; German is content only
+- **Route segments follow the code, not the content language.** The German-URL `rewrites`
+  (the old decision above) made the public URLs a second, German-only naming system
+  layered over English code — every link, spec and doc had to know both. Routes are now
+  named in English like everything else (`/konto/profil` → `/account/profile`,
+  `/bestellung/:number` → `/orders/:number`, `/produkte/vergleichen` →
+  `/products/compare`); German stays the base language of **content** only
+  (REQUIREMENTS "English code, German content").
+- **The old German URLs answer `308` from `next.config.ts` `redirects()`** — the mapping
+  is pure configuration, not code paths or middleware logic; `308` (not `301`) keeps the
+  method and body on non-GET traffic (the invoice PDF route included). Bookmarks and
+  search-engine entries for the pre-#63 URLs land on the exact English target.
+- **The proxy 404 gate moved with the routes** (was #34): unknown `/products/<slug>`
+  still answers a real HTTP 404 via a rewrite to `/_not-found`, now on the English path;
+  the redirect rules run before it, so a German URL never hits the slug check.
+- **Proven by e2e** (`tests/e2e/english-urls.spec.ts`): every former German URL is
+  requested and must `308` to its exact English target and then serve 200 there — the
+  spec fails on the pre-#63 build.
