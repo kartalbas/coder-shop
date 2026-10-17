@@ -506,3 +506,18 @@ Done — M1–M6 + QA complete.
 - Verified: `tests/create-order.test.ts` price-change test (stale price refused, stock
   untouched; raise → refused with new price; after sync → booked at exactly that price),
   schema test (line without price rejected); `npm test` ✅ 211, lint/build ✅, e2e ✅ 7/7.
+
+### #33 — security-critical code had no tests ✅
+- Extracted the two inline security decisions into pure, tested functions:
+  `isSameOrigin` (`src/server/same-origin.ts`, used by the label API route) and
+  `resolveInsideDir` (`src/server/secure-path.ts`, used by the label download route).
+- New `tests/security-routes.test.ts`: proxy guard (login open, no/forged/empty cookie →
+  307, valid token through), same-origin (own origin through; foreign/port-mismatch/
+  missing/malformed refused), label path containment (inside through; traversal,
+  absolute, sibling-prefix, directory itself and empty refused), and DB-backed guards:
+  `getSessionUserId` (valid/anonymous/deleted user), `requireAdminSession` (NEXT_REDIRECT
+  to /admin/login vs. user id), `getAdminEmail` (user/null) — via a mocked `next/headers`.
+- `decideSessionCookieSecure` remaining branches covered in `tests/session.test.ts`
+  (explicit-false override, trusted x-forwarded-proto both ways, unparseable
+  origin/referer, dev default).
+- Verified: `npm test` ✅ 230, lint/build ✅, e2e ✅ 7/7.

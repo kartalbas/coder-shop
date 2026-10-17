@@ -209,6 +209,57 @@ describe("decideSessionCookieSecure", () => {
     ).toBe(true);
   });
 
+  it("explicit false wins over an https origin", () => {
+    expect(
+      decideSessionCookieSecure({
+        explicit: false,
+        forwardedProto: "https",
+        origin: "https://shop.example",
+        referer: null,
+        isProduction: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("uses the trusted proxy's x-forwarded-proto before origin/referer", () => {
+    const base = { explicit: undefined, origin: null, referer: null };
+    expect(
+      decideSessionCookieSecure({ ...base, forwardedProto: "https", isProduction: false }),
+    ).toBe(true);
+    expect(
+      decideSessionCookieSecure({
+        ...base,
+        forwardedProto: "http",
+        origin: "https://shop.example",
+        isProduction: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("ignores unparseable origin/referer values", () => {
+    expect(
+      decideSessionCookieSecure({
+        explicit: undefined,
+        forwardedProto: undefined,
+        origin: "kein url ohne schema",
+        referer: "%%% kaputt",
+        isProduction: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("outside production without any signal the cookie is not Secure", () => {
+    expect(
+      decideSessionCookieSecure({
+        explicit: undefined,
+        forwardedProto: undefined,
+        origin: null,
+        referer: null,
+        isProduction: false,
+      }),
+    ).toBe(false);
+  });
+
   it("an https deployment without X-Forwarded-Proto from the proxy still gets Secure", () => {
     // The caller only passes forwardedProto behind a trusted proxy; here the TLS proxy
     // sends nothing and Next's own `http` value must NOT reach this decision.

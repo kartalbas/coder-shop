@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
+import { isSameOrigin } from "@/server/same-origin";
 import { createLabelCore } from "@/server/shipping/label";
 import { getSessionUserId } from "@/server/session";
-
-function isSameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    return new URL(origin).host === new URL(request.url).host;
-  } catch {
-    return false;
-  }
-}
 
 export async function POST(
   request: Request,
   context: { params: Promise<{ orderId: string }> },
 ): Promise<NextResponse> {
-  if (!isSameOrigin(request)) {
+  if (!isSameOrigin(request.headers.get("origin"), request.url)) {
     return NextResponse.json({ error: "Fremde Origin abgelehnt." }, { status: 403 });
   }
 

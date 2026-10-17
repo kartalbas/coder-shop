@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import mongoose from "mongoose";
 import { NextResponse, connection } from "next/server";
 import { OrderModel } from "@/models/order";
 import { connectDB } from "@/server/db";
+import { resolveInsideDir } from "@/server/secure-path";
 import { LABELS_DIR } from "@/server/shipping/label";
 import { getSessionUserId } from "@/server/session";
 
@@ -29,9 +29,8 @@ export async function GET(
     return NextResponse.json({ error: "Kein Etikett vorhanden." }, { status: 404 });
   }
 
-  const file = path.resolve(order.shipping.labelPath);
-  const relative = path.relative(path.resolve(LABELS_DIR), file);
-  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+  const file = resolveInsideDir(LABELS_DIR, order.shipping.labelPath);
+  if (!file) {
     return NextResponse.json({ error: "Ungültiger Etiketten-Pfad." }, { status: 400 });
   }
 
