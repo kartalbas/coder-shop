@@ -145,6 +145,33 @@ Open / known issues
   exists its product shows the neutral placeholder.
 - The 4 proof images are gitignored (`public/products/*`) like all generated content.
 
+### M6 gate fix — storefront showed SVGs after the full batch ✅ (2026-10-17)
+
+Root cause
+- `seedProducts` upserted products with `$set: product`, so any `npm run seed` re-run
+  **after** the image batch reset every `images[].src` back to the seed `.svg` paths
+  (files on disk untouched) — exactly the gate state: 576 `.webp` on disk, all 576
+  documents pointing at `.svg`.
+
+Fix
+- `scripts/seed/seed.ts`: `images` moved to `$setOnInsert` — re-seeding an existing
+  product never clobbers recorded photo paths again (SVGs are still (re)written to disk).
+- `scripts/images/generate.ts`: `LLAMA_API_KEY` is only required when a slot actually
+  needs generation; a pure skip/repair run works without the key (clear error otherwise).
+- Repaired the live DB with `npm run images` (all 576 slots on disk → 0 generated,
+  576 skipped, every drifted `.svg` path rewritten to `.webp` + German alt, exit 0;
+  zero image-API calls).
+
+Verified
+- DB after repair: 576/576 `images[].src` end in `.webp`; a subsequent idempotent
+  `npm run seed` keeps them at 576/576 `.webp`.
+- Background `npm run start`: `/produkte?type=smartphone` → 24 product `<img>` sources,
+  all `/products/…webp`, 0 `.svg`; `/produkt/apple-iphone-16-pro-070` → gallery + thumbs
+  reference `/products/apple-iphone-16-pro-070-1.webp` (was `.svg`), 5 webp `<img>`s,
+  0 `.svg`; `GET /products/apple-iphone-16-pro-070-1.webp` → 200 `image/webp`.
+  Server + mongod stopped again.
+- `npm run build` ✅, `npm run lint` ✅, `npm test` ✅ 155 tests / 17 files.
+
 ## M3 — Cart, checkout, orders ✅ (2026-10-17)
 
 Done

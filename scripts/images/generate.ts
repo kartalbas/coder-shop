@@ -103,11 +103,9 @@ async function generateSlot(slot: ImageSlot, options: { url: string; apiKey: str
 
 async function main(): Promise<void> {
   const limit = parseLimit(process.argv.slice(2));
-  if (!env.LLAMA_API_KEY) {
-    console.error("LLAMA_API_KEY is not set — cannot call the image API.");
-    process.exit(1);
-  }
-  const options = { url: env.IMAGE_API_URL, apiKey: env.LLAMA_API_KEY };
+  const options = env.LLAMA_API_KEY
+    ? { url: env.IMAGE_API_URL, apiKey: env.LLAMA_API_KEY }
+    : null;
   await connectDB();
   await fs.mkdir(IMAGES_DIR, { recursive: true });
 
@@ -137,6 +135,14 @@ async function main(): Promise<void> {
     if (limit !== undefined && generated >= limit) {
       stoppedAtLimit = true;
       break;
+    }
+    if (!options) {
+      console.error(
+        "LLAMA_API_KEY is not set — cannot call the image API " +
+          `(needed for ${slot.basename}; skips/repairs would have worked without it).`,
+      );
+      await disconnectDB();
+      process.exit(1);
     }
     done += 1;
     try {

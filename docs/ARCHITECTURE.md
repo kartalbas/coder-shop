@@ -492,7 +492,9 @@ caps generations per run; resumable, stop/restart anytime).
 
 - **API:** `POST http://192.168.10.210:8080/v1/images/generations` (OpenAI images API shape:
   `{ prompt, size: "768x768", seed }`, `Authorization: Bearer $LLAMA_API_KEY` from the
-  environment; missing key → clear error, exit 1). Response `data[0].b64_json` (or `url`,
+  environment; the key is only required when a slot actually needs generation — a pure
+  skip/repair run works without it, otherwise missing key → clear error, exit 1).
+  Response `data[0].b64_json` (or `url`,
   fetched) → decoded, normalized to **WebP** via sharp, written to
   `public/products/<slug>-<n>.webp` (n = 1–5), then the path + German alt
   (`"<name> – Front-/Seiten-/Rück-/Detail-/Lifestyle-Ansicht"`) is recorded on the product
@@ -515,3 +517,7 @@ caps generations per run; resumable, stop/restart anytime).
   placeholder (muted panel + icon). Used by product cards, gallery (main/thumbs/zoom),
   instant search and the cart drawer — photos appear everywhere product images show, and no
   cartoon SVG is ever rendered.
+- **Seed invariant (gate fix):** `npm run seed` sets `images` only on insert
+  (`$setOnInsert`) — re-seeding after a generation run must never reset recorded photo
+  paths back to the `.svg` placeholders; a drifted document is repaired by the next
+  `npm run images` (skip pass).

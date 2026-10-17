@@ -176,8 +176,11 @@ Tasks
    SVGs are never shown); used in product cards, gallery (main/thumbs/zoom), instant search
    and cart drawer — photos appear everywhere product images show.
 4. Unit tests for the pure prompt/seed logic (`prompt.ts`); `LLAMA_API_KEY` missing → clear
-   error before any work. Generated images stay gitignored (already covered by
-   `public/products/*`).
+   error when a generation is actually needed (skip/repair runs work without it). Generated
+   images stay gitignored (already covered by `public/products/*`).
+5. Gate fix: `npm run seed` must never reset recorded photo paths — `images` is set only on
+   insert (`$setOnInsert`); a drifted document is repaired by the next `npm run images`
+   skip pass.
 
 Acceptance
 - `npm run images -- --limit 2` (the only generation runs before the gate): exactly 2 new
@@ -189,4 +192,7 @@ Acceptance
 - Storefront HTML: products with photos render `/products/<slug>-<n>.webp` `<img>` sources;
   products without photos render the neutral placeholder (no `.svg` in product image markup).
 - Full generation is run by the lead after the gate (not part of this milestone's checks).
+- After the full batch **and** an idempotent `npm run seed` re-run, every `images[].src`
+  still points at its `.webp` file, and listing/product HTML references only `.webp`
+  product images (gate finding: re-seed had reset the documents to `.svg`).
 - `npm run build && npm run lint && npm test` green.

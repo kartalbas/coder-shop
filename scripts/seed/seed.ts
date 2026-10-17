@@ -77,7 +77,12 @@ async function seedProducts(): Promise<number> {
       const file = path.join(imagesDir, path.basename(product.images[n].src));
       await fs.writeFile(file, svg, "utf8");
     }
-    await ProductModel.updateOne({ slug: product.slug }, { $set: product }, { upsert: true });
+    const { images, ...rest } = product;
+    await ProductModel.updateOne(
+      { slug: product.slug },
+      { $set: rest, $setOnInsert: { images } },
+      { upsert: true },
+    );
   }
   return catalog.length;
 }
