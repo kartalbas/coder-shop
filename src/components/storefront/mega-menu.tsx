@@ -3,32 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
+import { MENU_CATEGORIES } from "@/lib/menu";
 import { cn } from "@/lib/utils";
-
-const CATEGORIES = [
-  {
-    type: "smartphone",
-    label: "Smartphones",
-    brands: ["Apple", "Samsung", "Xiaomi", "Google", "OnePlus"],
-  },
-  {
-    type: "shoes",
-    label: "Schuhe",
-    brands: ["Nike", "Adidas", "Puma", "On"],
-  },
-  {
-    type: "clothing",
-    label: "Kleidung",
-    brands: ["The North Face", "Columbia", "Jack Wolfskin", "Patagonia"],
-  },
-] as const;
 
 export function MegaMenu() {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
 
   return (
-    <div className="flex items-center" onMouseLeave={() => setOpenCategory(null)}>
-      {CATEGORIES.map((category) => {
+    <div
+      className="flex items-center"
+      onMouseLeave={() => setOpenCategory(null)}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpenCategory(null);
+      }}
+    >
+      {MENU_CATEGORIES.map((category) => {
         const open = openCategory === category.type;
         return (
           <div key={category.type} className="relative" onMouseEnter={() => setOpenCategory(category.type)}>

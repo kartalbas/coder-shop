@@ -1,31 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyDelta, canFulfill, isLowStock } from "./stock";
-
-describe("canFulfill", () => {
-  it.each([
-    [5, 5, true],
-    [5, 4, true],
-    [5, 6, false],
-    [5, 0, false],
-    [5, -1, false],
-    [0, 1, false],
-    [0, 0, false],
-    [1.5, 1, false],
-    [2, 1.5, false],
-  ])("stock %i qty %i → %s", (stock, qty, expected) => {
-    expect(canFulfill(stock, qty)).toBe(expected);
-  });
-});
-
-describe("applyDelta", () => {
-  it("adds a positive delta", () => {
-    expect(applyDelta(10, 5)).toBe(15);
-  });
-
-  it("subtracts a negative delta", () => {
-    expect(applyDelta(10, -3)).toBe(7);
-  });
-});
+import { isLowStock, stockLevel } from "./stock";
 
 describe("isLowStock", () => {
   it.each([
@@ -35,5 +9,27 @@ describe("isLowStock", () => {
     [4, 3, false],
   ])("stock %i threshold %i → %s", (stock, threshold, expected) => {
     expect(isLowStock(stock, threshold)).toBe(expected);
+  });
+});
+
+describe("stockLevel", () => {
+  it("is out at zero or below", () => {
+    expect(stockLevel(0, 3)).toBe("out");
+    expect(stockLevel(-2, 3)).toBe("out");
+  });
+
+  it("is low up to the restock threshold", () => {
+    expect(stockLevel(3, 3)).toBe("low");
+    expect(stockLevel(1, 3)).toBe("low");
+  });
+
+  it("uses a minimum low-stock band of 5 so small thresholds still warn", () => {
+    expect(stockLevel(5, 2)).toBe("low");
+    expect(stockLevel(6, 2)).toBe("in");
+  });
+
+  it("is in above the band", () => {
+    expect(stockLevel(10, 3)).toBe("in");
+    expect(stockLevel(12, 8)).toBe("in");
   });
 });

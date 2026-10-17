@@ -1,14 +1,7 @@
 import { cn } from "@/lib/utils";
+import { stockLevel, type StockLevel } from "@/lib/stock";
 
-type Level = "in" | "low" | "out";
-
-function stockLevel(stock: number, restockThreshold: number): Level {
-  if (stock <= 0) return "out";
-  if (stock <= Math.max(restockThreshold, 5)) return "low";
-  return "in";
-}
-
-const STYLES: Record<Level, { dot: string; text: string; label: (stock: number) => string }> = {
+const STYLES: Record<StockLevel, { dot: string; text: string; label: (stock: number) => string }> = {
   in: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400", label: () => "Sofort lieferbar" },
   low: {
     dot: "bg-amber-500",

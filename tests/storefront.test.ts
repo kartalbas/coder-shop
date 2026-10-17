@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ProductModel } from "@/models/product";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
-import { escapeRegex, listProducts, searchProducts } from "@/server/search";
+import { escapeRegex } from "@/lib/regex";
+import { listProducts, searchProducts } from "@/server/search";
 import { deriveFilter } from "@/lib/facets";
 
 function phoneData(index: number) {

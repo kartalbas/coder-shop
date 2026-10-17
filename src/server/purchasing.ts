@@ -1,11 +1,10 @@
-import mongoose, { type ClientSession } from "mongoose";
+import mongoose from "mongoose";
 import {
   createPurchaseOrderSchema,
   supplierInputSchema,
-  type CreatePurchaseOrderInput,
   type SupplierInput,
 } from "@/lib/validations/purchasing";
-import { CounterModel } from "@/models/counter";
+import { escapeRegex } from "@/lib/regex";
 import { ProductModel } from "@/models/product";
 import {
   PurchaseOrderModel,
@@ -13,7 +12,7 @@ import {
   type PurchaseOrderStatus,
 } from "@/models/purchase-order";
 import { SupplierModel, type Supplier } from "@/models/supplier";
-import { escapeRegex } from "./search";
+import { mintNumber } from "./numbers";
 import { connectDB } from "./db";
 
 export function formatPoNumber(year: number, seq: number): string {
@@ -108,10 +107,12 @@ export interface PurchaseOrderListItem {
   receivedAt?: Date;
 }
 
+export const PO_LIST_LIMIT = 200;
+
 export async function listPurchaseOrders(): Promise<PurchaseOrderListItem[]> {
   await connectDB();
   const [pos, suppliers] = await Promise.all([
-    PurchaseOrderModel.find().sort({ createdAt: -1 }).limit(200).lean<PurchaseOrder[]>().exec(),
+    PurchaseOrderModel.find().sort({ createdAt: -1 }).limit(PO_LIST_LIMIT).lean<PurchaseOrder[]>().exec(),
     SupplierModel.find().lean<Supplier[]>().exec(),
   ]);
   const names = new Map(suppliers.map((supplier) => [supplier._id.toString(), supplier.name]));
@@ -187,7 +188,7 @@ export async function createPurchaseOrderCore(input: unknown): Promise<
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
-    const poNumber = await mintPoNumber(session);
+    const { value: poNumber } = await mintNumber("po", formatPoNumber, session);
     const [created] = await PurchaseOrderModel.create(
       [
         {
@@ -214,16 +215,6 @@ export async function createPurchaseOrderCore(input: unknown): Promise<
   } finally {
     session.endSession();
   }
-}
-
-async function mintPoNumber(session: ClientSession): Promise<string> {
-  const counter = await CounterModel.findOneAndUpdate(
-    { _id: "po" },
-    { $inc: { seq: 1 } },
-    { upsert: true, returnDocument: "after", session },
-  );
-  if (!counter) throw new Error("Could not mint a PO number from the counter");
-  return formatPoNumber(new Date().getUTCFullYear(), counter.seq);
 }
 
 export async function markPurchaseOrderOrderedCore(poId: string): Promise<PurchasingResult> {
@@ -336,5 +327,3 @@ export async function searchVariantsBySku(query: string): Promise<SkuSearchHit[]
   }
   return hits.slice(0, 8);
 }
-
-export type { CreatePurchaseOrderInput };

@@ -10,7 +10,7 @@ export interface LoginActionState {
 }
 
 const loginFormSchema = z.object({
-  email: z.string().trim().min(1, "Bitte E-Mail eingeben.").email("Bitte eine gültige E-Mail eingeben."),
+  email: z.email("Bitte eine gültige E-Mail eingeben."),
   password: z.string().min(1, "Bitte Passwort eingeben."),
 });
 

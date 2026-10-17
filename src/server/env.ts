@@ -1,12 +1,18 @@
 import { z } from "zod";
 
+const optionalNonEmpty = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(1).optional(),
+);
+
 const envSchema = z.object({
-  MONGODB_URI: z.string().min(1).optional(),
-  UPS_CLIENT_ID: z.string().min(1).optional(),
-  UPS_CLIENT_SECRET: z.string().min(1).optional(),
-  UPS_ACCOUNT: z.string().min(1).optional(),
-  LLAMA_API_KEY: z.string().min(1).optional(),
-  IMAGE_API_URL: z.string().min(1).optional(),
+  MONGODB_URI: optionalNonEmpty,
+  SESSION_SECRET: optionalNonEmpty,
+  UPS_CLIENT_ID: optionalNonEmpty,
+  UPS_CLIENT_SECRET: optionalNonEmpty,
+  UPS_ACCOUNT: optionalNonEmpty,
+  LLAMA_API_KEY: optionalNonEmpty,
+  IMAGE_API_URL: optionalNonEmpty,
 });
 
 const parsed = envSchema.parse(process.env);
@@ -15,6 +21,7 @@ export const IMAGE_API_DEFAULT_URL = "http://192.168.10.210:8080/v1/images/gener
 
 export const env = {
   MONGODB_URI: parsed.MONGODB_URI,
+  SESSION_SECRET: parsed.SESSION_SECRET,
   UPS_CLIENT_ID: parsed.UPS_CLIENT_ID,
   UPS_CLIENT_SECRET: parsed.UPS_CLIENT_SECRET,
   UPS_ACCOUNT: parsed.UPS_ACCOUNT,

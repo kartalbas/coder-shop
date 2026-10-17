@@ -1,8 +1,32 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import mongoose from "mongoose";
 import { ProductModel } from "@/models/product";
-import { OrderModel } from "@/models/order";
+import { OrderModel, type Order } from "@/models/order";
 import { clearCollections, connectTestDB, disconnectTestDB } from "./db";
+
+function makeOrderFixture(orderNumber: string, reference: string): mongoose.mongo.OptionalId<Order> {
+  const now = new Date();
+  return {
+    orderNumber,
+    status: "new",
+    statusLog: [{ status: "new", at: now }],
+    customer: {
+      name: "Test",
+      email: "t@example.com",
+      phone: "044 000 00 00",
+      street: "Bahnhofstr. 1",
+      postalCode: "8001",
+      city: "Zürich",
+      country: "CH",
+    },
+    lines: [],
+    totals: { subtotalCents: 0, shippingCents: 0, totalCents: 0, vatCents: 0 },
+    shipping: { method: "standard" },
+    payment: { method: "mock", reference },
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 describe("database smoke (throw-away replica set)", () => {
   beforeAll(async () => {
@@ -44,29 +68,7 @@ describe("database smoke (throw-away replica set)", () => {
   it("commits a transaction", async () => {
     const session = await mongoose.startSession();
     await session.withTransaction(async () => {
-      await OrderModel.insertOne(
-        {
-          orderNumber: "B-2026-000001",
-          status: "new",
-          statusLog: [{ status: "new", at: new Date() }],
-          customer: {
-            name: "Test",
-            email: "t@example.com",
-            phone: "044 000 00 00",
-            street: "Bahnhofstr. 1",
-            postalCode: "8001",
-            city: "Zürich",
-            country: "CH",
-          },
-          lines: [],
-          totals: { subtotalCents: 0, shippingCents: 0, totalCents: 0, vatCents: 0 },
-          shipping: { method: "standard" },
-          payment: { method: "mock", reference: "P-1" },
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as never,
-        { session },
-      );
+      await OrderModel.insertOne(makeOrderFixture("B-2026-000001", "P-1"), { session });
     });
     session.endSession();
     expect(await OrderModel.countDocuments({ orderNumber: "B-2026-000001" })).toBe(1);
@@ -75,29 +77,7 @@ describe("database smoke (throw-away replica set)", () => {
   it("aborts a transaction and writes nothing", async () => {
     const session = await mongoose.startSession();
     session.startTransaction();
-    await OrderModel.insertOne(
-      {
-        orderNumber: "B-2026-000002",
-        status: "new",
-        statusLog: [{ status: "new", at: new Date() }],
-        customer: {
-          name: "Test",
-          email: "t@example.com",
-          phone: "044 000 00 00",
-          street: "Bahnhofstr. 1",
-          postalCode: "8001",
-          city: "Zürich",
-          country: "CH",
-        },
-        lines: [],
-        totals: { subtotalCents: 0, shippingCents: 0, totalCents: 0, vatCents: 0 },
-        shipping: { method: "standard" },
-        payment: { method: "mock", reference: "P-2" },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as never,
-      { session },
-    );
+    await OrderModel.insertOne(makeOrderFixture("B-2026-000002", "P-2"), { session });
     await session.abortTransaction();
     session.endSession();
     expect(await OrderModel.countDocuments({ orderNumber: "B-2026-000002" })).toBe(0);

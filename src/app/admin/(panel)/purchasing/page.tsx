@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PoCreateForm } from "@/components/admin/po-create-form";
 import { PurchaseOrderStatusBadge } from "@/components/admin/po-status-badge";
 import { formatChf, formatDate } from "@/lib/format";
-import { listPurchaseOrders, listSuppliers } from "@/server/purchasing";
+import { PO_LIST_LIMIT, listPurchaseOrders, listSuppliers } from "@/server/purchasing";
 
 export const metadata: Metadata = {
   title: "Einkauf — Admin",
@@ -91,6 +91,11 @@ async function PurchasingView() {
               </tbody>
             </table>
           </div>
+        )}
+        {pos.length >= PO_LIST_LIMIT && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Es werden die neuesten {PO_LIST_LIMIT} Bestellungen angezeigt.
+          </p>
         )}
       </section>
     </div>

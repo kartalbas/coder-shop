@@ -1,8 +1,8 @@
 import mongoose, { type ClientSession } from "mongoose";
 import {
   ORDER_STATUSES,
-  RESTOCK_STATUSES,
   transition,
+  transitionsWithRestock,
   type OrderStatus,
 } from "@/lib/orders/state-machine";
 import { OrderModel, type Order, type OrderDocument } from "@/models/order";
@@ -10,6 +10,8 @@ import { ProductModel } from "@/models/product";
 import { connectDB } from "./db";
 
 export type OrderFilter = OrderStatus | "all";
+
+export const ORDER_LIST_LIMIT = 200;
 
 export interface OrderListItem {
   id: string;
@@ -31,7 +33,7 @@ export async function listOrders(filter: OrderFilter): Promise<OrderListItem[]> 
   const query = filter === "all" ? {} : { status: filter };
   const orders = await OrderModel.find(query)
     .sort({ createdAt: -1 })
-    .limit(200)
+    .limit(ORDER_LIST_LIMIT)
     .lean<Order[]>()
     .exec();
   return orders.map((order) => ({
@@ -119,15 +121,23 @@ export async function transitionOrderCore(
     const from = order.status;
     const updated = transition(order.toObject(), to, opts);
 
-    if (to === "cancelled" && RESTOCK_STATUSES.includes(from)) {
-      await restockLines(order, session);
-    }
-
-    await OrderModel.updateOne(
-      { _id: order._id },
+    const moved = await OrderModel.updateOne(
+      { _id: order._id, status: from },
       { $set: { status: updated.status, statusLog: updated.statusLog } },
       { session },
     );
+    if (moved.matchedCount === 0) {
+      await session.abortTransaction();
+      return {
+        ok: false,
+        error: "Die Bestellung wurde zwischenzeitlich geändert. Bitte erneut versuchen.",
+      };
+    }
+
+    if (transitionsWithRestock(from, to)) {
+      await restockLines(order, session);
+    }
+
     await session.commitTransaction();
     return { ok: true, status: updated.status };
   } catch (error) {

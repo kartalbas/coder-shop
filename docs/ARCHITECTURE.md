@@ -17,14 +17,14 @@ UI copy and in the public URL paths `/produkte`, `/produkt/…`, `/warenkorb`, `
 |---|---|---|
 | next | 16.4.2 | App Router, Server Components, Server Actions, route handlers |
 | react / react-dom | 19.3.1 | UI |
-| typescript | 7.0.2 | strict mode |
+| typescript | 6.0.3 | strict mode (7.0.2 had no stable release at scaffold time — fallback per toolchain gate, recorded in DECISIONS) |
 | tailwindcss | 4.3.3 | styling (CSS-first config, `@theme`) |
 | @tailwindcss/postcss | 4.3.3 | PostCSS plugin for Tailwind v4 |
 | shadcn | 4.22.0 | CLI that vendors UI components into `src/components/ui` |
 | mongoose | 9.11.2 | ODM, typed schemas, indexes |
 | mongodb-memory-server | 11.3.0 | embedded **single-node replica set** (`MongoMemoryReplSet`) for dev/seed (persistent `./data/mongo`) and tests — real transactions (§6) |
 | vitest | 5.0.5 | unit/integration tests |
-| @vitejs/plugin-react | 6.1.2 | React transform for vitest (component tests if needed) |
+| @playwright/test | 1.64.1 | end-to-end tests (Chromium only, §12) |
 | eslint | 10.13.0 | linting, flat config (`eslint.config.mjs`) |
 | eslint-config-next | 16.4.2 | Next lint rules |
 | tsx | 4.23.15 | runs `scripts/seed/seed.ts` (`npm run seed`) |
@@ -43,9 +43,9 @@ Password hashing: `node:crypto` scrypt with explicit params (§4). Sessions: HMA
 (`node:crypto`), httpOnly, SameSite=Lax, with expiry (§4).
 
 **Toolchain gate (M1 task 1):** the scaffold task ends only when `next build` + `lint` + `vitest`
-are green on these pins (TypeScript 7.0.2 with Next 16.4.2). If a combination does not build,
-fall back to the newest combination that does and record the actual versions in
-`docs/DECISIONS.md`.
+are green on these pins. If a combination does not build, fall back to the newest combination
+that does and record the actual versions in `docs/DECISIONS.md` — this is why the repo runs
+TypeScript 6.0.3 (no stable 7.x at scaffold time) against the table's original target.
 
 **mongodb-memory-server binary (undeclared-network-dependency fix):** pin the mongod binary
 version via the `mongodb-memory-server` config block in `package.json` (`version` — value
@@ -88,13 +88,14 @@ src/
       checkout/page.tsx     # public URL /kasse
       order/[number]/page.tsx      # confirmation + status — public URL /bestellung/[nummer]
     admin/                  # admin URLs stay English (internal)
-      layout.tsx            # session guard (server), sidebar
       login/page.tsx
-      page.tsx              # dashboard
-      products/page.tsx, products/[id]/page.tsx
-      orders/page.tsx, orders/[id]/page.tsx
-      packing/page.tsx, packing/[id]/page.tsx (+ print view)
-      purchasing/page.tsx, purchasing/[id]/page.tsx, suppliers/page.tsx
+      (panel)/              # session-guarded group (layout requires the admin session)
+        layout.tsx          # sidebar
+        page.tsx            # dashboard
+        products/page.tsx, products/[id]/page.tsx
+        orders/page.tsx, orders/[id]/page.tsx
+        packing/page.tsx, packing/[id]/page.tsx (+ print view)
+        purchasing/page.tsx, purchasing/[id]/page.tsx, suppliers/page.tsx
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
     api/
       search/route.ts       # GET instant search JSON
@@ -104,34 +105,52 @@ src/
   components/
     ui/                     # shadcn components (button, dialog, drawer, sheet, …)
     storefront/
-      header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx
-      cart-drawer.tsx, cart-button.tsx, product-card.tsx
-      filter-sidebar.tsx, sort-select.tsx, pagination.tsx, skeletons.tsx, empty-state.tsx
-      gallery.tsx, variant-picker.tsx, stock-indicator.tsx, related-products.tsx,
+      header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx, footer.tsx
+      cart-drawer.tsx, cart-button.tsx, cart-provider.tsx, cart-page-view.tsx, product-card.tsx
+      listing-shell.tsx, filter-sidebar.tsx, sort-select.tsx, pagination.tsx, skeletons.tsx,
+      empty-state.tsx
+      gallery.tsx, product-detail.tsx   # variant picker inlined in product-detail
+      stock-indicator.tsx, related-products.tsx, checkout-form.tsx,
       product-image.tsx            # photo vs neutral placeholder (§11)
       breadcrumbs.tsx, json-ld.tsx, route-transition.tsx
     admin/
-      sidebar.tsx, order-status-badge.tsx, status-timeline.tsx, product-form.tsx,
-      variant-editor.tsx, po-lines-editor.tsx, pack-list.tsx, label-actions.tsx
+      sidebar.tsx, login-form.tsx, order-status-badge.tsx, status-timeline.tsx,
+      transition-buttons.tsx, product-search.tsx, product-core-form.tsx, variant-editor.tsx,
+      po-create-form.tsx, po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
+      revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx
   models/
     product.ts order.ts user.ts supplier.ts purchase-order.ts counter.ts
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
     format.ts             # CHF de-CH, dates, weights
     pricing.ts            # gross/net VAT 8.1 %, totals, VAT rounding rule (§8 note)
-    stock.ts              # pure predicates: canFulfill, applyDelta, isLowStock
+    stock.ts              # pure stock rules: isLowStock, stockLevel (grün/gelb/rot)
     facets.ts             # deriveFilter(variants) — pure facet derivation (§3/§4)
-    orders/state-machine.ts # transitions + validation + logging (pure)
+    regex.ts              # escapeRegex (shared by search + SKU search)
+    menu.ts               # mega-menu categories/brands (synced with the seed, tested)
+    images.ts             # isPhotoSrc — photo vs placeholder rule (§11)
+    orders/state-machine.ts # statuses, transitions + validation + logging (pure)
+    orders/labels.ts      # German status/transition labels (UI copy only)
     shipping/types.ts     # ShippingProvider interface, label/tracking result types
     shipping/weight.ts    # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
     validations/          # zod schemas shared by actions + forms
   server/                 # ALL I/O: db, session, queries, providers, actions
     db.ts                 # single connection helper (see §6)
-    env.ts                # zod-validated env access (MONGODB_URI, UPS_* optional w/ defaults)
-    session.ts            # admin login/session cookie (scrypt, HMAC, expiry, throttle)
+    env.ts                # zod-validated env access (MONGODB_URI, UPS_*, SESSION_SECRET optional)
+    numbers.ts            # mintNumber(counterId, format) — shared order/PO number minting
+    session-token.ts      # pure HMAC cookie sign/verify
+    session.ts            # admin login/session (scrypt, throttle, cookie helpers)
+    password.ts           # scrypt hash/verify (self-describing format)
+    checkout.ts           # createOrderCore (transaction)
+    orders.ts             # customer confirmation lookup (getOrderByNumber)
+    orders-admin.ts       # listOrders, transitionOrderCore (conditional write + restock)
+    products-admin.ts     # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
+    purchasing.ts         # supplier + PO cores (create/markOrdered/receive, transaction)
+    dashboard.ts          # revenue series, open counts, low stock, recent orders
     search.ts             # Mongo query/aggregate builders + toProductDto() shared DTO mapper
     shipping/provider.ts  # factory (env-driven)
     shipping/ups.ts       # UpsShippingProvider (UPS REST, token cache, §4)
     shipping/mock.ts      # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
+    shipping/label.ts     # createLabelCore (packed-only, idempotent, conditional move)
     actions/
       checkout.ts         # thin action wrapper → createOrderCore (transaction)
       admin/products.ts   # updateProduct, updateVariant, toggleFeatured → *Core fns
@@ -143,9 +162,11 @@ src/
   stores/
     cart.ts               # useSyncExternalStore store, localStorage-persisted
   hooks/
-    use-debounce.ts, use-media-query.ts
+    use-debounce.ts
   test/
     setup.ts              # globalSetup: throw-away MongoMemoryReplSet (§6)
+    smoke.test.ts         # DB round-trip + transaction commit/abort
+tests/                    # integration tests (throw-away replica set) + e2e/ (Playwright, §12)
 vitest.config.ts  eslint.config.mjs  next.config.ts  components.json  postcss.config.mjs
 ```
 
@@ -203,8 +224,8 @@ Indexes:
   `{ type: 1, 'filter.colors': 1 }`, `{ type: 1, 'filter.materials': 1 }` — faceted filters
 - `{ type: 1, priceCents: 1 }`, `{ type: 1, createdAt: -1 }` — sorting
 - `{ featured: 1, type: 1 }` — home page
-- text index `{ name: 'text', description: 'text', brand: 'text' }` — search (default analyzer;
-  German stemming is **not** used — recorded in DECISIONS)
+- No text index: search is a regex-escaped literal prefix on `name`/`brand` (§4) — enough at
+  200 docs, so the write-time cost of a text index is not paid (recorded in DECISIONS)
 - Listing queries hit compound filters + sort with `{ type: 1, ...facet..., <sort>: 1 }` shapes;
   **every sort appends `_id: 1` as tiebreaker** (stable pagination) and `page` is clamped to
   `[1, ceil(total/pageSize)]`. The aggregate for facets uses `$facet` over the type-filtered set.
@@ -260,7 +281,9 @@ results and are covered by Vitest integration tests against the real replica set
 
 - `createOrderCore(cart, customer, shippingMethod)` — validates, then runs **one MongoDB
   transaction** (single-node replica set, §6): re-check stock, decrement each variant with
-  `findOneAndUpdate({ 'variants.$[v].stock': { $gte: qty } })`, mint `orderNumber` from the
+  `findOneAndUpdate({ variants: { $elemMatch: { sku, stock: { $gte: qty } } } })` — the guard
+  and the decrement must hit the **same** array element (`$elemMatch`, not independent dotted
+  conditions; QA regression test in `tests/create-order.test.ts`), mint `orderNumber` from the
   counter, insert the order `status: 'new'`, mock payment → `paid` immediately. Any failure
   aborts the transaction — **no compensation scheme** (removed; the transaction is the
   rollback). Stock model decision (docs/DECISIONS.md): decrement at `createOrder`, restock on
@@ -283,7 +306,7 @@ results and are covered by Vitest integration tests against the real replica set
 Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
 - `GET /api/search?q=` → ≤8 hits `{ slug, name, type, priceCents, image, variantHint }`
   (debounced client-side). User input is regex-escaped and matched as a **literal prefix**
-  (enough at 200 docs; no raw regex → no injection/ReDoS); text index covers name/brand.
+  on `name`/`brand` (enough at 200 docs; no raw regex → no injection/ReDoS).
 - `GET /api/products?type=&brand=&size=&color=&storage=&material=&sort=&page=` → the exact DTO
   the server page renders, produced by the shared `toProductDto()` mapper in `src/server/search.ts`
   (ObjectId→string, Date→ISO, `filter` shape) so client and server never hydrate different
@@ -360,10 +383,13 @@ all use **`MongoMemoryReplSet` (single-node)** — no compensation scheme anywhe
   succeeds. `next build` must succeed with no mongod running — an acceptance check every
   milestone.
 - **tests** (vitest): `globalSetup` starts a throw-away `MongoMemoryReplSet` (in-RAM, no
-  dbPath), exports its URI to workers; the pool runs **single-threaded**
-  (`poolOptions: { threads: { singleThread: true } }`) so the shared mongod is never queried
-  while another file wipes collections — cheap at this scale and keeps the "npm test green"
-  gate non-flaky. Unit tests of pure lib logic need no DB.
+  dbPath), exports its URI to workers; the pool runs **serially** (`maxWorkers: 1` +
+  `fileParallelism: false` — Vitest 5 replaced `poolOptions.threads.singleThread`, see
+  DECISIONS) so the shared mongod is never queried while another file wipes collections —
+  cheap at this scale and keeps the "npm test green" gate non-flaky. Unit tests of pure lib
+  logic need no DB.
+- **e2e** (Playwright): `tests/e2e/` runs against a **production build** on its own port with
+  a freshly seeded throw-away replica set (§12) — never against `data/mongo`.
 - **deployment target (docs/DECISIONS.md):** a long-running Node server (`next start`). All
   routes `runtime = 'nodejs'` (mongoose/MMS fail on edge). Production requires `MONGODB_URI`;
   the memory server is dev/seed/test only. `data/mongo` and `data/labels` assume one
@@ -396,7 +422,7 @@ all use **`MongoMemoryReplSet` (single-node)** — no compensation scheme anywhe
 
 ## 8. UX concept per page
 
-Global: mobile-first, dark mode via `next-themes`-style class strategy (own tiny provider,
+Global: mobile-first, dark mode via the `next-themes` package (class strategy,
 `prefers-color-scheme` default, toggle in header), visible focus rings, semantic landmarks,
 German copy, CHF formatted `Intl.NumberFormat('de-CH', { style:'currency', currency:'CHF' })`.
 
@@ -481,8 +507,8 @@ on a single-node replica set), security parameters (Origin checks, 12 h cookie e
 N=2^15/r=8/p=1, login throttle), labels outside the web root (`data/labels/`), deployment
 target (long-running Node server, `runtime='nodejs'`, prod needs `MONGODB_URI`), shipping
 prices (4.90/12.90, free ≥ 100) and VAT rounding rule, MMS binary pinning + download cache +
-`MONGOMS_SYSTEM_BINARY` fallback, English-code/German-URL rule with rewrites, no German
-stemming in the text index, toolchain fallback rule (M1 task 1).
+`MONGOMS_SYSTEM_BINARY` fallback, English-code/German-URL rule with rewrites, no text index
+(regex prefix search instead), toolchain fallback rule (M1 task 1).
 
 ## 11. Image pipeline (M6 — product photos)
 
@@ -521,3 +547,27 @@ caps generations per run; resumable, stop/restart anytime).
   (`$setOnInsert`) — re-seeding after a generation run must never reset recorded photo
   paths back to the `.svg` placeholders; a drifted document is repaired by the next
   `npm run images` (skip pass).
+
+## 12. End-to-end tests (Playwright, `npm run test:e2e`)
+
+Chromium only (`@playwright/test` 1.64.1, `tests/e2e/playwright.config.ts`, single worker).
+`global-setup.ts` refuses to run without a production build (`.next/BUILD_ID`), then:
+starts a throw-away `MongoMemoryReplSet`, seeds it fresh (`seed.ts --fresh` with
+`MONGODB_URI` pointed at it — `data/mongo` is never touched), spawns `next start` on its own
+port (`E2E_PORT`, default 3100, host 127.0.0.1), waits for `/api/health` and tears everything
+down afterwards.
+
+Specs (the three required journeys):
+- `storefront.spec.ts` — browse home → listing with faceted filter → product page (gallery
+  thumbnail navigation, variant picker updates price) → add to cart (drawer) → cart page →
+  checkout (address + shipping + mock payment) → confirmation URL with `B-YYYY-######`
+  order number, "Bezahlt" and the VAT note.
+- `admin-shipping.spec.ts` — admin login → first `paid` order → `picking` → `packed` →
+  UPS label via the **mock provider** → `shipped` with a `1Z…` tracking number, which is then
+  asserted on the customer confirmation page.
+- `purchasing.spec.ts` — open the seeded `ordered` PO → read its lines → "Wareneingang" →
+  every line's variant stock increased by exactly the ordered quantity (stock read through
+  the admin product search page).
+
+Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
+prerequisite; `npm test` and `npm run lint` are independent).

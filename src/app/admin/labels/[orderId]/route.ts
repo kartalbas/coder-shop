@@ -30,7 +30,8 @@ export async function GET(
   }
 
   const file = path.resolve(order.shipping.labelPath);
-  if (!file.startsWith(path.resolve(LABELS_DIR))) {
+  const relative = path.relative(path.resolve(LABELS_DIR), file);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
     return NextResponse.json({ error: "Ungültiger Etiketten-Pfad." }, { status: 400 });
   }
 

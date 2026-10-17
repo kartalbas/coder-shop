@@ -180,4 +180,24 @@ describe("transitionOrderCore", () => {
     const result = await transitionOrderCore("000000000000000000000000", "picking");
     expect(result).toEqual({ ok: false, error: "Bestellung nicht gefunden." });
   });
+
+  it("restocks exactly once when two cancels race (M1)", async () => {
+    const product = await seedProduct("TR-9", 10);
+    const order = await seedOrder("paid", "TR-9", 4, product._id);
+
+    const results = await Promise.allSettled([
+      transitionOrderCore(order._id.toString(), "cancelled"),
+      transitionOrderCore(order._id.toString(), "cancelled"),
+    ]);
+
+    const succeeded = results.filter(
+      (r) => r.status === "fulfilled" && r.value.ok === true,
+    );
+    expect(succeeded).toHaveLength(1);
+    expect(await stockOf("TR-9")).toBe(14);
+
+    const fresh = await OrderModel.findById(order._id).lean<Order>().exec();
+    expect(fresh?.status).toBe("cancelled");
+    expect(fresh?.statusLog.filter((e) => e.status === "cancelled")).toHaveLength(1);
+  });
 });

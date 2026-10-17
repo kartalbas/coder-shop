@@ -3,7 +3,6 @@ import { z } from "zod";
 export const productTypes = ["smartphone", "shoes", "clothing"] as const;
 export const sortKeys = ["price-asc", "price-desc", "newest"] as const;
 
-export type ProductTypeParam = (typeof productTypes)[number];
 export type SortKey = (typeof sortKeys)[number];
 
 const first = z.preprocess(

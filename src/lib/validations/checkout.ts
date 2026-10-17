@@ -30,9 +30,4 @@ export const checkoutSchema = z.object({
 });
 
 export type CheckoutCustomer = z.infer<typeof checkoutCustomerSchema>;
-export type CheckoutLine = z.infer<typeof checkoutLineSchema>;
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
-
-export function checkoutPayloadError(error: z.ZodError): string {
-  return error.issues.map((issue) => issue.message).join(" ");
-}

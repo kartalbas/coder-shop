@@ -28,7 +28,7 @@ export async function POST(
   const { orderId } = await context.params;
   const result = await createLabelCore(orderId);
   if (!result.ok) {
-    const status = result.error.includes("nicht gefunden") ? 404 : 409;
+    const status = result.reason === "not_found" ? 404 : 409;
     return NextResponse.json({ error: result.error }, { status });
   }
   return NextResponse.json({ ok: true, trackingNumber: result.trackingNumber });

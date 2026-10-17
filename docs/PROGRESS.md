@@ -347,6 +347,57 @@ Open / known issues
 - The PO editor's unit-price field accepts any non-negative CHF amount; supplier lead time
   is displayed but not enforced anywhere.
 
+## QA — review fixes, admin products, e2e ✅ (2026-10-17)
+
+Done
+- **B1 (blocker):** checkout stock guard fixed — `decrementStock` now uses
+  `variants: { $elemMatch: { sku, stock: { $gte: qty } } }` so guard and decrement hit the
+  same variant (`src/server/checkout.ts`); regression test: multi-variant product, ordered
+  variant at 0 with a well-stocked sibling → order fails, nothing moves
+  (`tests/create-order.test.ts`).
+- **B2 (blocker):** admin product management implemented — `/admin/products` (debounced
+  search incl. exact SKU lookup, inline stock edit) and `/admin/products/[id]` (core form,
+  variant table with price delta/stock/weight/attributes, image strip, featured toggle)
+  behind `updateProductCore`/`updateVariantCore`/`toggleFeaturedCore`
+  (`src/server/products-admin.ts`, `src/server/actions/admin/products.ts`), every
+  variant-touching write recomputes `filter` via `deriveFilter`; sidebar entry added;
+  integration test asserts "edit a variant's colour → listing facet reflects it"
+  (`tests/admin-products.test.ts`).
+- **Majors M1–M8:** `transitionOrderCore` now writes conditionally on the validated status
+  (`updateOne({ _id, status: from })`, `matchedCount === 0` → clean conflict) and restocks
+  only after the move won; `tests/checkout-transaction.test.ts` deleted (duplicated the
+  buggy query; coverage lives in `tests/create-order.test.ts`); text index dropped (search
+  is the regex prefix, docs corrected); dead code/exports/files/deps removed
+  (`ORDER_NUMBER_YEAR`, `checkoutPayloadError`, `canFulfill`/`applyDelta`, unused UI
+  components + `vaul`, `@vitejs/plugin-react`, `deriveFilter` re-export, …) and duplicated
+  helpers deduplicated (`src/server/numbers.ts` `mintNumber`, shared tracking generator,
+  `src/lib/regex.ts`); `z.coerce.boolean()` → `z.boolean()`; mega-menu brands synced with
+  the catalog and enforced by `tests/mega-menu.test.ts`; JSON-LD escapes `<` (`\u003c`);
+  ARCHITECTURE reconciled with the tree (§1/§2/§3/§6/§8 + new §12 e2e).
+- **Minors:** actor = session user's e-mail in the order log; label path containment via
+  `path.relative`; typed `reason` from `createLabelCore` (no German-substring status
+  mapping); label PDF written only after the conditional move wins; health endpoint returns
+  a generic message; dummy-hash verify for unknown accounts (no timing oracle); bounded
+  throttle sweep; `SESSION_SECRET` through the env schema with empty-string preprocessing;
+  `?edit=`; `z.email()`; visible "neuesten 200" caps; stock-level thresholds moved to
+  `src/lib/stock.ts` (`stockLevel`); `suppressReservedKeysWarning`; `makeOrderFixture`
+  (no `as never`); mega-menu Escape + focus-visible; `next-env.d.ts` committed; exact
+  dependency pins; README images/e2e/env sections; session-outlives-user and list caps
+  recorded in DECISIONS. Not fixed (deliberate, reasons in CODE-REVIEW "Resolution"):
+  revenue `paidAt` bucketing (worded instead) and per-order in-flight label dedupe.
+- **E2E (Playwright 1.64.1, Chromium only):** `tests/e2e/` + `npm run test:e2e` — global
+  setup requires a production build, starts a throw-away replica set, seeds it fresh
+  (`--fresh`, own `MONGODB_URI`), runs `next start` on port 3100 and tears down. Specs:
+  storefront (browse → filter → product page with gallery + variant → cart → checkout →
+  confirmation with `B-YYYY-######`), admin shipping (login → picking → packed → mock UPS
+  label → shipped, tracking shown on the confirmation), purchasing (PO Wareneingang →
+  variant stock up by exactly the ordered qty). 3/3 green.
+
+Verified
+- `npm run build` ✅, `npm run lint` ✅, `npm test` ✅ (unit + integration, throw-away
+  replica set), `npm run test:e2e` ✅ 3/3 against the production build on port 3100 with a
+  freshly seeded database.
+
 ## Next
 
-Done — M1–M6 complete.
+Done — M1–M6 + QA complete.

@@ -17,7 +17,6 @@ export function JsonLd({ product }: { product: ProductDto }) {
         variant.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
     })),
   };
-  return (
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(json) }} />
-  );
+  const html = JSON.stringify(json).replace(/</g, "\\u003c");
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: html }} />;
 }

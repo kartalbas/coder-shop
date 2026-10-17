@@ -1,6 +1,5 @@
 "use server";
 
-import { checkoutSchema } from "@/lib/validations/checkout";
 import { createOrderCore } from "@/server/checkout";
 
 export interface CheckoutActionState {
@@ -25,15 +24,8 @@ export async function createOrderAction(
     return { ok: false, error: "Ungültige Formular-Daten." };
   }
 
-  const parsed = checkoutSchema.safeParse(json);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Bitte Eingaben prüfen.",
-    };
-  }
-
-  const result = await createOrderCore(parsed.data);
+  // createOrderCore validates the payload with the same zod schema — no second parse here.
+  const result = await createOrderCore(json);
   if (!result.ok) return { ok: false, error: result.error };
   return { ok: true, orderNumber: result.orderNumber };
 }

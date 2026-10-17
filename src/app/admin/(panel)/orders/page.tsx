@@ -8,7 +8,12 @@ import { formatChf, formatDate } from "@/lib/format";
 import { ORDER_STATUSES } from "@/lib/orders/state-machine";
 import { STATUS_LABELS } from "@/lib/orders/labels";
 import { cn } from "@/lib/utils";
-import { countOrdersByStatus, listOrders, type OrderFilter } from "@/server/orders-admin";
+import {
+  ORDER_LIST_LIMIT,
+  countOrdersByStatus,
+  listOrders,
+  type OrderFilter,
+} from "@/server/orders-admin";
 
 export const metadata: Metadata = {
   title: "Bestellungen — Admin",
@@ -112,6 +117,11 @@ async function OrdersView({
             </tbody>
           </table>
         </div>
+      )}
+      {orders.length >= ORDER_LIST_LIMIT && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Es werden die neuesten {ORDER_LIST_LIMIT} Bestellungen angezeigt.
+        </p>
       )}
     </div>
   );

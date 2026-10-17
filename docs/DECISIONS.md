@@ -35,8 +35,9 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - Labels under `data/labels/` (outside the web root — PII).
 - Deployment target: long-running Node server, all routes `runtime = 'nodejs'`, production
   requires `MONGODB_URI`.
-- English code / German public URLs via `next.config.ts` rewrites; no German stemming in the
-  text index.
+- English code / German public URLs via `next.config.ts` rewrites; **no text index** — search
+  is a regex-escaped literal prefix on `name`/`brand` (enough at 200 docs; a text index would
+  be pure write-time cost and German stemming was never wanted).
 
 ## Storefront (M2)
 
@@ -139,3 +140,19 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - Storefront placeholder rule lives in one component (`product-image.tsx`): photo extensions
   render `<img>`, anything else (seed `.svg`) renders a neutral muted panel — no cartoon SVG
   is ever shown.
+
+## QA (phase 6)
+
+- **Session outlives the user:** `requireAdminSession` verifies the signed token only; a
+  deleted admin keeps access until the cookie's 12 h `exp` passes. Deliberate for the
+  single-admin demo (no user management exists); a real deployment would re-resolve the user
+  per request or keep a revocation list.
+- **List caps:** admin order and PO lists show the newest 200 entries (`ORDER_LIST_LIMIT` /
+  `PO_LIST_LIMIT`) with a visible "neuesten 200" hint when the cap is hit — pagination is
+  out of scope at demo scale but the truncation is no longer silent.
+- **Dashboard revenue buckets by `createdAt`** (not `payment.paidAt`); the KPI card copy says
+  "Umsatz der letzten 30 Tage (Status bezahlt bis zugestellt)" so the label matches the
+  query.
+- **E2E strategy:** Playwright (Chromium only) against a production build on its own port
+  with a freshly seeded throw-away replica set (`tests/e2e/`, ARCHITECTURE §12) — the
+  developer's `data/mongo` is never touched.

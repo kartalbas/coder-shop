@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ORDER_STATUSES, IllegalTransitionError, type OrderStatus } from "@/lib/orders/state-machine";
 import { transitionOrderCore } from "@/server/orders-admin";
-import { requireAdminSession } from "@/server/session";
+import { getAdminEmail, requireAdminSession } from "@/server/session";
 
 export interface TransitionActionState {
   ok?: boolean;
@@ -23,7 +23,8 @@ export async function transitionOrderAction(
   _previous: TransitionActionState | null,
   formData: FormData,
 ): Promise<TransitionActionState> {
-  await requireAdminSession();
+  const userId = await requireAdminSession();
+  const adminEmail = await getAdminEmail(userId);
 
   const parsed = transitionSchema.safeParse({
     orderId: formData.get("orderId"),
@@ -36,7 +37,7 @@ export async function transitionOrderAction(
   try {
     const result = await transitionOrderCore(orderId, to, {
       note: to === "cancelled" ? (note ?? CANCEL_NOTE) : note,
-      by: "admin@codershop.ch",
+      by: adminEmail ?? "admin",
     });
     if (!result.ok) return { error: result.error };
   } catch (error) {

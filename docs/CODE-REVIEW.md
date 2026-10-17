@@ -369,3 +369,84 @@ real transactions, a correctly implemented state machine and a well-documented s
 But it is not shippable as-is: **B1** corrupts stock on the main commerce path (and the suite
 structurally cannot see it), and **B2** leaves an explicit ADMIN requirement unimplemented while
 PROGRESS claims completion. Fix B1–B2, then M1–M8; the minors are a cleanup sweep.
+
+---
+
+## 8. Resolution (QA phase, 2026-10-17)
+
+Status legend: ✅ fixed · 🚫 deliberately not fixed (reason). Details in `docs/PROGRESS.md` "QA".
+
+### Blockers
+
+- **B1 ✅** — `decrementStock` uses `variants: { $elemMatch: { sku, stock: { $gte: qty } } }`
+  (`src/server/checkout.ts`); regression test added (multi-variant product, ordered variant
+  at 0, stocked sibling → order fails, stock unmoved, `tests/create-order.test.ts`).
+- **B2 ✅** — `/admin/products` (debounced search, inline stock edit) + `/admin/products/[id]`
+  (core form, variant table, image strip, featured toggle) behind
+  `updateProductCore`/`updateVariantCore`/`toggleFeaturedCore` (`src/server/products-admin.ts`,
+  `src/server/actions/admin/products.ts`); `filter` recomputed via `deriveFilter` on every
+  variant-touching write; sidebar entry; the promised integration test ("edit a variant's
+  colour → listing facet reflects it") is in `tests/admin-products.test.ts`. PROGRESS updated.
+
+### Majors
+
+- **M1 ✅** — `transitionOrderCore` writes with `updateOne({ _id, status: from })`;
+  `matchedCount === 0` aborts with a clean conflict error; restock runs only after the
+  conditional move won (`src/server/orders-admin.ts`).
+- **M2 ✅** — `tests/checkout-transaction.test.ts` deleted; coverage (incl. the B1
+  multi-variant regression) lives in `tests/create-order.test.ts`, which calls
+  `createOrderCore` directly.
+- **M3 ✅** — text index dropped from `src/models/product.ts`; ARCHITECTURE §3/§4 and
+  DECISIONS now state the regex-prefix search honestly.
+- **M4 ✅** — dead exports/files/deps removed (`ORDER_NUMBER_YEAR`, `checkoutPayloadError`,
+  `CheckoutLine`, `ProductTypeParam`, `PoLineInput`, the `CreatePurchaseOrderInput`
+  re-export, the `deriveFilter` model re-export, `avatar/tabs/table/drawer.tsx` + `vaul`,
+  `@vitejs/plugin-react`); `canFulfill`/`applyDelta` deleted (the real guard is the DB
+  `$elemMatch`; `isLowStock`/`stockLevel` are used at their call sites) and
+  `transitionsWithRestock` is now used by `transitionOrderCore`; mock tracking generator
+  deduplicated (`mockTrackingNumber` imported by the seed) and order/PO minting extracted
+  to `src/server/numbers.ts` (`mintNumber`).
+- **M5 ✅** — `active: z.boolean()` (the only producer already coerces).
+- **M6 ✅** — menu brands moved to `src/lib/menu.ts`, synced with the seeded catalog
+  (Columbia removed, New Balance added) and enforced by `tests/mega-menu.test.ts`
+  (every listed brand has ≥ 1 catalog product).
+- **M7 ✅** — `json-ld.tsx` escapes `<` as `\u003c` before injecting.
+- **M8 ✅** — ARCHITECTURE reconciled: real file tree (§2, incl. `(panel)/`, actual component
+  names, `use-debounce.ts` only), TypeScript 6.0.3 with the fallback explained (§1), Vitest 5
+  serial-pool config (§6), `next-themes` (§8), text-index claims removed (§3/§4/§10), new
+  §12 documents the e2e setup.
+
+### Minors
+
+1. ✅ actor = session user's e-mail (`getAdminEmail`, fallback `"admin"`).
+2. ✅ `path.relative`-based containment in the label route.
+3. ✅ typed `reason` (`not_found | not_packed | provider_error | conflict`) drives the status.
+4. ✅ PDF written only after the conditional `packed → shipped` move wins. 🚫 per-order
+   in-flight dedupe not added: the conditional move already makes the *state* converge on the
+   first label; only a provider double-call on a true race remains, unreachable in the
+   single-process demo (real UPS billing needs idempotency keys — out of scope).
+5. ✅ generic German message; detail logged server-side.
+6. 🚫 session still outlives a deleted user (12 h max) — single-admin demo, no user
+   management exists; recorded in DECISIONS.
+7. ✅ dummy scrypt hash verified for unknown accounts.
+8. ✅ throttle map swept when it reaches 1000 entries.
+9. ✅ `SESSION_SECRET` goes through `src/server/env.ts`.
+10. ✅ `"" → undefined` preprocessing in the env schema.
+11. ✅ `?edit=`.
+12. ✅ `z.email()`.
+13. ✅ visible "neuesten 200" hint on both capped lists (`ORDER_LIST_LIMIT`/`PO_LIST_LIMIT`).
+14. 🚫 still bucketed by `createdAt` — DECISIONS records it and the KPI copy now says
+    "Umsatz der letzten 30 Tage (Status bezahlt bis zugestellt)"; `paidAt` bucketing would
+    change the tested revenue semantics for no demo benefit.
+15. ✅ `resolveLines` runs inside the transaction (prices read under the session).
+16. ✅ `src/models/order.ts` imports `ORDER_STATUSES` from the state machine.
+17. ✅ `escapeRegex` moved to `src/lib/regex.ts`.
+18. ✅ the action no longer parses — `createOrderCore` is the single zod boundary.
+19. ✅ `suppressReservedKeysWarning` — test/seed output is warning-free.
+20. ✅ thresholds moved to `stockLevel()` in `src/lib/stock.ts`; the component maps levels.
+21. ✅ README documents `npm run images`, `LLAMA_API_KEY`, `IMAGE_API_URL`, `E2E_PORT` and
+    the photo pipeline.
+22. ✅ `makeOrderFixture()` — no `as never` left in the suite.
+23. ✅ Escape closes the mega-menu; focus-visible rings on all menu links.
+24. ✅ `next-env.d.ts` committed (un-ignored).
+25. ✅ exact pins everywhere (incl. `@playwright/test 1.64.1`); `vaul` gone.

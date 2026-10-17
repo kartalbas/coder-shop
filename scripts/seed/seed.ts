@@ -12,6 +12,7 @@ import { UserModel } from "@/models/user";
 import { connectDB, dbMode, disconnectDB, isDbPathLocked } from "@/server/db";
 import { env } from "@/server/env";
 import { hashPassword } from "@/server/password";
+import { mockTrackingNumber } from "@/server/shipping/mock";
 import { generateCatalog, mulberry32 } from "./catalog";
 import { productSvg } from "./svg";
 
@@ -56,13 +57,6 @@ const STATUS_PLAN: OrderStatus[] = [
 
 const CHAIN: OrderStatus[] = ["new", "paid", "picking", "packed", "shipped", "delivered"];
 
-function trackingNumber(rng: () => number): string {
-  const chars = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-  let rest = "";
-  for (let i = 0; i < 16; i++) rest += chars[Math.floor(rng() * chars.length)];
-  return `1Z${rest}`;
-}
-
 async function seedProducts(): Promise<number> {
   const catalog = generateCatalog();
   const imagesDir = path.resolve("public/products");
@@ -102,7 +96,7 @@ async function seedSuppliers() {
     const doc = await SupplierModel.findOneAndUpdate(
       { name: supplier.name },
       { $set: supplier, $setOnInsert: {} },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
     byName.set(supplier.name, doc._id);
   }
@@ -175,7 +169,7 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
         ...(shipped
           ? {
               carrier: "ups" as const,
-              trackingNumber: trackingNumber(rng),
+              trackingNumber: mockTrackingNumber(rng),
               parcelWeightGrams: parcelWeightGrams(lines),
             }
           : {}),

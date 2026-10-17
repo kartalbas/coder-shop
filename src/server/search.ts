@@ -2,6 +2,7 @@ import { Types, type HydratedDocument } from "mongoose";
 import { connectDB } from "./db";
 import { ProductModel, type Product, type ProductFilter, type ProductType } from "@/models/product";
 import type { ProductAttributes } from "@/lib/facets";
+import { escapeRegex } from "@/lib/regex";
 import type { SortKey } from "@/lib/validations/listing";
 
 export interface VariantDto {
@@ -240,10 +241,6 @@ export interface SearchHit {
   priceCents: number;
   image: string | null;
   variantHint: string;
-}
-
-export function escapeRegex(input: string): string {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export async function searchProducts(query: string, limit = 8): Promise<SearchHit[]> {

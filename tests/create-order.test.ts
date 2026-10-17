@@ -149,6 +149,50 @@ describe("createOrderCore", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("refuses to order a sold-out variant when a sibling variant is well stocked (B1)", async () => {
+    await ProductModel.create({
+      slug: "checkout-test-multivariant",
+      name: "Checkout Test Multivariant",
+      description: "Ein Variant ausverkauft, der andere gut bestückt.",
+      type: "smartphone",
+      brand: "Testmarke",
+      priceCents: 10000,
+      images: [{ src: "/products/checkout-test-multivariant-1.svg", alt: "Test" }],
+      featured: false,
+      filter: { colors: ["schwarz", "weiß"], sizes: [], storage: [128], materials: [] },
+      variants: [
+        {
+          sku: "CT-empty",
+          label: "128 GB / schwarz",
+          priceDeltaCents: 0,
+          stock: 0,
+          restockThreshold: 3,
+          weightGrams: 200,
+          attributes: { color: "schwarz", storage: 128 },
+        },
+        {
+          sku: "CT-full",
+          label: "128 GB / weiß",
+          priceDeltaCents: 0,
+          stock: 10,
+          restockThreshold: 3,
+          weightGrams: 200,
+          attributes: { color: "weiß", storage: 128 },
+        },
+      ],
+    });
+
+    const result = await createOrderCore({
+      lines: [{ sku: "CT-empty", qty: 5 }],
+      customer: CUSTOMER,
+      shippingMethod: "standard",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(await stockOf("CT-empty")).toBe(0);
+    expect(await stockOf("CT-full")).toBe(10);
+  });
+
   it("lets exactly one of two concurrent last-item orders succeed, stock never negative", async () => {
     await seedProduct(1, "race");
     const ordersBefore = await OrderModel.countDocuments();

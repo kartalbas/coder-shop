@@ -10,19 +10,23 @@ import { getShippingProvider } from "./provider";
 
 export const LABELS_DIR = path.join("data", "labels");
 
+export type CreateLabelFailureReason = "not_found" | "not_packed" | "provider_error" | "conflict";
+
 export type CreateLabelResult =
   | { ok: true; trackingNumber: string; labelPath: string }
-  | { ok: false; error: string };
+  | { ok: false; reason: CreateLabelFailureReason; error: string };
 
 export async function createLabelCore(
   orderId: string,
   provider: ShippingProvider = getShippingProvider(),
 ): Promise<CreateLabelResult> {
   await connectDB();
-  if (!mongoose.isValidObjectId(orderId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (!mongoose.isValidObjectId(orderId)) {
+    return { ok: false, reason: "not_found", error: "Bestellung nicht gefunden." };
+  }
 
   const order = await OrderModel.findById(orderId).lean().exec();
-  if (!order) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (!order) return { ok: false, reason: "not_found", error: "Bestellung nicht gefunden." };
 
   if (order.status === "shipped" && order.shipping.trackingNumber && order.shipping.labelPath) {
     return {
@@ -32,7 +36,11 @@ export async function createLabelCore(
     };
   }
   if (order.status !== "packed") {
-    return { ok: false, error: "Ein Etikett kann nur für gepackte Bestellungen erstellt werden." };
+    return {
+      ok: false,
+      reason: "not_packed",
+      error: "Ein Etikett kann nur für gepackte Bestellungen erstellt werden.",
+    };
   }
 
   const weight = parcelWeightGrams(order.lines);
@@ -51,17 +59,14 @@ export async function createLabelCore(
   };
 
   const label = await provider.createLabel(labelRequest);
-  if (!label.ok) return { ok: false, error: label.error };
-
-  const labelPath = path.join(LABELS_DIR, `${order.orderNumber}.pdf`);
-  await fs.mkdir(path.resolve(LABELS_DIR), { recursive: true });
-  await fs.writeFile(path.resolve(labelPath), label.labelPdf);
+  if (!label.ok) return { ok: false, reason: "provider_error", error: label.error };
 
   const updated = transition({ status: order.status, statusLog: order.statusLog }, "shipped", {
     note: `UPS-Sendung ${label.trackingNumber}`,
     by: provider.name,
   });
 
+  const labelPath = path.join(LABELS_DIR, `${order.orderNumber}.pdf`);
   const moved = await OrderModel.findOneAndUpdate(
     { _id: order._id, status: "packed" },
     {
@@ -77,7 +82,7 @@ export async function createLabelCore(
         },
       },
     },
-    { new: true },
+    { returnDocument: "after" },
   )
     .select("shipping.trackingNumber shipping.labelPath")
     .lean()
@@ -92,8 +97,17 @@ export async function createLabelCore(
         labelPath: concurrent.shipping.labelPath,
       };
     }
-    return { ok: false, error: "Etikett konnte nicht gespeichert werden. Bitte erneut versuchen." };
+    return {
+      ok: false,
+      reason: "conflict",
+      error: "Etikett konnte nicht gespeichert werden. Bitte erneut versuchen.",
+    };
   }
+
+  // Write the PDF only after the conditional packed → shipped move won, so losing races
+  // never orphan a file.
+  await fs.mkdir(path.resolve(LABELS_DIR), { recursive: true });
+  await fs.writeFile(path.resolve(labelPath), label.labelPdf);
 
   return { ok: true, trackingNumber: label.trackingNumber, labelPath };
 }

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { env } from "./env";
 
 export const SESSION_COOKIE = "admin_session";
 export const SESSION_TTL_SECONDS = 12 * 60 * 60;
@@ -6,7 +7,7 @@ export const SESSION_TTL_SECONDS = 12 * 60 * 60;
 const DEV_SESSION_SECRET = "coder-shop-dev-session-secret-change-me";
 
 export function sessionSecret(): string {
-  return process.env.SESSION_SECRET ?? DEV_SESSION_SECRET;
+  return env.SESSION_SECRET ?? DEV_SESSION_SECRET;
 }
 
 export interface SessionPayload {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Boxes,
   LayoutDashboard,
   LogOut,
   Package,
@@ -13,6 +14,7 @@ import { logoutAction } from "@/server/actions/admin/auth";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/products", label: "Produkte", icon: Boxes },
   { href: "/admin/orders", label: "Bestellungen", icon: ShoppingCart },
   { href: "/admin/packing", label: "Kommissionierung", icon: PackageOpen },
   { href: "/admin/purchasing", label: "Einkauf", icon: Truck },

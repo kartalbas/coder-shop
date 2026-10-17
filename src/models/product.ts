@@ -1,5 +1,5 @@
 import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
-import { deriveFilter, type ProductAttributes } from "@/lib/facets";
+import type { ProductAttributes } from "@/lib/facets";
 
 export type ProductType = "smartphone" | "shoes" | "clothing";
 
@@ -96,7 +96,7 @@ const productSchema = new Schema<Product>(
     filter: { type: filterSchema, required: true },
     variants: { type: [variantSchema], required: true },
   },
-  { versionKey: false, timestamps: true },
+  { versionKey: false, timestamps: true, suppressReservedKeysWarning: true },
 );
 
 productSchema.index({ slug: 1 }, { unique: true });
@@ -109,9 +109,6 @@ productSchema.index({ type: 1, "filter.materials": 1 });
 productSchema.index({ type: 1, priceCents: 1 });
 productSchema.index({ type: 1, createdAt: -1 });
 productSchema.index({ featured: 1, type: 1 });
-productSchema.index({ name: "text", description: "text", brand: "text" });
 
 export const ProductModel =
   mongoose.models.Product ?? mongoose.model<Product>("Product", productSchema);
-
-export { deriveFilter };

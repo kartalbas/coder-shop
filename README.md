@@ -32,23 +32,43 @@ npm run seed -- --fresh  # drop the database first, then seed
 
 `--fresh` refuses to run while another process (e.g. the dev server) holds the `data/mongo`
 lock. The seed is deterministic (fixed PRNG seed): same 200 products (70 smartphones /
-70 shoes / 60 clothing), 1–5 generated SVG images per product in `public/products/`,
-clock-relative order dates, same order numbers on every run.
+70 shoes / 60 clothing), 1–5 placeholder SVGs per product in `public/products/`,
+clock-relative order dates, same order numbers on every run. The seed never resets recorded
+photo paths on existing products (`$setOnInsert`) — see the image pipeline below.
+
+## Product photos
+
+```bash
+npm run images              # generate all missing product photos
+npm run images -- --limit 5 # cap generations per run (resumable)
+```
+
+`scripts/images/` generates photorealistic studio photos via the image model on the LLM
+server (`POST $IMAGE_API_URL`, default `http://192.168.10.210:8080/v1/images/generations`,
+`Authorization: Bearer $LLAMA_API_KEY`), writes WebP files to `public/products/` (gitignored)
+and records the paths + German alts on the product documents. Idempotent: slots already on
+disk are skipped, drifted document paths are repaired (a pure skip/repair run needs no API
+key). Until a photo exists, the storefront shows a neutral placeholder — seed SVGs are never
+rendered.
 
 ## Test
 
 ```bash
-npm test    # Vitest: unit tests (pure src/lib) + integration tests against a throw-away
-            # in-RAM replica set started by src/test/setup.ts
+npm test     # Vitest: unit tests (pure src/lib) + integration tests against a throw-away
+             # in-RAM replica set started by src/test/setup.ts
 npm run lint
 npm run build
+npm run test:e2e  # Playwright (Chromium): full journeys against a production build on
+                  # port 3100 with a freshly seeded throw-away database — run `npm run
+                  # build` first; never touches ./data/mongo
 ```
 
 ## Admin
 
 `/admin` — login with the seeded admin user: `admin@codershop.ch` / `Admin!2026`.
-Dashboard (revenue, open orders, low stock), orders, packing + UPS labels, purchasing
-(suppliers, purchase orders with goods receipt).
+Dashboard (revenue, open orders, low stock), products (search, edit core data, variants with
+price delta/stock/weight/attributes, images, featured toggle), orders, packing + UPS labels,
+purchasing (suppliers, purchase orders with goods receipt).
 
 ## Environment variables
 
@@ -61,6 +81,9 @@ All optional for local development (sensible defaults / embedded database):
 | `UPS_CLIENT_ID` / `UPS_CLIENT_SECRET` / `UPS_ACCOUNT` | Set **all three** to create real UPS labels via `UpsShippingProvider`; otherwise the `MockUpsProvider` generates `1Z…` tracking numbers and PDF labels in `data/labels/`. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL for metadata/Open Graph (defaults to `http://localhost:3000`). |
 | `MONGOMS_SYSTEM_BINARY` | Path to a local mongod if the mongodb-memory-server binary download/detection fails. |
+| `LLAMA_API_KEY` | Bearer key for the image API used by `npm run images` (only needed when a photo is actually generated). |
+| `IMAGE_API_URL` | Image generation endpoint for `npm run images` (defaults to `http://192.168.10.210:8080/v1/images/generations`). |
+| `E2E_PORT` | Port for the Playwright e2e run (default `3100`). |
 
 ## Database lock recovery
 

@@ -7,7 +7,10 @@ export async function GET(): Promise<NextResponse> {
     await connectDB();
     return NextResponse.json({ ok: true, db: dbMode() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ ok: false, db: dbMode(), error: message }, { status: 500 });
+    console.error("health check: database unavailable:", error);
+    return NextResponse.json(
+      { ok: false, db: dbMode(), error: "Datenbank nicht erreichbar." },
+      { status: 500 },
+    );
   }
 }

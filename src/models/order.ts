@@ -1,13 +1,7 @@
 import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
+import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/state-machine";
 
-export type OrderStatus =
-  | "new"
-  | "paid"
-  | "picking"
-  | "packed"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+export type { OrderStatus };
 
 export type ShippingMethod = "standard" | "express";
 
@@ -78,11 +72,7 @@ export type OrderDocument = HydratedDocument<Order>;
 
 const statusLogSchema = new Schema<StatusLogEntry>(
   {
-    status: {
-      type: String,
-      enum: ["new", "paid", "picking", "packed", "shipped", "delivered", "cancelled"],
-      required: true,
-    },
+    status: { type: String, enum: ORDER_STATUSES, required: true },
     at: { type: Date, required: true },
     note: { type: String },
     by: { type: String },
@@ -150,11 +140,7 @@ const paymentSchema = new Schema<OrderPayment>(
 const orderSchema = new Schema<Order>(
   {
     orderNumber: { type: String, required: true },
-    status: {
-      type: String,
-      enum: ["new", "paid", "picking", "packed", "shipped", "delivered", "cancelled"],
-      required: true,
-    },
+    status: { type: String, enum: ORDER_STATUSES, required: true },
     statusLog: { type: [statusLogSchema], required: true },
     customer: { type: customerSchema, required: true },
     lines: { type: [lineSchema], required: true },

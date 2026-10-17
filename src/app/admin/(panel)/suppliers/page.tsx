@@ -21,7 +21,7 @@ async function SuppliersView({
 }) {
   await connection();
   const params = await searchParams;
-  const editId = typeof params.bearbeiten === "string" ? params.bearbeiten : undefined;
+  const editId = typeof params.edit === "string" ? params.edit : undefined;
   const [suppliers, editing] = await Promise.all([
     listSuppliers(),
     editId ? getSupplierById(editId) : Promise.resolve(null),
@@ -107,7 +107,7 @@ async function SuppliersView({
                         asChild
                       >
                         <Link
-                          href={`/admin/suppliers?bearbeiten=${supplier._id.toString()}`}
+                          href={`/admin/suppliers?edit=${supplier._id.toString()}`}
                           aria-label={`Lieferant ${supplier.name} bearbeiten`}
                         >
                           Bearbeiten

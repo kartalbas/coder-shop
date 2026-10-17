@@ -2,12 +2,10 @@ import mongoose, { type ClientSession } from "mongoose";
 import { transition, type OrderStatus } from "@/lib/orders/state-machine";
 import { computeTotals, type ShippingMethodName, type Totals } from "@/lib/pricing";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
-import { CounterModel } from "@/models/counter";
 import { OrderModel, type OrderCustomer, type OrderLine, type StatusLogEntry } from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
 import { connectDB } from "./db";
-
-export const ORDER_NUMBER_YEAR = new Date().getUTCFullYear();
+import { mintNumber } from "./numbers";
 
 export function formatOrderNumber(year: number, seq: number): string {
   return `B-${year}-${String(seq).padStart(6, "0")}`;
@@ -53,13 +51,17 @@ function mergeQuantities(lines: CheckoutInput["lines"]): Map<string, number> {
   return bySku;
 }
 
-async function resolveLines(bySku: Map<string, number>): Promise<ResolvedLine[]> {
+async function resolveLines(
+  bySku: Map<string, number>,
+  session: ClientSession,
+): Promise<ResolvedLine[]> {
   const skus = [...bySku.keys()];
   type LeanVariantSource = Pick<Product, "name" | "variants" | "priceCents"> & {
     _id: mongoose.Types.ObjectId;
   };
   const products = await ProductModel.find({ "variants.sku": { $in: skus } })
     .select("_id name priceCents variants")
+    .session(session)
     .lean<LeanVariantSource[]>();
   const byVariant = new Map(
     products.flatMap((product) =>
@@ -89,8 +91,7 @@ async function decrementStock(lines: ResolvedLine[], session: ClientSession): Pr
     const updated = await ProductModel.findOneAndUpdate(
       {
         _id: line.productId,
-        "variants.sku": line.sku,
-        "variants.stock": { $gte: line.qty },
+        variants: { $elemMatch: { sku: line.sku, stock: { $gte: line.qty } } },
       },
       { $inc: { "variants.$[v].stock": -line.qty } },
       { arrayFilters: [{ "v.sku": line.sku }], session, returnDocument: "after" },
@@ -100,21 +101,16 @@ async function decrementStock(lines: ResolvedLine[], session: ClientSession): Pr
 }
 
 async function runCheckout(
-  lines: ResolvedLine[],
+  bySku: Map<string, number>,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
   session: ClientSession,
 ): Promise<{ orderNumber: string; totals: Totals }> {
+  const lines = await resolveLines(bySku, session);
   await decrementStock(lines, session);
 
-  const counter = await CounterModel.findOneAndUpdate(
-    { _id: "order" },
-    { $inc: { seq: 1 } },
-    { upsert: true, returnDocument: "after", session },
-  );
-  if (!counter) throw new Error("Could not mint an order number from the counter");
-  const year = new Date().getUTCFullYear();
-  const orderNumber = formatOrderNumber(year, counter.seq);
+  const minted = await mintNumber("order", formatOrderNumber, session);
+  const orderNumber = minted.value;
 
   const orderLines: OrderLine[] = lines.map((line) => ({
     productId: line.productId,
@@ -147,7 +143,7 @@ async function runCheckout(
         shipping: { method: shippingMethod },
         payment: {
           method: "mock" as const,
-          reference: `P-${String(counter.seq).padStart(6, "0")}`,
+          reference: `P-${String(minted.seq).padStart(6, "0")}`,
           paidAt: now,
         },
       },
@@ -168,23 +164,14 @@ export async function createOrderCore(
   const { lines, customer, shippingMethod } = parsed.data;
 
   await connectDB();
-
-  let resolved: ResolvedLine[];
-  try {
-    resolved = await resolveLines(mergeQuantities(lines));
-  } catch (error) {
-    if (error instanceof InsufficientStockError) {
-      return { ok: false, error: `Artikel nicht verfügbar: ${error.sku}` };
-    }
-    throw error;
-  }
+  const bySku = mergeQuantities(lines);
 
   const maxAttempts = 3;
   for (let attempt = 1; ; attempt++) {
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
-      const result = await runCheckout(resolved, customer, shippingMethod, session);
+      const result = await runCheckout(bySku, customer, shippingMethod, session);
       await session.commitTransaction();
       return { ok: true, ...result };
     } catch (error) {

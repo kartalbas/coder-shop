@@ -23,13 +23,26 @@ interface ThrottleEntry {
   windowStart: number;
 }
 
+// Validly formatted scrypt hash that can never match — verified for unknown accounts so
+// response time does not reveal whether an e-mail exists.
+const DUMMY_PASSWORD_HASH =
+  "scrypt$32768$8$1$" + "0".repeat(32) + "$" + "0".repeat(64);
+
 const THROTTLE_MAX_ATTEMPTS = 5;
 const THROTTLE_WINDOW_MS = 15 * 60 * 1000;
+const THROTTLE_SWEEP_SIZE = 1000;
 
 const throttle = new Map<string, ThrottleEntry>();
 
 export function resetLoginThrottle(): void {
   throttle.clear();
+}
+
+function throttleSweep(): void {
+  if (throttle.size < THROTTLE_SWEEP_SIZE) return;
+  for (const [key, entry] of throttle) {
+    if (Date.now() - entry.windowStart > THROTTLE_WINDOW_MS) throttle.delete(key);
+  }
 }
 
 function throttleCheck(key: string): { blocked: boolean; retryInSeconds: number } {
@@ -49,6 +62,7 @@ function throttleCheck(key: string): { blocked: boolean; retryInSeconds: number 
 }
 
 function throttleRecordFailure(key: string): void {
+  throttleSweep();
   const existing = throttle.get(key);
   if (!existing || Date.now() - existing.windowStart > THROTTLE_WINDOW_MS) {
     throttle.set(key, { failures: 1, windowStart: Date.now() });
@@ -78,7 +92,8 @@ export async function loginCore(
 
   await connectDB();
   const user = await UserModel.findOne({ email: normalizedEmail }).exec();
-  const passwordValid = user ? await verifyPassword(password, user.passwordHash) : false;
+  // Unknown accounts still pay the scrypt cost (constant-time against user enumeration).
+  const passwordValid = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (!user || !passwordValid) {
     throttleRecordFailure(key);
     return { ok: false, error: "E-Mail oder Passwort ist falsch." };
@@ -99,6 +114,12 @@ export async function getSessionUserId(): Promise<string | null> {
   const raw = store.get(SESSION_COOKIE)?.value;
   if (!raw) return null;
   return verifySessionToken(raw)?.userId ?? null;
+}
+
+export async function getAdminEmail(userId: string): Promise<string | null> {
+  await connectDB();
+  const user = await UserModel.findById(userId).select("email").lean().exec();
+  return user?.email ?? null;
 }
 
 export async function requireAdminSession(): Promise<string> {

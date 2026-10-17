@@ -10,7 +10,7 @@ export const supplierInputSchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
   leadTimeDays: z.coerce.number().int("Ganze Tage erforderlich.").min(0).max(365),
-  active: z.coerce.boolean(),
+  active: z.boolean(),
 });
 
 export type SupplierInput = z.infer<typeof supplierInputSchema>;
@@ -20,8 +20,6 @@ export const poLineInputSchema = z.object({
   qty: z.coerce.number().int().min(1, "Mindestens 1 Stück.").max(10000),
   unitPriceCents: z.coerce.number().int().min(0),
 });
-
-export type PoLineInput = z.infer<typeof poLineInputSchema>;
 
 export const createPurchaseOrderSchema = z.object({
   supplierId: z.string().min(1, "Lieferant ist erforderlich."),
