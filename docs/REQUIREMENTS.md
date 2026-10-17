@@ -2,7 +2,7 @@
 
 A production-grade e-commerce system, built from scratch in this repository. Whoever works on
 it works fully autonomously: never ask questions; when something is unspecified, choose the
-professional default and record the decision in DECISIONS.md.
+professional default and record the decision in docs/DECISIONS.md.
 
 STACK — one full-stack TypeScript app on Node.js, frontend and backend together, everything on
 the newest stable release (look each one up with `npm view <pkg> version`; never guess or use
@@ -76,6 +76,6 @@ CODE QUALITY AND STRUCTURE — clean code is a requirement, not polish:
 
 DELIVERY: milestones M1–M5 (scaffold + data + seed; storefront; cart + checkout; admin orders +
 packing + UPS label; purchasing + dashboard + polish). After each one `npm run build`,
-`npm run lint` and `npm test` pass, PROGRESS.md is updated (done / open / known issues), and a
+`npm run lint` and `npm test` pass, docs/PROGRESS.md is updated (done / open / known issues), and a
 git commit "M<n>: …" is made. Never start a long-running server in the foreground; to check
 pages, start it in the background, curl it, and stop it again.

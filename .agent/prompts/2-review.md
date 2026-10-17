@@ -1,7 +1,7 @@
 PHASE 2 — CRITICAL REVIEW. You are a strict principal engineer reviewing someone else's plan.
-Read REQUIREMENTS.md, ARCHITECTURE.md and PLAN.md. Do not change them.
+Read docs/REQUIREMENTS.md, docs/ARCHITECTURE.md and docs/PLAN.md. Do not change them.
 
-Write REVIEW.md: every problem you find, ranked (blocker / major / minor), each with the
+Write docs/REVIEW.md: every problem you find, ranked (blocker / major / minor), each with the
 reason and a concrete fix. Look especially for: requirements that the plan misses or covers
 vaguely; acceptance criteria that cannot be checked; wrong or outdated versions; risks with
 mongodb-memory-server under Next.js (build time, dev hot reload, serverless/edge runtime,
