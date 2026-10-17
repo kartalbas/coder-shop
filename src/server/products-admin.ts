@@ -94,13 +94,22 @@ export async function updateProductCore(id: string, input: unknown): Promise<Pro
   const product = await ProductModel.findById(id).exec();
   if (!product) return { ok: false, error: "Produkt nicht gefunden." };
 
-  product.name = parsed.data.name;
-  product.description = parsed.data.description;
-  product.brand = parsed.data.brand;
-  product.priceCents = parsed.data.priceCents;
-  // ARCHITECTURE §3: every write touching the variant/filter block recomputes `filter`.
-  product.filter = deriveFilter(product.variants);
-  await product.save();
+  // Atomic $set of the core fields only — a whole-document save would clobber stock
+  // that changed between this read and the write (issue #13).
+  const result = await ProductModel.updateOne(
+    { _id: product._id },
+    {
+      $set: {
+        name: parsed.data.name,
+        description: parsed.data.description,
+        brand: parsed.data.brand,
+        priceCents: parsed.data.priceCents,
+        // ARCHITECTURE §3: every write touching the variant/filter block recomputes `filter`.
+        filter: deriveFilter(product.variants),
+      },
+    },
+  );
+  if (result.matchedCount === 0) return { ok: false, error: "Produkt nicht gefunden." };
   return { ok: true };
 }
 
@@ -116,31 +125,57 @@ export async function updateVariantCore(
   await connectDB();
   if (!mongoose.isValidObjectId(productId)) return { ok: false, error: "Produkt nicht gefunden." };
 
-  const product = await ProductModel.findById(productId).exec();
+  const product = await ProductModel.findById(productId).lean<Product>().exec();
   if (!product) return { ok: false, error: "Produkt nicht gefunden." };
   const variant = product.variants.find((candidate: Variant) => candidate.sku === sku);
   if (!variant) return { ok: false, error: `Variante ${sku} nicht gefunden.` };
 
-  const { attributes } = parsed.data;
-  variant.priceDeltaCents = parsed.data.priceDeltaCents;
-  variant.stock = parsed.data.stock;
-  variant.weightGrams = parsed.data.weightGrams;
-  variant.attributes = {
-    color: attributes.color,
-    ...(attributes.size !== undefined && { size: attributes.size }),
-    ...(attributes.storage !== undefined && { storage: attributes.storage }),
-    ...(attributes.material !== undefined && { material: attributes.material }),
+  const { attributes, stock, expectedStock } = parsed.data;
+  const stockEdited = stock !== expectedStock;
+
+  const updatedVariant: Variant = {
+    ...variant,
+    priceDeltaCents: parsed.data.priceDeltaCents,
+    stock,
+    weightGrams: parsed.data.weightGrams,
+    attributes: {
+      color: attributes.color,
+      ...(attributes.size !== undefined && { size: attributes.size }),
+      ...(attributes.storage !== undefined && { storage: attributes.storage }),
+      ...(attributes.material !== undefined && { material: attributes.material }),
+    },
+    label: [
+      attributes.size ?? (attributes.storage !== undefined ? `${attributes.storage} GB` : null),
+      attributes.color,
+    ]
+      .filter(Boolean)
+      .join(" / "),
   };
-  variant.label = [
-    attributes.size ?? (attributes.storage !== undefined ? `${attributes.storage} GB` : null),
-    attributes.color,
-  ]
-    .filter(Boolean)
-    .join(" / ");
-  // ARCHITECTURE §3: variant edits recompute the denormalized `filter` block.
-  product.filter = deriveFilter(product.variants);
-  product.markModified("variants");
-  await product.save();
+
+  const set: Record<string, unknown> = {
+    "variants.$.priceDeltaCents": updatedVariant.priceDeltaCents,
+    "variants.$.weightGrams": updatedVariant.weightGrams,
+    "variants.$.attributes": updatedVariant.attributes,
+    "variants.$.label": updatedVariant.label,
+    // ARCHITECTURE §3: variant edits recompute the denormalized `filter` block.
+    filter: deriveFilter(product.variants.map((v) => (v.sku === sku ? updatedVariant : v))),
+  };
+
+  // Issue #13: never overwrite stock that changed since the editor loaded it. Saving
+  // unrelated fields leaves `stock` untouched; an explicit stock edit is applied
+  // conditionally on the loaded value and refused on a conflict.
+  const condition: Record<string, unknown> = stockEdited
+    ? { _id: product._id, variants: { $elemMatch: { sku, stock: expectedStock } } }
+    : { _id: product._id, variants: { $elemMatch: { sku } } };
+  if (stockEdited) set["variants.$.stock"] = stock;
+
+  const result = await ProductModel.updateOne(condition, { $set: set });
+  if (result.matchedCount === 0) {
+    return {
+      ok: false,
+      error: `Der Lagerbestand von ${sku} hat sich seit dem Laden geändert. Bitte Seite neu laden und erneut speichern.`,
+    };
+  }
   return { ok: true };
 }
 

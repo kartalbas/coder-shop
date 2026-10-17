@@ -22,6 +22,7 @@ function VariantRow({ productId, variant }: { productId: string; variant: Varian
     const payload = {
       priceDeltaCents: Math.round(Number(formData.get("priceDelta") ?? 0) * 100),
       stock: Number(formData.get("stock") ?? 0),
+      expectedStock: variant.stock,
       weightGrams: Number(formData.get("weight") ?? 0),
       attributes: {
         color: String(formData.get("color") ?? ""),

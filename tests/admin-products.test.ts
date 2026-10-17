@@ -102,6 +102,7 @@ describe("admin product management", () => {
     const result = await updateVariantCore(product!._id.toString(), "AP-alpha", {
       priceDeltaCents: 0,
       stock: 9,
+      expectedStock: 5,
       weightGrams: 210,
       attributes: { color: "blau", storage: 128 },
     });
@@ -126,6 +127,7 @@ describe("admin product management", () => {
     const unknown = await updateVariantCore(product!._id.toString(), "gibt-es-nicht", {
       priceDeltaCents: 0,
       stock: 1,
+      expectedStock: 1,
       weightGrams: 100,
       attributes: { color: "rot" },
     });
@@ -134,10 +136,80 @@ describe("admin product management", () => {
     const negative = await updateVariantCore(product!._id.toString(), "AP-alpha", {
       priceDeltaCents: 0,
       stock: -5,
+      expectedStock: 9,
       weightGrams: 100,
       attributes: { color: "blau", storage: 128 },
     });
     expect(negative.ok).toBe(false);
+  });
+
+  it("does not overwrite stock that changed while the editor was open (issue #13)", async () => {
+    const product = await ProductModel.findOne({ slug: "alpha" }).exec();
+    const id = product!._id.toString();
+    // editor loaded with stock 9; meanwhile a customer buys 7 → stock 2
+    await ProductModel.updateOne(
+      { _id: product!._id, variants: { $elemMatch: { sku: "AP-alpha" } } },
+      { $set: { "variants.$.stock": 2 } },
+    );
+
+    // admin saves only the weight (stock unchanged in the form) → sale survives
+    const unrelated = await updateVariantCore(id, "AP-alpha", {
+      priceDeltaCents: 0,
+      stock: 9,
+      expectedStock: 9,
+      weightGrams: 220,
+      attributes: { color: "blau", storage: 128 },
+    });
+    expect(unrelated.ok).toBe(true);
+    let fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
+    expect(fresh?.variants.find((v) => v.sku === "AP-alpha")?.stock).toBe(2);
+    expect(fresh?.variants.find((v) => v.sku === "AP-alpha")?.weightGrams).toBe(220);
+
+    // an explicit stock edit against a stale expectation is refused, nothing moves
+    const conflict = await updateVariantCore(id, "AP-alpha", {
+      priceDeltaCents: 0,
+      stock: 50,
+      expectedStock: 9,
+      weightGrams: 220,
+      attributes: { color: "blau", storage: 128 },
+    });
+    expect(conflict.ok).toBe(false);
+    fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
+    expect(fresh?.variants.find((v) => v.sku === "AP-alpha")?.stock).toBe(2);
+
+    // with the current value as expectation the explicit edit goes through
+    const ok = await updateVariantCore(id, "AP-alpha", {
+      priceDeltaCents: 0,
+      stock: 50,
+      expectedStock: 2,
+      weightGrams: 220,
+      attributes: { color: "blau", storage: 128 },
+    });
+    expect(ok.ok).toBe(true);
+    fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
+    expect(fresh?.variants.find((v) => v.sku === "AP-alpha")?.stock).toBe(50);
+  });
+
+  it("core product save does not clobber concurrent stock changes (issue #13)", async () => {
+    const product = await ProductModel.findOne({ slug: "alpha" }).exec();
+    const id = product!._id.toString();
+    await ProductModel.updateOne(
+      { _id: product!._id, variants: { $elemMatch: { sku: "AP-alpha-w" } } },
+      { $set: { "variants.$.stock": 1 } },
+    );
+    const loaded = await ProductModel.findById(product!._id).lean<Product>().exec();
+    expect(loaded?.variants.find((v) => v.sku === "AP-alpha-w")?.stock).toBe(1);
+
+    const result = await updateProductCore(id, {
+      name: "Nach Verkauf umbenannt",
+      description: "Beschreibung wurde nach dem Verkauf geändert.",
+      brand: "Apple",
+      priceCents: 51000,
+    });
+    expect(result.ok).toBe(true);
+    const fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
+    expect(fresh?.name).toBe("Nach Verkauf umbenannt");
+    expect(fresh?.variants.find((v) => v.sku === "AP-alpha-w")?.stock).toBe(1);
   });
 
   it("toggles featured", async () => {

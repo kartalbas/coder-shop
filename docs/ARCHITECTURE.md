@@ -296,7 +296,11 @@ results and are covered by Vitest integration tests against the real replica set
 - `receivePurchaseOrderCore(poId)` — increments `variant.stock` per line and sets `received`
   in one transaction.
 - `updateProductCore` / `updateVariantCore` / `toggleFeaturedCore` — every update touching
-  variants recomputes `filter` via `deriveFilter` (§3 rule).
+  variants recomputes `filter` via `deriveFilter` (§3 rule). Writes are atomic `$set`s of the
+  edited fields only (never a whole-document save), so concurrent stock changes are never
+  clobbered (issue #13): a variant save that leaves `stock` at the loaded `expectedStock` does
+  not touch `stock` at all; an explicit stock edit is applied conditionally on the variant
+  still having `expectedStock` and refused with a conflict error otherwise.
 - `loginCore(email, password)` — scrypt verify + signed cookie value; `logout`.
 - `createLabelCore(orderId)` — legal **only from `packed`**; idempotent: if the order is
   already `shipped` with a tracking number, returns the existing one. Provider must succeed

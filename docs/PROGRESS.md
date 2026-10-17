@@ -602,6 +602,16 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #13 — saving a variant no longer overwrites concurrent stock ✅
+- `updateVariantCore`/`updateProductCore` now write with atomic conditional `$set`s instead of
+  a whole-document save: a variant save that leaves `stock` at the loaded `expectedStock`
+  (new schema field, sent as the editor's loaded value) never touches `stock`; an explicit
+  stock edit is applied only while the variant still has `expectedStock` and refused with a
+  conflict error otherwise. Core product edits can no longer resurrect stale variant arrays.
+- Verified: 2 new regression tests in `tests/admin-products.test.ts` (sale during open editor
+  survives an unrelated save; stale explicit stock edit refused, fresh one applied; core save
+  keeps concurrent stock); `npm test` ✅ 258, lint/build ✅, e2e ✅ 7/7.
+
 ### #14 — re-running the seed no longer resets shop data ✅
 - Products, the admin user and suppliers are now written with `$setOnInsert` only — a
   re-run creates what is missing and changes nothing that exists (sold stock, edited
