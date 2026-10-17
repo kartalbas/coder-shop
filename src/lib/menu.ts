@@ -1,3 +1,4 @@
+import { CATALOG_BRANDS } from "@/lib/brands";
 import type { ProductType } from "@/models/product";
 
 export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
@@ -12,18 +13,12 @@ export interface MenuCategory {
   brands: readonly string[];
 }
 
-const MENU_BRANDS: Record<ProductType, readonly string[]> = {
-  smartphone: ["Apple", "Samsung", "Xiaomi", "Google", "OnePlus"],
-  shoes: ["Nike", "Adidas", "Puma", "On", "New Balance"],
-  clothing: ["The North Face", "Jack Wolfskin", "Mammut", "Vaude", "Patagonia"],
-};
-
-// Kept in sync with the seeded catalog (scripts/seed/catalog.ts) — enforced by
-// tests/mega-menu.test.ts, which asserts every listed brand exists in the catalog.
+// Brands come from the single catalog brand set (src/lib/brands.ts) — the same source the
+// seed generator uses; tests/mega-menu.test.ts keeps the seed's model tables in step.
 export const MENU_CATEGORIES: readonly MenuCategory[] = (
   ["smartphone", "shoes", "clothing"] as const
 ).map((type) => ({
   type,
   label: PRODUCT_TYPE_LABELS[type],
-  brands: MENU_BRANDS[type],
+  brands: CATALOG_BRANDS[type],
 }));

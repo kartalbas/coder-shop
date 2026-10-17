@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
+import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 
 const noSubscribe = () => () => {};
 
@@ -27,9 +28,9 @@ export function Footer() {
         <nav aria-label="Footer Navigation">
           <p className="text-sm font-semibold">Sortiment</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=smartphone">Smartphones</Link></li>
-            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=shoes">Schuhe</Link></li>
-            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=clothing">Kleidung</Link></li>
+            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=smartphone">{PRODUCT_TYPE_LABELS.smartphone}</Link></li>
+            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=shoes">{PRODUCT_TYPE_LABELS.shoes}</Link></li>
+            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=clothing">{PRODUCT_TYPE_LABELS.clothing}</Link></li>
           </ul>
         </nav>
         <div>

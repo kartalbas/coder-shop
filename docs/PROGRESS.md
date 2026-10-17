@@ -535,3 +535,17 @@ Done — M1–M6 + QA complete.
   (`src/lib/validations/listing.ts`, junk falls back to unset) instead of hand casts;
   3 schema tests.
 - Verified: `npm test` ✅ 236, lint/build ✅, e2e ✅ 7/7.
+
+### #31 — one source per concept ✅
+- `src/lib/numbers.ts`: `formatOrderNumber`/`formatPoNumber`/`formatPaymentReference` —
+  checkout, purchasing and the seed all call them instead of re-spelling `B-`/`E-`/`P-`
+  templates; `src/lib/brands.ts`: `CATALOG_BRANDS` is now the single brand set used by
+  the seed generator (weighted list derived from it, plus a module-load guard that every
+  brand has models) and by the mega-menu (`MENU_CATEGORIES`).
+- Happy-path status chain: `HAPPY_PATH` exported from the state machine; the hand copies
+  in `scripts/seed/seed.ts` and the three test files are gone.
+- Product-type labels: the copies in `listing-shell.tsx` (tabs derived from
+  `MENU_CATEGORIES`), the home page tiles, the product page breadcrumbs and the
+  header/footer chips all render `PRODUCT_TYPE_LABELS` from `src/lib/menu.ts`.
+- Verified: `npm test` ✅ 236 (mega-menu sync test still green), `npm run seed` ✅
+  idempotent, lint/build ✅, e2e ✅ 7/7.

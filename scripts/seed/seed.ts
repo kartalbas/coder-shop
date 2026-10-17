@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
+import { formatOrderNumber, formatPaymentReference, formatPoNumber } from "@/lib/numbers";
+import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { computeTotals, type ShippingMethodName } from "@/lib/pricing";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
 import { CounterModel } from "@/models/counter";
@@ -63,8 +65,6 @@ const STATUS_PLAN: OrderStatus[] = [
   "delivered",
   "cancelled",
 ];
-
-const CHAIN: OrderStatus[] = ["new", "paid", "picking", "packed", "shipped", "delivered"];
 
 async function seedProducts(): Promise<number> {
   const catalog = generateCatalog();
@@ -150,8 +150,8 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
     const method: ShippingMethodName = rng() < 0.75 ? "standard" : "express";
     const totals = computeTotals(lines, method);
     const createdAt = new Date(now.getTime() - Math.floor(rng() * 14 * DAY_MS) - i * HOUR_MS);
-    const chainUpTo = status === "cancelled" ? 1 : CHAIN.indexOf(status);
-    const statusLog: StatusLogEntry[] = CHAIN.slice(0, chainUpTo + 1).map((s, step) => ({
+    const chainUpTo = status === "cancelled" ? 1 : HAPPY_PATH.indexOf(status);
+    const statusLog: StatusLogEntry[] = HAPPY_PATH.slice(0, chainUpTo + 1).map((s, step) => ({
       status: s,
       at: new Date(createdAt.getTime() + step * 2 * HOUR_MS),
     }));
@@ -165,7 +165,7 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
     }
     const shipped = status === "shipped" || status === "delivered";
     orders.push({
-      orderNumber: `B-${year}-${String(i + 1).padStart(6, "0")}`,
+      orderNumber: formatOrderNumber(year, i + 1),
       status,
       statusLog,
       customer: {
@@ -191,7 +191,7 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
       },
       payment: {
         method: "mock" as const,
-        reference: `P-${String(i + 1).padStart(6, "0")}`,
+        reference: formatPaymentReference(i + 1),
         ...(status !== "new"
           ? { paidAt: new Date(createdAt.getTime() + 2 * HOUR_MS) }
           : {}),
@@ -239,7 +239,7 @@ async function seedPurchaseOrders(
     }
     const createdAt = new Date(now.getTime() - (i + 2) * DAY_MS);
     pos.push({
-      poNumber: `E-${year}-${String(i + 1).padStart(6, "0")}`,
+      poNumber: formatPoNumber(year, i + 1),
       supplierId: suppliers.get(supplierNames[i]) ?? [...suppliers.values()][0],
       status,
       lines,

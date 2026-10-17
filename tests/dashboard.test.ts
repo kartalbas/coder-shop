@@ -1,3 +1,4 @@
+import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isLowStock } from "@/lib/stock";
 import { OrderModel, type OrderStatus, type StatusLogEntry } from "@/models/order";
@@ -7,8 +8,6 @@ import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-10-15T12:00:00.000Z");
-
-const CHAIN: OrderStatus[] = ["new", "paid", "picking", "packed", "shipped", "delivered"];
 
 async function seedVariantProduct(
   slug: string,
@@ -42,8 +41,8 @@ async function seedOrder(
   totalCents: number,
   createdAt: Date,
 ) {
-  const chainUpTo = status === "cancelled" ? 1 : CHAIN.indexOf(status);
-  const statusLog: StatusLogEntry[] = CHAIN.slice(0, chainUpTo + 1).map((step, index) => ({
+  const chainUpTo = status === "cancelled" ? 1 : HAPPY_PATH.indexOf(status);
+  const statusLog: StatusLogEntry[] = HAPPY_PATH.slice(0, chainUpTo + 1).map((step, index) => ({
     status: step,
     at: new Date(createdAt.getTime() + index * 60_000),
   }));

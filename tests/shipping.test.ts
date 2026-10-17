@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MOCK_TRACKING_PATTERN, type LabelRequest, type ShippingProvider } from "@/lib/shipping/types";
 import { OrderModel, type Order, type OrderStatus } from "@/models/order";
@@ -202,12 +203,10 @@ describe("shipping provider factory", () => {
   });
 });
 
-const CHAIN: OrderStatus[] = ["new", "paid", "picking", "packed", "shipped", "delivered"];
-
 async function seedOrder(status: OrderStatus, tag: string) {
-  const statusLog = CHAIN.slice(0, CHAIN.indexOf(status) + 1).map((step, index) => ({
+  const statusLog = HAPPY_PATH.slice(0, HAPPY_PATH.indexOf(status) + 1).map((step, index) => ({
     status: step,
-    at: new Date(Date.now() - (CHAIN.indexOf(status) - index) * 60_000),
+    at: new Date(Date.now() - (HAPPY_PATH.indexOf(status) - index) * 60_000),
   }));
   return OrderModel.create({
     orderNumber: `B-2026-8${tag}`,

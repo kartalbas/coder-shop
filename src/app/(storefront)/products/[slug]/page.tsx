@@ -15,13 +15,8 @@ import { Breadcrumbs } from "@/components/storefront/breadcrumbs";
 import { JsonLd } from "@/components/storefront/json-ld";
 import { ProductDetail } from "@/components/storefront/product-detail";
 import { RelatedProducts } from "@/components/storefront/related-products";
+import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
-
-const TYPE_LABELS: Record<string, string> = {
-  smartphone: "Smartphones",
-  shoes: "Schuhe",
-  clothing: "Kleidung",
-};
 
 interface PagePropsLocal {
   params: Promise<{ slug: string }>;
@@ -65,7 +60,7 @@ async function ProductView({ params }: PagePropsLocal) {
       <Breadcrumbs
         items={[
           { label: "Start", href: "/" },
-          { label: TYPE_LABELS[product.type], href: `/produkte?type=${product.type}` },
+          { label: PRODUCT_TYPE_LABELS[product.type], href: `/produkte?type=${product.type}` },
           { label: product.name },
         ]}
       />

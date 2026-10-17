@@ -7,12 +7,13 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront/product-card";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
+import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getFeaturedProducts } from "@/server/search";
 
 const CATEGORIES = [
-  { type: "smartphone", label: "Smartphones", description: "Neueste Modelle führender Marken" },
-  { type: "shoes", label: "Schuhe", description: "Running, Lifestyle und mehr" },
-  { type: "clothing", label: "Kleidung", description: "Funktionsbekleidung für jeden Tag" },
+  { type: "smartphone", description: "Neueste Modelle führender Marken" },
+  { type: "shoes", description: "Running, Lifestyle und mehr" },
+  { type: "clothing", description: "Funktionsbekleidung für jeden Tag" },
 ] as const;
 
 async function FeaturedRail() {
@@ -94,7 +95,9 @@ export default function HomePage() {
               href={`/produkte?type=${category.type}`}
               className="group rounded-xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <p className="text-lg font-semibold group-hover:text-primary">{category.label}</p>
+              <p className="text-lg font-semibold group-hover:text-primary">
+                {PRODUCT_TYPE_LABELS[category.type]}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
                 Ansehen{" "}

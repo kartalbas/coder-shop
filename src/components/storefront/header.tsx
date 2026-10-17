@@ -5,6 +5,7 @@ import { MegaMenu } from "./mega-menu";
 import { SearchInstant } from "./search-instant";
 import { ThemeToggle } from "./theme-toggle";
 import { CartButton } from "./cart-button";
+import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 
 export function Header() {
   return (
@@ -29,9 +30,9 @@ export function Header() {
         aria-label="Kategorien (mobil)"
         className="flex gap-1 overflow-x-auto border-t px-4 py-2 md:hidden"
       >
-        <Link href="/produkte?type=smartphone" className="chip">Smartphones</Link>
-        <Link href="/produkte?type=shoes" className="chip">Schuhe</Link>
-        <Link href="/produkte?type=clothing" className="chip">Kleidung</Link>
+        <Link href="/produkte?type=smartphone" className="chip">{PRODUCT_TYPE_LABELS.smartphone}</Link>
+        <Link href="/produkte?type=shoes" className="chip">{PRODUCT_TYPE_LABELS.shoes}</Link>
+        <Link href="/produkte?type=clothing" className="chip">{PRODUCT_TYPE_LABELS.clothing}</Link>
       </nav>
     </header>
   );

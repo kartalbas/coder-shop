@@ -1,4 +1,5 @@
 import mongoose, { type ClientSession } from "mongoose";
+import { formatOrderNumber, formatPaymentReference } from "@/lib/numbers";
 import { transition, type OrderStatus } from "@/lib/orders/state-machine";
 import { computeTotals, type ShippingMethodName, type Totals } from "@/lib/pricing";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
@@ -6,10 +7,6 @@ import { OrderModel, type OrderCustomer, type OrderLine, type StatusLogEntry } f
 import { ProductModel, type Product } from "@/models/product";
 import { connectDB } from "./db";
 import { mintNumber } from "./numbers";
-
-export function formatOrderNumber(year: number, seq: number): string {
-  return `B-${year}-${String(seq).padStart(6, "0")}`;
-}
 
 export type CreateOrderResult =
   | { ok: true; orderNumber: string; totals: Totals }
@@ -174,7 +171,7 @@ async function runCheckout(
         shipping: { method: shippingMethod },
         payment: {
           method: "mock" as const,
-          reference: `P-${String(minted.seq).padStart(6, "0")}`,
+          reference: formatPaymentReference(minted.seq),
           paidAt: now,
         },
       },

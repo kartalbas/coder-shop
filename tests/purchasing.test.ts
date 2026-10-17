@@ -6,12 +6,12 @@ import { SupplierModel } from "@/models/supplier";
 import {
   createPurchaseOrderCore,
   createSupplierCore,
-  formatPoNumber,
   markPurchaseOrderOrderedCore,
   receivePurchaseOrderCore,
   searchVariantsBySku,
   updateSupplierCore,
 } from "@/server/purchasing";
+import { formatPoNumber } from "@/lib/numbers";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 async function seedProduct(tag: string, skus: string[], stock: number) {

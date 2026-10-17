@@ -1,11 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { IllegalTransitionError } from "@/lib/orders/state-machine";
+import { HAPPY_PATH, IllegalTransitionError } from "@/lib/orders/state-machine";
 import { OrderModel, type Order, type OrderStatus } from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
 import { transitionOrderCore } from "@/server/orders-admin";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
-
-const CHAIN: OrderStatus[] = ["new", "paid", "picking", "packed", "shipped", "delivered"];
 
 async function seedProduct(sku: string, stock: number) {
   return ProductModel.create({
@@ -33,8 +31,8 @@ async function seedProduct(sku: string, stock: number) {
 }
 
 async function seedOrder(status: OrderStatus, sku: string, qty: number, productId: unknown) {
-  const chainUpTo = status === "cancelled" ? 1 : CHAIN.indexOf(status);
-  const statusLog = CHAIN.slice(0, chainUpTo + 1).map((step, index) => ({
+  const chainUpTo = status === "cancelled" ? 1 : HAPPY_PATH.indexOf(status);
+  const statusLog = HAPPY_PATH.slice(0, chainUpTo + 1).map((step, index) => ({
     status: step,
     at: new Date(Date.now() - (chainUpTo - index) * 60_000),
   }));

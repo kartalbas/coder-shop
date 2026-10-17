@@ -4,6 +4,7 @@ import {
   supplierInputSchema,
   type SupplierInput,
 } from "@/lib/validations/purchasing";
+import { formatPoNumber } from "@/lib/numbers";
 import { escapeRegex } from "@/lib/regex";
 import { ProductModel } from "@/models/product";
 import {
@@ -14,10 +15,6 @@ import {
 import { SupplierModel, type Supplier } from "@/models/supplier";
 import { mintNumber } from "./numbers";
 import { connectDB } from "./db";
-
-export function formatPoNumber(year: number, seq: number): string {
-  return `E-${year}-${String(seq).padStart(6, "0")}`;
-}
 
 export type PurchasingResult = { ok: true } | { ok: false; error: string };
 

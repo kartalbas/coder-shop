@@ -1,3 +1,4 @@
+import { CATALOG_BRANDS } from "@/lib/brands";
 import { deriveFilter, type ProductAttributes } from "@/lib/facets";
 import type { ProductType } from "@/models/product";
 
@@ -48,20 +49,19 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-// Weighted so Apple (the flagship brand) has enough products to fill more than one
-// listing page (M2 acceptance: `?type=smartphone&brand=Apple` pagination).
-const PHONE_BRAND_WEIGHTS = [
-  "Apple",
-  "Apple",
-  "Apple",
-  "Apple",
-  "Samsung",
-  "Samsung",
-  "Xiaomi",
-  "Xiaomi",
-  "Google",
-  "OnePlus",
-] as const;
+// Brands come from the single catalog brand set (src/lib/brands.ts) that the mega-menu
+// also renders (issue #31). Weighted so Apple (the flagship brand) has enough products to
+// fill more than one listing page (M2 acceptance: `?type=smartphone&brand=Apple`).
+const PHONE_BRAND_WEIGHTS: Record<string, number> = {
+  Apple: 4,
+  Samsung: 2,
+  Xiaomi: 2,
+  Google: 1,
+  OnePlus: 1,
+};
+const PHONE_BRAND_WEIGHTS_LIST = CATALOG_BRANDS.smartphone.flatMap((brand) =>
+  Array<string>(PHONE_BRAND_WEIGHTS[brand] ?? 1).fill(brand),
+);
 
 const PHONE_MODELS: Record<string, string[]> = {
   Apple: ["iPhone 16", "iPhone 16 Pro", "iPhone 16 Pro Max", "iPhone SE"],
@@ -86,6 +86,19 @@ const CLOTHING_MODELS: Record<string, string[]> = {
   Vaude: ["Alpenföhn Jacke", "Rad Trikot", "Wander Socken Set", "Softshell Hose"],
   Patagonia: ["Synthetische Daunenjacke", "Fleece Retro", "T-Shirt Organic", "Flanell Hemd"],
 };
+
+// The model tables must cover exactly the shared brand set — a brand without models would
+// silently produce no products (issue #31).
+for (const [type, models] of [
+  ["smartphone", PHONE_MODELS],
+  ["shoes", SHOE_MODELS],
+  ["clothing", CLOTHING_MODELS],
+] as const) {
+  const missing = CATALOG_BRANDS[type].filter((brand) => !(brand in models));
+  if (missing.length > 0) {
+    throw new Error(`catalog.ts: no models for brand(s) ${missing.join(", ")} (${type})`);
+  }
+}
 
 const PHONE_COLORS = ["schwarz", "weiß", "blau", "grün", "titan", "grau"] as const;
 const SHOE_COLORS = ["schwarz", "weiß", "grau", "blau", "rot", "grün"] as const;
@@ -191,7 +204,7 @@ function buildProduct(rng: Rng, index: number, type: ProductType): SeedProduct {
   const models =
     type === "smartphone" ? PHONE_MODELS : type === "shoes" ? SHOE_MODELS : CLOTHING_MODELS;
   const brand =
-    type === "smartphone" ? pick(rng, PHONE_BRAND_WEIGHTS) : pick(rng, Object.keys(models));
+    type === "smartphone" ? pick(rng, PHONE_BRAND_WEIGHTS_LIST) : pick(rng, Object.keys(models));
   const model = pick(rng, models[brand]);
   const name = `${brand} ${model}`;
   const priceCents =

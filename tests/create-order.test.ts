@@ -3,7 +3,8 @@ import { computeTotals } from "@/lib/pricing";
 import { CounterModel } from "@/models/counter";
 import { OrderModel, type Order } from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
-import { createOrderCore, formatOrderNumber } from "@/server/checkout";
+import { createOrderCore } from "@/server/checkout";
+import { formatOrderNumber } from "@/lib/numbers";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 const CUSTOMER = {

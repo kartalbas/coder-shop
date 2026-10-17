@@ -14,13 +14,12 @@ import { SortSelect } from "./sort-select";
 import { Pagination } from "./pagination";
 import { ProductGridSkeleton } from "./skeletons";
 import { EmptyState } from "./empty-state";
+import { MENU_CATEGORIES } from "@/lib/menu";
 
-const TYPE_TABS = [
+const TYPE_TABS: { value: string; label: string }[] = [
   { value: "", label: "Alle" },
-  { value: "smartphone", label: "Smartphones" },
-  { value: "shoes", label: "Schuhe" },
-  { value: "clothing", label: "Kleidung" },
-] as const;
+  ...MENU_CATEGORIES.map((category) => ({ value: category.type, label: category.label })),
+];
 
 const FACET_KEYS: FacetKey[] = ["brand", "size", "color", "storage", "material"];
 
