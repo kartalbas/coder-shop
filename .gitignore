@@ -43,3 +43,6 @@ yarn-error.log*
 
 # run bookkeeping
 /.agent/logs/
+
+# e2e server log (issue #37 regression check)
+tests/e2e/.server.log

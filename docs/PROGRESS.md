@@ -791,3 +791,20 @@ Done — M1–M6 + QA complete.
   `tests/` (test layout).
 - Verified: new purity guard fails on the pre-fix imports; `npm run knip` ✅,
   `npm test` ✅ 303, lint/build ✅, e2e ✅ 21/21.
+
+## ISSUES — queue session 4 (2026-10-17)
+
+### #37 — product pages logged "unstable value new Date() while prerendering" ✅
+- Root cause (found with `__NEXT_SHOW_IGNORE_LISTED=true` to unfilter the stack):
+  the product page's `generateMetadata` queried MongoDB in the **prerender stage**
+  (`await params` does not unwrap the request) — the driver's internal `new Date()`
+  in `ConnectionCheckOutStartedEvent` (CMAP) tripped Next's guard on every view.
+- Fix: `await connection()` before the lookup in `generateMetadata`
+  (`src/app/(storefront)/products/[slug]/page.tsx`); rule recorded in DECISIONS.
+  All other metadata functions either avoid the DB or sit behind `connection()`.
+- Verified: new e2e `tests/e2e/server-log.spec.ts` — global setup now tees the
+  production server's stdout/stderr to `tests/e2e/.server.log` (gitignored) and the
+  spec visits three product pages, then requires the whole run's log to contain no
+  prerender error — **fails on the pre-fix build**, green with the fix; live repro
+  run (throw-away replica set + `next start`) logged the error twice before the fix
+  and nothing after; `npm test` ✅ 303, lint/build ✅, `npm run test:e2e` ✅ 22/22.

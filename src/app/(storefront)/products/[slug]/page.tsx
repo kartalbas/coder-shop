@@ -22,6 +22,10 @@ interface PagePropsLocal {
 }
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
+  // Issue #37: the product lookup below runs in the prerender stage unless this request
+  // is unwrapped first — the MongoDB driver's internal `new Date()` (CMAP events) then
+  // trips Next's "unstable value while prerendering" guard on every product page view.
+  await connection();
   const { slug } = await params;
   // Issue #28: the real product name, not the de-slugged URL ("oneplus oneplus 13t 067").
   const product = await getProductBySlug(slug);

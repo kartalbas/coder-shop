@@ -84,8 +84,18 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
-  server.stdout?.on("data", (chunk: Buffer) => process.stdout.write(`[server] ${chunk}`));
-  server.stderr?.on("data", (chunk: Buffer) => process.stderr.write(`[server] ${chunk}`));
+  // Issue #37: keep the raw server log on disk so specs can assert it stays error-free.
+  const logFile = path.join(REPO_ROOT, "tests", "e2e", ".server.log");
+  fs.writeFileSync(logFile, "");
+  const appendLog = (chunk: Buffer) => fs.appendFile(logFile, chunk, () => {});
+  server.stdout?.on("data", (chunk: Buffer) => {
+    process.stdout.write(`[server] ${chunk}`);
+    appendLog(chunk);
+  });
+  server.stderr?.on("data", (chunk: Buffer) => {
+    process.stderr.write(`[server] ${chunk}`);
+    appendLog(chunk);
+  });
   const serverExit = new Promise<never>((_, reject) =>
     server.on("exit", (code) => reject(new Error(`next start exited early (code ${code})`))),
   );

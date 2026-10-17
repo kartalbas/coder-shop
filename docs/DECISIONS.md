@@ -311,3 +311,14 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   Server Action, whose same-origin check Next enforces) and the create-next-app SVGs are gone.
 - **Vendored shadcn components (`src/components/ui/**`) are knip-ignored:** they are kept in
   canonical upstream shape on purpose; trimming unused variants would make updates hostile.
+
+### #37 — `generateMetadata` must unwrap the request before any DB access
+- Under `cacheComponents`, code in `generateMetadata` runs in the **prerender stage**
+  until a dynamic API unwraps it — and `await params` does not. The product page's
+  metadata lookup queried MongoDB there, and the driver's internal `new Date()`
+  (CMAP monitoring events) tripped Next's "unstable value `new Date()` while
+  prerendering" guard on every product page view.
+- Rule: every `generateMetadata` that touches the database calls `await connection()`
+  first (the product page was the only offender; all page bodies already do). The
+  driver-internal `new Date()` is not ours to remove — the fix is to run the query in
+  the dynamic stage, where time is allowed.
