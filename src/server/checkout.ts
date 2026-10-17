@@ -166,7 +166,9 @@ export async function createOrderCore(
   await connectDB();
   const bySku = mergeQuantities(lines);
 
-  const maxAttempts = 3;
+  // Concurrent checkouts serialize on the counter document; the loser of a write conflict
+  // must back off (issue #11) — immediate retries just collide again.
+  const maxAttempts = 6;
   for (let attempt = 1; ; attempt++) {
     const session = await mongoose.startSession();
     try {
@@ -182,7 +184,11 @@ export async function createOrderCore(
           error: `Nicht genügend Lager für ${error.sku}. Bitte Menge reduzieren.`,
         };
       }
-      if (isTransientError(error) && attempt < maxAttempts) continue;
+      if (isTransientError(error) && attempt < maxAttempts) {
+        const backoffMs = Math.min(10 * 2 ** (attempt - 1), 320) + Math.random() * 10;
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
+      }
       return {
         ok: false,
         error: "Bestellung konnte nicht erstellt werden. Bitte erneut versuchen.",

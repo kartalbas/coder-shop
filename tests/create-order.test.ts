@@ -215,6 +215,32 @@ describe("createOrderCore", () => {
     expect(await stockOf("CT-race")).toBe(0);
     expect(await OrderModel.countDocuments()).toBe(ordersBefore + 1);
   });
+
+  it("lets 10 concurrent checkouts of different products all succeed (issue #11)", async () => {
+    const n = 10;
+    await Promise.all(
+      Array.from({ length: n }, (_, i) => seedProduct(5, `parallel-${i}`)),
+    );
+    const ordersBefore = await OrderModel.countDocuments();
+
+    const results = await Promise.all(
+      Array.from({ length: n }, (_, i) =>
+        createOrderCore({
+          lines: [{ sku: `CT-parallel-${i}`, qty: 1 }],
+          customer: { ...CUSTOMER, email: `kaeufer-${i}@example.ch` },
+          shippingMethod: "standard",
+        }),
+      ),
+    );
+
+    for (const [i, result] of results.entries()) {
+      expect(result.ok, `checkout ${i}: ${result.ok ? "" : result.error}`).toBe(true);
+    }
+    const numbers = results.flatMap((r) => (r.ok ? [r.orderNumber] : []));
+    expect(new Set(numbers).size).toBe(n);
+    expect(await OrderModel.countDocuments()).toBe(ordersBefore + n);
+    for (let i = 0; i < n; i++) expect(await stockOf(`CT-parallel-${i}`)).toBe(4);
+  });
 });
 
 describe("order number format", () => {

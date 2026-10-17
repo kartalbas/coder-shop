@@ -268,3 +268,10 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `allowedTransitions` — what the admin UI renders — excludes it. A manual
   "→ Versandt" from `packed` now raises `IllegalTransitionError` ("Dieser Statuswechsel
   ist nicht erlaubt"), so a shipped order can never lack a tracking number.
+
+### #11 — concurrent checkouts back off instead of failing
+- Concurrent transactions serialize on the counter document; the loser of a write conflict
+  retried immediately (3×) and usually collided again. Retries now use bounded exponential
+  backoff with jitter (10 ms doubling, capped 320 ms, 6 attempts), so 10 parallel
+  checkouts all succeed (integration test). The number stays minted **inside** the
+  transaction — gap-free numbering is kept.

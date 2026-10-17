@@ -490,3 +490,8 @@ Done — M1–M6 + QA complete.
 - Label-only transition: `viaLabel` required in the state machine, excluded from
   `allowedTransitions` (no "→ Versandt" button on packed orders).
 - Verified: state-machine + `transitionOrderCore` tests; e2e shipping journey ✅.
+
+### #11 — parallel checkouts failed on counter write conflicts ✅
+- Transient-retry loop: 6 attempts with exponential backoff + jitter (was 3 immediate).
+- Verified: new integration test — 10 parallel checkouts, all succeed, unique gap-free
+  numbers, stock exact; `npm test` ✅ 209, e2e ✅ 7/7.
