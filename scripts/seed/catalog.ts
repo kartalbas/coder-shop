@@ -1,3 +1,4 @@
+import { COLLECTIONS } from "@/lib/collections";
 import { CATALOG_BRANDS } from "@/lib/brands";
 import { deriveFilter, type ProductAttributes } from "@/lib/facets";
 import type { ProductType } from "@/models/product";
@@ -106,7 +107,6 @@ const CLOTHING_COLORS = ["schwarz", "anthrazit", "blau", "oliv", "rot", "beige"]
 const MATERIALS = ["Baumwolle", "Polyester", "Wolle", "Daune", "Fleece", "Softshell"] as const;
 const CLOTHING_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 const STORAGE_DELTA: Record<number, number> = { 64: 0, 128: 2000, 256: 4500, 512: 9000 };
-const COLLECTIONS = ["Neuheiten", "Bestseller", "Sale"] as const;
 
 function stockFor(rng: Rng, threshold: number): number {
   const roll = rng();

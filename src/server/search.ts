@@ -79,6 +79,7 @@ export interface ListingQuery {
   sort?: SortKey;
   page?: number;
   pageSize?: number;
+  collection?: string;
 }
 
 export const PAGE_SIZE = 24;
@@ -97,6 +98,7 @@ export function buildListingFilter(query: ListingQuery): Record<string, unknown>
   if (query.color) filter["filter.colors"] = query.color;
   if (query.storage) filter["filter.storage"] = query.storage;
   if (query.material) filter["filter.materials"] = query.material;
+  if (query.collection) filter.collection = query.collection;
   return filter;
 }
 
@@ -227,6 +229,17 @@ export async function getRelatedProducts(product: ProductDto, limit = 4): Promis
 export async function getFeaturedProducts(limit = 12): Promise<ProductDto[]> {
   await connectDB();
   const docs = await ProductModel.find({ featured: true })
+    .sort({ createdAt: -1, _id: 1 })
+    .limit(limit)
+    .lean<LeanProduct[]>()
+    .exec();
+  return docs.map(toProductDto);
+}
+
+// Products of one featured collection (issue #23), newest first.
+export async function getCollectionProducts(collection: string, limit = 4): Promise<ProductDto[]> {
+  await connectDB();
+  const docs = await ProductModel.find({ collection })
     .sort({ createdAt: -1, _id: 1 })
     .limit(limit)
     .lean<LeanProduct[]>()

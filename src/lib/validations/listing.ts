@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { COLLECTIONS } from "@/lib/collections";
 
 export const productTypes = ["smartphone", "shoes", "clothing"] as const;
 export const sortKeys = ["price-asc", "price-desc", "newest"] as const;
@@ -19,6 +20,7 @@ export const listingParamsSchema = z.object({
   material: first.optional(),
   sort: first.pipe(z.enum(sortKeys)).optional(),
   page: first.transform(Number).pipe(z.number().int().min(1)).optional(),
+  collection: first.pipe(z.enum(COLLECTIONS)).optional(),
 });
 
 export type ListingParams = z.infer<typeof listingParamsSchema>;

@@ -572,3 +572,12 @@ Done — M1–M6 + QA complete.
   every catalog slot is a photo path; e2e gallery assertion works with loaded photos and
   placeholders alike.
 - Verified: `npm test` ✅ 239, `npm run seed` ✅, lint/build ✅, e2e ✅ 7/7.
+
+### #23 — home page shows the featured collections ✅
+- `src/lib/collections.ts` (`Neuheiten | Bestseller | Sale`) is the single source for the
+  seed, the listing `?collection=` filter (`listingParamsSchema`,
+  `buildListingFilter`), the new home-page `Collections` section (up to 4 products per
+  collection via `getCollectionProducts`, each linking to the filtered listing) and the
+  mega-menu/hero „Neuheiten" links. The listing shows an active-collection chip that can
+  be removed.
+- Verified: `tests/collections.test.ts` (4); `npm test` ✅ 243, lint/build ✅, e2e ✅ 7/7.

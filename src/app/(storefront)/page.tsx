@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront/product-card";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
-import { getFeaturedProducts } from "@/server/search";
+import { getCollectionProducts, getFeaturedProducts } from "@/server/search";
+import { COLLECTIONS } from "@/lib/collections";
 import { VAT_LABEL } from "@/lib/pricing";
 
 const CATEGORIES = [
@@ -40,6 +41,66 @@ async function FeaturedRail() {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+const COLLECTION_BLURBS: Record<(typeof COLLECTIONS)[number], string> = {
+  Neuheiten: "Frisch eingetroffen — die neuesten Zugänge im Sortiment.",
+  Bestseller: "Das kaufen unsere Kundinnen und Kunden am häufigsten.",
+  Sale: "Reduzierte Angebote, solange der Vorrat reicht.",
+};
+
+// Featured collections (issue #23): the seed's `collection` field, rendered as rails
+// whose links lead to the filtered listing.
+async function Collections() {
+  await connection();
+  const sections = await Promise.all(
+    COLLECTIONS.map(async (collection) => ({
+      collection,
+      products: await getCollectionProducts(collection, 4),
+    })),
+  );
+  const filled = sections.filter((section) => section.products.length > 0);
+  if (filled.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-7xl space-y-12 px-4 py-12" aria-label="Kuratierte Kollektionen">
+      {filled.map(({ collection, products }) => (
+        <div key={collection}>
+          <div className="mb-2 flex items-baseline justify-between gap-4">
+            <h2 className="text-2xl font-semibold tracking-tight">{collection}</h2>
+            <Link
+              href={`/produkte?collection=${encodeURIComponent(collection)}`}
+              className="text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Alle ansehen
+            </Link>
+          </div>
+          <p className="mb-6 text-sm text-muted-foreground">{COLLECTION_BLURBS[collection]}</p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function CollectionsSkeleton() {
+  return (
+    <section className="mx-auto max-w-7xl space-y-12 px-4 py-12" aria-hidden>
+      {Array.from({ length: 2 }, (_, i) => (
+        <div key={i}>
+          <div className="mb-6 h-8 w-40 rounded bg-muted" />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {Array.from({ length: 4 }, (_, j) => (
+              <ProductCardSkeleton key={j} />
+            ))}
+          </div>
+        </div>
+      ))}
     </section>
   );
 }
@@ -79,7 +140,7 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/produkte?sort=newest">Neuheiten</Link>
+              <Link href="/produkte?collection=Neuheiten">Neuheiten</Link>
             </Button>
           </div>
         </div>
@@ -108,6 +169,10 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <Suspense fallback={<CollectionsSkeleton />}>
+        <Collections />
+      </Suspense>
 
       <Suspense fallback={<FeaturedRailSkeleton />}>
         <FeaturedRail />

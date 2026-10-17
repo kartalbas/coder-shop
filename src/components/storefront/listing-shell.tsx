@@ -32,6 +32,7 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
   const skipFirst = useRef(true);
 
   const type = searchParams.get("type") ?? "";
+  const collection = searchParams.get("collection");
   const sort = (searchParams.get("sort") as SortKey | null) ?? "newest";
   const selected = Object.fromEntries(
     FACET_KEYS.map((key) => [key, searchParams.get(key)]).filter(([, v]) => v != null),
@@ -86,6 +87,21 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      {collection && (
+        <div className="mb-4 flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Kollektion:</span>
+          <button
+            type="button"
+            onClick={() => applyParams({ collection: null })}
+            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {collection}
+            <span aria-hidden>×</span>
+            <span className="sr-only">Kollektion {collection} entfernen</span>
+          </button>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {TYPE_TABS.map((tab) => (
           <Button

@@ -63,7 +63,7 @@ export function MegaMenu() {
                       Die neuesten Modelle, frisch eingetroffen.
                     </p>
                     <Link
-                      href="/produkte?sort=newest"
+                      href="/produkte?collection=Neuheiten"
                       className="mt-3 text-sm font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring"
                       onClick={() => setOpenCategory(null)}
                     >
