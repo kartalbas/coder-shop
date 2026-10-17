@@ -51,13 +51,23 @@ gate() {
   run_check "npm run lint" npm run lint || rc=1
   run_check "npm run build" npm run build || rc=1
   if (( rc == 0 )); then
-    npx next start -p "$GATE_PORT" >"$LOGS/gate-server.log" 2>&1 & pid=$!
+    # its own process group, so stopping it also stops next-server and the mongod it started
+    setsid npx next start -p "$GATE_PORT" >"$LOGS/gate-server.log" 2>&1 & pid=$!
     for _ in $(seq 1 60); do curl -s -o /dev/null "http://127.0.0.1:$GATE_PORT/" && break; sleep 1; done
     for url in / /produkte /api/health; do
       code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "http://127.0.0.1:$GATE_PORT$url")"
       [[ "$code" == 200 ]] || { echo "GET $url → HTTP $code" >>"$out"; rc=1; }
     done
-    kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+    if ! curl -s --max-time 30 "http://127.0.0.1:$GATE_PORT/produkte" | grep -q '/produkt/'; then
+      echo "GET /produkte → the HTML links to no product page (/produkt/…)" >>"$out"; rc=1
+    fi
+    if grep -qiE 'error|unhandled|ECONNREFUSED' "$LOGS/gate-server.log"; then
+      { printf 'the server logged errors while these pages were fetched (last lines):\n```\n'
+        grep -v '^\s*$' "$LOGS/gate-server.log" | tail -30; printf '```\n'; } >>"$out"; rc=1
+    fi
+    kill -TERM -- -"$pid" 2>/dev/null
+    for _ in $(seq 1 15); do kill -0 -- -"$pid" 2>/dev/null || break; sleep 1; done
+    kill -KILL -- -"$pid" 2>/dev/null; wait "$pid" 2>/dev/null
   fi
   if [[ -n "$(git status --porcelain)" ]]; then
     echo "git status: $(git status --porcelain | wc -l) uncommitted file(s)" >>"$out"; rc=1
