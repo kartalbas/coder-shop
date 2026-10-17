@@ -1,0 +1,79 @@
+import { describe, expect, it } from "vitest";
+import {
+  FREE_SHIPPING_FROM_CENTS,
+  SHIPPING_CENTS,
+  computeTotals,
+  netFromGross,
+  shippingCents,
+  subtotalCents,
+  vatFromGross,
+} from "./pricing";
+
+describe("vatFromGross (VAT rounding rule: gross − round(gross × 100 / 108.1))", () => {
+  it.each([
+    [0, 0],
+    [10810, 810],
+    [100, 7],
+    [108, 8],
+    [490, 37],
+    [10000, 749],
+    [1290, 97],
+    [1, 0],
+  ])("gross %i cents → vat %i cents", (gross, vat) => {
+    expect(vatFromGross(gross)).toBe(vat);
+  });
+
+  it("net + vat always re-sums to the gross", () => {
+    for (const gross of [1, 99, 490, 1290, 5490, 10000, 123456]) {
+      expect(netFromGross(gross) + vatFromGross(gross)).toBe(gross);
+    }
+  });
+});
+
+describe("subtotal and shipping", () => {
+  it("sums unit price × qty", () => {
+    expect(subtotalCents([{ unitPriceCents: 1000, qty: 2 }, { unitPriceCents: 500, qty: 3 }])).toBe(
+      3500,
+    );
+  });
+
+  it("empty cart has subtotal 0", () => {
+    expect(subtotalCents([])).toBe(0);
+  });
+
+  it("standard shipping below the free threshold", () => {
+    expect(shippingCents(FREE_SHIPPING_FROM_CENTS - 1, "standard")).toBe(SHIPPING_CENTS.standard);
+  });
+
+  it("express shipping below the free threshold", () => {
+    expect(shippingCents(0, "express")).toBe(SHIPPING_CENTS.express);
+  });
+
+  it("free shipping from CHF 100 subtotal", () => {
+    expect(shippingCents(FREE_SHIPPING_FROM_CENTS, "standard")).toBe(0);
+    expect(shippingCents(FREE_SHIPPING_FROM_CENTS, "express")).toBe(0);
+  });
+});
+
+describe("computeTotals", () => {
+  it("computes consistent totals with shipping", () => {
+    const totals = computeTotals([{ unitPriceCents: 5000, qty: 1 }], "standard");
+    expect(totals).toEqual({
+      subtotalCents: 5000,
+      shippingCents: 490,
+      totalCents: 5490,
+      vatCents: vatFromGross(5490),
+    });
+  });
+
+  it("free shipping applies to the total", () => {
+    const totals = computeTotals([{ unitPriceCents: 12000, qty: 1 }], "express");
+    expect(totals.shippingCents).toBe(0);
+    expect(totals.totalCents).toBe(12000);
+  });
+
+  it("vat is derived from the VAT-inclusive total", () => {
+    const totals = computeTotals([{ unitPriceCents: 1990, qty: 3 }], "standard");
+    expect(totals.vatCents).toBe(totals.totalCents - Math.round((totals.totalCents * 100) / 108.1));
+  });
+});

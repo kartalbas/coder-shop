@@ -1,55 +1,55 @@
 # coder-shop
 
-Production-grade e-commerce system with a German storefront (CHF, Swiss VAT 8.1 % included in
-prices) and a full admin back office: order workflow (`new → paid → picking → packed → shipped
-→ delivered`, cancellable), UPS shipping labels (real UPS REST provider or mock), purchasing
-with goods receipt, dashboard with revenue and low-stock alerts.
+Production-grade e-commerce shop — Next.js App Router, TypeScript, MongoDB via Mongoose.
+UI German, currency CHF (de-CH), Swiss VAT 8.1 % included in prices. No installed database
+required: [mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server) runs a
+single-node replica set from `node_modules` (persistent in `./data/mongo`, real transactions).
 
-Full-stack TypeScript: Next.js App Router (Server Components + Server Actions), MongoDB via
-Mongoose, Tailwind CSS v4 + shadcn/ui, Framer Motion, Zod, Vitest. **No installed database
-required** — a single-node MongoDB replica set (mongodb-memory-server) starts on demand and
-persists in `data/mongo`; set `MONGODB_URI` to use an external database instead.
-
-## How this repository is built
-
-coder-shop is built by a **local LLM running through OpenCode** in a spec-driven run: the specs
-are the source of truth and the agent works through them milestone by milestone.
-
-- `docs/REQUIREMENTS.md` — the spec: stack, features, quality and delivery rules
-- `docs/ARCHITECTURE.md` — stack pins, models, server design, security, UX per page
-- `docs/PLAN.md` — milestones M1–M5, each with checkable acceptance gates
-- `docs/REVIEW.md` — strict review of the specs, with a resolution per item
-- `docs/DECISIONS.md`, `docs/PROGRESS.md` — decision log and milestone status (created with M1)
-- `.agent/` — the run's prompts and logs (run bookkeeping, not app code)
-
-## Getting started
+## Run
 
 ```bash
 npm install
-npm run seed    # deterministic 200 products + generated SVG images + demo data (scripts/seed)
-npm run dev     # http://localhost:3000 — storefront at /produkte
+npm run seed   # deterministic demo data (200 products, orders, suppliers, admin user)
+npm run dev    # http://localhost:3000
 ```
 
-The first seed/test run downloads a mongod binary into `.cache/mongod` (one-time network need).
-If auto-detection fails on your distro, set `MONGOMS_SYSTEM_BINARY` to a local mongod. If the
-dev server was killed hard, `data/mongo` may hold a lock — stop all instances or delete
-`data/mongo/mongod.lock`.
+`npm run build && npm run start` runs the production server. Set `MONGODB_URI` to use an
+external replica-set-capable MongoDB instead of the embedded one (required in production).
 
-## Test, lint, build
+## Seed
 
 ```bash
-npm test        # Vitest: pure-lib unit tests + integration tests on a throw-away replica set
-npm run lint
-npm run build   # passes with no mongod running and no env set
+npm run seed          # idempotent: upserts catalog, creates sample orders/POs only once
+npm run seed -- --fresh  # drop the database first, then seed
 ```
 
-## Admin login
+`--fresh` refuses to run while another process (e.g. the dev server) holds the `data/mongo`
+lock. The seed is deterministic (fixed PRNG seed): same 200 products (70 smartphones /
+70 shoes / 60 clothing), 1–5 generated SVG images per product in `public/products/`,
+clock-relative order dates, same order numbers on every run.
 
-`/admin` — seeded credentials `admin@codershop.ch` / `Admin!2026` (demo only; login lands with
-milestone M1 and is completed there).
+## Test
 
-## Status
+```bash
+npm test    # Vitest: unit tests (pure src/lib) + integration tests against a throw-away
+            # in-RAM replica set started by src/test/setup.ts
+npm run lint
+npm run build
+```
 
-Milestones M1–M5 per `docs/PLAN.md`; current state in `docs/PROGRESS.md`. Production
-deployment targets a long-running Node server (`next start`) with `MONGODB_URI` set; real UPS
-labels activate when `UPS_CLIENT_ID`, `UPS_CLIENT_SECRET` and `UPS_ACCOUNT` are set.
+## Admin credentials
+
+Seeded admin user (M4 wires the login UI): `admin@codershop.ch` / `Admin!2026`.
+
+## Database lock recovery
+
+If a previous run crashed, mongod may leave `data/mongo/mongod.lock` behind and startup fails
+with a lock error after 3 retries. Recovery: stop any running dev/seed process
+(`pkill -f "next start"; pkill -f mongod`), delete `data/mongo/mongod.lock`, start again.
+
+## mongod binary
+
+The mongod binary version is pinned via the `mongodb-memory-server` block in `package.json`
+and cached in `.cache/mongod/` (gitignored), so runs after the first download are offline.
+If auto-detection of your distribution fails, set `MONGOMS_SYSTEM_BINARY=/path/to/mongod`
+to use a locally installed mongod instead.

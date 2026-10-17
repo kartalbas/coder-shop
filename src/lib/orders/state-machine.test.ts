@@ -1,0 +1,113 @@
+import { describe, expect, it } from "vitest";
+import {
+  IllegalTransitionError,
+  ORDER_STATUSES,
+  allowedTransitions,
+  canTransition,
+  transition,
+  transitionsWithRestock,
+  type OrderLike,
+  type OrderStatus,
+} from "./state-machine";
+
+const ALLOWED: [OrderStatus, OrderStatus][] = [
+  ["new", "paid"],
+  ["new", "cancelled"],
+  ["paid", "picking"],
+  ["paid", "cancelled"],
+  ["picking", "packed"],
+  ["picking", "cancelled"],
+  ["packed", "shipped"],
+  ["shipped", "delivered"],
+];
+
+const ALLOWED_KEYS = new Set(ALLOWED.map(([from, to]) => `${from}→${to}`));
+
+describe("canTransition — full graph", () => {
+  it.each(ALLOWED)("%s → %s is allowed", (from, to) => {
+    expect(canTransition(from, to)).toBe(true);
+  });
+
+  it("rejects every other pair (including same-state)", () => {
+    const rejected: [OrderStatus, OrderStatus][] = [];
+    for (const from of ORDER_STATUSES) {
+      for (const to of ORDER_STATUSES) {
+        if (!ALLOWED_KEYS.has(`${from}→${to}`)) rejected.push([from, to]);
+      }
+    }
+    expect(rejected.length).toBe(ORDER_STATUSES.length ** 2 - ALLOWED.length);
+    for (const [from, to] of rejected) {
+      expect(canTransition(from, to), `${from} → ${to}`).toBe(false);
+    }
+  });
+
+  it("cancelled is reachable exactly from new, paid and picking", () => {
+    const fromCancelled = ORDER_STATUSES.filter((from) => canTransition(from, "cancelled"));
+    expect(fromCancelled).toEqual(["new", "paid", "picking"]);
+  });
+
+  it("cancelled and delivered are terminal", () => {
+    expect(allowedTransitions("cancelled")).toEqual([]);
+    expect(allowedTransitions("delivered")).toEqual([]);
+  });
+});
+
+describe("transitionsWithRestock", () => {
+  it.each(["new", "paid", "picking"] as OrderStatus[])("cancel from %s restocks", (from) => {
+    expect(transitionsWithRestock(from, "cancelled")).toBe(true);
+  });
+
+  it.each(["packed", "shipped", "delivered", "cancelled"] as OrderStatus[])(
+    "cancel from %s does not restock (not allowed at all)",
+    (from) => {
+      expect(transitionsWithRestock(from, "cancelled")).toBe(false);
+    },
+  );
+});
+
+describe("transition", () => {
+  const order: OrderLike = { status: "new", statusLog: [{ status: "new", at: new Date("2026-01-01") }] };
+  const at = new Date("2026-01-02T10:00:00Z");
+
+  it("sets the status and appends a log entry", () => {
+    const next = transition(order, "paid", { at, note: "Mock-Zahlung", by: "system" });
+    expect(next.status).toBe("paid");
+    expect(next.statusLog).toHaveLength(2);
+    expect(next.statusLog[1]).toEqual({ status: "paid", at, note: "Mock-Zahlung", by: "system" });
+  });
+
+  it("does not mutate the input order", () => {
+    transition(order, "paid", { at });
+    expect(order.status).toBe("new");
+    expect(order.statusLog).toHaveLength(1);
+  });
+
+  it("omits note/by when not given", () => {
+    const next = transition(order, "paid", { at });
+    expect(next.statusLog[1]).toEqual({ status: "paid", at });
+  });
+
+  it("throws IllegalTransitionError on an illegal edge", () => {
+    expect(() => transition(order, "shipped")).toThrow(IllegalTransitionError);
+  });
+
+  it("throws on a same-state transition", () => {
+    const paid: OrderLike = { status: "paid", statusLog: [] };
+    expect(() => transition(paid, "paid")).toThrow(IllegalTransitionError);
+  });
+
+  it("walks the full happy path with one log entry per step", () => {
+    let o: OrderLike = { status: "new", statusLog: [] };
+    for (const to of ["paid", "picking", "packed", "shipped", "delivered"] as OrderStatus[]) {
+      o = transition(o, to);
+    }
+    expect(o.status).toBe("delivered");
+    expect(o.statusLog.map((e) => e.status)).toEqual([
+      "paid",
+      "picking",
+      "packed",
+      "shipped",
+      "delivered",
+    ]);
+  });
+});
