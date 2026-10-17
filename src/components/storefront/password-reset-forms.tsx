@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
+import { passwordRulesMet } from "@/lib/password-rules";
 import {
   passwordResetConfirmAction,
   passwordResetRequestAction,
@@ -13,6 +15,7 @@ import {
 } from "@/server/actions/account";
 
 export function PasswordResetRequestForm() {
+  const [email, setEmail] = useState("");
   const [state, formAction, pending] = useActionState<AccountActionState | null, FormData>(
     passwordResetRequestAction,
     null,
@@ -33,6 +36,8 @@ export function PasswordResetRequestForm() {
           autoComplete="email"
           placeholder="sie@beispiel.ch"
           required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
         />
       </div>
       <Button type="submit" className="w-full" disabled={pending}>
@@ -48,7 +53,10 @@ export function PasswordResetRequestForm() {
   );
 }
 
+// Issue #60: controlled input (a failed submit keeps the value), live rules checklist,
+// submit reflects the rules, error at the field.
 export function PasswordResetConfirmForm({ token }: { token: string }) {
+  const [password, setPassword] = useState("");
   const [state, formAction, pending] = useActionState<AccountActionState | null, FormData>(
     passwordResetConfirmAction,
     null,
@@ -70,12 +78,22 @@ export function PasswordResetConfirmForm({ token }: { token: string }) {
           autoComplete="new-password"
           placeholder="••••••••"
           required
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          aria-describedby="password-hints"
         />
-        <p className="text-xs text-muted-foreground">
-          Mindestens 10 Zeichen, ein Buchstabe und eine Zahl.
-        </p>
+        <PasswordRulesChecklist id="password-hints" scope="customer" password={password} />
+        {state?.fieldErrors?.password && (
+          <p role="alert" className="text-sm text-destructive">
+            {state.fieldErrors.password}
+          </p>
+        )}
       </div>
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={pending || !passwordRulesMet("customer", password)}
+      >
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Passwort setzen
       </Button>

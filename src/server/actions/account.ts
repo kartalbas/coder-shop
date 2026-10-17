@@ -13,6 +13,7 @@ import {
   registerFieldsSchema,
   validateCustomerPassword,
 } from "@/lib/validations/account";
+import { fieldErrorsFrom } from "@/lib/validations/common";
 import {
   claimOrderCore,
   deleteAddressCore,
@@ -39,6 +40,8 @@ export interface AccountActionState {
   ok: boolean;
   error?: string;
   message?: string;
+  // Issue #60: the message of the field the error belongs to, keyed by field name.
+  fieldErrors?: Record<string, string>;
 }
 
 async function clientIp(): Promise<string> {
@@ -48,6 +51,10 @@ async function clientIp(): Promise<string> {
 
 function firstIssue(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Bitte Eingaben prüfen.";
+}
+
+function invalidForm(error: z.ZodError): AccountActionState {
+  return { ok: false, error: firstIssue(error), fieldErrors: fieldErrorsFrom(error) };
 }
 
 function parseForm<T extends z.ZodType>(schema: T, formData: FormData) {
@@ -64,12 +71,20 @@ export async function registerAction(
   formData: FormData,
 ): Promise<AccountActionState> {
   const parsed = parseForm(registerFieldsSchema, formData);
-  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
+  if (!parsed.success) return invalidForm(parsed.error);
   const result = await registerCustomerCore(
     { ...parsed.data, consent: checkbox(formData.get("consent")) },
     { ip: await clientIp() },
   );
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    // The e-mail is the field the user can still correct here (issue #60).
+    const isEmailTaken = result.error.includes("E-Mail");
+    return {
+      ok: false,
+      error: result.error,
+      fieldErrors: isEmailTaken ? { email: result.error } : undefined,
+    };
+  }
   const login = await customerLoginCore(parsed.data.email, parsed.data.password, {
     ip: await clientIp(),
   });
@@ -115,7 +130,7 @@ export async function passwordResetConfirmAction(
   formData: FormData,
 ): Promise<AccountActionState> {
   const parsed = parseForm(passwordResetConfirmSchema, formData);
-  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
+  if (!parsed.success) return invalidForm(parsed.error);
   const result = await resetPasswordCore(parsed.data.token, parsed.data.password);
   if (!result.ok) return { ok: false, error: result.error };
   return { ok: true, message: "Das Passwort wurde geändert. Sie können sich jetzt anmelden." };
@@ -170,19 +185,29 @@ export async function reorderAction(orderNumber: string): Promise<ReorderLine[]>
 
 // Changing your own password signs every session out (sessionsInvalidBefore) — the
 // customer has to log in again with the new one.
+export interface ChangeOwnPasswordActionState {
+  error?: string;
+  fieldErrors?: Record<string, string>;
+}
+
 export async function changePasswordAction(
-  _previous: { error?: string } | null,
+  _previous: ChangeOwnPasswordActionState | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<ChangeOwnPasswordActionState> {
   const userId = await requireCustomerSession();
   const password = String(formData.get("newPassword") ?? "");
   const passwordError = validateCustomerPassword(password);
-  if (passwordError) return { error: passwordError };
+  if (passwordError) {
+    return { error: passwordError, fieldErrors: { newPassword: passwordError } };
+  }
   const result = await changePasswordCore(
     userId,
     String(formData.get("currentPassword") ?? ""),
     password,
   );
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const field = result.reason === "current_password" ? "currentPassword" : "newPassword";
+    return { error: result.error, fieldErrors: { [field]: result.error } };
+  }
   redirect("/konto/anmelden");
 }

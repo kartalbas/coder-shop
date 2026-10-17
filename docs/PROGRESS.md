@@ -1086,6 +1086,29 @@ Done — M1–M6 + QA complete.
 
 ## ISSUES — queue session 11 (2026-10-17)
 
+### #60 — password forms: input kept after errors, rules shown live ✅
+- Root cause of the cleared registration: React resets **uncontrolled** form fields
+  after a form action completes — name/e-mail/consent were uncontrolled (only the
+  password was controlled). Every field in the four password-setting forms
+  (registration, password reset, portal and admin password change) is now controlled,
+  so a failed submit keeps everything the user typed — the password included.
+- One pure rule source `src/lib/password-rules.ts` (customer: 10 chars + letter +
+  digit; admin: length) — `validateCustomerPassword`, the admin action schema and the
+  new shared `PasswordRulesChecklist` all read it, so client and server enforce exactly
+  the same rules; the checklist is `aria-live` (each rule announced „erfüllt / noch
+  nicht erfüllt" + overall state) and the submit button is disabled until every rule
+  of the scope is met.
+- Errors now sit at the field they belong to: actions return `fieldErrors`
+  (`fieldErrorsFrom` over the zod issues; `changePasswordCore` gained a `reason` so
+  „aktuelles Passwort falsch" lands on the current-password field), inputs get
+  `aria-invalid` + `aria-describedby`.
+- Verified: `src/lib/password-rules.test.ts` (3); new e2e `password-forms.spec.ts`
+  (4: live checklist + gated submit on registration; failed registration keeps
+  name/e-mail/password and shows the error at the name field; reset form checklist;
+  admin form keeps all three values with the error at the current field) — the
+  keep-input assertions fail on the pre-fix build (reproduced: name/e-mail came back
+  empty); `npm test` ✅ 442, lint/build ✅, `npm run test:e2e` ✅ 43/43.
+
 ### #59 — calm, stable layout: no jumping on navigation, nothing overlapping ✅
 - Page jump: `RouteTransition` no longer slides the whole page (`y: 8` → 0) on every
   pathname change — a calm opacity-only fade (150 ms); `html` gets

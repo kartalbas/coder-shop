@@ -1,18 +1,27 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { changePasswordAction } from "@/server/actions/account";
+import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
+import { passwordRulesMet } from "@/lib/password-rules";
+import {
+  changePasswordAction,
+  type ChangeOwnPasswordActionState,
+} from "@/server/actions/account";
 
+// Issue #60: controlled inputs keep the values through a failed submit; the new
+// password shows its rules live and the error sits at the field it belongs to.
 export function CustomerPasswordForm() {
-  const [state, formAction, pending] = useActionState<{ error?: string } | null, FormData>(
-    changePasswordAction,
-    null,
-  );
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [state, formAction, pending] = useActionState<
+    ChangeOwnPasswordActionState | null,
+    FormData
+  >(changePasswordAction, null);
 
   useEffect(() => {
     if (state?.error) toast.error(state.error);
@@ -28,7 +37,15 @@ export function CustomerPasswordForm() {
           type="password"
           autoComplete="current-password"
           required
+          value={currentPassword}
+          onChange={(event) => setCurrentPassword(event.target.value)}
+          aria-invalid={state?.fieldErrors?.currentPassword !== undefined}
         />
+        {state?.fieldErrors?.currentPassword && (
+          <p role="alert" className="text-sm text-destructive">
+            {state.fieldErrors.currentPassword}
+          </p>
+        )}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="newPassword">Neues Passwort</Label>
@@ -38,12 +55,21 @@ export function CustomerPasswordForm() {
           type="password"
           autoComplete="new-password"
           required
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          aria-describedby="new-password-hints"
         />
-        <p className="text-xs text-muted-foreground">
-          Mindestens 10 Zeichen, ein Buchstabe und eine Zahl.
-        </p>
+        <PasswordRulesChecklist id="new-password-hints" scope="customer" password={newPassword} />
+        {state?.fieldErrors?.newPassword && (
+          <p role="alert" className="text-sm text-destructive">
+            {state.fieldErrors.newPassword}
+          </p>
+        )}
       </div>
-      <Button type="submit" disabled={pending}>
+      <Button
+        type="submit"
+        disabled={pending || !passwordRulesMet("customer", newPassword)}
+      >
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Passwort ändern
       </Button>

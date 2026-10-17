@@ -1,29 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
-import { Check, Loader2, X } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { passwordChecks } from "@/lib/validations/account";
+import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
+import { passwordRulesMet } from "@/lib/password-rules";
 import {
   registerAction,
   type AccountActionState,
 } from "@/server/actions/account";
-import { cn } from "@/lib/utils";
 
-const STRENGTH_HINTS = [
-  { key: "longEnough", label: "mindestens 10 Zeichen" },
-  { key: "hasLetter", label: "ein Buchstabe" },
-  { key: "hasDigit", label: "eine Zahl" },
-] as const;
-
+// Issue #60: every field is controlled so a failed submit keeps what the user typed
+// (React resets uncontrolled fields after a form action), the rules show live and the
+// error sits at the field it belongs to.
 export function RegisterForm() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const checks = useMemo(() => passwordChecks(password), [password]);
+  const [consent, setConsent] = useState(false);
   const [state, formAction, pending] = useActionState<AccountActionState | null, FormData>(
     registerAction,
     null,
@@ -33,11 +32,28 @@ export function RegisterForm() {
     if (state?.error) toast.error(state.error);
   }, [state]);
 
+  const passwordMet = passwordRulesMet("customer", password);
+
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Name, Vorname</Label>
-        <Input id="name" name="name" autoComplete="name" placeholder="Max Muster" required />
+        <Input
+          id="name"
+          name="name"
+          autoComplete="name"
+          placeholder="Max Muster"
+          required
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          aria-invalid={state?.fieldErrors?.name !== undefined}
+          aria-describedby={state?.fieldErrors?.name ? "name-error" : undefined}
+        />
+        {state?.fieldErrors?.name && (
+          <p id="name-error" role="alert" className="text-sm text-destructive">
+            {state.fieldErrors.name}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">E-Mail</Label>
@@ -48,7 +64,16 @@ export function RegisterForm() {
           autoComplete="email"
           placeholder="max@example.ch"
           required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          aria-invalid={state?.fieldErrors?.email !== undefined}
+          aria-describedby={state?.fieldErrors?.email ? "email-error" : undefined}
         />
+        {state?.fieldErrors?.email && (
+          <p id="email-error" role="alert" className="text-sm text-destructive">
+            {state.fieldErrors.email}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Passwort</Label>
@@ -63,26 +88,26 @@ export function RegisterForm() {
           onChange={(event) => setPassword(event.target.value)}
           aria-describedby="password-hints"
         />
-        <ul id="password-hints" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {STRENGTH_HINTS.map(({ key, label }) => (
-            <li key={key} className={cn("flex items-center gap-1", checks[key] && "text-primary")}>
-              {checks[key] ? (
-                <Check className="size-3.5" aria-hidden />
-              ) : (
-                <X className="size-3.5" aria-hidden />
-              )}
-              {label}
-            </li>
-          ))}
-        </ul>
+        <PasswordRulesChecklist id="password-hints" scope="customer" password={password} />
+        {state?.fieldErrors?.password && (
+          <p role="alert" className="text-sm text-destructive">
+            {state.fieldErrors.password}
+          </p>
+        )}
       </div>
       <div className="flex items-start gap-2">
-        <Checkbox id="consent" name="consent" className="mt-0.5" />
+        <Checkbox
+          id="consent"
+          name="consent"
+          className="mt-0.5"
+          checked={consent}
+          onCheckedChange={(checked) => setConsent(checked === true)}
+        />
         <Label htmlFor="consent" className="text-sm font-normal">
           Ich akzeptiere die AGB und die Datenschutzerklärung (Demo).
         </Label>
       </div>
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending || !passwordMet}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
         Konto erstellen
       </Button>

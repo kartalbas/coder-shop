@@ -1,23 +1,11 @@
 import { z } from "zod";
+import { MIN_PASSWORD_LENGTH, passwordRuleChecks } from "@/lib/password-rules";
 
 // Issue #39: customer account rules. The strength requirement is deliberately modest
-// (10 chars, letter + digit) — the UI shows a live hint built from `passwordChecks`.
-const MIN_PASSWORD_LENGTH = 10;
-
-export function passwordChecks(password: string): {
-  longEnough: boolean;
-  hasLetter: boolean;
-  hasDigit: boolean;
-} {
-  return {
-    longEnough: password.length >= MIN_PASSWORD_LENGTH,
-    hasLetter: /[a-zA-Z]/.test(password),
-    hasDigit: /\d/.test(password),
-  };
-}
-
+// (10 chars, letter + digit) — the rules themselves live in `src/lib/password-rules.ts`
+// so the live checklist (issue #60) and the server enforce exactly the same ones.
 export function validateCustomerPassword(password: string): string | null {
-  const checks = passwordChecks(password);
+  const checks = passwordRuleChecks("customer", password);
   if (!checks.longEnough) return `Das Passwort braucht mindestens ${MIN_PASSWORD_LENGTH} Zeichen.`;
   if (!checks.hasLetter || !checks.hasDigit) {
     return "Das Passwort braucht mindestens einen Buchstaben und eine Zahl.";

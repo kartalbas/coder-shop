@@ -128,6 +128,8 @@ src/
       recently-viewed/route.ts  # GET products behind remembered slugs, newest first (#46)
       health/route.ts       # GET { ok } — also warms DB connection
   components/
+    password-rules-checklist.tsx  # live, aria-announced password rule checklist shared
+                            # by every form that sets a password (#60)
     ui/                     # vendored shadcn components (kept canonical, knip-ignored, §13)
     storefront/             # named "storefront" (not "shop") — recorded deviation, DECISIONS
       header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx, footer.tsx
@@ -176,6 +178,8 @@ src/
     format.ts               # CHF de-CH, dates, weights
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
     numbers.ts              # formatOrderNumber/formatPoNumber/formatPaymentReference
+    password-rules.ts       # password rules per scope (customer/admin) — single source
+                            # for server validation and the live checklist (#60)
     pricing.ts              # gross VAT 8.1 %, totals, VAT rounding + copy, buyable price (§8 note)
     stock.ts                # pure stock rules: isLowStock, stockLevel, stockLabel
     facets.ts               # deriveFilter(variants) + ProductFilter (pure facet derivation, §3/§4)

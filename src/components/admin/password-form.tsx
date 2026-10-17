@@ -1,17 +1,24 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
+import { passwordRulesMet } from "@/lib/password-rules";
 import {
   changePasswordAction,
   type ChangePasswordActionState,
 } from "@/server/actions/admin/account";
 
+// Issue #60: controlled inputs keep the values through a failed submit; the new
+// password shows its rules live and every error sits at its field.
 export function PasswordForm() {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [state, formAction, pending] = useActionState<ChangePasswordActionState | null, FormData>(
     changePasswordAction,
     null,
@@ -33,7 +40,15 @@ export function PasswordForm() {
             type="password"
             autoComplete="current-password"
             required
+            value={current}
+            onChange={(event) => setCurrent(event.target.value)}
+            aria-invalid={state?.fieldErrors?.current !== undefined}
           />
+          {state?.fieldErrors?.current && (
+            <p role="alert" className="text-sm text-destructive">
+              {state.fieldErrors.current}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="next">Neues Passwort</Label>
@@ -42,9 +57,17 @@ export function PasswordForm() {
             name="next"
             type="password"
             autoComplete="new-password"
-            minLength={10}
             required
+            value={next}
+            onChange={(event) => setNext(event.target.value)}
+            aria-describedby="next-password-hints"
           />
+          <PasswordRulesChecklist id="next-password-hints" scope="admin" password={next} />
+          {state?.fieldErrors?.next && (
+            <p role="alert" className="text-sm text-destructive">
+              {state.fieldErrors.next}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Neues Passwort bestätigen</Label>
@@ -53,21 +76,23 @@ export function PasswordForm() {
             name="confirm"
             type="password"
             autoComplete="new-password"
-            minLength={10}
             required
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+            aria-invalid={state?.fieldErrors?.confirm !== undefined}
           />
+          {state?.fieldErrors?.confirm && (
+            <p role="alert" className="text-sm text-destructive">
+              {state.fieldErrors.confirm}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || !passwordRulesMet("admin", next)}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
           Passwort ändern
         </Button>
-        {state && !state.ok && state.error && (
-          <p role="alert" className="text-sm text-destructive">
-            {state.error}
-          </p>
-        )}
       </div>
     </form>
   );

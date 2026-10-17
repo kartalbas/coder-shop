@@ -1,0 +1,42 @@
+// Issue #60: the password rules are one pure source shared by the server validation
+// and the live checklist in every form that sets a password. `customer` is the
+// account requirement (10 chars, letter + digit); `admin` requires length only.
+export const MIN_PASSWORD_LENGTH = 10;
+
+export type PasswordScope = "customer" | "admin";
+
+export interface PasswordRule {
+  key: string;
+  label: string;
+  test: (password: string) => boolean;
+}
+
+export function passwordRules(scope: PasswordScope): PasswordRule[] {
+  const rules: PasswordRule[] = [
+    {
+      key: "longEnough",
+      label: `mindestens ${MIN_PASSWORD_LENGTH} Zeichen`,
+      test: (password) => password.length >= MIN_PASSWORD_LENGTH,
+    },
+  ];
+  if (scope === "customer") {
+    rules.push(
+      { key: "hasLetter", label: "ein Buchstabe", test: (password) => /[a-zA-Z]/.test(password) },
+      { key: "hasDigit", label: "eine Zahl", test: (password) => /\d/.test(password) },
+    );
+  }
+  return rules;
+}
+
+export function passwordRuleChecks(
+  scope: PasswordScope,
+  password: string,
+): Record<string, boolean> {
+  return Object.fromEntries(
+    passwordRules(scope).map((rule) => [rule.key, rule.test(password)]),
+  );
+}
+
+export function passwordRulesMet(scope: PasswordScope, password: string): boolean {
+  return passwordRules(scope).every((rule) => rule.test(password));
+}

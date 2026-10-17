@@ -217,19 +217,28 @@ export async function revokeSessionsCore(userId: string): Promise<void> {
 }
 
 // The seeded password can only be set at first seed; this is the way to change it later.
+// `reason` tells the calling form which field the error belongs to (issue #60).
 export async function changePasswordCore(
   userId: string,
   currentPassword: string,
   newPassword: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  { ok: true } | { ok: false; error: string; reason?: "new_password" | "current_password" }
+> {
   if (newPassword.length < 10) {
-    return { ok: false, error: "Das neue Passwort braucht mindestens 10 Zeichen." };
+    return {
+      ok: false,
+      error: "Das neue Passwort braucht mindestens 10 Zeichen.",
+      reason: "new_password",
+    };
   }
   await connectDB();
   const user = await UserModel.findById(userId).exec();
   if (!user) return { ok: false, error: "Benutzer nicht gefunden." };
   const valid = await verifyPassword(currentPassword, user.passwordHash);
-  if (!valid) return { ok: false, error: "Das aktuelle Passwort ist falsch." };
+  if (!valid) {
+    return { ok: false, error: "Das aktuelle Passwort ist falsch.", reason: "current_password" };
+  }
   user.passwordHash = await hashPassword(newPassword);
   // A password change also signs out every existing session.
   user.sessionsInvalidBefore = new Date();
