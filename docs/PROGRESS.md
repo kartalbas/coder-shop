@@ -1111,3 +1111,20 @@ Done — M1–M6 + QA complete.
   `compare.spec.ts` (4 distinct-brand phones toggled → tray → table with highlighted
   Marke row → clear; single slug → hint) — `npm test` ✅ 432, lint/knip/build ✅,
   `npm run test:e2e` ✅ 33/33.
+
+### #49 — admin command palette and keyboard shortcuts ✅
+- `AdminCommandPalette` (panel layout): **⌘K / Ctrl+K** anywhere opens the #42
+  picker dialog (`minChars=1`) — local hits (all ADMIN_NAV pages, „Neue
+  Einkaufsbestellung") match instantly, entity hits come from
+  `commandSearchCore` (`src/server/command-palette.ts`): orders by number or
+  customer name/e-mail, products by name/brand/SKU, customers (never admins),
+  suppliers → `?edit=`; ≤ 5 per group, results are plain links, Enter navigates.
+  **`?`** (outside form fields) opens a shortcuts overlay (⌘K, ?, ↑/↓, Enter, Esc);
+  the sidebar footer shows both hints (discoverability).
+- Picker fix found by the e2e: content now unmounts when `open` goes false — a
+  quick reopen during Radix's exit animation used to carry the old query over.
+- Verified: `tests/command-palette.test.ts` (6: order by number/customer, product
+  by name/brand/SKU, customer-not-admin, supplier edit link, empty + cap); new e2e
+  `command-palette.spec.ts` (Ctrl+K → order number → detail; → product → edit page;
+  local action hit; `?` overlay + "?" typed in the field stays a character) —
+  `npm test` ✅ 438, lint/knip/build ✅, `npm run test:e2e` ✅ 35/35.

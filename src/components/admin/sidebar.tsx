@@ -25,7 +25,12 @@ export function AdminSidebar() {
           </Link>
         ))}
       </nav>
-      <form action={logoutAction} className="border-t p-3">
+      {/* Issue #49: the shortcuts are discoverable right where the admin works. */}
+      <p className="border-t px-3 pb-1 pt-3 text-xs text-muted-foreground">
+        <kbd className="rounded border bg-muted px-1 font-mono">⌘K</kbd> Befehle ·{" "}
+        <kbd className="rounded border bg-muted px-1 font-mono">?</kbd> Kürzel
+      </p>
+      <form action={logoutAction} className="p-3">
         <Button type="submit" variant="ghost" size="sm" className="w-full justify-start gap-2">
           <LogOut className="size-4" aria-hidden />
           Abmelden

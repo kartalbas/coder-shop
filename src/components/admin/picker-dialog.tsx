@@ -44,18 +44,23 @@ function highlight(text: string, query: string): React.ReactNode {
   );
 }
 
-// Mounted fresh every time the dialog opens (Radix unmounts the content on close), so
-// the query/result state starts empty without any reset effect.
+// Mounted fresh every time the dialog opens — the content unmounts as soon as `open`
+// goes false (Radix itself keeps it mounted through the exit animation, which would
+// otherwise let a quick reopen carry the old query over), so the query/result state
+// starts empty without any reset effect.
 function PickerContent({
   search,
   onSelect,
   placeholder,
   title,
+  minChars = 2,
 }: {
   search: (query: string) => Promise<PickerItem[]>;
   onSelect: (item: PickerItem) => void;
   placeholder: string;
   title: string;
+  // Command palette searches from one character (issue #49); pickers keep two.
+  minChars?: number;
 }) {
   const listId = useId();
   const [query, setQuery] = useState("");
@@ -66,7 +71,7 @@ function PickerContent({
   const trimmed = debounced.trim();
 
   useEffect(() => {
-    if (trimmed.length < 2) return;
+    if (trimmed.length < minChars) return;
     let cancelled = false;
     search(trimmed)
       .then((items) => {
@@ -80,12 +85,12 @@ function PickerContent({
     return () => {
       cancelled = true;
     };
-  }, [trimmed, search]);
+  }, [trimmed, search, minChars]);
 
   // Results only count for the query they were fetched with — a stale list never
   // flashes while a new search is in flight.
   const options = result?.query === trimmed ? result.items : [];
-  const searching = trimmed.length >= 2 && options.length === 0 && result?.query !== trimmed;
+  const searching = trimmed.length >= minChars && options.length === 0 && result?.query !== trimmed;
   const activeIndex = Math.min(active, Math.max(0, options.length - 1));
 
   // Keep the active option in view when the arrows move past the scroll window.
@@ -156,7 +161,9 @@ function PickerContent({
         )}
         {!searching && options.length === 0 && (
           <li className="px-3 py-3 text-sm text-muted-foreground" role="status">
-            {trimmed.length >= 2 ? `Keine Treffer für „${trimmed}“.` : "Mindestens 2 Zeichen tippen."}
+            {trimmed.length >= minChars
+              ? `Keine Treffer für „${trimmed}“.`
+              : `Mindestens ${minChars} Zeichen tippen.`}
           </li>
         )}
         {options.map((item, index) => (
@@ -211,6 +218,7 @@ export function PickerDialog({
   placeholder,
   search,
   onSelect,
+  minChars,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -218,6 +226,7 @@ export function PickerDialog({
   placeholder: string;
   search: (query: string) => Promise<PickerItem[]>;
   onSelect: (item: PickerItem) => void;
+  minChars?: number;
 }) {
   // Close on selection and hand control back to the caller.
   const handleSelect = useCallback(
@@ -254,12 +263,15 @@ export function PickerDialog({
             Tippen sucht sofort — ↑/↓ wählen, Enter übernimmt, Esc bricht ab.
           </DialogDescription>
         </DialogHeader>
-        <PickerContent
-          title={title}
-          placeholder={placeholder}
-          search={search}
-          onSelect={handleSelect}
-        />
+        {open && (
+          <PickerContent
+            title={title}
+            placeholder={placeholder}
+            search={search}
+            onSelect={handleSelect}
+            minChars={minChars}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

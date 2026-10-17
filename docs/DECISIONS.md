@@ -486,3 +486,18 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **Difference highlighting is a pure rule** (`buildComparisonRows`): a row differs when
   its formatted values are not all equal; the UI tints the row and adds an sr-only
   "(Unterschied)" so the highlight is not color-only.
+
+### #49 — command palette: one search field, links as results
+- **The palette reuses the #42 picker dialog** (type-to-search, ↑/↓, Enter, Esc,
+  focus trap) with a new `minChars` option (1 for the palette, 2 for pickers) —
+  one keyboard implementation, not two.
+- **Results are plain links** (`PaletteHit.href`): orders → detail, products → edit,
+  customers → detail, suppliers → `?edit=`. The palette navigates, it never mutates.
+  Local hits (the ADMIN_NAV pages, „Neue Einkaufsbestellung") match instantly
+  client-side; entity hits come from one server action (`commandSearchAction`,
+  admin session + zod-guarded like the picker searches, ≤ 5 hits per group).
+- **`?` only fires outside form fields** (input/textarea/select/contenteditable),
+  so typing a question mark stays possible; the sidebar shows both hints.
+- **The picker content unmounts as soon as `open` goes false** — Radix keeps it
+  mounted through the exit animation, which let a quick ⌘K reopen carry the old
+  query over (found by the e2e); the conditional mount makes every open fresh.

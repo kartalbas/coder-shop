@@ -152,7 +152,8 @@ src/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
       product-search.tsx, product-core-form.tsx, variant-editor.tsx, image-editor.tsx,
-      po-create-form.tsx, picker-dialog.tsx, # PO form + keyboard picker dialog (#42)
+       po-create-form.tsx, picker-dialog.tsx, # PO form + keyboard picker dialog (#42)
+       command-palette.tsx, # ⌘K/Ctrl+K palette + "?" shortcut overlay on the picker (#49)
       po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
        revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx,
        invoice-actions.tsx,         # payment / reminder / credit-limit forms (#40)
@@ -213,6 +214,7 @@ src/
     session.ts              # admin + customer login/session (scrypt, throttle, scoped cookies)
     customers.ts            # register, password reset, address book, claim order (#39)
     customers-admin.ts      # customer list/detail, block, notes, admin password reset (#43)
+    command-palette.ts      # ⌘K palette search: orders/products/customers/suppliers (#49)
     account.ts              # portal queries: order list, reorder lines (#39)
     mail.ts                 # sendMail behind a MailTransport interface: dev outbox
                             # collection (/admin/mails) or nodemailer SMTP (#39/#44)
@@ -268,6 +270,7 @@ src/
       admin/pickup.ts       # markPickupReady, handoverPickup → *Core fns (#41)
       admin/discounts.ts    # createDiscount, setDiscountActive → *Core fns (#45)
       admin/reviews.ts      # setReviewStatus, replyToReview → *Core fns (#47)
+      admin/command-palette.ts # commandSearch action for the ⌘K palette (#49)
       wishlist.ts           # syncWishlistAction (merge/replace), removeWishlistItemAction (#46)
       restock-alerts.ts     # subscribeRestockAlertAction (#46)
       reviews.ts            # submitReviewAction (customer session + purchase) (#47)
