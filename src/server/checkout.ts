@@ -316,8 +316,10 @@ async function runClaimedCheckout(
   const release = () => CheckoutClaimModel.deleteOne({ _id: key }).catch(() => {});
 
   // Concurrent checkouts serialize on the counter document; the loser of a write conflict
-  // must back off (issue #11) — immediate retries just collide again.
-  const maxAttempts = 6;
+  // must back off (issue #11) — immediate retries just collide again. With n parallel
+  // checkouts a single one can lose up to n−1 conflict rounds, so the budget must cover
+  // more than any realistic concurrency (6 was flaky at 10 parallel under load).
+  const maxAttempts = 16;
   for (let attempt = 1; ; attempt++) {
     const session = await mongoose.startSession();
     try {
@@ -360,7 +362,7 @@ async function runClaimedCheckout(
         };
       }
       if (isTransientError(error) && attempt < maxAttempts) {
-        await sleep(Math.min(10 * 2 ** (attempt - 1), 320) + Math.random() * 10);
+        await sleep(Math.min(10 * 2 ** (attempt - 1), 200) + Math.random() * 20);
         continue;
       }
       return {

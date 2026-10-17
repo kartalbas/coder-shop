@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
@@ -42,7 +43,34 @@ async function waitForHealth(timeoutMs = 90_000): Promise<void> {
   throw new Error(`Server did not become healthy at ${HEALTH_URL}: ${lastError}`);
 }
 
+// A stale server on the port would answer the health check and every spec would silently
+// run against the wrong build/database — refuse to start instead (gate run: EADDRINUSE).
+function assertPortFree(port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(port, "127.0.0.1");
+    socket.setTimeout(2000);
+    socket.once("connect", () => {
+      socket.destroy();
+      reject(
+        new Error(
+          `Port ${port} is already in use — stop the stale process (ss -tlnp | grep ${port}) before \`npm run test:e2e\`.`,
+        ),
+      );
+    });
+    socket.once("timeout", () => {
+      socket.destroy();
+      resolve();
+    });
+    socket.once("error", (error) => {
+      socket.destroy();
+      if ((error as NodeJS.ErrnoException).code === "ECONNREFUSED") resolve();
+      else reject(error);
+    });
+  });
+}
+
 export default async function globalSetup(): Promise<() => Promise<void>> {
+  await assertPortFree(PORT);
   if (!fs.existsSync(path.join(REPO_ROOT, ".next", "BUILD_ID"))) {
     throw new Error(
       "No production build found — run `npm run build` before `npm run test:e2e`.",
