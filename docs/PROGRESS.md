@@ -262,6 +262,64 @@ Open / known issues
   exercised once credentials are provided.
 - `/admin` dashboard is a section launcher; KPI cards/low-stock table are M5 scope.
 
+## M5 — Purchasing, dashboard, polish ✅ (2026-10-17)
+
+Done
+- Purchasing: `server/purchasing.ts` core (`createSupplierCore`/`updateSupplierCore`,
+  `createPurchaseOrderCore` minting `E-YYYY-######` from the Counter in a transaction,
+  `markPurchaseOrderOrderedCore`, `receivePurchaseOrderCore` incrementing variant stock by
+  `qty − received` per line in one transaction, `searchVariantsBySku` regex-escaped SKU
+  search) behind thin actions in `server/actions/admin/purchasing.ts`. `/admin/purchasing`
+  (PO list with status chips + PO editor: supplier select, debounced SKU search, qty/price
+  lines, live total), `/admin/purchasing/[id]` (lines, "Bestellen" draft→ordered,
+  "Wareneingang" ordered→received with delta toast), `/admin/suppliers` (list + create +
+  edit via `?bearbeiten=<id>`; deactivate via `active`, no delete — DECISIONS).
+- Dashboard `/admin`: KPI cards Umsatz 30 Tage (statuses `paid|picking|packed|shipped|
+  delivered`, UTC-day buckets), Offene Bestellungen, Lieferungen ausstehend; pure-SVG
+  `RevenueSparkline` (30 points, aria-label, no chart lib); low-stock table
+  (`stock ≤ restockThreshold` via the pure `isLowStock`, sorted by stock, empty state);
+  recent orders (newest first). Sidebar now: Dashboard/Bestellungen/Kommissionierung/
+  Einkauf/Lieferanten.
+- Polish: global German 404 (`app/not-found.tsx`, noindex) used by every `notFound()`;
+  root metadata `metadataBase` + Open Graph (`de_CH`, `NEXT_PUBLIC_SITE_URL`); skip-to-content
+  link in the storefront layout; defined the `.chip` class the mobile header nav used but
+  never existed (unstyled links); empty/loading states on all new pages; focus-visible rings
+  on every new interactive element.
+- README final: admin section, env-var table (production `MONGODB_URI` + replica-set
+  requirement, `SESSION_SECRET`, `UPS_*`, `NEXT_PUBLIC_SITE_URL`, `MONGOMS_SYSTEM_BINARY`).
+
+Verified (acceptance)
+- Integration test `tests/purchasing.test.ts` (12 tests): PO for 2 SKUs × qty →
+  `receivePurchaseOrderCore` → variant stocks increased exactly by the ordered qty (4→10,
+  4→15), lines `received = qty`, status `received` with `receivedAt`; receive from `draft`
+  rejected, second receive rejected (stock unchanged), missing product aborts the whole
+  transaction (PO stays `ordered`, nothing incremented); `E-YYYY-######` gap-free from the
+  counter; supplier create/duplicate/update/unknown; SKU search.
+- Integration test `tests/dashboard.test.ts` (4 tests): revenue = exactly the sum of
+  `paid|picking|packed|shipped|delivered` orders within 30 days (excludes `new`,
+  `cancelled`, day-40), > 0 with clock-relative seeded orders; series length 30 and sums to
+  the total; low-stock table compared against the expected set computed from `isLowStock`
+  over all seeded variants; recent orders sorted newest-first.
+- Cancel-restock from `paid` and "no cancel from `shipped`" — covered by the M4 suites
+  (`tests/order-transitions.test.ts`, `src/lib/orders/state-machine.test.ts`), still green.
+- axe-core 4.14 scan (jsdom, rendered HTML of the running production server) of
+  home / listing / product: **0 violations, 0 critical** (37/35/35 passes; `color-contrast`
+  not executable in jsdom — no canvas — contrast comes from the shadcn token palette).
+- Full smoke: `npm run seed` (idempotent, 200/15/3/3) → background `npm run start` →
+  `/` 200, `/produkte?type=shoes&size=42` 200, `/produkt/apple-iphone-16-pro-001` 200,
+  `/bestellung/B-2026-000001` 200, `/admin` without cookie → 307 `/admin/login`; with a
+  `loginCore`-signed cookie: `/admin` 200 showing Umsatz **CHF 12'633.90** (> 0), sparkline,
+  low-stock rows, recent orders; `/admin/purchasing` 200 with `E-2026-000001…000003` +
+  status chips; PO detail 200; `/admin/suppliers` 200 with the seeded suppliers. Server +
+  mongod stopped again.
+- `npm run build` ✅ (no mongod, no env); `npm run lint` ✅; `npm test` ✅ 155 tests /
+  17 files.
+
+Open / known issues
+- Suppliers have no delete (deactivation via `active`) — deliberate, see DECISIONS.
+- The PO editor's unit-price field accepts any non-negative CHF amount; supplier lead time
+  is displayed but not enforced anywhere.
+
 ## Next
 
-M5 — Purchasing, dashboard, polish.
+Done — M1–M6 complete.

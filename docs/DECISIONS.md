@@ -91,6 +91,37 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `packed → shipped` move is a conditional `findOneAndUpdate` on `status: "packed"`, making
   double-clicks converge on the first label.
 
+## Purchasing & dashboard (M5)
+
+- **Suppliers are CRUD-lite without delete.** `saveSupplierAction` handles create and update
+  in one action (presence of a hidden `supplierId` decides); deactivation is the model's
+  `active` flag. Deleting suppliers would dangle `PurchaseOrder.supplierId` references, and
+  the requirement says "suppliers, purchase orders" — not removal. Duplicate names are
+  rejected via the unique index (error mapped to German).
+- **PO workflow is enforced by conditional updates, not a state-machine class.**
+  `draft → ordered → received` with `findOneAndUpdate({ status: "draft" })` for
+  "Bestellen" and a transaction-guarded `status === "ordered"` check for goods receipt, so
+  double-clicks and re-receipts fail cleanly instead of double-incrementing stock.
+  `receivePurchaseOrderCore` increments each line's variant by `qty − received` (already
+  received quantities are never counted twice) and sets `received = qty`, `status: received`,
+  `receivedAt` in the same transaction; a missing product aborts the whole receipt.
+- **PO numbers** `E-YYYY-######` come from the shared `Counter` document (`_id: "po"`)
+  incremented inside the creation transaction — gap-free, same mechanism as order numbers.
+- **PO editor default cost** is 60 % of the variant's sale price (mirrors the seed's PO
+  prices), shown in an editable CHF field; the editor adds lines by case-insensitive SKU
+  substring search (regex-escaped, ≤ 8 hits) through a server action — no extra API route.
+- **Dashboard revenue** = `totals.totalCents` of orders with status
+  `paid | picking | packed | shipped | delivered` created in the last 30 days, bucketed per
+  UTC day (`$dateToString`) for the SVG sparkline (no chart library). "Offene Bestellungen"
+  counts `new | paid | picking | packed`; "Lieferungen ausstehend" counts `packed` (label
+  not yet created).
+- **Low-stock list** reuses the pure `isLowStock(stock, restockThreshold)` predicate over
+  all variants (sorted by stock ascending, capped at 25) — the acceptance test compares the
+  table's data source against the expected set computed from the same predicate.
+- **A11y verification** is an axe-core 4.14 scan of the rendered home/listing/product HTML
+  (jsdom, one-off run — results in PROGRESS): 0 violations, 0 critical. `color-contrast`
+  cannot execute in jsdom (no canvas); contrast is handled by the shadcn token palette.
+
 ## Product photos (M6)
 
 - Generated photos are normalized to **WebP** via `sharp` (already present in

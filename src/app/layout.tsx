@@ -15,13 +15,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "coder-shop — Smartphones, Schuhe & Kleidung",
     template: "%s | coder-shop",
   },
   description:
     "Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive 8,1 % MwSt.",
+  openGraph: {
+    type: "website",
+    locale: "de_CH",
+    url: siteUrl,
+    siteName: "coder-shop",
+    title: "coder-shop — Smartphones, Schuhe & Kleidung",
+    description:
+      "Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive 8,1 % MwSt.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

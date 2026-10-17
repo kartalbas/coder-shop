@@ -44,9 +44,23 @@ npm run lint
 npm run build
 ```
 
-## Admin credentials
+## Admin
 
-Seeded admin user (M4 wires the login UI): `admin@codershop.ch` / `Admin!2026`.
+`/admin` — login with the seeded admin user: `admin@codershop.ch` / `Admin!2026`.
+Dashboard (revenue, open orders, low stock), orders, packing + UPS labels, purchasing
+(suppliers, purchase orders with goods receipt).
+
+## Environment variables
+
+All optional for local development (sensible defaults / embedded database):
+
+| Variable | Purpose |
+|---|---|
+| `MONGODB_URI` | External MongoDB. **Required in production** — must be a replica-set-capable URI (core functions use transactions). Without it, the embedded `mongodb-memory-server` replica set is used (dev/seed/test only). |
+| `SESSION_SECRET` | Secret for the admin session cookie HMAC. **Set it in production**; unset falls back to a fixed development secret. |
+| `UPS_CLIENT_ID` / `UPS_CLIENT_SECRET` / `UPS_ACCOUNT` | Set **all three** to create real UPS labels via `UpsShippingProvider`; otherwise the `MockUpsProvider` generates `1Z…` tracking numbers and PDF labels in `data/labels/`. |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site URL for metadata/Open Graph (defaults to `http://localhost:3000`). |
+| `MONGOMS_SYSTEM_BINARY` | Path to a local mongod if the mongodb-memory-server binary download/detection fails. |
 
 ## Database lock recovery
 

@@ -1,11 +1,22 @@
 import Link from "next/link";
-import { LogOut, Package, PackageOpen, ShoppingCart } from "lucide-react";
+import {
+  LayoutDashboard,
+  LogOut,
+  Package,
+  PackageOpen,
+  ShoppingCart,
+  Truck,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/server/actions/admin/auth";
 
 const NAV = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Bestellungen", icon: ShoppingCart },
   { href: "/admin/packing", label: "Kommissionierung", icon: PackageOpen },
+  { href: "/admin/purchasing", label: "Einkauf", icon: Truck },
+  { href: "/admin/suppliers", label: "Lieferanten", icon: Users },
 ] as const;
 
 export function AdminSidebar() {
