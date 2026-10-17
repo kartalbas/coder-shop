@@ -58,8 +58,13 @@ test("browse → filter → product page → cart → checkout → confirmation"
   await page.getByRole("button", { name: /^Bild 2 von/ }).click();
   await expect(page.getByRole("img", { name: `${target.name} – Ansicht 2` })).toBeVisible();
 
-  // Variant picker: a different storage updates the price.
+  // Add to cart needs every dimension (issue #18): the disabled button names what
+  // is still missing instead of falling back to a random variant.
+  await expect(page.getByRole("button", { name: /Bitte .* wählen/ })).toBeDisabled();
+
+  // Variant picker: choosing colour and a different storage updates the price.
   const priceBefore = await page.locator("main p.text-2xl").first().innerText();
+  await page.getByRole("group", { name: /Farbe/ }).locator("button").first().click();
   const storageChips = page.getByRole("group", { name: /Speicher/ }).locator("button");
   const secondChip = storageChips.nth(1);
   await secondChip.click();
@@ -67,7 +72,9 @@ test("browse → filter → product page → cart → checkout → confirmation"
   await expect(page.locator("main p.text-2xl").first()).not.toHaveText(priceBefore);
 
   // Add to cart → drawer opens with the line.
-  await page.getByRole("button", { name: "In den Warenkorb" }).click();
+  const addToCart = page.getByRole("button", { name: "In den Warenkorb" });
+  await expect(addToCart).toBeEnabled();
+  await addToCart.click();
   const drawer = page.getByRole("dialog");
   await expect(drawer).toBeVisible();
   await expect(drawer.getByText(target.name)).toBeVisible();

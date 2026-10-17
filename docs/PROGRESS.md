@@ -589,3 +589,15 @@ Done — M1–M6 + QA complete.
   search show „ab CHF 504.00" instead of the unreachable base price.
 - Verified: 3 pure tests (incl. the Pixel 9a repro) + 2 integration tests;
   `npm test` ✅ 248, lint/build ✅, e2e ✅ 7/7.
+
+### #19 + #18 — product page: colour-true photos, deliberate add-to-cart ✅
+- New pure `src/lib/product-selection.ts` (7 unit tests): `dimensionsOf`,
+  `matchesSelection`, `missingDimensions`, `slotColor`/`imageIndexForColor` — the photo
+  slot a colour was generated for (the generator's `variant i % count` rule) is now what
+  the gallery shows, so choosing „grün" shows green photos and storage changes no longer
+  move the picture (#19).
+- A concrete variant exists only after every dimension is chosen; until then the price
+  shows „ab CHF …" and the button is disabled and names what is missing
+  („Bitte Farbe / Grösse wählen") instead of adding a random variant (#18).
+- e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
+- Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.

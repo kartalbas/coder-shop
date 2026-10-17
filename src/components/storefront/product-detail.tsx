@@ -8,39 +8,22 @@ import { Button } from "@/components/ui/button";
 import { formatChf, formatWeight } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { addToCart, openCartDrawer } from "@/stores/cart";
-import type { ProductDto, VariantDto } from "@/server/search";
+import type { ProductDto } from "@/server/search";
+import {
+  dimensionsOf,
+  imageIndexForColor,
+  matchesSelection,
+  missingDimensions,
+  type Selection,
+} from "@/lib/product-selection";
+import { buyablePriceCents } from "@/lib/pricing";
 import { Gallery } from "./gallery";
 import { StockIndicator } from "./stock-indicator";
 import { VAT_LABEL } from "@/lib/pricing";
 
-type Dimension = { key: "color" | "size" | "storage"; label: string; values: string[] };
-
-function dimensionsOf(product: ProductDto): Dimension[] {
-  const dims: Dimension[] = [];
-  const colors = [...new Set(product.variants.map((v) => v.attributes.color))].sort((a, b) =>
-    a.localeCompare(b, "de"),
-  );
-  if (colors.length > 0) dims.push({ key: "color", label: "Farbe", values: colors });
-  const sizes = [...new Set(product.variants.map((v) => v.attributes.size).filter(Boolean))] as string[];
-  if (sizes.length > 0) dims.push({ key: "size", label: "Grösse", values: sizes });
-  const storage = [...new Set(product.variants.map((v) => v.attributes.storage).filter(Boolean))] as number[];
-  if (storage.length > 0) {
-    dims.push({ key: "storage", label: "Speicher", values: storage.sort((a, b) => a - b).map(String) });
-  }
-  return dims;
-}
-
-function matches(variant: VariantDto, selection: Record<string, string | null>): boolean {
-  return (["color", "size", "storage"] as const).every((key) => {
-    const wanted = selection[key];
-    if (wanted == null) return true;
-    return String(variant.attributes[key] ?? "") === wanted;
-  });
-}
-
 export function ProductDetail({ product }: { product: ProductDto }) {
   const dimensions = useMemo(() => dimensionsOf(product), [product]);
-  const [selection, setSelection] = useState<Record<string, string | null>>({
+  const [selection, setSelection] = useState<Selection>({
     color: null,
     size: null,
     storage: null,
@@ -49,22 +32,30 @@ export function ProductDetail({ product }: { product: ProductDto }) {
   const [imageIndex, setImageIndex] = useState(0);
   const [imageTouched, setImageTouched] = useState(false);
 
+  // A concrete variant exists only once every dimension is chosen (issue #18) — no
+  // silent fallback to the first variant.
+  const missing = missingDimensions(dimensions, selection);
   const variant =
-    product.variants.find((v) => matches(v, selection)) ?? product.variants[0];
-  const variantIndex = variant ? product.variants.indexOf(variant) : 0;
-  const priceCents = product.priceCents + (variant?.priceDeltaCents ?? 0);
+    missing.length === 0
+      ? product.variants.find((v) => matchesSelection(v, selection))
+      : undefined;
+  const price = variant
+    ? { priceCents: product.priceCents + variant.priceDeltaCents, from: false }
+    : buyablePriceCents(product.priceCents, product.variants.map((v) => v.priceDeltaCents));
   const stock = variant?.stock ?? 0;
+  // The gallery follows the chosen colour (the slot a photo was generated for carries
+  // that colour), not the variant index (issue #19).
   const shownImage = imageTouched
     ? imageIndex
-    : Math.min(variantIndex, Math.max(0, product.images.length - 1));
+    : imageIndexForColor(product.images.length, product.variants, selection.color);
 
-  const select = (key: string, value: string) => {
+  const select = (key: keyof Selection, value: string) => {
     setSelection((prev) => ({ ...prev, [key]: prev[key] === value ? null : value }));
     setImageTouched(false);
     setQty(1);
   };
 
-  const canAdd = stock > 0;
+  const canAdd = variant !== undefined && stock > 0;
 
   const add = () => {
     if (!variant || !canAdd) return;
@@ -76,7 +67,7 @@ export function ProductDetail({ product }: { product: ProductDto }) {
         name: product.name,
         variantLabel: variant.label,
         imageSrc: product.images[0]?.src ?? "",
-        unitPriceCents: priceCents,
+        unitPriceCents: price.priceCents,
         stock: variant.stock,
       },
       qty,
@@ -108,7 +99,10 @@ export function ProductDetail({ product }: { product: ProductDto }) {
           transition={{ duration: 0.15 }}
           className="text-2xl font-semibold"
         >
-          {formatChf(priceCents)}
+          {price.from && (
+            <span className="text-base font-normal text-muted-foreground">ab </span>
+          )}
+          {formatChf(price.priceCents)}
           <span className="ml-2 text-sm font-normal text-muted-foreground">inkl. {VAT_LABEL}.</span>
         </motion.p>
 
@@ -125,7 +119,7 @@ export function ProductDetail({ product }: { product: ProductDto }) {
             <div className="flex flex-wrap gap-2">
               {dimension.values.map((value) => {
                 const candidate = product.variants.find((v) =>
-                  matches(v, { ...selection, [dimension.key]: value }),
+                  matchesSelection(v, { ...selection, [dimension.key]: value }),
                 );
                 const available = candidate !== undefined && candidate.stock > 0;
                 const active = selection[dimension.key] === value;
@@ -183,7 +177,11 @@ export function ProductDetail({ product }: { product: ProductDto }) {
           </div>
           <Button size="lg" className="flex-1 sm:flex-none sm:px-10" disabled={!canAdd} onClick={add}>
             <ShoppingCart className="size-4" />
-            {canAdd ? "In den Warenkorb" : "Ausverkauft"}
+            {missing.length > 0
+              ? `Bitte ${missing.join(" / ")} wählen`
+              : canAdd
+                ? "In den Warenkorb"
+                : "Ausverkauft"}
           </Button>
         </div>
 
