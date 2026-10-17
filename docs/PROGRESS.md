@@ -426,6 +426,27 @@ Verified
 
 Done — M1–M6 + QA complete.
 
+## ISSUES — queue session 2 (2026-10-17)
+
+### #26 — accessibility problems found by axe and keyboard testing ✅
+- Breadcrumbs: the wrapper `<span>` around each entry was invalid inside the `<ol>` —
+  now `BreadcrumbItem` (`<li>`) itself is the flex wrapper.
+- Contrast: stock indicator and admin order/PO status badges moved from `*-600` to
+  `*-700` text tones (≥ 4.5:1 on the light background; dark mode keeps 400).
+- Gallery: main image is focusable and opens the zoom dialog with Enter/Space; a drag
+  no longer triggers the click-to-zoom; prev/next arrows appear on keyboard focus
+  (`group-focus-within`/`focus-visible`).
+- Instant search: options are `tabIndex={-1}` (the combobox owns keyboard navigation
+  via `aria-activedescendant`), and a "Keine Treffer für …" status appears instead of
+  silence when nothing matches.
+- Sheet/dialog close buttons are labelled „Schliessen" (was English "Close"); the
+  listing got the `<h1>` it never had (active collection or product type); the
+  accordion header renders `h2` instead of Radix's `h3` so heading order stays valid.
+- Verified: new e2e `tests/e2e/a11y.spec.ts` (5 tests: h1, `<li>`-only breadcrumbs,
+  keyboard zoom + German close label + focus-visible arrows, no-hits message +
+  no tab stops in options, 700 contrast tones) — fails on the pre-fix build;
+  `npm test` ✅ 274, lint/build ✅, `npm run test:e2e` ✅ 13/13.
+
 ## ISSUES — queue session 1 (2026-10-17)
 
 ### #2 — forgeable admin sessions without SESSION_SECRET ✅

@@ -18,18 +18,17 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
     <Breadcrumb aria-label="Brotkrumen-Navigation">
       <BreadcrumbList>
         {items.map((item, index) => (
-          <span key={item.label} className="flex items-center gap-1.5">
+          // Issue #26: only <li> (BreadcrumbItem) may be a direct child of the list.
+          <BreadcrumbItem key={item.label} className="flex items-center gap-1.5">
             {index > 0 && <BreadcrumbSeparator />}
-            <BreadcrumbItem>
-              {item.href ? (
-                <BreadcrumbLink asChild>
-                  <Link href={item.href}>{item.label}</Link>
-                </BreadcrumbLink>
-              ) : (
-                <BreadcrumbPage>{item.label}</BreadcrumbPage>
-              )}
-            </BreadcrumbItem>
-          </span>
+            {item.href ? (
+              <BreadcrumbLink asChild>
+                <Link href={item.href}>{item.label}</Link>
+              </BreadcrumbLink>
+            ) : (
+              <BreadcrumbPage>{item.label}</BreadcrumbPage>
+            )}
+          </BreadcrumbItem>
         ))}
       </BreadcrumbList>
     </Breadcrumb>

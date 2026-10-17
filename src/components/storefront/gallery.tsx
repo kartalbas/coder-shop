@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -31,6 +31,9 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
     onImageChange((imageIndex + delta + images.length) % images.length);
   };
 
+  // Issue #26: a drag must not count as a click-to-zoom.
+  const draggedRef = useRef(false);
+
   if (images.length === 0) return null;
 
   return (
@@ -47,15 +50,33 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
+              // Focusable and keyboard-operable (issue #26) while keeping the img role
+              // and its German alt as the accessible name.
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setOpenIndex(imageIndex);
+                }
+              }}
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.2}
+              onDragStart={() => {
+                draggedRef.current = true;
+              }}
               onDragEnd={(_, info) => {
                 if (info.offset.x < -60) step(1);
                 else if (info.offset.x > 60) step(-1);
               }}
-              onClick={() => setOpenIndex(imageIndex)}
-              className="aspect-square w-full cursor-zoom-in object-contain"
+              onClick={() => {
+                if (draggedRef.current) {
+                  draggedRef.current = false;
+                  return;
+                }
+                setOpenIndex(imageIndex);
+              }}
+              className="aspect-square w-full cursor-zoom-in object-contain focus-visible:outline-2 focus-visible:outline-ring"
             />
           ) : (
             <motion.div
@@ -77,7 +98,7 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+              className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
               aria-label="Vorheriges Bild"
               onClick={() => step(-1)}
             >
@@ -86,7 +107,7 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
               aria-label="Nächstes Bild"
               onClick={() => step(1)}
             >

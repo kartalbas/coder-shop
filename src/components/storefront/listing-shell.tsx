@@ -14,7 +14,7 @@ import { SortSelect } from "./sort-select";
 import { Pagination } from "./pagination";
 import { ProductGridSkeleton } from "./skeletons";
 import { EmptyState } from "./empty-state";
-import { MENU_CATEGORIES } from "@/lib/menu";
+import { MENU_CATEGORIES, PRODUCT_TYPE_LABELS } from "@/lib/menu";
 
 const TYPE_TABS: { value: string; label: string }[] = [
   { value: "", label: "Alle" },
@@ -105,8 +105,15 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
     <FilterSidebar facets={data.facets} selected={selected} onToggle={toggleFacet} />
   );
 
+  // Issue #26: the listing had no <h1> at all (axe page-has-heading-one).
+  const heading =
+    collection ??
+    (type ? PRODUCT_TYPE_LABELS[type as keyof typeof PRODUCT_TYPE_LABELS] : "Alle Produkte");
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
+      <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
+
       {collection && (
         <div className="mb-4 flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Kollektion:</span>

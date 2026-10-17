@@ -139,6 +139,9 @@ export function SearchInstant() {
             <li key={hit.slug} role="option" id={`search-option-${index}`} aria-selected={index === activeIndex}>
               <button
                 type="button"
+                // Keyboard navigation runs through the combobox (aria-activedescendant) —
+                // the options must not add their own tab stops (issue #26).
+                tabIndex={-1}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => go(hit.slug)}
                 className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-ring ${
@@ -166,6 +169,15 @@ export function SearchInstant() {
             </li>
           ))}
         </ul>
+      )}
+      {/* Issue #26: say so when nothing matches instead of silently showing nothing. */}
+      {open && !loading && term.length >= 2 && hits.length === 0 && (
+        <div
+          role="status"
+          className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-lg"
+        >
+          Keine Treffer für «{term}»
+        </div>
       )}
     </div>
   );
