@@ -823,3 +823,35 @@ Done — M1–M6 + QA complete.
   `/admin/login` (was "Internal Server Error"), login page 200, no SESSION_SECRET
   error in the log; README "Run on the LAN" section; `npm test` ✅ 307, lint/knip/
   build ✅, e2e ✅ 22/22.
+
+## ISSUES — queue session 5 (2026-10-17)
+
+### #39 — customer portal: registration, login, my orders ✅
+- Scoped sessions: `scope` in the token payload (`admin` | `customer`, missing = admin),
+  separate cookies `admin_session`/`customer_session`, role-scoped login
+  (`authenticate(email, password, role)`), `resolveSessionUserId(token, scope)` checks
+  token scope + user role + revocation; the proxy guards `/konto/*` with a customer token
+  (public: anmelden/registrieren/passwort-vergessen/passwort-zuruecksetzen) and no longer
+  lets a customer token through the admin gate. Customer sessions last 30 days.
+- Portal `/konto`: overview, **Bestellungen** (newest first, search by number/article,
+  guest-order claim by e-mail, „Erneut bestellen" with today's prices/stock via
+  `getReorderLinesCore`), **Adressen** (address book on the user document, one default per
+  kind), **Profil** (data, password change, logout); login/register (strength hint +
+  consent)/forgot/reset pages under `/konto/(auth)`.
+- `registerCustomerCore` (rate-limited, welcome mail), password reset via hashed
+  single-use one-hour tokens (`password_resets`, TTL) — constant answer, no enumeration;
+  reset revokes all sessions. `claimOrderCore` links a guest order after the e-mail proof;
+  checkout attaches `userId` from the session (never from the payload) and the
+  idempotency fingerprint includes it.
+- Order confirmation PII rule extracted to pure `canViewOrderDetails` — the owning
+  account (linked or same e-mail) now sees the details it already knows.
+- Mail foundation: `sendMail` → `mail_messages` dev outbox, German templates as pure
+  functions (`src/lib/mail-templates.ts`), admin view `/admin/mails` (nav entry added).
+  Full transport interface + remaining templates are #44.
+- Verified: `tests/customer-portal.test.ts` (17: pure visibility, register incl.
+  duplicate/weak/consent, customer-vs-admin login both ways + scope cross-checks +
+  logout revocation, reset hash-only storage/single-use/expiry/no-enumeration, addresses
+  default-exclusivity/edit/delete, claim wrong-e-mail/foreign-order, order list order +
+  search); new e2e `customer-portal.spec.ts` (register → prefilled checkout → order →
+  logout → login → order with status; reset link read from `/admin/mails` → new password
+  logs in) — `npm test` ✅ 327, lint/knip/build ✅, `npm run test:e2e` ✅ 24/24.

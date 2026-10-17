@@ -2,7 +2,13 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { env } from "./env";
 
 export const SESSION_COOKIE = "admin_session";
+export const CUSTOMER_SESSION_COOKIE = "customer_session";
+export const CUSTOMER_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const SESSION_TTL_SECONDS = 12 * 60 * 60;
+
+// Issue #39: admin and customer sessions are separate tokens in separate cookies — an
+// admin cookie must never authenticate a customer area and vice versa.
+export type SessionScope = "admin" | "customer";
 
 export const MIN_PRODUCTION_SECRET_LENGTH = 32;
 
@@ -52,6 +58,8 @@ export interface SessionPayload {
   exp: number;
   /** Issued-at (ms epoch); tokens older than the user's `sessionsInvalidBefore` are revoked. */
   iat?: number;
+  /** Missing on tokens issued before issue #39 — treated as "admin". */
+  scope?: SessionScope;
 }
 
 function sign(payload: string, secret: string): Buffer {
@@ -82,11 +90,22 @@ export function verifySessionToken(
   }
   if (typeof payload.userId !== "string" || typeof payload.exp !== "number") return null;
   if (payload.iat !== undefined && typeof payload.iat !== "number") return null;
+  if (payload.scope !== undefined && payload.scope !== "admin" && payload.scope !== "customer") {
+    return null;
+  }
   if (payload.exp <= now) return null;
   return payload;
 }
 
-export function createSessionToken(userId: string, ttlSeconds = SESSION_TTL_SECONDS): string {
+export function sessionScopeOf(payload: SessionPayload): SessionScope {
+  return payload.scope ?? "admin";
+}
+
+export function createSessionToken(
+  userId: string,
+  ttlSeconds = SESSION_TTL_SECONDS,
+  scope: SessionScope = "admin",
+): string {
   const iat = Date.now();
-  return signSessionToken({ userId, iat, exp: iat + ttlSeconds * 1000 });
+  return signSessionToken({ userId, iat, scope, exp: iat + ttlSeconds * 1000 });
 }

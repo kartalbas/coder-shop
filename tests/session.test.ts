@@ -313,12 +313,12 @@ describe("resolveSessionUserId", () => {
   it("accepts a validly signed token for an existing user", async () => {
     const user = await UserModel.findOne({ email: "admin@codershop.ch" }).exec();
     const token = createSessionToken(user!._id.toString());
-    expect(await resolveSessionUserId(token)).toBe(user!._id.toString());
+    expect(await resolveSessionUserId(token, "admin")).toBe(user!._id.toString());
   });
 
   it("rejects a correctly signed token for a user that does not exist", async () => {
     const token = createSessionToken("507f1f77bcf86cd799439011");
-    expect(await resolveSessionUserId(token)).toBeNull();
+    expect(await resolveSessionUserId(token, "admin")).toBeNull();
   });
 
   it("rejects a token for a user that was deleted after login", async () => {
@@ -329,14 +329,14 @@ describe("resolveSessionUserId", () => {
       role: "admin",
     });
     const token = createSessionToken(user._id.toString());
-    expect(await resolveSessionUserId(token)).toBe(user._id.toString());
+    expect(await resolveSessionUserId(token, "admin")).toBe(user._id.toString());
     await UserModel.deleteOne({ _id: user._id });
-    expect(await resolveSessionUserId(token)).toBeNull();
+    expect(await resolveSessionUserId(token, "admin")).toBeNull();
   });
 
   it("rejects forged or empty tokens", async () => {
-    expect(await resolveSessionUserId(undefined)).toBeNull();
-    expect(await resolveSessionUserId("gibts-nicht")).toBeNull();
+    expect(await resolveSessionUserId(undefined, "admin")).toBeNull();
+    expect(await resolveSessionUserId("gibts-nicht", "admin")).toBeNull();
   });
 
   it("rejects tokens issued before a logout (revokeSessionsCore) but accepts fresh ones", async () => {
@@ -347,16 +347,16 @@ describe("resolveSessionUserId", () => {
       role: "admin",
     });
     const stolen = createSessionToken(user._id.toString());
-    expect(await resolveSessionUserId(stolen)).toBe(user._id.toString());
+    expect(await resolveSessionUserId(stolen, "admin")).toBe(user._id.toString());
 
     await new Promise((resolve) => setTimeout(resolve, 5));
     await revokeSessionsCore(user._id.toString());
-    expect(await resolveSessionUserId(stolen)).toBeNull();
+    expect(await resolveSessionUserId(stolen, "admin")).toBeNull();
 
     await new Promise((resolve) => setTimeout(resolve, 5));
-    expect(await resolveSessionUserId(createSessionToken(user._id.toString()))).toBe(
-      user._id.toString(),
-    );
+    expect(
+      await resolveSessionUserId(createSessionToken(user._id.toString()), "admin"),
+    ).toBe(user._id.toString());
   });
 });
 
@@ -405,9 +405,9 @@ describe("changePasswordCore", () => {
 
   it("signs out all existing sessions when the password changes", async () => {
     const token = createSessionToken(userId);
-    expect(await resolveSessionUserId(token)).toBe(userId);
+    expect(await resolveSessionUserId(token, "admin")).toBe(userId);
     await new Promise((resolve) => setTimeout(resolve, 5));
     expect((await changePasswordCore(userId, "Neues!Passwort1", "Noch!Besser123")).ok).toBe(true);
-    expect(await resolveSessionUserId(token)).toBeNull();
+    expect(await resolveSessionUserId(token, "admin")).toBeNull();
   });
 });

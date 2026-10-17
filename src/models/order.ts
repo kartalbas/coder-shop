@@ -59,6 +59,8 @@ export interface Order {
   orderNumber: string;
   status: OrderStatus;
   statusLog: StatusLogEntry[];
+  // Set when a logged-in customer ordered (or claimed it later) — issue #39.
+  userId?: Types.ObjectId;
   customer: OrderCustomer;
   lines: OrderLine[];
   totals: OrderTotals;
@@ -142,6 +144,7 @@ const orderSchema = new Schema<Order>(
     orderNumber: { type: String, required: true },
     status: { type: String, enum: ORDER_STATUSES, required: true },
     statusLog: { type: [statusLogSchema], required: true },
+    userId: { type: Schema.Types.ObjectId },
     customer: { type: customerSchema, required: true },
     lines: { type: [lineSchema], required: true },
     totals: { type: totalsSchema, required: true },
@@ -154,6 +157,7 @@ const orderSchema = new Schema<Order>(
 orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ "customer.email": 1 });
+orderSchema.index({ userId: 1, createdAt: -1 });
 
 export const OrderModel =
   mongoose.models.Order ?? mongoose.model<Order>("Order", orderSchema);

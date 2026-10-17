@@ -336,3 +336,31 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - An admin that already exists keeps its password (re-seeds never touch it, #4/#14);
   if that password is unknown from a pre-#38 setup, `npm run seed -- --fresh` is the
   documented reset.
+
+### #39 — customer portal: scoped sessions, e-mail as identity, dev outbox for reset mails
+- **Separate scopes, separate cookies.** `SessionPayload` gained `scope: "admin" |
+  "customer"` (missing = admin, so old tokens stay valid for admins only). Admin and
+  customer sessions live in different cookies (`admin_session` / `customer_session`), the
+  login check is role-scoped (`authenticate(email, password, role)`), and
+  `resolveSessionUserId(token, scope)` requires token scope **and** user role to agree —
+  a customer cookie can never open `/admin` and vice versa, in the proxy as well as in
+  every page/action. Customer sessions last 30 days (a portal login should survive a
+  restart of the demo), admin sessions stay 12 h.
+- **E-mail is the identity.** Orders link to the account via `userId` when ordered logged
+  in; guest orders become visible to the account with the same e-mail, and the portal's
+  "Bestellung hinzufügen" form claims them after the buyer proves that e-mail. The pure
+  rule (`src/lib/order-visibility.ts`): a linked order belongs to its linked account only;
+  an unlinked order is visible to the account with the matching e-mail.
+- **Registration reveals taken e-mails on purpose.** Password reset deliberately does
+  not (constant sentence, token only for real accounts). A sign-up form that hides a
+  duplicate address only hurts real users; this trade-off is the industry default.
+- **Reset links are single-use hashes.** 32 random bytes, only the SHA-256 stored
+  (`password_resets._id`), 1 h TTL index, `usedAt` marks consumption, a successful reset
+  revokes all sessions (`sessionsInvalidBefore`) and deletes the user's other tokens.
+- **Mails go to the dev outbox for now.** `sendMail` stores every message in
+  `mail_messages` and the admin sees them under `/admin/mails` — without it the reset
+  flow would be untestable. The transport interface and the remaining templates are
+  issue #44's scope.
+- **Checkout keeps the guest path.** Logged-in customers order with a prefilled form and
+  their orders carry `userId`; guests check out exactly as before (plus the claim option
+  afterwards). No forced registration.

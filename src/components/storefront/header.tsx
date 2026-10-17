@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UserRound } from "lucide-react";
 import { MegaMenu } from "./mega-menu";
 import { SearchInstant } from "./search-instant";
 import { ThemeToggle } from "./theme-toggle";
@@ -23,6 +24,14 @@ export function Header() {
         <div className="ml-auto flex flex-1 items-center justify-end gap-1 sm:gap-2">
           <SearchInstant />
           <ThemeToggle />
+          {/* Issue #39: the portal itself decides between account and login page. */}
+          <Link
+            href="/konto"
+            aria-label="Mein Konto"
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <UserRound className="size-5" aria-hidden />
+          </Link>
           <CartButton />
         </div>
       </div>

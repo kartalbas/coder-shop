@@ -75,8 +75,9 @@ scripts/
     prompt.ts               # pure prompt/seed/view logic (unit-tested)
     api.ts                  # image API client (fetch, retry w/ backoff, b64/url → WebP via sharp)
 src/
-  proxy.ts                  # Next 16 Proxy (Node runtime): /admin/* session gate + real 404
-                            # for unknown /produkt/[slug] before any bytes stream (§4, #28)
+  proxy.ts                  # Next 16 Proxy (Node runtime): /admin/* admin-scope session gate,
+                            # /konto/* customer-scope gate (#39) + real 404 for unknown
+                            # /produkt/[slug] before any bytes stream (§4, #28)
   app/
     layout.tsx              # root: fonts, ThemeProvider, Toaster, <RouteTransition>, metadata (§2 site.ts)
     globals.css             # Tailwind v4 @theme, light/dark tokens, @media print (packing slip)
@@ -87,8 +88,13 @@ src/
       products/page.tsx     # listing — public URL /produkte (rewrite)
       products/[slug]/page.tsx      # public URL /produkt/[slug]
       cart/page.tsx         # full cart page — public URL /warenkorb (drawer is global)
-      checkout/page.tsx     # public URL /kasse
+      checkout/page.tsx     # public URL /kasse (prefill + login/guest choice, #39)
       order/[number]/page.tsx      # confirmation + status — public URL /bestellung/[nummer]
+      konto/                # customer portal (#39), guarded by the proxy + portal layout
+        (auth)/             # public: anmelden, registrieren, passwort-vergessen,
+                            # passwort-zuruecksetzen
+        (portal)/           # session-guarded: layout (nav), page (overview),
+                            # bestellungen (list+search+claim+reorder), adressen, profil
     admin/                  # admin URLs stay English (internal)
       (auth)/login/page.tsx
       (panel)/              # session-guarded group (layout requires the admin session)
@@ -98,6 +104,7 @@ src/
         orders/page.tsx, orders/[id]/page.tsx
         packing/page.tsx, packing/[id]/page.tsx (+ print view)
         purchasing/page.tsx, purchasing/[id]/page.tsx, suppliers/page.tsx
+        mails/page.tsx      # dev outbox: every mail the shop would have sent (#39/#44)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
     api/
       search/route.ts       # GET instant search JSON
@@ -115,6 +122,9 @@ src/
       product-image.tsx            # photo vs neutral placeholder (§11)
       breadcrumbs.tsx, json-ld.tsx, route-transition.tsx
       order-status-chain.tsx, order-access-form.tsx  # confirmation (#3, #32)
+      account-nav.tsx, customer-login-form.tsx, register-form.tsx, password-reset-forms.tsx,
+      claim-order-form.tsx, reorder-button.tsx, address-book.tsx, customer-password-form.tsx,
+      account-logout-button.tsx                      # customer portal (#39)
     admin/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
@@ -123,6 +133,8 @@ src/
       revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
+    password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
+    mail-message.ts         # dev outbox messages (#39/#44)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
                           # (guard test: tests/lib-purity.test.ts)
     product-types.ts        # ProductType union (models re-export it)
@@ -146,14 +158,19 @@ src/
     purchasing/labels.ts    # PurchaseOrderStatus + German PO labels (#35)
     shipping/types.ts       # ShippingProvider interface, label result types
     shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
+    order-visibility.ts     # who may see full order PII (cookie/admin/owning account, #39)
+    mail-templates.ts       # German e-mail templates as pure functions (#39/#44)
     validations/            # zod schemas shared by actions + forms (checkout, listing,
-                            # product, purchasing, common: objectIdSchema)
+                            # product, purchasing, account (#39), common: objectIdSchema)
   server/                   # ALL I/O: db, session, queries, providers, actions
     db.ts                   # single connection helper (see §6)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SESSION_SECRET optional)
     numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
-    session-token.ts        # pure HMAC cookie sign/verify
-    session.ts              # admin login/session (scrypt, throttle, cookie helpers)
+    session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
+    session.ts              # admin + customer login/session (scrypt, throttle, scoped cookies)
+    customers.ts            # register, password reset, address book, claim order (#39)
+    account.ts              # portal queries: order list, reorder lines (#39)
+    mail.ts                 # sendMail → dev outbox collection (/admin/mails, #39/#44)
     password.ts             # scrypt hash/verify (self-describing format)
     limiter.ts              # token bucket (scrypt login concurrency guard)
     rate-limit.ts           # checkout rate limit (per client)
@@ -171,8 +188,10 @@ src/
     shipping/mock.ts        # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
     shipping/label.ts       # createLabelCore + getLabelFileCore (packed-only, idempotent)
     actions/
-      checkout.ts           # thin action wrapper → createOrderCore (transaction)
+      checkout.ts           # thin action wrapper → createOrderCore (transaction, + userId #39)
       order-access.ts       # verifyOrderEmailAction (#3)
+      account.ts            # register/login/logout, password reset, claim, addresses,
+                            # reorder, change password (#39)
       admin/products.ts     # updateProduct, updateVariant, toggleFeatured → *Core fns
       admin/orders.ts       # transitionOrder → transitionOrderCore
       admin/purchasing.ts   # createSupplier, createPurchaseOrder, markOrdered,
@@ -257,6 +276,7 @@ Indexes:
   orderNumber: string     // unique, "B-2026-000123" via atomic counter
   status: 'new' | 'paid' | 'picking' | 'packed' | 'shipped' | 'delivered' | 'cancelled'
   statusLog: [{ status, at: Date, note?, by? }]
+  userId?: ObjectId         // owning customer account (ordered logged-in or claimed, #39)
   customer: { name, email, phone, street, postalCode, city, country }
   lines: [{ productId, sku, name, variantLabel, qty, unitPriceCents,
             totalCents, weightGrams }]
@@ -267,12 +287,23 @@ Indexes:
   createdAt, updatedAt
 }
 ```
-Indexes: `{ orderNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`, `{ 'customer.email': 1 }`.
+Indexes: `{ orderNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`, `{ 'customer.email': 1 }`,
+`{ userId: 1, createdAt: -1 }`.
 
-### User (`users`) — admin login
-`{ email (unique, lowercase), name, passwordHash, role: 'admin' }` — `passwordHash` format
-`scrypt$N$r$p$salt$hash` with explicit params (§4).
-Seeded: `admin@codershop.ch` / `Admin!2026` (documented in README).
+### User (`users`) — admin login and customer accounts (#39)
+`{ email (unique, lowercase), name, passwordHash, role: 'admin' | 'customer',
+sessionsInvalidBefore?, addresses: [{ label, street, postalCode, city, country,
+kind: 'shipping'|'billing', isDefault }] }` — `passwordHash` format
+`scrypt$N$r$p$salt$hash` with explicit params (§4). Customers carry the address book
+(one default per kind); admins never have addresses.
+Seeded: `admin@codershop.ch` (password via `ADMIN_PASSWORD`, issue #4).
+
+### PasswordReset (`password_resets`, #39)
+`_id` is the SHA-256 of the random link token (the plain token is never stored),
+`{ userId, expiresAt (1 h, TTL index), usedAt? }` — single-use reset links.
+
+### MailMessage (`mail_messages`, #39/#44)
+Dev outbox: `{ to, subject, html, text, sentAt }` — every mail the shop would send.
 
 ### Supplier (`suppliers`)
 `{ name, email, phone?, leadTimeDays, active }`.
@@ -349,11 +380,13 @@ Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
    Next enforces the same-origin check itself (forged `Origin` → 400). There are deliberately
    no custom state-changing route handlers (the former `POST /api/shipping/label/[orderId]`
    had no caller and was removed, issue #34 — label creation is the action only).
-2. **Session cookie:** payload `{ userId, exp }` (12 h), signature covers `exp`, verified with
-   `crypto.timingSafeEqual`; a leaked cookie expires. `SESSION_SECRET` is required (and ≥ 32
-   chars) in production — no source-code fallback; outside production the secret is random
-   per process. A session only counts for a user that still exists (DB check after the
-   signature check).
+2. **Session cookie:** payload `{ userId, exp, scope }` (admin 12 h; customer 30 d, issue
+   #39), signature covers `exp`, verified with `crypto.timingSafeEqual`; a leaked cookie
+   expires. `SESSION_SECRET` is required (and ≥ 32 chars) in production — no source-code
+   fallback; outside production the secret is random per process. A session only counts for
+   a user that still exists (DB check after the signature check) **and whose role matches
+   the token's scope** — separate cookies `admin_session` / `customer_session`, so neither
+   credential works in the other area; the login check itself is role-scoped too.
 3. **scrypt params:** N=2^15, r=8, p=1, 16-byte random salt, 32-byte key; stored as
    `scrypt$N$r$p$salt$hash` so params are self-describing.
 4. **Login throttle:** in-memory failed-attempt counters per **account** (cannot be rotated
@@ -490,13 +523,23 @@ from CHF 100 subtotal.
   drawer for deep links.
 - **Checkout /kasse** — single column, 3 anchored steps (Adresse → Versand → Zahlung),
   zod-validated client + server, mock payment (card form stub), summary sidebar sticky;
-  success → confetti-light motion → redirect confirmation.
+  success → confetti-light motion → redirect confirmation. Issue #39: logged-in customers
+  start prefilled from profile + default shipping address and their orders carry `userId`;
+  guests see an "Anmelden / Konto erstellen / als Gast bestellen" banner.
+- **Konto /konto (customer portal, #39)** — proxy-guarded (customer-scope cookie) with a
+  login/register/forgot-password/reset area under `/konto/(auth)`. Portal: overview,
+  Bestellungen (newest first, search by number/article, guest-order claim by e-mail,
+  „Erneut bestellen" with today's prices/stock), Adressen (address book, one default per
+  kind), Profil (data, password change, logout). E-mail + password are the identity; the
+  order confirmation page shows full PII to the owning account too (`order-visibility.ts`).
 - **Bestellung/[nummer]** — big confirmation, status timeline (state machine steps), items,
   totals incl. VAT note "8,1 % MwSt. inbegriffen", tracking number once shipped. **Buyer-only
   PII:** order numbers are sequential/guessable, so address/e-mail/phone/items/tracking are
   rendered only for a browser with the per-order access cookie (HMAC cookie set at checkout,
-  `src/server/order-access.ts`), after confirming the order's e-mail (throttled form), or for
-  a signed-in admin; strangers get only the number, status and the confirmation form.
+  `src/server/order-access.ts`), after confirming the order's e-mail (throttled form), for
+  the owning customer account (linked `userId` or same e-mail, #39 — pure rule in
+  `src/lib/order-visibility.ts`), or for a signed-in admin; strangers get only the number,
+  status and the confirmation form.
 - **Admin login** — centered card, demo credentials hint.
 - **Admin dashboard** — KPI cards (Umsatz 30 Tage, offene Bestellungen, Lieferungen
   ausstehend), low-stock table (stock ≤ restockThreshold), recent orders, revenue sparkline
@@ -513,6 +556,8 @@ from CHF 100 subtotal.
 - **Admin Purchasing** — suppliers CRUD-lite, PO list with status chips; PO editor (add lines
   by SKU search, qty, cost); buttons "Bestellen" (draft→ordered) and "Wareneingang"
   (→received, transaction increments stock, toast with delta summary).
+- **Admin Mails (#39/#44)** — the dev outbox: every mail the shop would have sent
+  (registration, password reset, …) listed newest first with the plain-text body.
 
 ## 9. Seed data (deterministic, idempotent, clock-relative)
 

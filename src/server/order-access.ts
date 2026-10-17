@@ -1,7 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { canViewOrderDetails } from "@/lib/order-visibility";
 import { OrderModel } from "@/models/order";
+import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
-import { resolveSessionCookieSecure } from "./session";
+import {
+  getCustomerSessionUserId,
+  getSessionUserId,
+  resolveSessionCookieSecure,
+} from "./session";
 import { sessionSecret } from "./session-token";
 
 // Order numbers are sequential and therefore guessable, so the confirmation page is only
@@ -44,10 +50,33 @@ export async function grantOrderAccess(orderNumber: string): Promise<void> {
   });
 }
 
-export async function hasOrderAccess(orderNumber: string): Promise<boolean> {
+async function hasOrderAccess(orderNumber: string): Promise<boolean> {
   const { cookies } = await import("next/headers");
   const store = await cookies();
   return verifyOrderAccessToken(orderNumber, store.get(orderAccessCookieName(orderNumber))?.value);
+}
+
+// Issue #39: full order details for the checkout browser, an admin, or the account that
+// owns the order (ordered logged-in, claimed, or same e-mail as a guest order).
+export async function mayViewOrderDetails(orderNumber: string): Promise<boolean> {
+  if (await hasOrderAccess(orderNumber)) return true;
+  if ((await getSessionUserId()) !== null) return true;
+  const customerId = await getCustomerSessionUserId();
+  if (!customerId) return false;
+  await connectDB();
+  const [user, order] = await Promise.all([
+    UserModel.findById(customerId).select("email role").lean().exec(),
+    OrderModel.findOne({ orderNumber }).select("userId customer.email").lean().exec(),
+  ]);
+  if (!user || user.role !== "customer" || !order) return false;
+  return canViewOrderDetails({
+    hasAccessCookie: false,
+    isAdmin: false,
+    customerId,
+    customerEmail: user.email.toLowerCase(),
+    orderUserId: order.userId?.toString() ?? null,
+    orderEmail: order.customer.email,
+  });
 }
 
 const EMAIL_THROTTLE_MAX_FAILURES = 10;

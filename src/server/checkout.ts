@@ -128,6 +128,7 @@ async function runCheckout(
   bySku: Map<string, { qty: number; expectedUnitPriceCents: number }>,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
+  userId: string | undefined,
   session: ClientSession,
 ): Promise<{ orderNumber: string; totals: Totals }> {
   const lines = await resolveLines(bySku, session);
@@ -167,6 +168,7 @@ async function runCheckout(
         orderNumber,
         status: paid.status,
         statusLog: paid.statusLog,
+        ...(userId !== undefined && { userId }),
         customer,
         lines: orderLines,
         totals,
@@ -193,10 +195,14 @@ function checkoutFingerprint(
   bySku: MergedLines,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
+  userId: string | undefined,
 ): string {
   const canonical = JSON.stringify({
     customer,
     shippingMethod,
+    // Issue #39: the same cart from a guest and from a logged-in customer are different
+    // submissions — they must not share an idempotency claim.
+    ...(userId !== undefined && { userId }),
     lines: [...bySku.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([sku, entry]) => `${sku}:${entry.qty}`),
@@ -236,6 +242,7 @@ async function runClaimedCheckout(
   bySku: MergedLines,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
+  userId: string | undefined,
 ): Promise<CreateOrderResult> {
   const release = () => CheckoutClaimModel.deleteOne({ _id: key }).catch(() => {});
 
@@ -246,7 +253,7 @@ async function runClaimedCheckout(
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
-      const result = await runCheckout(bySku, customer, shippingMethod, session);
+      const result = await runCheckout(bySku, customer, shippingMethod, userId, session);
       await session.commitTransaction();
       await CheckoutClaimModel.updateOne({ _id: key }, { $set: { orderNumber: result.orderNumber } });
       return { ok: true, ...result };
@@ -281,7 +288,10 @@ async function runClaimedCheckout(
   }
 }
 
-export async function createOrderCore(input: unknown): Promise<CreateOrderResult> {
+export async function createOrderCore(
+  input: unknown,
+  opts: { userId?: string } = {},
+): Promise<CreateOrderResult> {
   const parsed = checkoutSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben" };
@@ -290,7 +300,7 @@ export async function createOrderCore(input: unknown): Promise<CreateOrderResult
 
   await connectDB();
   const bySku = mergeLines(lines);
-  const key = checkoutFingerprint(bySku, customer, shippingMethod);
+  const key = checkoutFingerprint(bySku, customer, shippingMethod, opts.userId);
 
   // Two rounds: if a duplicate claim vanishes while we wait (its owner failed), we claim
   // once more ourselves instead of erroring out.
@@ -305,7 +315,7 @@ export async function createOrderCore(input: unknown): Promise<CreateOrderResult
       if (existing) return existing;
       continue;
     }
-    return runClaimedCheckout(key, bySku, customer, shippingMethod);
+    return runClaimedCheckout(key, bySku, customer, shippingMethod, opts.userId);
   }
   return {
     ok: false,

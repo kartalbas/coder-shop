@@ -55,7 +55,16 @@ function fieldErrorsFrom(error: ZodError): FieldErrors {
   return errors;
 }
 
-export function CheckoutForm() {
+// Issue #39: logged-in customers start from their profile / default address.
+export interface CheckoutPrefill {
+  name: string;
+  email: string;
+  street: string;
+  postalCode: string;
+  city: string;
+}
+
+export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
   const router = useRouter();
   const cart = useCart();
   const hydrated = useCartHydrated();
@@ -169,6 +178,7 @@ export function CheckoutForm() {
                   inputMode={field.inputMode}
                   autoComplete={field.autoComplete}
                   placeholder={field.placeholder}
+                  defaultValue={prefill?.[field.key as keyof CheckoutPrefill] ?? ""}
                   aria-invalid={errors[field.key] !== undefined}
                   aria-describedby={errors[field.key] ? `${field.key}-error` : undefined}
                 />

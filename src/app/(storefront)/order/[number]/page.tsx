@@ -9,9 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrderStatusChain } from "@/components/storefront/order-status-chain";
 import { formatChf, formatDateTime, formatWeight } from "@/lib/format";
-import { hasOrderAccess } from "@/server/order-access";
+import { mayViewOrderDetails } from "@/server/order-access";
 import { getOrderByNumber, type OrderDto } from "@/server/orders";
-import { getSessionUserId } from "@/server/session";
 import { OrderAccessForm } from "@/components/storefront/order-access-form";
 import { VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
 
@@ -39,10 +38,10 @@ async function OrderView({ params }: PagePropsLocal) {
   if (!order) notFound();
 
   // PII (address, e-mail, phone, items, tracking) is only for the buyer — the browser that
-  // completed checkout (access cookie), one that verified the order's e-mail, or an admin.
-  // Unauthorized visitors never receive the details in the HTML at all.
-  const authorized =
-    (await hasOrderAccess(order.orderNumber)) || (await getSessionUserId()) !== null;
+  // completed checkout (access cookie), one that verified the order's e-mail, the owning
+  // customer account (issue #39), or an admin. Unauthorized visitors never receive the
+  // details in the HTML at all.
+  const authorized = await mayViewOrderDetails(order.orderNumber);
 
   const header = (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">

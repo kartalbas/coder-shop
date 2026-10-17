@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { env } from "@/server/env";
 import { createRateLimiter } from "@/server/rate-limit";
-import { resolveClientIp } from "@/server/session";
+import { getCustomerSessionUserId, resolveClientIp } from "@/server/session";
 import { createOrderCore } from "@/server/checkout";
 import { grantOrderAccess } from "@/server/order-access";
 
@@ -46,8 +46,11 @@ export async function createOrderAction(
     return { ok: false, error: "Ungültige Formular-Daten." };
   }
 
+  // Issue #39: a logged-in customer's orders belong to their account — the user id comes
+  // from the session, never from the client payload.
+  const userId = (await getCustomerSessionUserId()) ?? undefined;
   // createOrderCore validates the payload with the same zod schema — no second parse here.
-  const result = await createOrderCore(json);
+  const result = await createOrderCore(json, { userId });
   if (!result.ok) {
     return { ok: false, error: result.error, reason: result.reason, changed: result.changed };
   }

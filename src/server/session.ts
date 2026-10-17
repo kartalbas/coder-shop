@@ -1,13 +1,17 @@
-import { UserModel } from "@/models/user";
+import { UserModel, type UserRole } from "@/models/user";
 import { connectDB } from "./db";
 import { env } from "./env";
 import { verifyPassword, hashPassword } from "./password";
 import { createLimiter, LimiterBusyError } from "./limiter";
 import {
+  CUSTOMER_SESSION_COOKIE,
+  CUSTOMER_SESSION_TTL_SECONDS,
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
   createSessionToken,
+  sessionScopeOf,
   verifySessionToken,
+  type SessionScope,
 } from "./session-token";
 
 interface ThrottleEntry {
@@ -93,15 +97,26 @@ export type LoginResult =
   | { ok: true; token: string; email: string; name: string }
   | { ok: false; error: string };
 
-export async function loginCore(
+function scopeOfRole(role: UserRole): SessionScope {
+  return role === "admin" ? "admin" : "customer";
+}
+
+// Shared by admin and customer login. `role` is part of the throttle key and the
+// credential check: a customer password never opens the admin area and an admin
+// e-mail never logs into the customer portal (both fail as "wrong credentials").
+async function authenticate(
   email: string,
   password: string,
+  role: UserRole,
   opts: { ip?: string } = {},
 ): Promise<LoginResult> {
   const normalizedEmail = email.trim().toLowerCase();
   // The account bucket cannot be rotated with request headers; the IP bucket additionally
   // limits one client hammering several accounts.
-  const keys = [`acct|${normalizedEmail}`, `${opts.ip ?? "local"}|${normalizedEmail}`];
+  const keys = [
+    `acct|${role}|${normalizedEmail}`,
+    `${opts.ip ?? "local"}|${role}|${normalizedEmail}`,
+  ];
   for (const key of keys) {
     const blocked = throttleCheck(key);
     if (blocked.blocked) {
@@ -113,7 +128,7 @@ export async function loginCore(
   }
 
   await connectDB();
-  const user = await UserModel.findOne({ email: normalizedEmail }).exec();
+  const user = await UserModel.findOne({ email: normalizedEmail, role }).exec();
   // Unknown accounts still pay the scrypt cost (constant-time against user enumeration).
   let passwordValid: boolean;
   try {
@@ -135,26 +150,51 @@ export async function loginCore(
   }
 
   for (const key of keys) throttle.delete(key);
+  const scope = scopeOfRole(role);
   return {
     ok: true,
-    token: createSessionToken(user._id.toString()),
+    token: createSessionToken(
+      user._id.toString(),
+      scope === "customer" ? CUSTOMER_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS,
+      scope,
+    ),
     email: user.email,
     name: user.name,
   };
 }
 
+export function loginCore(
+  email: string,
+  password: string,
+  opts: { ip?: string } = {},
+): Promise<LoginResult> {
+  return authenticate(email, password, "admin", opts);
+}
+
+export function customerLoginCore(
+  email: string,
+  password: string,
+  opts: { ip?: string } = {},
+): Promise<LoginResult> {
+  return authenticate(email, password, "customer", opts);
+}
+
 // A valid signature alone is not enough: the session only counts while the user still
-// exists (deleting an admin immediately invalidates their cookies).
-export async function resolveSessionUserId(token: string | undefined): Promise<string | null> {
+// exists (deleting an admin immediately invalidates their cookies) and while the token's
+// scope and the user's role agree — a customer cookie never authenticates the admin area.
+export async function resolveSessionUserId(
+  token: string | undefined,
+  scope: SessionScope,
+): Promise<string | null> {
   if (!token) return null;
   const payload = verifySessionToken(token);
-  if (!payload) return null;
+  if (!payload || sessionScopeOf(payload) !== scope) return null;
   await connectDB();
   const user = await UserModel.findById(payload.userId)
-    .select("_id sessionsInvalidBefore")
+    .select("_id role sessionsInvalidBefore")
     .lean()
     .exec();
-  if (!user) return null;
+  if (!user || scopeOfRole(user.role) !== scope) return null;
   if (user.sessionsInvalidBefore && (payload.iat ?? 0) < user.sessionsInvalidBefore.getTime()) {
     return null;
   }
@@ -189,9 +229,24 @@ export async function changePasswordCore(
   return { ok: true };
 }
 
-export async function getSessionUserId(): Promise<string | null> {  const { cookies } = await import("next/headers");
+function sessionCookieName(scope: SessionScope): string {
+  return scope === "customer" ? CUSTOMER_SESSION_COOKIE : SESSION_COOKIE;
+}
+
+function sessionTtl(scope: SessionScope): number {
+  return scope === "customer" ? CUSTOMER_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS;
+}
+
+export async function getSessionUserId(): Promise<string | null> {
+  const { cookies } = await import("next/headers");
   const store = await cookies();
-  return resolveSessionUserId(store.get(SESSION_COOKIE)?.value);
+  return resolveSessionUserId(store.get(SESSION_COOKIE)?.value, "admin");
+}
+
+export async function getCustomerSessionUserId(): Promise<string | null> {
+  const { cookies } = await import("next/headers");
+  const store = await cookies();
+  return resolveSessionUserId(store.get(CUSTOMER_SESSION_COOKIE)?.value, "customer");
 }
 
 export async function getAdminEmail(userId: string): Promise<string | null> {
@@ -205,6 +260,15 @@ export async function requireAdminSession(): Promise<string> {
   if (!userId) {
     const { redirect } = await import("next/navigation");
     return redirect("/admin/login");
+  }
+  return userId;
+}
+
+export async function requireCustomerSession(): Promise<string> {
+  const userId = await getCustomerSessionUserId();
+  if (!userId) {
+    const { redirect } = await import("next/navigation");
+    return redirect("/konto/anmelden");
   }
   return userId;
 }
@@ -254,20 +318,23 @@ export async function resolveSessionCookieSecure(): Promise<boolean> {
   });
 }
 
-export async function setSessionCookie(token: string): Promise<void> {
+export async function setSessionCookie(
+  token: string,
+  scope: SessionScope = "admin",
+): Promise<void> {
   const { cookies } = await import("next/headers");
   const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
+  store.set(sessionCookieName(scope), token, {
     httpOnly: true,
     sameSite: "lax",
     secure: await resolveSessionCookieSecure(),
     path: "/",
-    maxAge: SESSION_TTL_SECONDS,
+    maxAge: sessionTtl(scope),
   });
 }
 
-export async function clearSessionCookie(): Promise<void> {
+export async function clearSessionCookie(scope: SessionScope = "admin"): Promise<void> {
   const { cookies } = await import("next/headers");
   const store = await cookies();
-  store.delete(SESSION_COOKIE);
+  store.delete(sessionCookieName(scope));
 }

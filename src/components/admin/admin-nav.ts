@@ -1,6 +1,7 @@
 import {
   Boxes,
   LayoutDashboard,
+  Mail,
   PackageOpen,
   ShoppingCart,
   Truck,
@@ -14,4 +15,5 @@ export const ADMIN_NAV = [
   { href: "/admin/packing", label: "Kommissionierung", icon: PackageOpen },
   { href: "/admin/purchasing", label: "Einkauf", icon: Truck },
   { href: "/admin/suppliers", label: "Lieferanten", icon: Users },
+  { href: "/admin/mails", label: "Mails", icon: Mail },
 ] as const;
