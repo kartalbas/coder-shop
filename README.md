@@ -8,7 +8,7 @@
 > [docs/EXPERIMENT.md](docs/EXPERIMENT.md), written by the lead, not by the coder.
 
 Production-grade e-commerce shop — Next.js App Router, TypeScript, MongoDB via Mongoose.
-UI German, currency CHF (de-CH), Swiss VAT 8.1 % included in prices. No installed database
+UI German, currency CHF (de-CH), Swiss VAT included in prices (rate configurable in the admin). No installed database
 required: [mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server) runs a
 single-node replica set from `node_modules` (persistent in `./data/mongo`, real transactions).
 

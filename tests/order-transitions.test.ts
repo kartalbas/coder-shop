@@ -63,7 +63,7 @@ async function seedOrder(status: OrderStatus, sku: string, qty: number, productI
     ],
     totals: { subtotalCents: 50000 * qty, shippingCents: 0, totalCents: 50000 * qty, vatCents: 0 },
     shipping: { method: "standard" },
-    payment: { method: "mock", reference: "P-TEST" },
+    payment: { method: "mock", kind: "immediate" as const, reference: "P-TEST" },
   });
   return order;
 }

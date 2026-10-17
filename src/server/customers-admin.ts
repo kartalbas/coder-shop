@@ -58,7 +58,7 @@ export async function listCustomersCore(query: string): Promise<AdminCustomerRow
     OrderModel.aggregate<{ _id: string; open: number }>([
       {
         $match: {
-          "payment.method": "invoice",
+          "payment.kind": "invoice",
           status: { $ne: "cancelled" },
           $or: [{ userId: { $in: ids } }, { "customer.email": { $in: emails } }],
         },

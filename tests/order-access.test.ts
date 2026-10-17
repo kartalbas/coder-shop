@@ -31,7 +31,7 @@ function makeOrderFixture(orderNumber: string, email: string): mongoose.mongo.Op
     lines: [],
     totals: { subtotalCents: 0, shippingCents: 0, totalCents: 0, vatCents: 0 },
     shipping: { method: "standard" },
-    payment: { method: "mock", reference: `P-${orderNumber}` },
+    payment: { method: "mock", kind: "immediate", reference: `P-${orderNumber}` },
     createdAt: now,
     updatedAt: now,
   };

@@ -15,15 +15,10 @@ import { HAPPY_PATH, PICKUP_PATH } from "@/lib/orders/state-machine";
 import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
 import { STORE } from "@/lib/store";
 import { mayViewOrderDetails } from "@/server/order-access";
-import { getOrderByNumber, type OrderDto } from "@/server/orders";
+import { getOrderByNumber } from "@/server/orders";
 import { OrderAccessForm } from "@/components/storefront/order-access-form";
-import { VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
-
-const SHIPPING_LABELS: Record<OrderDto["shipping"]["method"], string> = {
-  standard: "Standardversand",
-  express: "Expressversand",
-  pickup: "Abholung im Laden",
-};
+import { shippingMethodByKey, vatInclusiveNote } from "@/lib/shop-settings";
+import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
   params: Promise<{ number: string }>;
@@ -48,6 +43,13 @@ async function OrderView({ params }: PagePropsLocal) {
   // customer account (issue #39), or an admin. Unauthorized visitors never receive the
   // details in the HTML at all.
   const authorized = await mayViewOrderDetails(order.orderNumber);
+
+  // Issue #64: shipping and payment labels come from the configuration; a retired
+  // method falls back to its stored key so old orders stay readable.
+  const settings = await getShopSettings();
+  const shippingLabel =
+    shippingMethodByKey(settings, order.shipping.method)?.label ?? order.shipping.method;
+  const vatNote = vatInclusiveNote(settings.vatRatePercent);
 
   // Pickup QR for the counter (issue #41) — only rendered for the authorized buyer.
   const pickupQr =
@@ -85,7 +87,7 @@ async function OrderView({ params }: PagePropsLocal) {
           <OrderStatusChain
             status={order.status}
             statusLog={order.statusLog}
-            path={order.shipping.method === "pickup" ? PICKUP_PATH : HAPPY_PATH}
+            path={order.shipping.storePickup === true ? PICKUP_PATH : HAPPY_PATH}
           />
 
           {order.shipping.trackingNumber && (
@@ -96,7 +98,7 @@ async function OrderView({ params }: PagePropsLocal) {
                   Sendungsverfolgung: {order.shipping.trackingNumber}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {SHIPPING_LABELS[order.shipping.method]}
+                  {shippingLabel}
                   {order.shipping.parcelWeightGrams !== undefined &&
                     ` · Paketgewicht ${formatWeight(order.shipping.parcelWeightGrams)}`}
                 </p>
@@ -104,7 +106,7 @@ async function OrderView({ params }: PagePropsLocal) {
             </div>
           )}
 
-          {order.payment.method === "invoice" && order.payment.invoice && (
+          {order.payment.kind === "invoice" && order.payment.invoice && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/40 p-4">
               <div>
                 <p className="text-sm font-medium">Zahlung per Rechnung</p>
@@ -204,7 +206,7 @@ async function OrderView({ params }: PagePropsLocal) {
             )}
             <div className="flex justify-between">
               <dt className="text-muted-foreground">
-                {SHIPPING_LABELS[order.shipping.method]}
+                {shippingLabel}
               </dt>
               <dd className="tabular-nums">
                 {order.totals.shippingCents === 0
@@ -218,7 +220,7 @@ async function OrderView({ params }: PagePropsLocal) {
             </div>
           </dl>
           <p className="text-xs text-muted-foreground">
-            {VAT_INCLUSIVE_NOTE} · Zahlungsreferenz {order.payment.reference}
+            {vatNote} · Zahlungsreferenz {order.payment.reference}
           </p>
 
           <Separator />
@@ -226,7 +228,7 @@ async function OrderView({ params }: PagePropsLocal) {
           <div className="grid gap-6 text-sm sm:grid-cols-2">
             <div>
               <h2 className="mb-1 font-medium">
-                {order.shipping.method === "pickup" ? "Rechnungsadresse" : "Lieferadresse"}
+                {order.shipping.storePickup === true ? "Rechnungsadresse" : "Lieferadresse"}
               </h2>
               <address className="not-italic text-muted-foreground">
                 {order.customer.name}

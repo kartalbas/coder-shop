@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { discountForSubtotal, isDiscountInWindow } from "@/lib/discounts";
 import { computeTotals, vatFromGross } from "@/lib/pricing";
+import { DEFAULT_SHOP_SETTINGS as SETTINGS } from "@/lib/shop-settings";
 import { DiscountCodeModel } from "@/models/discount-code";
 import { DiscountUsageModel } from "@/models/discount-usage";
 import { OrderModel } from "@/models/order";
@@ -45,14 +46,14 @@ describe("discount rules (pure, issue #45)", () => {
 
   it("the discount reduces the total and the VAT is computed over the reduced gross", () => {
     const items = [{ unitPriceCents: 10_000, qty: 2 }];
-    const plain = computeTotals(items, "standard");
-    const reduced = computeTotals(items, "standard", 2000);
+    const plain = computeTotals(items, "standard", SETTINGS);
+    const reduced = computeTotals(items, "standard", SETTINGS, 2000);
     expect(plain.totalCents).toBe(20_000); // free shipping above the threshold
     expect(reduced.totalCents).toBe(18_000);
-    expect(reduced.vatCents).toBe(vatFromGross(18_000));
+    expect(reduced.vatCents).toBe(vatFromGross(18_000, SETTINGS.vatRatePercent));
     expect(reduced.vatCents).toBeLessThan(plain.vatCents);
     // The discount never exceeds the subtotal.
-    expect(computeTotals(items, "standard", 99_999).totalCents).toBe(0);
+    expect(computeTotals(items, "standard", SETTINGS, 99_999).totalCents).toBe(0);
   });
 });
 
@@ -107,7 +108,7 @@ describe("discount codes in checkout (issue #45)", () => {
     if (!result.ok) return;
     expect(result.totals.discountCents).toBe(2000);
     expect(result.totals.totalCents).toBe(18_000);
-    expect(result.totals.vatCents).toBe(vatFromGross(18_000));
+    expect(result.totals.vatCents).toBe(vatFromGross(18_000, SETTINGS.vatRatePercent));
 
     const order = await OrderModel.findOne({ orderNumber: result.orderNumber }).lean().exec();
     expect(order?.discount).toEqual({ code: "SPAREN10", cents: 2000 });

@@ -248,7 +248,7 @@ async function seedOrder(status: OrderStatus, tag: string) {
     ],
     totals: { subtotalCents: 24700, shippingCents: 0, totalCents: 24700, vatCents: 1850 },
     shipping: { method: "standard" },
-    payment: { method: "mock", reference: "P-LABEL" },
+    payment: { method: "mock", kind: "immediate" as const, reference: "P-LABEL" },
   });
 }
 

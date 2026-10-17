@@ -2,14 +2,14 @@ import { createHash } from "node:crypto";
 import mongoose, { type ClientSession } from "mongoose";
 import { DEFAULT_CREDIT_LIMIT_CENTS, invoiceDueAt, qrReferenceForOrder } from "@/lib/invoices";
 import { formatOrderNumber, formatPaymentReference } from "@/lib/numbers";
-import type { PaymentMethodName } from "@/lib/payments";
 import { transition, type OrderStatus } from "@/lib/orders/state-machine";
-import {
-  computeTotals,
-  subtotalCents,
-  type ShippingMethodName,
-  type Totals,
-} from "@/lib/pricing";
+import { computeTotals, subtotalCents, type Totals } from "@/lib/pricing";
+import type {
+  PaymentMethodConfig,
+  ShippingMethodConfig,
+  ShopSettings,
+} from "@/lib/shop-settings";
+import { activePaymentMethods, activeShippingMethods } from "@/lib/shop-settings";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
 import { CheckoutClaimModel } from "@/models/checkout-claim";
 import {
@@ -24,6 +24,7 @@ import { UserModel } from "@/models/user";
 import { absoluteUrl } from "@/lib/site";
 import { invoiceMail, orderConfirmationMail } from "@/lib/mail-templates";
 import { connectDB } from "./db";
+import { getShopSettings } from "./shop-settings";
 import {
   checkDiscountCore,
   DiscountRejectedError,
@@ -176,8 +177,9 @@ async function assertInvoiceEligible(
 async function runCheckout(
   bySku: Map<string, { qty: number; expectedUnitPriceCents: number }>,
   customer: OrderCustomer,
-  shippingMethod: ShippingMethodName,
-  paymentMethod: PaymentMethodName,
+  shipping: ShippingMethodConfig,
+  payment: PaymentMethodConfig,
+  settings: ShopSettings,
   userId: string | undefined,
   discountCode: string | undefined,
   session: ClientSession,
@@ -228,20 +230,24 @@ async function runCheckout(
     totalCents: line.unitPriceCents * line.qty,
     weightGrams: line.weightGrams,
   }));
-  const totals = computeTotals(orderLines, shippingMethod, discount?.cents ?? 0);
+  const totals = computeTotals(orderLines, shipping.key, settings, discount?.cents ?? 0);
 
   const now = new Date();
   const statusLog: StatusLogEntry[] = [{ status: "new", at: now }];
 
   let status: OrderStatus = "new";
   let log = statusLog;
-  let payment: Order["payment"];
+  let orderPayment: Order["payment"];
   let dueAt: Date | undefined;
-  if (paymentMethod === "invoice") {
+  // Issue #64: the money flow follows the configured *kind*, not the method key —
+  // any "immediate" method books paid at once, any "invoice" method stays open
+  // against the account's credit, any "on_pickup" method is paid at the counter.
+  if (payment.kind === "invoice") {
     await assertInvoiceEligible(userId, totals.totalCents, session);
     dueAt = invoiceDueAt(now);
-    payment = {
-      method: "invoice" as const,
+    orderPayment = {
+      method: payment.key,
+      kind: "invoice",
       reference: formatPaymentReference(minted.seq),
       invoice: {
         dueAt,
@@ -249,21 +255,23 @@ async function runCheckout(
         qrReference: qrReferenceForOrder(minted.year, minted.seq),
       },
     };
-  } else if (paymentMethod === "pickup") {
+  } else if (payment.kind === "on_pickup") {
     // Pay at the counter (issue #41): the order stays unpaid until the handover.
-    payment = {
-      method: "pickup" as const,
+    orderPayment = {
+      method: payment.key,
+      kind: "on_pickup",
       reference: formatPaymentReference(minted.seq),
     };
   } else {
     const paid = transition({ status: "new" as OrderStatus, statusLog }, "paid", {
-      note: "Mock-Zahlung bestätigt",
+      note: "Zahlung bestätigt",
       at: now,
     });
     status = paid.status;
     log = paid.statusLog;
-    payment = {
-      method: "mock" as const,
+    orderPayment = {
+      method: payment.key,
+      kind: "immediate",
       reference: formatPaymentReference(minted.seq),
       paidAt: now,
     };
@@ -281,11 +289,12 @@ async function runCheckout(
         totals,
         ...(discount !== undefined && { discount }),
         shipping: {
-          method: shippingMethod,
+          method: shipping.key,
+          storePickup: shipping.storePickup,
           // Pickup orders carry the handover code from the start (issue #41).
-          ...(shippingMethod === "pickup" && { pickup: { code: generatePickupCode() } }),
+          ...(shipping.storePickup && { pickup: { code: generatePickupCode() } }),
         },
-        payment,
+        payment: orderPayment,
       },
     ],
     { session },
@@ -302,7 +311,7 @@ type MergedLines = Map<string, { qty: number; expectedUnitPriceCents: number }>;
 // turn a successful checkout into an error.
 async function sendCheckoutMails(
   customer: OrderCustomer,
-  paymentMethod: PaymentMethodName,
+  payment: PaymentMethodConfig,
   result: { orderNumber: string; totals: Totals; invoiceDueAt?: Date },
 ): Promise<void> {
   const { orderNumber, totals } = result;
@@ -317,7 +326,7 @@ async function sendCheckoutMails(
         link,
       }),
     });
-    if (paymentMethod === "invoice" && result.invoiceDueAt) {
+    if (payment.kind === "invoice" && result.invoiceDueAt) {
       await sendMail({
         to: customer.email,
         ...invoiceMail({
@@ -340,8 +349,8 @@ async function sendCheckoutMails(
 function checkoutFingerprint(
   bySku: MergedLines,
   customer: OrderCustomer,
-  shippingMethod: ShippingMethodName,
-  paymentMethod: PaymentMethodName,
+  shippingMethod: string,
+  paymentMethod: string,
   userId: string | undefined,
   discountCode: string | undefined,
 ): string {
@@ -392,8 +401,9 @@ async function runClaimedCheckout(
   key: string,
   bySku: MergedLines,
   customer: OrderCustomer,
-  shippingMethod: ShippingMethodName,
-  paymentMethod: PaymentMethodName,
+  shipping: ShippingMethodConfig,
+  payment: PaymentMethodConfig,
+  settings: ShopSettings,
   userId: string | undefined,
   discountCode: string | undefined,
 ): Promise<CreateOrderResult> {
@@ -411,15 +421,16 @@ async function runClaimedCheckout(
       const result = await runCheckout(
         bySku,
         customer,
-        shippingMethod,
-        paymentMethod,
+        shipping,
+        payment,
+        settings,
         userId,
         discountCode,
         session,
       );
       await session.commitTransaction();
       await CheckoutClaimModel.updateOne({ _id: key }, { $set: { orderNumber: result.orderNumber } });
-      await sendCheckoutMails(customer, paymentMethod, result);
+      await sendCheckoutMails(customer, payment, result);
       return { ok: true, ...result };
     } catch (error) {
       if (session.inTransaction()) await session.abortTransaction();
@@ -477,12 +488,31 @@ export async function createOrderCore(
   const normalizedCode = discountCode ? normalizeDiscountCode(discountCode) : undefined;
 
   await connectDB();
+  // Issue #64: the chosen methods must exist in the current configuration and fit
+  // together — „on_pickup" payment only with store pickup, invoice-type payment only
+  // with a delivered parcel (the rules #41 established, now read from the rows).
+  const settings = await getShopSettings();
+  const shipping = activeShippingMethods(settings).find((method) => method.key === shippingMethod);
+  if (!shipping) {
+    return { ok: false, error: "Diese Versandart ist nicht mehr verfügbar. Bitte neu laden." };
+  }
+  const payment = activePaymentMethods(settings).find((method) => method.key === paymentMethod);
+  if (!payment) {
+    return { ok: false, error: "Diese Zahlungsart ist nicht mehr verfügbar. Bitte neu laden." };
+  }
+  if (payment.kind === "on_pickup" && !shipping.storePickup) {
+    return { ok: false, error: "Bezahlung bei Abholung ist nur mit Abholung im Laden möglich." };
+  }
+  if (payment.kind === "invoice" && shipping.storePickup) {
+    return { ok: false, error: "Rechnung ist nur bei Lieferung möglich." };
+  }
+
   const bySku = mergeLines(lines);
   const key = checkoutFingerprint(
     bySku,
     customer,
-    shippingMethod,
-    paymentMethod,
+    shipping.key,
+    payment.key,
     opts.userId,
     normalizedCode,
   );
@@ -504,8 +534,9 @@ export async function createOrderCore(
       key,
       bySku,
       customer,
-      shippingMethod,
-      paymentMethod,
+      shipping,
+      payment,
+      settings,
       opts.userId,
       normalizedCode,
     );

@@ -108,21 +108,22 @@ describe("checkout shipping/payment combinations (issue #41)", () => {
     ).toBe(true);
   });
 
-  it("rejects pickup payment without pickup shipping", () => {
-    const parsed = checkoutSchema.safeParse({
-      ...payload([{ sku: "A", qty: 1 }]),
-      shippingMethod: "standard",
-      paymentMethod: "pickup",
-    });
-    expect(parsed.success).toBe(false);
-  });
-
-  it("rejects invoice with pickup shipping", () => {
+  // Issue #64: the kind rules (on_pickup needs store pickup, invoice needs delivery)
+  // moved out of the schema into createOrderCore, where the configuration is known —
+  // the schema now only bounds the key shape. Covered in tests/shop-settings.test.ts.
+  it("bounds the method keys to the configured shape", () => {
     expect(
       checkoutSchema.safeParse({
         ...payload([{ sku: "A", qty: 1 }]),
-        shippingMethod: "pickup",
-        paymentMethod: "invoice",
+        shippingMethod: "standard",
+        paymentMethod: "pickup",
+      }).success,
+    ).toBe(true);
+    expect(
+      checkoutSchema.safeParse({
+        ...payload([{ sku: "A", qty: 1 }]),
+        shippingMethod: "Standard!",
+        paymentMethod: "mock",
       }).success,
     ).toBe(false);
   });

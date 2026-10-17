@@ -63,7 +63,7 @@ describe("admin command palette search (issue #49)", () => {
       ],
       totals: { subtotalCents: 10_000, shippingCents: 0, totalCents: 10_000, vatCents: 0 },
       shipping: { method: "standard" },
-      payment: { method: "mock", reference: "P-1", paidAt: new Date() },
+      payment: { method: "mock", kind: "immediate" as const, reference: "P-1", paidAt: new Date() },
     });
     await seedProduct("apfel-iphone-16", "Apfel iPhone 16", "APL-IP16-256", "Apfel");
     await UserModel.create({

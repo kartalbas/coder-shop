@@ -18,7 +18,8 @@ import { ReviewSection } from "@/components/storefront/review-section";
 import { getCatalogType } from "@/server/catalog-types";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
 import { getProductReviewsCore } from "@/server/reviews";
-import { VAT_LABEL } from "@/lib/pricing";
+import { vatLabel } from "@/lib/shop-settings";
+import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
   params: Promise<{ slug: string }>;
@@ -33,9 +34,10 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
   // Issue #28: the real product name, not the de-slugged URL ("oneplus oneplus 13t 067").
   const product = await getProductBySlug(slug);
   const name = product?.name ?? slug.replace(/-/g, " ");
+  const settings = await getShopSettings();
   return {
     title: name,
-    description: `${name} — coder-shop. Preise in CHF inklusive ${VAT_LABEL}.`,
+    description: `${name} — coder-shop. Preise in CHF inklusive ${vatLabel(settings.vatRatePercent)}`,
   };
 }
 

@@ -1,5 +1,4 @@
-import type { ShippingMethodName } from "@/lib/pricing";
-import type { PaymentMethodName } from "@/lib/payments";
+import type { PaymentMethodKind } from "@/lib/shop-settings";
 
 export type OrderStatus =
   | "new"
@@ -19,11 +18,32 @@ interface OrderStatusLogEntry {
   by?: string;
 }
 
-export interface OrderLike {
+// Issue #64: the graph reasons about the *behavior* of the chosen methods, not about
+// their keys — the callers derive these flags from the order's stored flow data
+// (`shipping.storePickup`, `payment.kind`), which checkout wrote from the
+// configuration. A new shipping or payment method therefore needs no change here.
+export interface OrderFlowFlags {
+  /** Shipping is collected in the store (no parcel chain, handover statuses). */
+  storePickup?: boolean;
+  /** Payment arrives late against an open invoice (issue #40). */
+  processBeforePayment?: boolean;
+  /** Payment happens at the counter handover (issue #41). */
+  payAtHandover?: boolean;
+}
+
+export function flowFlagsFor(
+  order: { paymentKind?: PaymentMethodKind; storePickup?: boolean },
+): OrderFlowFlags {
+  return {
+    storePickup: order.storePickup === true,
+    processBeforePayment: order.paymentKind === "invoice",
+    payAtHandover: order.paymentKind === "on_pickup",
+  };
+}
+
+export interface OrderLike extends OrderFlowFlags {
   status: OrderStatus;
   statusLog: OrderStatusLogEntry[];
-  paymentMethod?: PaymentMethodName;
-  shippingMethod?: ShippingMethodName;
 }
 
 const TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
@@ -105,12 +125,10 @@ export class IllegalTransitionError extends Error {
   }
 }
 
-export interface TransitionContext {
+export interface TransitionContext extends OrderFlowFlags {
   viaLabel?: boolean;
   viaInvoicePayment?: boolean;
   viaPickupHandover?: boolean;
-  paymentMethod?: PaymentMethodName;
-  shippingMethod?: ShippingMethodName;
 }
 
 export function canTransition(
@@ -121,24 +139,21 @@ export function canTransition(
   if (!TRANSITIONS[from].includes(to)) return false;
   // A pickup order is collected, never shipped (issue #41) — the parcel chain is
   // closed for it entirely, ahead of every exception below.
-  if (
-    opts.shippingMethod === "pickup" &&
-    (to === "packed" || to === "shipped" || to === "delivered")
-  ) {
+  if (opts.storePickup && (to === "packed" || to === "shipped" || to === "delivered")) {
     return false;
   }
   if (isLabelOnlyTransition(from, to)) return opts.viaLabel === true;
   if (isPickupHandoverTransition(from, to)) {
-    return opts.shippingMethod === "pickup" && opts.viaPickupHandover === true;
+    return opts.storePickup === true && opts.viaPickupHandover === true;
   }
-  if (isPickupStatus(to) || isPickupStatus(from)) return opts.shippingMethod === "pickup";
+  if (isPickupStatus(to) || isPickupStatus(from)) return opts.storePickup === true;
   if (isUnpaidProcessingTransition(from, to)) {
-    return opts.paymentMethod === "invoice" || opts.paymentMethod === "pickup";
+    return opts.processBeforePayment === true || opts.payAtHandover === true;
   }
   // A pickup order is never "paid" as a workflow status — the money is recorded at the
   // handover (`ready → picked_up`), so `new → paid` is closed for it entirely.
-  if (from === "new" && to === "paid" && opts.paymentMethod === "pickup") return false;
-  if (from === "new" && to === "paid" && opts.paymentMethod === "invoice") {
+  if (from === "new" && to === "paid" && opts.payAtHandover) return false;
+  if (from === "new" && to === "paid" && opts.processBeforePayment) {
     return opts.viaInvoicePayment === true;
   }
   return true;
@@ -151,19 +166,19 @@ export function canTransition(
 // not the `new → paid` of an invoice/pickup order (recorded where the money is).
 export function allowedTransitions(
   from: OrderStatus,
-  ctx: { paymentMethod?: PaymentMethodName; shippingMethod?: ShippingMethodName } = {},
+  ctx: OrderFlowFlags = {},
 ): readonly OrderStatus[] {
   return TRANSITIONS[from].filter((to) => {
     if (isLabelOnlyTransition(from, to)) return false;
     if (isPickupHandoverTransition(from, to)) return false;
-    if (isPickupStatus(to) || isPickupStatus(from)) return ctx.shippingMethod === "pickup";
-    if (ctx.shippingMethod === "pickup" && (to === "packed" || to === "shipped" || to === "delivered")) {
+    if (isPickupStatus(to) || isPickupStatus(from)) return ctx.storePickup === true;
+    if (ctx.storePickup && (to === "packed" || to === "shipped" || to === "delivered")) {
       return false;
     }
     if (isUnpaidProcessingTransition(from, to)) {
-      return ctx.paymentMethod === "invoice" || ctx.paymentMethod === "pickup";
+      return ctx.processBeforePayment === true || ctx.payAtHandover === true;
     }
-    if (isInvoicePaymentTransition(from, to) && (ctx.paymentMethod === "invoice" || ctx.paymentMethod === "pickup")) {
+    if (isInvoicePaymentTransition(from, to) && (ctx.processBeforePayment || ctx.payAtHandover)) {
       return false; // invoice: recorded with the amount; pickup: recorded at handover
     }
     return true;

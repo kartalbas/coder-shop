@@ -1,10 +1,13 @@
 import { formatChf } from "@/lib/format";
 import { freeShippingProgress } from "@/lib/pricing";
+import { useShopSettings } from "@/components/shop-settings-provider";
 
 // The free-shipping progress bar, shared by the cart drawer and the cart page (issue #30);
-// the rule itself is `freeShippingProgress` in src/lib/pricing.ts.
+// the rule itself is `freeShippingProgress` in src/lib/pricing.ts over the configured
+// threshold (issue #64).
 export function FreeShippingProgress({ subtotalCents }: { subtotalCents: number }) {
-  const { remainingCents, percent } = freeShippingProgress(subtotalCents);
+  const settings = useShopSettings();
+  const { remainingCents, percent } = freeShippingProgress(subtotalCents, settings);
   return (
     <div>
       {remainingCents > 0 ? (

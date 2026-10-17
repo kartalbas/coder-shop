@@ -513,8 +513,9 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **`Product.attributes` and `Product.filter` became Mixed** keyed by dimension key
   (`filter.color`, not `filter.colors`) — a fixed sub-schema cannot describe dimensions
   that only exist as rows. The validation the schema lost is enforced in the cores
-  (`updateProductCore` checks `type`, `updateVariantCore` checks the attribute keys
-  against the type's dimensions); the seed repairs documents still in the old shape.
+  (`updateVariantCore` checks the attribute keys against the type's dimensions;
+  `updateProductCore` never changes `type` — there is no admin path that sets it);
+  the seed repairs documents still in the old shape.
 - **Facet indexes are per seed dimension key** (`filter.color|size|storage|material`);
   a dimension added at runtime queries unindexed — fine at catalog size (hundreds of
   documents), documented rather than over-engineered with wildcard indexes.
@@ -525,3 +526,25 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   and the sync test all read the same rows (#31's single-source rule continued).
 - **`photoNoun` on the config replaces the last hard-coded type map** (the image
   prompt's `VIEW_NOUNS`): a runtime-added type carries its own English photo subject.
+
+### #64 — VAT, shipping prices and payment methods are data
+- **One `shop_settings` document** (key `"shop"`) holds the commerce rules: VAT rate,
+  free-shipping threshold, shipping methods (price, `storePickup` flag, hint) and payment
+  methods (`kind: immediate | invoice | on_pickup`). `DEFAULT_SHOP_SETTINGS` in
+  `src/lib/shop-settings.ts` is only its **seed content**; every rule question goes through
+  `getShopSettings()`, writes through the validated `saveShopSettingsCore` (never the last
+  active shipping or payment method — the checkout cannot be configured into a dead end).
+  Changing a price, the VAT rate or the method set needs no code change (proven by the
+  checkout integration test and the admin-edit e2e).
+- **Orders carry the flow, not the config.** Checkout stores the chosen method key plus the
+  flags the workflow routes on (`shipping.storePickup`, `payment.kind`), so the state
+  machine reasons about *behavior* (`storePickup`, `processBeforePayment`, `payAtHandover`)
+  and never needs the configuration — a method retired later still transitions its old
+  orders correctly. Labels for a retired method fall back to the stored key.
+- **The storefront reads the settings client-side** through `ShopSettingsProvider`
+  (`GET /api/shop-settings`, `public, max-age=60`) so the static shell survives
+  `cacheComponents`; a browsing tab can therefore lag an admin edit by up to a minute —
+  acceptable for rule copy, the server validates and prices every write and order anyway.
+- **The catalog-type editor** (`/admin/catalog-types`) writes through #61's
+  `saveCatalogTypeCore` guards; the seed hands out the **stored** configs (#64 review), so
+  the filter repair derives from the rows an admin may have changed, not from the defaults.

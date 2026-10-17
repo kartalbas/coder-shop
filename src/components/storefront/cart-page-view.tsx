@@ -9,11 +9,8 @@ import { ProductImage } from "@/components/storefront/product-image";
 import { DiscountInput } from "@/components/storefront/discount-input";
 import { formatChf } from "@/lib/format";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
-import {
-  FREE_SHIPPING_FROM_CENTS,
-  SHIPPING_CENTS,
-  VAT_LABEL,
-} from "@/lib/pricing";
+import { useShopSettings } from "@/components/shop-settings-provider";
+import { activeShippingMethods, vatLabel } from "@/lib/shop-settings";
 import {
   cartSubtotalCents,
   removeLine,
@@ -25,6 +22,7 @@ import {
 export function CartPageView() {
   const cart = useCart();
   const hydrated = useCartHydrated();
+  const settings = useShopSettings();
   const subtotal = cartSubtotalCents(cart);
 
   // Issue #27: until the persisted cart is loaded, neither the cart nor the empty
@@ -147,9 +145,12 @@ export function CartPageView() {
               {/* Issue #45: the code is remembered here and applied in the checkout. */}
               <DiscountInput subtotalCents={subtotal} />
               <p className="text-xs text-muted-foreground">
-                Versand: Standard {formatChf(SHIPPING_CENTS.standard)}, Express{" "}
-                {formatChf(SHIPPING_CENTS.express)} — ab {formatChf(FREE_SHIPPING_FROM_CENTS)}{" "}
-                kostenlos. Preise inkl. {VAT_LABEL}.
+                {activeShippingMethods(settings)
+                  .filter((method) => !method.storePickup)
+                  .map((method) => `${method.label} ${formatChf(method.priceCents)}`)
+                  .join(", ")}{" "}
+                — ab {formatChf(settings.freeShippingFromCents)} kostenlos. Preise inkl.{" "}
+                {vatLabel(settings.vatRatePercent)}.
               </p>
               <Button asChild size="lg" className="w-full">
                 <Link href="/kasse">Zur Kasse</Link>

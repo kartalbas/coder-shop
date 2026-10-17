@@ -81,7 +81,7 @@ async function seedOrder(
       vatCents: Math.round(totalCents - (totalCents * 100) / 108.1),
     },
     shipping: { method: "standard" },
-    payment: { method: "mock", reference: `P-${orderNumber}` },
+    payment: { method: "mock", kind: "immediate" as const, reference: `P-${orderNumber}` },
     createdAt,
   });
 }

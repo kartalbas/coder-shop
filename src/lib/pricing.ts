@@ -1,20 +1,8 @@
-const VAT_RATE_PERCENT = 8.1;
+import type { ShopSettings } from "@/lib/shop-settings";
+import { shippingMethodByKey } from "@/lib/shop-settings";
 
-// The German-formatted VAT wording ("8,1 % MwSt.") — every UI note about VAT comes from
-// here, so changing the rate above changes the copy too (issue #30).
-export const VAT_LABEL = `${VAT_RATE_PERCENT.toFixed(1).replace(".", ",")} % MwSt.`;
-export const VAT_INCLUSIVE_NOTE = `${VAT_LABEL} inbegriffen`;
-
-export const SHIPPING_CENTS = {
-  standard: 490,
-  express: 1290,
-  // Store pickup (issue #41) is always free — the free-shipping threshold is irrelevant.
-  pickup: 0,
-} as const;
-
-export const FREE_SHIPPING_FROM_CENTS = 10000;
-
-export type ShippingMethodName = keyof typeof SHIPPING_CENTS;
+// Issue #64: every rule these functions apply (VAT rate, shipping prices, free-shipping
+// threshold) comes from the shop settings — data read by generic code, never a constant.
 
 export interface CartItem {
   unitPriceCents: number;
@@ -30,8 +18,8 @@ export interface Totals {
   vatCents: number;
 }
 
-export function vatFromGross(grossCents: number): number {
-  return grossCents - Math.round((grossCents * 100) / (100 + VAT_RATE_PERCENT));
+export function vatFromGross(grossCents: number, vatRatePercent: number): number {
+  return grossCents - Math.round((grossCents * 100) / (100 + vatRatePercent));
 }
 
 // The price a listing may advertise: the cheapest variant price that actually exists
@@ -49,22 +37,30 @@ export function subtotalCents(items: CartItem[]): number {
   return items.reduce((sum, item) => sum + item.unitPriceCents * item.qty, 0);
 }
 
-export function shippingCents(subtotal: number, method: ShippingMethodName): number {
-  if (method === "pickup") return 0;
-  if (subtotal >= FREE_SHIPPING_FROM_CENTS) return 0;
-  return SHIPPING_CENTS[method];
+// Unknown method keys cost nothing here — the checkout validates the key against the
+// active configuration before totals are ever computed.
+export function shippingCents(
+  subtotal: number,
+  methodKey: string,
+  settings: ShopSettings,
+): number {
+  const method = shippingMethodByKey(settings, methodKey);
+  if (!method || method.storePickup) return 0;
+  if (subtotal >= settings.freeShippingFromCents) return 0;
+  return method.priceCents;
 }
 
 // Free-shipping progress for the cart UI — the rule lives here, not in the components.
-export function freeShippingProgress(subtotal: number): {
+export function freeShippingProgress(subtotal: number, settings: ShopSettings): {
   remainingCents: number;
   percent: number;
   reached: boolean;
 } {
-  const remainingCents = Math.max(0, FREE_SHIPPING_FROM_CENTS - subtotal);
+  const threshold = settings.freeShippingFromCents;
+  const remainingCents = Math.max(0, threshold - subtotal);
   return {
     remainingCents,
-    percent: Math.min(100, (subtotal / FREE_SHIPPING_FROM_CENTS) * 100),
+    percent: threshold > 0 ? Math.min(100, (subtotal / threshold) * 100) : 100,
     reached: remainingCents === 0,
   };
 }
@@ -73,18 +69,19 @@ export function freeShippingProgress(subtotal: number): {
 // discounted total, exactly like every other price in this gross-price shop.
 export function computeTotals(
   items: CartItem[],
-  method: ShippingMethodName,
+  methodKey: string,
+  settings: ShopSettings,
   discountCents = 0,
 ): Totals {
   const subtotal = subtotalCents(items);
   const discount = Math.max(0, Math.min(discountCents, subtotal));
-  const shipping = shippingCents(subtotal, method);
+  const shipping = shippingCents(subtotal, methodKey, settings);
   const total = subtotal - discount + shipping;
   return {
     subtotalCents: subtotal,
     shippingCents: shipping,
     discountCents: discount,
     totalCents: total,
-    vatCents: vatFromGross(total),
+    vatCents: vatFromGross(total, settings.vatRatePercent),
   };
 }

@@ -21,12 +21,14 @@ export interface OrderDto {
   discount?: { code: string; cents: number };
   shipping: {
     method: Order["shipping"]["method"];
+    storePickup?: boolean;
     trackingNumber?: string;
     parcelWeightGrams?: number;
     pickup?: { code: string; readyAt?: string; pickedUpAt?: string; paymentType?: PickupPaymentType };
   };
   payment: {
     method: Order["payment"]["method"];
+    kind: Order["payment"]["kind"];
     reference: string;
     paidAt?: string;
     invoice?: { dueAt: string; paidCents: number; openCents: number; qrReference: string };
@@ -60,6 +62,7 @@ export async function getOrderByNumber(orderNumber: string): Promise<OrderDto | 
     ...(order.discount !== undefined && { discount: order.discount }),
     shipping: {
       method: order.shipping.method,
+      storePickup: order.shipping.storePickup,
       ...(order.shipping.trackingNumber !== undefined && {
         trackingNumber: order.shipping.trackingNumber,
       }),
@@ -83,6 +86,7 @@ export async function getOrderByNumber(orderNumber: string): Promise<OrderDto | 
     },
     payment: {
       method: order.payment.method,
+      kind: order.payment.kind,
       reference: order.payment.reference,
       ...(order.payment.paidAt !== undefined && {
         paidAt: order.payment.paidAt.toISOString(),

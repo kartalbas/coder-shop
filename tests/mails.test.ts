@@ -210,7 +210,7 @@ describe("workflow mails land in the dev outbox (issue #44)", () => {
       ],
       totals: { subtotalCents: 1000, shippingCents: 490, totalCents: 1490, vatCents: 111 },
       shipping: { method: "standard" },
-      payment: { method: "mock", reference: "P-MAIL" },
+      payment: { method: "mock", kind: "immediate" as const, reference: "P-MAIL" },
     });
 
     const label = await createLabelCore(order._id.toString(), new MockUpsProvider());

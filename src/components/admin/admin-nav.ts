@@ -1,9 +1,11 @@
 import {
   Boxes,
   LayoutDashboard,
+  Layers,
   Mail,
   PackageOpen,
   ReceiptText,
+  Settings,
   ShoppingCart,
   Star,
   Store,
@@ -26,4 +28,6 @@ export const ADMIN_NAV = [
   { href: "/admin/purchasing", label: "Einkauf", icon: Truck },
   { href: "/admin/suppliers", label: "Lieferanten", icon: Users },
   { href: "/admin/mails", label: "Mails", icon: Mail },
+  { href: "/admin/catalog-types", label: "Katalogtypen", icon: Layers },
+  { href: "/admin/settings", label: "Einstellungen", icon: Settings },
 ] as const;

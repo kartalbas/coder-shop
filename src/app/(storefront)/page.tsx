@@ -12,7 +12,7 @@ import { menuCategories } from "@/lib/menu";
 import { getCatalogTypes } from "@/server/catalog-types";
 import { getCollectionProducts, getFeaturedProducts } from "@/server/search";
 import { COLLECTIONS } from "@/lib/collections";
-import { VAT_LABEL } from "@/lib/pricing";
+import { VatLabel } from "@/components/storefront/vat-label";
 
 // Issue #61: the category tiles are the catalog type configuration — a new type
 // appears here without a code change.
@@ -172,7 +172,11 @@ export default function HomePage() {
             Technik, Style und Komfort — in der Schweiz zuhause.
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground">
-            Faire Preise in CHF, inklusive {VAT_LABEL} und schnellem Versand aus der Schweiz.
+            Faire Preise in CHF, inklusive{" "}
+            <Suspense fallback={<span aria-hidden className="invisible">MwSt.</span>}>
+              <VatLabel />
+            </Suspense>{" "}
+            und schnellem Versand aus der Schweiz.
           </p>
           <div className="flex gap-3">
             <Button asChild size="lg">

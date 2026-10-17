@@ -2,12 +2,13 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import QRCode from "qrcode";
 import { formatChf, formatDate } from "@/lib/format";
 import { QR_BILL_CREDITOR, openAmountCents, qrBillPayload } from "@/lib/invoices";
-import { VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
+import { vatInclusiveNote } from "@/lib/shop-settings";
 import type { Order } from "@/models/order";
 
 // Invoice PDF with a Swiss QR-bill section (issue #40): the QR encodes the standard
 // SPC payload with the order's QRR reference, so a banking app can take the payment.
-export async function buildInvoicePdf(order: Order): Promise<Uint8Array> {
+// The VAT note is configured data (issue #64).
+export async function buildInvoicePdf(order: Order, vatRatePercent: number): Promise<Uint8Array> {
   const invoice = order.payment.invoice;
   if (!invoice) throw new Error(`Order ${order.orderNumber} has no invoice`);
   const openCents = openAmountCents(order.totals.totalCents, invoice.paidCents);
@@ -80,7 +81,7 @@ export async function buildInvoicePdf(order: Order): Promise<Uint8Array> {
     page.drawText(value, { x: 465, y, size: 11, font: isTotal ? bold : font, color: ink });
     y -= 16;
   }
-  page.drawText(VAT_INCLUSIVE_NOTE, { x: 380, y, size: 9, font, color: muted });
+  page.drawText(vatInclusiveNote(vatRatePercent), { x: 380, y, size: 9, font, color: muted });
 
   // QR-bill section at the bottom of the page.
   const qrTop = 250;

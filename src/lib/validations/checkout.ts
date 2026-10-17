@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { PAYMENT_METHODS } from "@/lib/payments";
 
-const shippingMethods = ["standard", "express", "pickup"] as const;
-export type ShippingMethodParam = (typeof shippingMethods)[number];
+// Issue #64: shipping and payment methods are configuration rows — the schema only
+// bounds the key shape; `createOrderCore` validates the keys against the active
+// configuration (existence, active, kind/shipping combination).
+const methodKeySchema = z.string().trim().min(1).max(32).regex(/^[a-z][a-z0-9-]*$/);
 
 const checkoutCustomerSchema = z.object({
   name: z.string().trim().min(2, "Bitte Namen angeben").max(100),
@@ -39,27 +40,13 @@ export const checkoutSchema = z
   .object({
     lines: z.array(checkoutLineSchema).min(1, "Der Warenkorb ist leer").max(MAX_CHECKOUT_LINES),
     customer: checkoutCustomerSchema,
-    shippingMethod: z.enum(shippingMethods),
-    // Issue #40: "invoice" is only honored for a logged-in customer within their credit
-    // limit — that is a server decision; the schema only bounds the choice itself.
-    paymentMethod: z.enum(PAYMENT_METHODS).default("mock"),
+    shippingMethod: methodKeySchema,
+    // Issue #40: invoice-type payment is only honored for a logged-in customer within
+    // their credit limit — that is a server decision; the schema only bounds the key.
+    paymentMethod: methodKeySchema.default("mock"),
     // Issue #45: the code is validated and redeemed server-side inside the transaction.
     discountCode: z.string().trim().max(32).optional(),
   })
-  .refine(
-    // Issue #41: „Bei Abholung“ is paid at the counter, so it only exists together with
-    // store pickup; an invoice order is always delivered (its credit flow assumes a
-    // shipping address and a parcel workflow).
-    (data) => {
-      if (data.paymentMethod === "pickup") return data.shippingMethod === "pickup";
-      if (data.paymentMethod === "invoice") return data.shippingMethod !== "pickup";
-      return true;
-    },
-    {
-      message: "Bezahlung bei Abholung ist nur mit Abholung im Laden möglich.",
-      path: ["paymentMethod"],
-    },
-  )
   .refine(
     (data) => {
       const bySku = new Map<string, number>();

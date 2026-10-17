@@ -1201,7 +1201,46 @@ Done — M1–M6 + QA complete.
   change: menu, listing params + facet counts, product DTO, checkout order, admin list +
   variant validation, config edit survives re-seed; new e2e `catalog-types.spec.ts`
   covers the per-category facet columns (smartphones no longer offer size/material —
-  the #53 part). `npm run build`/lint/knip ✅, `npm test` ✅ 451,
+  the #53 part). `npm run build`/lint/knip ✅, `npm test` ✅ 453,
   `npm run test:e2e` ✅ 47/47.
 - Open: the #56 remainder (VAT/shipping/payment methods as configuration, admin editor
   for the type configs) is split to **#64**.
+
+## ISSUES — queue session 13 (2026-10-17)
+
+### #64 — VAT, shipping prices and payment methods as data; catalog-type editor ✅
+- **`shop_settings`** (one document, `src/models/shop-settings.ts`) is the single source
+  for the commerce rules: `vatRatePercent`, `freeShippingFromCents`, shipping methods
+  (key/label/priceCents/position/active/storePickup/hint) and payment methods
+  (key/label/position/active/`kind: immediate | invoice | on_pickup`).
+  `DEFAULT_SHOP_SETTINGS` (`src/lib/shop-settings.ts`, pure) is only its seed content;
+  `getShopSettings`/`saveShopSettingsCore` (validated — key format/uniqueness, price
+  bounds, never the last active shipping/payment method) in `src/server/shop-settings.ts`
+  are the only access; the seed inserts insert-only (#14).
+- **Generic readers:** `pricing.ts` takes the settings (`computeTotals`, `shippingCents`,
+  `freeShippingProgress`, `vatFromGross(gross, rate)`, `vatLabel`/`vatInclusiveNote`);
+  checkout validates method keys against the active rows and stores the flow on the order
+  (`shipping.storePickup`, `payment.kind`); the state machine switched from method-name
+  literals to behavior flags (`storePickup`, `processBeforePayment`, `payAtHandover` via
+  `flowFlagsFor`) — a new immediate payment or parcel shipping method needs no code
+  change; invoices/pickup/orders-admin/labels read the rows (retired method → stored key).
+  Storefront clients get the settings through `ShopSettingsProvider`
+  (`GET /api/shop-settings`, `public, max-age=60` — DECISIONS); server components read
+  `getShopSettings()` directly (`VatLabel` in a dynamic hole, #37 rule).
+- **Admin editors:** `/admin/settings` (VAT, free-shipping, shipping + payment method
+  rows) and `/admin/catalog-types` (+ `[key]` editor for label, position, photoNoun,
+  stockTracking, comparable, brands, dimensions) behind `saveShopSettingsAction` /
+  `saveCatalogTypeAction` → the validated cores; nav entries „Einstellungen" and
+  „Katalogtypen".
+- **Seed fix (review note from #61):** `seedCatalogTypes`/`seedShopSettings` now return
+  the **stored** rows, so `repairProductFilters` and the seeded order totals derive from
+  the configuration an admin may have changed, not from the defaults.
+- Verified: `src/lib/shop-settings.test.ts` + `tests/shop-settings.test.ts` (VAT/shipping
+  change flows through `createOrderCore` totals, runtime-added method end to end,
+  validation refusals, seed insert-only + returns stored settings); `tests/catalog-types.
+  test.ts` extended (re-seed hands out stored dimensions); new e2e `settings.spec.ts`
+  (admin edits VAT + standard price → footer/cart follow without a code change; catalog
+  type rename → mega-menu follows; both restore the shared server in `finally` — a
+  midway failure can no longer poison later specs; the CHF regexes match the NBSP
+  `formatChf` renders, and the restore check disables the browser HTTP cache via
+  routing). `npm run build`/lint/knip ✅, `npm test` ✅ 472, `npm run test:e2e` ✅ 49/49.

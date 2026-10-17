@@ -2,7 +2,7 @@
 
 Production-grade e-commerce system. Full-stack TypeScript, Next.js App Router, MongoDB via
 Mongoose, no installed database required locally (mongodb-memory-server). UI language German,
-currency CHF (de-CH), Swiss VAT 8.1 % included in prices.
+currency CHF (de-CH), Swiss VAT included in prices (rate is shop configuration, #64).
 
 **Language rule (one language for code):** all identifiers, statuses, model fields, sort values,
 query params and route-segment code names are **English** (`new`, `paid`, `picking`, `packed`,
@@ -120,16 +120,24 @@ src/
         customers/page.tsx, customers/[id]/page.tsx  # customer list + detail (#43)
         discounts/page.tsx  # discount codes: create, activate/deactivate, usage stats (#45)
         reviews/page.tsx    # review moderation: approve, hide, answer (#47)
+        settings/page.tsx   # shop settings editor: VAT rate, shipping + payment methods (#64)
+        catalog-types/page.tsx, catalog-types/[key]/page.tsx  # catalog type editor:
+                            # label, position, dimensions, brands, flags (#64, writes
+                            # through saveCatalogTypeCore)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
       invoices/[orderId]/route.ts  # GET invoice PDF (session-guarded, §4, #40)
     api/
       search/route.ts       # GET instant search JSON
       products/route.ts     # GET faceted listing JSON (documented JSON API, §4)
       recently-viewed/route.ts  # GET products behind remembered slugs, newest first (#46)
+      shop-settings/route.ts    # GET the public commerce configuration for the storefront
+                            # client components (cacheable 60 s, #64)
       health/route.ts       # GET { ok } — also warms DB connection
   components/
     password-rules-checklist.tsx  # live, aria-announced password rule checklist shared
                             # by every form that sets a password (#60)
+    shop-settings-provider.tsx    # client context: loads /api/shop-settings once per page
+                            # so cart/checkout compute totals from the configuration (#64)
     ui/                     # vendored shadcn components (kept canonical, knip-ignored, §13)
     storefront/             # named "storefront" (not "shop") — recorded deviation, DECISIONS
       header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx, footer.tsx
@@ -139,6 +147,7 @@ src/
       gallery.tsx, product-detail.tsx   # variant picker inlined in product-detail
       stock-indicator.tsx, related-products.tsx, checkout-form.tsx,
       product-image.tsx            # photo vs neutral placeholder (§11)
+      vat-label.tsx                # configured VAT wording in a dynamic hole (#64)
       breadcrumbs.tsx, json-ld.tsx, route-transition.tsx
       order-status-chain.tsx, order-access-form.tsx  # confirmation (#3, #32)
       account-nav.tsx, customer-login-form.tsx, register-form.tsx, password-reset-forms.tsx,
@@ -162,10 +171,13 @@ src/
         customer-actions.tsx,        # block / notes / password-reset forms (#43)
          pickup-actions.tsx,          # mark-ready + handover (code, cash/card) forms (#41)
          discount-forms.tsx,          # create + activate/deactivate codes (#45)
-         review-actions.tsx           # approve / hide / answer a review (#47)
+         review-actions.tsx,         # approve / hide / answer a review (#47)
+         shop-settings-form.tsx,     # VAT + shipping + payment method editor (#64)
+         catalog-type-editor.tsx     # catalog type form: label, dimensions, brands (#64)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
     product-type-config.ts  # product types, variant dimensions, facets as data (#61, §3)
+    shop-settings.ts        # the one shop_settings document: VAT, shipping, payment (#64, §3)
     discount-code.ts        # marketing codes: percent/fixed, window, limits (#45)
     discount-usage.ts       # (code, customer) redemptions — unique _id enforces once-each (#45)
     password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
@@ -177,13 +189,16 @@ src/
     product-types.ts        # ProductType = string — types are data now (#61), the alias only names it
     catalog-types.ts        # CatalogTypeConfig/CatalogDimensionConfig shapes + DEFAULT_CATALOG_TYPES
                             # (seed content only) + pure dimension/facet helpers (#61)
+    shop-settings.ts        # ShopSettings shape (VAT, shipping + payment methods) +
+                            # DEFAULT_SHOP_SETTINGS (seed content only) + VAT copy helpers (#64)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # CHF de-CH, dates, weights
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
     numbers.ts              # formatOrderNumber/formatPoNumber/formatPaymentReference
     password-rules.ts       # password rules per scope (customer/admin) — single source
                             # for server validation and the live checklist (#60)
-    pricing.ts              # gross VAT 8.1 %, totals, VAT rounding + copy, buyable price (§8 note)
+    pricing.ts              # totals, VAT rounding + copy, buyable price — every rate/price
+                            # comes from the shop settings, no constants (§8 note, #64)
     stock.ts                # pure stock rules: isLowStock, stockLevel, stockLabel
     facets.ts               # deriveFilter(variants, dimensions) + ProductFilter keyed by dimension
                             # key — generic over the configured dimensions (#61, §3/§4)
@@ -200,8 +215,8 @@ src/
     shipping/types.ts       # ShippingProvider interface, label result types
     shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
     order-visibility.ts     # who may see full order PII (cookie/admin/owning account, #39)
-    payments.ts             # PaymentMethodName ('mock' | 'invoice' | 'pickup') + labels,
-                            # pickup payment types (cash/card) (#40/#41)
+    payments.ts             # counter handover payment types (cash/card) (#41) — the payment
+                            # methods themselves are shop settings now (#64)
     store.ts                # pickup store address + opening hours (single source, #41)
     discounts.ts            # pure discount math + validity window (#45)
     reviews.ts              # pure review rules: statuses, purchase rule, rating
@@ -217,6 +232,8 @@ src/
     db.ts                   # single connection helper (see §6)
     catalog-types.ts        # getCatalogTypes/getCatalogType/saveCatalogTypeCore — the type-config
                             # source read by all generic catalog code (#61)
+    shop-settings.ts        # getShopSettings/saveShopSettingsCore — the commerce configuration
+                            # read by pricing, checkout, state machine context and admin (#64)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET optional)
     numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
     session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
@@ -279,6 +296,8 @@ src/
       admin/pickup.ts       # markPickupReady, handoverPickup → *Core fns (#41)
       admin/discounts.ts    # createDiscount, setDiscountActive → *Core fns (#45)
       admin/reviews.ts      # setReviewStatus, replyToReview → *Core fns (#47)
+      admin/settings.ts     # saveShopSettings → saveShopSettingsCore (#64)
+      admin/catalog-types.ts # saveCatalogType → saveCatalogTypeCore (#64)
       admin/command-palette.ts # commandSearch action for the ⌘K palette (#49)
       wishlist.ts           # syncWishlistAction (merge/replace), removeWishlistItemAction (#46)
       restock-alerts.ts     # subscribeRestockAlertAction (#46)
@@ -305,7 +324,7 @@ calling the core functions directly in Vitest integration tests — no need to m
 ## 3. Mongoose models (document-oriented)
 
 All models: `{ versionKey: false }`, timestamps where useful. Money is **integer cents**
-(`priceCents` etc.), gross (VAT 8.1 % included). Weights in **grams**. All field names English.
+(`priceCents` etc.), gross (configured VAT rate included, §3/#64). Weights in **grams**. All field names English.
 
 ### Product (`products`)
 ```ts
@@ -343,9 +362,10 @@ how the block would go stale. Unit-tested; an integration test asserts "edit a v
 colour → listing facet reflects it".
 
 **Agnostic write path (#61):** `attributes` and `filter` are Mixed in the schema (any
-dimension key a type config may define); validation happens in the cores — `updateProductCore`
-refuses a `type` without a config, `updateVariantCore` refuses attribute keys that are not
-the type's dimensions. A re-seed repairs documents still holding the pre-#61
+dimension key a type config may define); validation happens in the cores — variant
+attributes are validated against the type's configured dimensions in `updateVariantCore`
+(`updateProductCore` does not change `type`; there is no admin path that sets it).
+A re-seed repairs documents still holding the pre-#61
 `filter.colors/sizes/…` shape to the new dimension-keyed shape.
 
 Indexes:
@@ -388,6 +408,28 @@ The single source for every catalog question; `DEFAULT_CATALOG_TYPES`
 the seed inserts it **insert-only** (#14 rule — admin edits survive re-seeds). An empty
 collection falls back to the seed content so a fresh build works before seeding.
 
+### ShopSettings (`shop_settings`, #64)
+```ts
+{
+  key: string             // unique — the single document is "shop"
+  vatRatePercent: number  // gross prices include this rate (§8 rule)
+  freeShippingFromCents: number
+  shippingMethods: [{ key, label, priceCents, position, active, storePickup, hint }]
+  paymentMethods:  [{ key, label, position, active,
+                      kind: 'immediate' | 'invoice' | 'on_pickup' }]
+}
+```
+The single source for every commerce question (VAT rate, shipping prices, the payment
+method set); `DEFAULT_SHOP_SETTINGS` (`src/lib/shop-settings.ts`) is only its seed
+content. Read through `getShopSettings()` (empty collection → defaults), written through
+`saveShopSettingsCore` (validated: key format/uniqueness, price bounds, and never the last
+active shipping/payment method — the checkout can't be configured into a dead end); the
+seed inserts it **insert-only** (#14 rule). Orders store the chosen `method` key plus the
+flow data the workflow needs without the config (`shipping.storePickup`, `payment.kind`);
+a retired method falls back to its stored key in labels (DECISIONS). The storefront client
+components read it through `ShopSettingsProvider` via `GET /api/shop-settings`
+(`public, max-age=60` — a tab can lag an admin edit by up to a minute, DECISIONS).
+
 ### Order (`orders`)
 ```ts
 {
@@ -400,10 +442,14 @@ collection falls back to the seed content so a fresh build works before seeding.
   lines: [{ productId, sku, name, variantLabel, qty, unitPriceCents,
             totalCents, weightGrams }]
   totals: { subtotalCents, shippingCents, totalCents, vatCents }
-  shipping: { method: 'standard'|'express'|'pickup', carrier?: 'ups',
+  shipping: { method: string,        // shipping-method key from the shop settings (#64)
+              storePickup?: boolean, // flow flag stored at checkout (§5, #64)
+              carrier?: 'ups',
               trackingNumber?, labelPath?, parcelWeightGrams?,
               pickup?: { code, readyAt?, pickedUpAt?, paymentType?: 'cash'|'card' } }
-  payment: { method: 'mock' | 'invoice' | 'pickup', reference: string, paidAt?: Date,
+  payment: { method: string,         // payment-method key from the shop settings (#64)
+             kind: 'immediate' | 'invoice' | 'on_pickup',  // money flow, stored at checkout
+             reference: string, paidAt?: Date,
              invoice?: { dueAt, paidCents, qrReference, reminder1At?, reminder2At? } }
   discount?: { code, cents }   // applied discount code + booked reduction (#45)
   createdAt, updatedAt
@@ -607,12 +653,14 @@ new/picking → ready → picked_up                 (pickup orders only, #41 —
 cancelled reachable from: new, paid, picking, ready   (not from packed/shipped/delivered)
 ```
 Pickup orders never enter `packed`/`shipped`/`delivered`, parcel orders never enter
-`ready`/`picked_up` — the shipping method in the transition context separates the chains.
+`ready`/`picked_up` — the flow flags in the transition context separate the chains.
 - `canTransition(from, to, ctx)` from an explicit adjacency map; the context carries
-  `viaLabel`, `viaInvoicePayment` and the order's `paymentMethod`. `new → picking` is legal
-  **only for invoice orders**; `new → paid` of an invoice order is legal **only** via
-  `viaInvoicePayment` (the money is recorded on the invoice, not by the status buttons).
-  `allowedTransitions(from, { paymentMethod })` hides exactly those from the admin buttons.
+  `viaLabel`, `viaInvoicePayment`, `viaPickupHandover` and the **behavior flags** derived
+  from the order's stored flow data (`storePickup`, `processBeforePayment`,
+  `payAtHandover` — `flowFlagsFor`, #64: the graph never names a method key). `new →
+  picking` is legal **only for pay-later orders**; `new → paid` of such an order is legal
+  **only** via `viaInvoicePayment` (the money is recorded on the invoice, not by the status
+  buttons). `allowedTransitions(from, flags)` hides exactly those from the admin buttons.
 - `transition(order, to, { note, by })`: validates, sets `status`, appends
   `{ status, at: new Date(), note, by }` to `statusLog`; throws `IllegalTransitionError`
   otherwise. Same-state transition rejected (double-clicks on transition buttons are guarded
@@ -701,12 +749,14 @@ Global: mobile-first, dark mode via the `next-themes` package (class strategy,
 `prefers-color-scheme` default, toggle in header), visible focus rings, semantic landmarks,
 German copy, CHF formatted `Intl.NumberFormat('de-CH', { style:'currency', currency:'CHF' })`.
 
-**VAT rounding rule (unit-tested):** `vatCents = grossCents − round(grossCents × 100 / 108.1)`
-where `grossCents` is the VAT-inclusive total; pricing tests and the confirmation page must
-agree by construction. **Packaging constant:** `PACKAGING_GRAMS = 150` in
+**VAT rounding rule (unit-tested):** `vatCents = grossCents − round(grossCents × 100 /
+(100 + vatRatePercent))` where `grossCents` is the VAT-inclusive total and `vatRatePercent`
+comes from the shop settings (#64); pricing tests and the confirmation page must agree by
+construction. **Packaging constant:** `PACKAGING_GRAMS = 150` in
 `src/lib/shipping/weight.ts`, unit-tested; parcel weight = Σ qty×weightGrams + 150.
-**Shipping prices (docs/DECISIONS.md):** standard CHF 4.90, express CHF 12.90, free shipping
-from CHF 100 subtotal.
+**Commerce rules are configuration (#64):** VAT rate, shipping prices and the free-shipping
+threshold live in the `shop_settings` document (§3), not in code — the seed content starts
+at standard CHF 4.90, express CHF 12.90, free from CHF 100 (docs/DECISIONS.md).
 
 - **Home** — full-bleed hero (headline, CTA, featured product collage with parallax float),
   category tiles (smartphones/schuhe/kleidung) with hover zoom, "Beliebte Produkte" rail
@@ -740,7 +790,7 @@ from CHF 100 subtotal.
   kind), Profil (data, password change, logout). E-mail + password are the identity; the
   order confirmation page shows full PII to the owning account too (`order-visibility.ts`).
 - **Bestellung/[nummer]** — big confirmation, status timeline (state machine steps), items,
-  totals incl. VAT note "8,1 % MwSt. inbegriffen", tracking number once shipped. **Buyer-only
+  totals incl. VAT note from the shop settings ("8,1 % MwSt. inbegriffen" with the seed rate), tracking number once shipped. **Buyer-only
   PII:** order numbers are sequential/guessable, so address/e-mail/phone/items/tracking are
   rendered only for a browser with the per-order access cookie (HMAC cookie set at checkout,
   `src/server/order-access.ts`), after confirming the order's e-mail (throttled form), for
@@ -765,6 +815,12 @@ from CHF 100 subtotal.
   (→received, transaction increments stock, toast with delta summary).
 - **Admin Mails (#39/#44)** — the dev outbox: every mail the shop would have sent
   (registration, password reset, …) listed newest first with the plain-text body.
+- **Admin Einstellungen (#64)** — the shop settings editor: VAT rate, free-shipping
+  threshold, shipping methods (label, price, pickup flag, hint) and payment methods
+  (label, kind, active) as rows; save → `saveShopSettingsCore`, storefront follows.
+- **Admin Katalogtypen (#64)** — the `product_type_configs` editor: list by position,
+  edit page per type (label, position, photoNoun, stockTracking, comparable, brands,
+  dimensions with key/label/facet/order/unit) through `saveCatalogTypeCore`.
 
 ## 9. Seed data (deterministic, idempotent, clock-relative)
 
@@ -799,7 +855,8 @@ stock model (decrement at `createOrder`, restock on cancel, no reservations — 
 on a single-node replica set), security parameters (Origin checks, 12 h cookie expiry, scrypt
 N=2^15/r=8/p=1, login throttle), labels outside the web root (`data/labels/`), deployment
 target (long-running Node server, `runtime='nodejs'`, prod needs `MONGODB_URI`), shipping
-prices (4.90/12.90, free ≥ 100) and VAT rounding rule, MMS binary pinning + download cache +
+prices (4.90/12.90, free ≥ 100 — seed content of the shop settings since #64) and VAT
+rounding rule, MMS binary pinning + download cache +
 `MONGOMS_SYSTEM_BINARY` fallback, English-code/German-URL rule with rewrites, no text index
 (regex prefix search instead), toolchain fallback rule (M1 task 1).
 

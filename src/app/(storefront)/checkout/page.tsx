@@ -5,15 +5,20 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { UserRound } from "lucide-react";
 import { CheckoutForm } from "@/components/storefront/checkout-form";
-import { VAT_LABEL } from "@/lib/pricing";
+import { vatLabel } from "@/lib/shop-settings";
 import { getCustomerProfile } from "@/server/customers";
 import { getCreditLimitCents, getInvoiceCreditUsageCents } from "@/server/invoices";
 import { getCustomerSessionUserId } from "@/server/session";
+import { getShopSettings } from "@/server/shop-settings";
 
-export const metadata: Metadata = {
-  title: "Kasse",
-  description: `Adresse, Versand und Zahlung — coder-shop. Preise in CHF inklusive ${VAT_LABEL}.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const settings = await getShopSettings();
+  return {
+    title: "Kasse",
+    description: `Adresse, Versand und Zahlung — coder-shop. Preise in CHF inklusive ${vatLabel(settings.vatRatePercent)}`,
+  };
+}
 
 export default async function CheckoutPage() {
   await connection();

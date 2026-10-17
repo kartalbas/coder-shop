@@ -1,5 +1,6 @@
 import mongoose, { type ClientSession } from "mongoose";
 import {
+  flowFlagsFor,
   ORDER_STATUSES,
   transition,
   transitionsWithRestock,
@@ -76,7 +77,7 @@ export async function listPackingQueue(): Promise<OrderListItem[]> {
   // Pickup orders live in the pickup queue (issue #41), not in the parcel packing list.
   const orders = await OrderModel.find({
     status: { $in: ["picking", "packed"] },
-    "shipping.method": { $ne: "pickup" },
+    "shipping.storePickup": { $ne: true },
   })
     .sort({ status: 1, createdAt: 1 })
     .lean<Order[]>()
@@ -124,18 +125,14 @@ export async function transitionOrderCore(
     }
 
     const from = order.status;
-    // The order's payment and shipping method are part of the transition context
-    // (issues #40/#41): invoice orders may go new → picking unpaid, pickup orders move
-    // through ready → picked_up via the handover action, not these buttons.
-    const updated = transition(
-      {
-        ...order.toObject(),
-        paymentMethod: order.payment.method,
-        shippingMethod: order.shipping.method,
-      },
-      to,
-      { ...opts, paymentMethod: order.payment.method, shippingMethod: order.shipping.method },
-    );
+    // The order's stored flow flags are part of the transition context (issues
+    // #40/#41/#64): invoice-kind payments may go new → picking unpaid, store-pickup
+    // orders move through ready → picked_up via the handover action, not these buttons.
+    const flags = flowFlagsFor({
+      paymentKind: order.payment.kind,
+      storePickup: order.shipping.storePickup,
+    });
+    const updated = transition(order.toObject(), to, { ...opts, ...flags });
 
     const moved = await OrderModel.updateOne(
       { _id: order._id, status: from },

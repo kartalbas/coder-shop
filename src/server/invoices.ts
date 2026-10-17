@@ -16,6 +16,7 @@ import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
 import { sendMail } from "./mail";
 import { buildInvoicePdf } from "./invoices-pdf";
+import { getShopSettings } from "./shop-settings";
 import { resolveInsideDir } from "./secure-path";
 
 // Open invoices of one account occupy their credit (issue #40): every non-cancelled
@@ -28,7 +29,7 @@ export async function getInvoiceCreditUsageCents(
     {
       $match: {
         userId: new mongoose.Types.ObjectId(userId),
-        "payment.method": "invoice",
+        "payment.kind": "invoice",
         status: { $ne: "cancelled" },
       },
     },
@@ -96,7 +97,7 @@ function toListItem(order: Order, now: Date): InvoiceListItem {
 }
 
 async function findInvoiceOrders(filter: InvoiceFilter, now: Date): Promise<InvoiceListItem[]> {
-  const query: Record<string, unknown> = { "payment.method": "invoice" };
+  const query: Record<string, unknown> = { "payment.kind": "invoice" };
   if (filter === "open") query["payment.paidAt"] = null;
   if (filter === "paid") query["payment.paidAt"] = { $ne: null };
   const orders = await OrderModel.find(query)
@@ -137,7 +138,7 @@ export async function listInvoicesForUser(userId: string): Promise<CustomerInvoi
   if (!user) return [];
   const now = new Date();
   const orders = await OrderModel.find({
-    "payment.method": "invoice",
+    "payment.kind": "invoice",
     status: { $ne: "cancelled" },
     $or: [{ userId }, { "customer.email": user.email }],
   })
@@ -202,7 +203,7 @@ export interface CustomerCreditRow {
 export async function listInvoiceCredits(): Promise<CustomerCreditRow[]> {
   await connectDB();
   const rows = await OrderModel.aggregate<{ userId: mongoose.Types.ObjectId }>([
-    { $match: { "payment.method": "invoice", userId: { $ne: null } } },
+    { $match: { "payment.kind": "invoice", userId: { $ne: null } } },
     { $group: { _id: "$userId", userId: { $first: "$userId" } } },
     { $sort: { _id: 1 } },
     { $limit: 200 },
@@ -244,7 +245,7 @@ export async function recordInvoicePaymentCore(
     session.startTransaction();
     const order = await OrderModel.findById(orderId).session(session).exec();
     const invoice = order?.payment.invoice;
-    if (!order || !invoice || order.payment.method !== "invoice") {
+    if (!order || !invoice || order.payment.kind !== "invoice") {
       await session.abortTransaction();
       return { ok: false, error: "Rechnung nicht gefunden." };
     }
@@ -272,7 +273,7 @@ export async function recordInvoicePaymentCore(
     if (settled && order.status === "new") {
       const updated = transition(order.toObject(), "paid", {
         viaInvoicePayment: true,
-        paymentMethod: "invoice",
+        processBeforePayment: true,
         note: "Rechnung bezahlt",
         by,
         at: now,
@@ -316,7 +317,7 @@ export async function sendInvoiceReminderCore(
 
   const order = await OrderModel.findById(orderId).exec();
   const invoice = order?.payment.invoice;
-  if (!order || !invoice || order.payment.method !== "invoice") {
+  if (!order || !invoice || order.payment.kind !== "invoice") {
     return { ok: false, error: "Rechnung nicht gefunden." };
   }
   if (order.status === "cancelled") return { ok: false, error: "Die Bestellung ist storniert." };
@@ -359,7 +360,7 @@ export async function getInvoiceFileCore(
 ): Promise<{ buffer: Buffer; fileName: string } | null> {
   await connectDB();
   const order = await OrderModel.findOne({ orderNumber }).lean<Order>().exec();
-  if (!order || order.payment.method !== "invoice" || !order.payment.invoice) return null;
+  if (!order || order.payment.kind !== "invoice" || !order.payment.invoice) return null;
 
   const fileName = `${order.orderNumber}.pdf`;
   const filePath = resolveInsideDir(INVOICES_DIR, path.join(INVOICES_DIR, fileName));
@@ -369,7 +370,7 @@ export async function getInvoiceFileCore(
   } catch {
     // not generated yet — build it below
   }
-  const pdf = await buildInvoicePdf(order);
+  const pdf = await buildInvoicePdf(order, (await getShopSettings()).vatRatePercent);
   await mkdir(INVOICES_DIR, { recursive: true });
   await writeFile(filePath, pdf);
   return { buffer: Buffer.from(pdf), fileName };

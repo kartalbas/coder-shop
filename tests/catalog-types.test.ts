@@ -188,5 +188,15 @@ describe("catalog type configuration (issue #61)", () => {
     const phone = await ProductTypeConfigModel.findOne({ key: "smartphone" }).lean().exec();
     expect(phone?.comparable).toBe(true);
     expect(DEFAULT_CATALOG_TYPES.some((t) => t.key === "smartphone")).toBe(true);
+    // #64: the seed hands out the STORED configs (the filter repair derives from them),
+    // not the defaults — an edited dimension set must be what comes back.
+    const editedDimensions = [
+      ...ACCESSORIES.dimensions,
+      { key: "material", label: "Material", facet: true, order: "alpha" as const },
+    ];
+    await saveCatalogTypeCore({ ...ACCESSORIES, dimensions: editedDimensions });
+    const reseeded = await seedCatalogTypes();
+    const accessories = reseeded.find((type) => type.key === "accessories");
+    expect(accessories?.dimensions.map((d) => d.key)).toContain("material");
   });
 });

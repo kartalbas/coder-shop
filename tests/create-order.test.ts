@@ -1,6 +1,7 @@
 import { swissYear } from "@/lib/dates";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { computeTotals } from "@/lib/pricing";
+import { DEFAULT_SHOP_SETTINGS } from "@/lib/shop-settings";
 import { CounterModel } from "@/models/counter";
 import { OrderModel, type Order } from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
@@ -70,7 +71,7 @@ describe("createOrderCore", () => {
     expect(result.orderNumber).toMatch(/^B-\d{4}-\d{6}$/);
     expect(result.orderNumber).toBe(formatOrderNumber(swissYear(new Date()), 1));
     expect(result.totals).toEqual(
-      computeTotals([{ unitPriceCents: 10500, qty: 2 }], "standard"),
+      computeTotals([{ unitPriceCents: 10500, qty: 2 }], "standard", DEFAULT_SHOP_SETTINGS),
     );
 
     const order = await OrderModel.findOne({ orderNumber: result.orderNumber }).lean<Order>().exec();
@@ -302,7 +303,7 @@ describe("createOrderCore", () => {
     const order = await OrderModel.findOne({ "lines.sku": "CT-pricechange" }).lean<Order>().exec();
     expect(order?.lines[0].unitPriceCents).toBe(12500);
     expect(order?.totals.totalCents).toBe(
-      computeTotals([{ unitPriceCents: 12500, qty: 2 }], "standard").totalCents,
+      computeTotals([{ unitPriceCents: 12500, qty: 2 }], "standard", DEFAULT_SHOP_SETTINGS).totalCents,
     );
   });
 

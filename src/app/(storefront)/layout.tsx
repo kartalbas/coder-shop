@@ -1,7 +1,10 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { menuCategories } from "@/lib/menu";
+import { vatLabel } from "@/lib/shop-settings";
 import { getCatalogTypes } from "@/server/catalog-types";
+import { getShopSettings } from "@/server/shop-settings";
+import { ShopSettingsProvider } from "@/components/shop-settings-provider";
 import { Header } from "@/components/storefront/header";
 import { Footer } from "@/components/storefront/footer";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
@@ -47,7 +50,8 @@ function HeaderSkeleton() {
 
 async function FooterSlot() {
   await connection();
-  return <Footer categories={menuCategories(await getCatalogTypes())} />;
+  const [types, settings] = await Promise.all([getCatalogTypes(), getShopSettings()]);
+  return <Footer categories={menuCategories(types)} vatLabelText={vatLabel(settings.vatRatePercent)} />;
 }
 
 function FooterSkeleton() {
@@ -63,6 +67,7 @@ function FooterSkeleton() {
 
 export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
   return (
+    <ShopSettingsProvider>
     <CartProvider>
       <LocalStoreHydrator />
       <CompareTray />
@@ -86,5 +91,6 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
         <FooterSlot />
       </Suspense>
     </CartProvider>
+    </ShopSettingsProvider>
   );
 }

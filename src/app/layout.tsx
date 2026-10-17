@@ -4,7 +4,6 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
 import "./globals.css";
-import { VAT_LABEL } from "@/lib/pricing";
 import { SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
@@ -17,22 +16,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// The site-wide fallback description stays static (it also serves the prerendered 404);
+// the pages that render product data carry the configured VAT wording in their own
+// metadata (issues #37/#64).
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: "coder-shop — Smartphones, Schuhe & Kleidung",
     template: "%s | coder-shop",
   },
-  description:
-    `Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive ${VAT_LABEL}.`,
+  description: "Premium-Onlineshop. Preise in CHF inklusive MwSt.",
   openGraph: {
     type: "website",
     locale: "de_CH",
     url: SITE_URL,
     siteName: "coder-shop",
     title: "coder-shop — Smartphones, Schuhe & Kleidung",
-    description:
-      `Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive ${VAT_LABEL}.`,
+    description: "Premium-Onlineshop. Preise in CHF inklusive MwSt.",
   },
   robots: { index: true, follow: true },
 };

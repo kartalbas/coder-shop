@@ -79,7 +79,7 @@ function makeOrder(
     ],
     totals: { subtotalCents: 50_000, shippingCents: 490, totalCents: 50_490, vatCents: 3786 },
     shipping: { method: "standard" },
-    payment: { method: "mock", reference: `P-${orderNumber}` },
+    payment: { method: "mock", kind: "immediate", reference: `P-${orderNumber}` },
     createdAt: now,
     updatedAt: now,
   };

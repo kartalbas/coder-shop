@@ -50,7 +50,7 @@ function makeOrderFixture(
     lines: [],
     totals: { subtotalCents: 1000, shippingCents: 0, totalCents: 1000, vatCents: 75 },
     shipping: { method: "standard" },
-    payment: { method: "mock", reference: `P-${orderNumber}` },
+    payment: { method: "mock", kind: "immediate", reference: `P-${orderNumber}` },
     createdAt: now,
     updatedAt: now,
   };

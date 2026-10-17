@@ -1,14 +1,5 @@
-// Payment methods of the shop (issue #40/#41): the demo card, the invoice for registered
-// customers, and payment on pickup (cash or card at the counter). Names English, German
-// labels are UI copy only (ARCHITECTURE language rule).
-export const PAYMENT_METHODS = ["mock", "invoice", "pickup"] as const;
-export type PaymentMethodName = (typeof PAYMENT_METHODS)[number];
-
-export const PAYMENT_LABELS: Record<PaymentMethodName, string> = {
-  mock: "Kreditkarte (Demo)",
-  invoice: "Rechnung",
-  pickup: "Bei Abholung",
-};
+// Issue #64: the shop's payment methods are configuration rows in `shop_settings`
+// (src/lib/shop-settings.ts) — this file only keeps the counter handover detail.
 
 // How the money was taken at the counter (issue #41).
 export const PICKUP_PAYMENT_TYPES = ["cash", "card"] as const;

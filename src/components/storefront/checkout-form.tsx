@@ -12,15 +12,18 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatChf } from "@/lib/format";
 import { INVOICE_DUE_DAYS } from "@/lib/invoices";
-import { PAYMENT_LABELS, type PaymentMethodName } from "@/lib/payments";
-import { computeTotals, shippingCents, subtotalCents, VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
+import { computeTotals, shippingCents, subtotalCents } from "@/lib/pricing";
+import {
+  activeShippingMethods,
+  paymentMethodsForShipping,
+  vatInclusiveNote,
+  type PaymentMethodConfig,
+  type ShippingMethodConfig,
+} from "@/lib/shop-settings";
+import { useShopSettings } from "@/components/shop-settings-provider";
 import { STORE } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import {
-  checkoutSchema,
-  type CheckoutCustomer,
-  type ShippingMethodParam,
-} from "@/lib/validations/checkout";
+import { checkoutSchema, type CheckoutCustomer } from "@/lib/validations/checkout";
 import { createOrderAction, type CheckoutActionState } from "@/server/actions/checkout";
 import { validateDiscountAction } from "@/server/actions/discounts";
 import { DiscountInput } from "@/components/storefront/discount-input";
@@ -44,12 +47,18 @@ const CUSTOMER_FIELDS: {
   { key: "city", label: "Ort", type: "text", autoComplete: "address-level2", placeholder: "Zürich" },
 ];
 
-const SHIPPING_OPTIONS: { value: ShippingMethodParam; title: string; hint: string }[] = [
-  { value: "standard", title: "Standard", hint: "2–4 Werktage" },
-  { value: "express", title: "Express", hint: "nächster Werktag" },
-  // Issue #41: store pickup — free, with the store's address and opening hours.
-  { value: "pickup", title: "Abholung im Laden", hint: `${STORE.city} · ${STORE.hours[0]}` },
-];
+// Issue #64: the shipping hint of a store-pickup row names the store; every other
+// method shows its configured hint.
+function shippingHint(method: ShippingMethodConfig): string {
+  return method.storePickup ? `${STORE.city} · ${STORE.hours[0]}` : method.hint;
+}
+
+// The hint under a payment label follows the configured kind, not the key.
+function paymentHint(method: PaymentMethodConfig): string {
+  if (method.kind === "invoice") return `Zahlbar innert ${INVOICE_DUE_DAYS} Tagen`;
+  if (method.kind === "on_pickup") return "Bar oder Karte vor Ort";
+  return "Sofort, Demo";
+}
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -83,8 +92,24 @@ export function CheckoutForm({
   const router = useRouter();
   const cart = useCart();
   const hydrated = useCartHydrated();
-  const [shippingMethod, setShippingMethod] = useState<ShippingMethodParam>("standard");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodName>("mock");
+  // Issue #64: shipping and payment choices are configuration rows. The selected keys
+  // fall back to the first available option, so a method disabled between renders can
+  // never be submitted.
+  const settings = useShopSettings();
+  const shippingOptions = useMemo(() => activeShippingMethods(settings), [settings]);
+  const [shippingKey, setShippingKey] = useState("");
+  const [paymentKey, setPaymentKey] = useState("");
+  const shipping = shippingOptions.find((method) => method.key === shippingKey) ?? shippingOptions[0];
+  const paymentOptions = useMemo(
+    () =>
+      shipping
+        ? paymentMethodsForShipping(settings, shipping).filter(
+            (method) => invoiceAvailable || method.kind !== "invoice",
+          )
+        : [],
+    [settings, shipping, invoiceAvailable],
+  );
+  const payment = paymentOptions.find((method) => method.key === paymentKey) ?? paymentOptions[0];
   const [errors, setErrors] = useState<FieldErrors>({});
   // Issue #45: the reduction of the applied code, for the summary display only — the
   // server recomputes it inside the transaction.
@@ -100,10 +125,11 @@ export function CheckoutForm({
     () =>
       computeTotals(
         cart.lines.map((line) => ({ unitPriceCents: line.unitPriceCents, qty: line.qty })),
-        shippingMethod,
+        shipping?.key ?? "",
+        settings,
         discountCents,
       ),
-    [cart.lines, shippingMethod, discountCents],
+    [cart.lines, shipping, settings, discountCents],
   );
 
   // A code carried over from the cart is re-validated so the summary can show its
@@ -180,8 +206,8 @@ export function CheckoutForm({
         expectedUnitPriceCents: line.unitPriceCents,
       })),
       customer,
-      shippingMethod,
-      paymentMethod,
+      shippingMethod: shipping?.key ?? "",
+      paymentMethod: payment?.key ?? "",
       ...(cart.discountCode !== undefined && { discountCode: cart.discountCode }),
     };
     const parsed = checkoutSchema.safeParse(payload);
@@ -233,39 +259,30 @@ export function CheckoutForm({
             Versand
           </legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            {SHIPPING_OPTIONS.map((option) => {
-              const price = shippingCents(subtotal, option.value);
+            {shippingOptions.map((option) => {
+              const price = shippingCents(subtotal, option.key, settings);
               return (
                 <label
-                  key={option.value}
+                  key={option.key}
                   className={cn(
                     "flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors focus-within:outline-2 focus-within:outline-ring",
-                    shippingMethod === option.value && "border-primary bg-primary/5",
+                    shipping?.key === option.key && "border-primary bg-primary/5",
                   )}
                 >
                   <span className="flex items-center gap-3">
                     <input
                       type="radio"
                       name="shippingMethod"
-                      value={option.value}
-                      checked={shippingMethod === option.value}
-                      onChange={() => {
-                        setShippingMethod(option.value);
-                        // Issue #41: the payment choices depend on the shipping method —
-                        // „Rechnung“ needs delivery, „bei Abholung“ needs pickup.
-                        setPaymentMethod((current) =>
-                          current === "invoice" && option.value === "pickup"
-                            ? "mock"
-                            : current === "pickup" && option.value !== "pickup"
-                              ? "mock"
-                              : current,
-                        );
-                      }}
+                      value={option.key}
+                      checked={shipping?.key === option.key}
+                      onChange={() => setShippingKey(option.key)}
                       className="size-4 accent-primary"
                     />
                     <span>
-                      <span className="block font-medium">{option.title}</span>
-                      <span className="block text-xs text-muted-foreground">{option.hint}</span>
+                      <span className="block font-medium">{option.label}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {shippingHint(option)}
+                      </span>
                     </span>
                   </span>
                   <span className="text-sm font-semibold">
@@ -283,46 +300,34 @@ export function CheckoutForm({
             Zahlung
           </legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            {(shippingMethod === "pickup"
-              ? (["mock", "pickup"] as PaymentMethodName[])
-              : ([
-                  "mock",
-                  ...(invoiceAvailable ? (["invoice"] as const) : []),
-                ] as PaymentMethodName[])
-            ).map(
-              (method) => (
-                <label
-                  key={method}
-                  className={cn(
-                    "flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors focus-within:outline-2 focus-within:outline-ring",
-                    paymentMethod === method && "border-primary bg-primary/5",
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value={method}
-                      checked={paymentMethod === method}
-                      onChange={() => setPaymentMethod(method)}
-                      className="size-4 accent-primary"
-                    />
-                    <span>
-                      <span className="block font-medium">{PAYMENT_LABELS[method]}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {method === "invoice"
-                          ? `Zahlbar innert ${INVOICE_DUE_DAYS} Tagen`
-                          : method === "pickup"
-                            ? "Bar oder Karte vor Ort"
-                            : "Sofort, Demo"}
-                      </span>
+            {paymentOptions.map((method) => (
+              <label
+                key={method.key}
+                className={cn(
+                  "flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors focus-within:outline-2 focus-within:outline-ring",
+                  payment?.key === method.key && "border-primary bg-primary/5",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method.key}
+                    checked={payment?.key === method.key}
+                    onChange={() => setPaymentKey(method.key)}
+                    className="size-4 accent-primary"
+                  />
+                  <span>
+                    <span className="block font-medium">{method.label}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {paymentHint(method)}
                     </span>
                   </span>
-                </label>
-              ),
-            )}
+                </span>
+              </label>
+            ))}
           </div>
-          {paymentMethod === "invoice" ? (
+          {payment?.kind === "invoice" ? (
             <Card className="mt-3">
               <CardContent className="space-y-1 p-5 text-sm text-muted-foreground">
                 <p>
@@ -335,7 +340,7 @@ export function CheckoutForm({
                 </p>
               </CardContent>
             </Card>
-          ) : paymentMethod === "pickup" ? (
+          ) : payment?.kind === "on_pickup" ? (
             <Card className="mt-3">
               <CardContent className="space-y-1 p-5 text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">
@@ -435,14 +440,14 @@ export function CheckoutForm({
                 <dd className="tabular-nums">{formatChf(totals.totalCents)}</dd>
               </div>
             </dl>
-            <p className="text-xs text-muted-foreground">{VAT_INCLUSIVE_NOTE}</p>
-            <Button type="submit" size="lg" className="w-full" disabled={pending}>
+            <p className="text-xs text-muted-foreground">{vatInclusiveNote(settings.vatRatePercent)}</p>
+            <Button type="submit" size="lg" className="w-full" disabled={pending || !shipping || !payment}>
               {pending ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : (
                 <Check className="size-4" aria-hidden />
               )}
-              {paymentMethod === "invoice" ? "Bestellen" : "Jetzt kaufen"} —{" "}
+              {payment?.kind === "invoice" ? "Bestellen" : "Jetzt kaufen"} —{" "}
               {formatChf(totals.totalCents)}
             </Button>
             <p className="text-center text-xs text-muted-foreground">

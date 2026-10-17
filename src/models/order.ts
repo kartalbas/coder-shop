@@ -1,16 +1,9 @@
 import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
-import type { ShippingMethodName } from "@/lib/pricing";
-import {
-  PAYMENT_METHODS,
-  PICKUP_PAYMENT_TYPES,
-  type PaymentMethodName,
-  type PickupPaymentType,
-} from "@/lib/payments";
+import { PICKUP_PAYMENT_TYPES, type PickupPaymentType } from "@/lib/payments";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/state-machine";
+import type { PaymentMethodKind } from "@/lib/shop-settings";
 
 export type { OrderStatus };
-
-type ShippingMethod = ShippingMethodName;
 
 export interface StatusLogEntry {
   status: OrderStatus;
@@ -59,7 +52,10 @@ interface OrderPickup {
 }
 
 interface OrderShipping {
-  method: ShippingMethod;
+  // Issue #64: the method key comes from the shop settings; `storePickup` is the flow
+  // flag stored at checkout so the state machine and the queues never need the config.
+  method: string;
+  storePickup?: boolean;
   carrier?: "ups";
   trackingNumber?: string;
   labelPath?: string;
@@ -79,7 +75,9 @@ interface OrderInvoice {
 }
 
 interface OrderPayment {
-  method: PaymentMethodName;
+  // Issue #64: configured method key + the kind that decides the money flow.
+  method: string;
+  kind: PaymentMethodKind;
   reference: string;
   paidAt?: Date;
   invoice?: OrderInvoice;
@@ -165,7 +163,8 @@ const pickupSchema = new Schema<OrderPickup>(
 
 const shippingSchema = new Schema<OrderShipping>(
   {
-    method: { type: String, enum: ["standard", "express", "pickup"], required: true },
+    method: { type: String, required: true },
+    storePickup: { type: Boolean },
     carrier: { type: String, enum: ["ups"] },
     trackingNumber: { type: String },
     labelPath: { type: String },
@@ -188,7 +187,8 @@ const invoiceSchema = new Schema<OrderInvoice>(
 
 const paymentSchema = new Schema<OrderPayment>(
   {
-    method: { type: String, enum: PAYMENT_METHODS, required: true },
+    method: { type: String, required: true },
+    kind: { type: String, enum: ["immediate", "invoice", "on_pickup"], required: true },
     reference: { type: String, required: true },
     paidAt: { type: Date },
     invoice: { type: invoiceSchema },
@@ -221,8 +221,9 @@ orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ "customer.email": 1 });
 orderSchema.index({ userId: 1, createdAt: -1 });
-// Invoice lists (admin filters, customer portal, credit usage) — issue #40.
-orderSchema.index({ "payment.method": 1, "payment.invoice.dueAt": 1 });
+// Invoice lists (admin filters, customer portal, credit usage) — issue #40, keyed on
+// the payment *kind* since #64 so any configured invoice-type method is covered.
+orderSchema.index({ "payment.kind": 1, "payment.invoice.dueAt": 1 });
 
 export const OrderModel =
   mongoose.models.Order ?? mongoose.model<Order>("Order", orderSchema);

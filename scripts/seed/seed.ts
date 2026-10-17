@@ -4,15 +4,17 @@ import mongoose from "mongoose";
 import { swissYear } from "@/lib/dates";
 import { formatOrderNumber, formatPaymentReference, formatPoNumber } from "@/lib/numbers";
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
-import { computeTotals, type ShippingMethodName } from "@/lib/pricing";
+import { computeTotals } from "@/lib/pricing";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
+import { DEFAULT_SHOP_SETTINGS, type ShopSettings } from "@/lib/shop-settings";
 import { deriveFilter } from "@/lib/facets";
 import { CounterModel } from "@/models/counter";
 import { OrderModel, type OrderStatus, type StatusLogEntry } from "@/models/order";
 import { ProductModel } from "@/models/product";
-import { ProductTypeConfigModel } from "@/models/product-type-config";
+import { ProductTypeConfigModel, toCatalogTypeConfig } from "@/models/product-type-config";
 import { PurchaseOrderModel } from "@/models/purchase-order";
+import { ShopSettingsModel, toShopSettings } from "@/models/shop-settings";
 import { SupplierModel } from "@/models/supplier";
 import { UserModel } from "@/models/user";
 import { connectDB, dbMode, disconnectDB, isDbPathLocked } from "@/server/db";
@@ -69,7 +71,9 @@ const STATUS_PLAN: OrderStatus[] = [
 ];
 
 // Issue #61: the catalog type configuration is seeded from `DEFAULT_CATALOG_TYPES`,
-// insert-only (#14 rule) — an edited configuration survives a re-seed.
+// insert-only (#14 rule) — an edited configuration survives a re-seed. Returns the
+// stored configs (#64): once the admin editor can change dimensions, everything the
+// seed derives from them (filter repair) must use the stored rows, not the defaults.
 export async function seedCatalogTypes(): Promise<CatalogTypeConfig[]> {
   for (const config of DEFAULT_CATALOG_TYPES) {
     await ProductTypeConfigModel.updateOne(
@@ -78,7 +82,21 @@ export async function seedCatalogTypes(): Promise<CatalogTypeConfig[]> {
       { upsert: true },
     );
   }
-  return [...DEFAULT_CATALOG_TYPES];
+  const stored = await ProductTypeConfigModel.find().sort({ position: 1 }).lean().exec();
+  return stored.map((doc) => toCatalogTypeConfig(doc));
+}
+
+// Issue #64: the commerce rules (VAT, shipping, payment) are configuration too —
+// insert-only like everything else (#14), so admin edits survive a re-seed. Returns the
+// stored document so seeded orders compute totals with the rules the shop actually uses.
+export async function seedShopSettings(): Promise<ShopSettings> {
+  await ShopSettingsModel.updateOne(
+    { key: "shop" },
+    { $setOnInsert: { key: "shop", ...DEFAULT_SHOP_SETTINGS } },
+    { upsert: true },
+  );
+  const doc = await ShopSettingsModel.findOne({ key: "shop" }).lean().exec();
+  return doc ? toShopSettings(doc) : structuredClone(DEFAULT_SHOP_SETTINGS);
 }
 
 // The denormalized `filter` block is derived data (ARCHITECTURE §3): recompute it from
@@ -151,11 +169,17 @@ async function seedSuppliers() {
   return byName;
 }
 
-async function seedOrders(rng: () => number, now: Date): Promise<void> {
+async function seedOrders(rng: () => number, now: Date, settings: ShopSettings): Promise<void> {
   if ((await OrderModel.countDocuments()) > 0) {
     console.log("orders collection not empty — skipping sample orders (idempotent)");
     return;
   }
+  // Issue #64: the sample orders use the configured parcel methods (never pickup — the
+  // happy-path chain below is the parcel chain) and the first immediate payment method.
+  const parcelMethods = settings.shippingMethods.filter((method) => method.active && !method.storePickup);
+  const immediatePayment =
+    settings.paymentMethods.find((method) => method.active && method.kind === "immediate") ??
+    settings.paymentMethods[0];
   const products = await ProductModel.find().sort({ slug: 1 }).lean();
   const year = swissYear(now);
   const orders = [];
@@ -180,8 +204,8 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
         weightGrams: variant.weightGrams,
       });
     }
-    const method: ShippingMethodName = rng() < 0.75 ? "standard" : "express";
-    const totals = computeTotals(lines, method);
+    const method = parcelMethods[rng() < 0.75 ? 0 : Math.min(1, parcelMethods.length - 1)]!;
+    const totals = computeTotals(lines, method.key, settings);
     const createdAt = new Date(now.getTime() - Math.floor(rng() * 14 * DAY_MS) - i * HOUR_MS);
     const chainUpTo = status === "cancelled" ? 1 : HAPPY_PATH.indexOf(status);
     const statusLog: StatusLogEntry[] = HAPPY_PATH.slice(0, chainUpTo + 1).map((s, step) => ({
@@ -213,7 +237,8 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
       lines,
       totals,
       shipping: {
-        method,
+        method: method.key,
+        storePickup: method.storePickup,
         ...(shipped
           ? {
               carrier: "ups" as const,
@@ -223,7 +248,8 @@ async function seedOrders(rng: () => number, now: Date): Promise<void> {
           : {}),
       },
       payment: {
-        method: "mock" as const,
+        method: immediatePayment.key,
+        kind: immediatePayment.kind,
         reference: formatPaymentReference(i + 1),
         ...(status !== "new"
           ? { paidAt: new Date(createdAt.getTime() + 2 * HOUR_MS) }
@@ -303,6 +329,7 @@ async function main(): Promise<void> {
   const now = new Date();
   const rng = mulberry32(987654321);
   const types = await seedCatalogTypes();
+  const shopSettings = await seedShopSettings();
   const productCount = await seedProducts();
   const repairedFilters = await repairProductFilters(types);
   if (repairedFilters > 0) console.log(`filter blocks recomputed for ${repairedFilters} products`);
@@ -315,7 +342,7 @@ async function main(): Promise<void> {
     console.log(`Admin-Benutzer ${ADMIN_EMAIL} existiert — Passwort unverändert.`);
   }
   const suppliers = await seedSuppliers();
-  await seedOrders(rng, now);
+  await seedOrders(rng, now, shopSettings);
   await seedPurchaseOrders(rng, suppliers, now);
   const counts = {
     products: await ProductModel.countDocuments(),

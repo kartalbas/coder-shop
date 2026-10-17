@@ -18,12 +18,13 @@ import {
   type Selection,
 } from "@/lib/product-selection";
 import { buyablePriceCents } from "@/lib/pricing";
+import { useShopSettings } from "@/components/shop-settings-provider";
+import { vatLabel } from "@/lib/shop-settings";
 import { Gallery } from "./gallery";
 import { CompareToggle } from "./compare-toggle";
 import { RestockAlertForm } from "./restock-alert-form";
 import { StockIndicator } from "./stock-indicator";
 import { WishlistHeart } from "./wishlist-heart";
-import { VAT_LABEL } from "@/lib/pricing";
 
 // Issue #61: the variant picker renders the dimensions of the product's catalog type
 // configuration (labels, order, units) — never a fixed colour/size/storage triple.
@@ -38,6 +39,7 @@ export function ProductDetail({
     () => dimensionsOf(product, typeDimensions),
     [product, typeDimensions],
   );
+  const settings = useShopSettings();
   const [selection, setSelection] = useState<Selection>(
     () => Object.fromEntries(typeDimensions.map((dimension) => [dimension.key, null])),
   );
@@ -133,7 +135,7 @@ export function ProductDetail({
             <span className="text-base font-normal text-muted-foreground">ab </span>
           )}
           {formatChf(price.priceCents)}
-          <span className="ml-2 text-sm font-normal text-muted-foreground">inkl. {VAT_LABEL}.</span>
+          <span className="ml-2 text-sm font-normal text-muted-foreground">inkl. {vatLabel(settings.vatRatePercent)}.</span>
         </motion.p>
 
         {dimensions.map((dimension) => (

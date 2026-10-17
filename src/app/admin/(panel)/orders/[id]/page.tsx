@@ -11,9 +11,10 @@ import { StatusTimeline } from "@/components/admin/status-timeline";
 import { TransitionButtons } from "@/components/admin/transition-buttons";
 import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";
 import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
-import { PAYMENT_LABELS } from "@/lib/payments";
-import { allowedTransitions } from "@/lib/orders/state-machine";
+import { allowedTransitions, flowFlagsFor } from "@/lib/orders/state-machine";
+import { paymentMethodByKey } from "@/lib/shop-settings";
 import { getOrderById } from "@/server/orders-admin";
+import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
   params: Promise<{ id: string }>;
@@ -30,10 +31,18 @@ async function OrderDetail({ params }: PagePropsLocal) {
   const order = await getOrderById(id);
   if (!order) notFound();
 
-  const targets = allowedTransitions(order.status, {
-    paymentMethod: order.payment.method,
-    shippingMethod: order.shipping.method,
-  });
+  // Issue #64: labels come from the configuration; a retired method falls back to its
+  // stored key so old orders stay readable.
+  const settings = await getShopSettings();
+  const paymentLabel =
+    paymentMethodByKey(settings, order.payment.method)?.label ?? order.payment.method;
+  const targets = allowedTransitions(
+    order.status,
+    flowFlagsFor({
+      paymentKind: order.payment.kind,
+      storePickup: order.shipping.storePickup,
+    }),
+  );
   const canCreateLabel = order.status === "packed";
   const shipped = order.status === "shipped" || order.status === "delivered";
 
@@ -160,7 +169,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
             </div>
             <div className="flex justify-between border-t pt-2">
               <dt className="text-muted-foreground">Zahlung</dt>
-              <dd>{PAYMENT_LABELS[order.payment.method]}</dd>
+              <dd>{paymentLabel}</dd>
             </div>
             {order.payment.invoice && (
               <div className="flex justify-between">

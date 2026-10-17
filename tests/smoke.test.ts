@@ -22,7 +22,7 @@ function makeOrderFixture(orderNumber: string, reference: string): mongoose.mong
     lines: [],
     totals: { subtotalCents: 0, shippingCents: 0, totalCents: 0, vatCents: 0 },
     shipping: { method: "standard" },
-    payment: { method: "mock", reference },
+    payment: { method: "mock", kind: "immediate" as const, reference },
     createdAt: now,
     updatedAt: now,
   };

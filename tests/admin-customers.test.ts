@@ -97,10 +97,11 @@ async function makeOrder(opts: {
     payment: opts.invoice
       ? {
           method: "invoice",
+          kind: "invoice" as const,
           reference: `P-${opts.number}`,
           invoice: { dueAt: new Date(Date.now() - 86_400_000), paidCents: opts.invoice.paidCents, qrReference: "RF0000" },
         }
-      : { method: "mock", reference: `P-${opts.number}`, paidAt: opts.createdAt },
+      : { method: "mock", kind: "immediate" as const, reference: `P-${opts.number}`, paidAt: opts.createdAt },
   });
 }
 

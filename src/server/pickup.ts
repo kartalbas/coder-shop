@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import mongoose from "mongoose";
 import type { OrderStatus } from "@/lib/orders/state-machine";
-import { transition } from "@/lib/orders/state-machine";
+import { flowFlagsFor, transition } from "@/lib/orders/state-machine";
 import type { PickupPaymentType } from "@/lib/payments";
 import { pickupReadyMail } from "@/lib/mail-templates";
 import { STORE } from "@/lib/store";
@@ -51,7 +51,7 @@ const QUEUE_STATUSES: OrderStatus[] = ["new", "paid", "picking", "ready"];
 export async function listPickupQueueCore(): Promise<PickupQueueItem[]> {
   await connectDB();
   const orders = await OrderModel.find({
-    "shipping.method": "pickup",
+    "shipping.storePickup": true,
     status: { $in: QUEUE_STATUSES },
   })
     .sort({ "shipping.pickup.readyAt": 1, createdAt: 1 })
@@ -89,7 +89,7 @@ export async function markPickupReadyCore(
   try {
     session.startTransaction();
     const order = await OrderModel.findById(orderId).session(session).exec();
-    if (!order || order.shipping.method !== "pickup" || !order.shipping.pickup) {
+    if (!order || order.shipping.storePickup !== true || !order.shipping.pickup) {
       await session.abortTransaction();
       return { ok: false, error: "Bestellung nicht gefunden." };
     }
@@ -99,11 +99,16 @@ export async function markPickupReadyCore(
     }
 
     const now = new Date();
-    const updated = transition(
-      { ...order.toObject(), paymentMethod: order.payment.method, shippingMethod: "pickup" },
-      "ready",
-      { note: "Bereit zur Abholung", by, at: now, shippingMethod: "pickup" },
-    );
+    const flags = flowFlagsFor({
+      paymentKind: order.payment.kind,
+      storePickup: true,
+    });
+    const updated = transition(order.toObject(), "ready", {
+      note: "Bereit zur Abholung",
+      by,
+      at: now,
+      ...flags,
+    });
     const moved = await OrderModel.updateOne(
       { _id: order._id, status: order.status },
       {
@@ -163,7 +168,7 @@ export async function handoverPickupCore(
   try {
     session.startTransaction();
     const order = await OrderModel.findById(orderId).session(session).exec();
-    if (!order || order.shipping.method !== "pickup" || !order.shipping.pickup) {
+    if (!order || order.shipping.storePickup !== true || !order.shipping.pickup) {
       await session.abortTransaction();
       return { ok: false, error: "Bestellung nicht gefunden." };
     }
@@ -177,11 +182,17 @@ export async function handoverPickupCore(
     }
 
     const now = new Date();
-    const updated = transition(
-      { ...order.toObject(), paymentMethod: order.payment.method, shippingMethod: "pickup" },
-      "picked_up",
-      { note: "Abgeholt und bezahlt", by, at: now, viaPickupHandover: true, shippingMethod: "pickup" },
-    );
+    const flags = flowFlagsFor({
+      paymentKind: order.payment.kind,
+      storePickup: true,
+    });
+    const updated = transition(order.toObject(), "picked_up", {
+      note: "Abgeholt und bezahlt",
+      by,
+      at: now,
+      viaPickupHandover: true,
+      ...flags,
+    });
     const wasPaid = order.payment.paidAt !== undefined;
     const moved = await OrderModel.updateOne(
       { _id: order._id, status: "ready" },

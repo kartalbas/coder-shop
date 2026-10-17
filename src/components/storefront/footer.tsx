@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import type { MenuCategory } from "@/lib/menu";
-import { VAT_LABEL } from "@/lib/pricing";
 
 const noSubscribe = () => () => {};
 
@@ -17,14 +16,21 @@ function CurrentYear() {
 }
 
 // Issue #61: the assortment links follow the catalog type configuration.
-export function Footer({ categories }: { categories: readonly MenuCategory[] }) {
+// Issue #64: the VAT wording is configured data, passed in by the server slot.
+export function Footer({
+  categories,
+  vatLabelText,
+}: {
+  categories: readonly MenuCategory[];
+  vatLabelText: string;
+}) {
   return (
     <footer className="border-t bg-muted/40">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-3">
         <div>
           <p className="text-sm font-semibold">coder-shop</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Premium-Technik, Schuhe und Kleidung. Alle Preise in CHF inklusive {VAT_LABEL}.
+            Premium-Technik, Schuhe und Kleidung. Alle Preise in CHF inklusive {vatLabelText}
           </p>
         </div>
         <nav aria-label="Footer Navigation">
