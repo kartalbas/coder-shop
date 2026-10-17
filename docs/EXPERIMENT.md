@@ -69,14 +69,14 @@ pushed; for QA also `npm run test:e2e`). A red gate goes to the next session as 
 | M6 photo pipeline (`npm run images`) | 1 | 15.7 min | green on session 1 |
 | — image batch: 576 photos, 768×768 WebP, ~5.9 s each | — | 55.6 min | 0 errors |
 | M3 cart, checkout (transactions), confirmation | 1 | 15.3 min | green on session 1 |
-| M4 admin auth, order workflow, packing, UPS labels | 2 | 49.4 min | green on session 2 (session 1 ran out of time before committing) |
+| M4 admin auth, order workflow, packing, UPS labels | 2 | 49.2 min | green on session 2 (session 1 ran out of time before committing) |
 | M5 purchasing, goods receipt, dashboard, polish | 1 | 22.0 min | green on session 1 |
 | M6 follow-up (lead's final check: pages still showed SVGs) | 1 | 5.5 min | green |
 | 5 Code review of the whole codebase (by the coder) | 1 | 12.6 min | — |
 | 6 QA: review fixes + Playwright e2e | 2 | 49.4 min | green on session 2 |
-| **Total** | **19** | **≈ 4 h 50 min** of coder sessions, 01:18 → 07:05 | |
+| **Total** | **18** | **≈ 4 h 23 min** of coder sessions (plus 56 min image batch), 01:18 → 07:05 | |
 
-Result: 25 commits, ~12,500 lines (without generated UI primitives), 141 source files;
+Result: 25 commits (the coder's and the lead's), ~12,500 lines (without generated UI primitives), 141 source files;
 158 unit/integration tests (Vitest, against a throw-away replica set) and three Playwright
 end-to-end flows (buying, admin order → UPS label → shipped, goods receipt), all green.
 Stack as built: Next.js 16.4.2, React 19.3.1, TypeScript 6.0.3, Mongoose 9.11.2, Playwright 1.64.1.
@@ -140,8 +140,8 @@ iPhones (with an Apple-like logo) and shoes carry swoosh-like marks. Qwen-Image 
 The local coder plans and reviews like a senior engineer and, given gates and fresh sessions,
 delivers a working, well-structured full-stack shop — storefront with SPA navigation and
 faceted search, transactional checkout, an admin with order workflow, packing, UPS labels,
-purchasing and a dashboard, 158 tests and three e2e flows — in about five hours of its own
-sessions. It is slow with tools newer than its training, tends to run out of time before
+purchasing and a dashboard, 158 tests and three e2e flows — in its own
+sessions (about four and a half hours). It is slow with tools newer than its training, tends to run out of time before
 committing, and its weakest spot is hard root-cause debugging outside a test loop (see the
 SIGPIPE bug below). Its own code review was sharper than the per-milestone gates.
 
