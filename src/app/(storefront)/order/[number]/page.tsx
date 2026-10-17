@@ -11,7 +11,10 @@ import { formatChf, formatDateTime, formatWeight } from "@/lib/format";
 import { STATUS_LABELS } from "@/lib/orders/labels";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 import { cn } from "@/lib/utils";
+import { hasOrderAccess } from "@/server/order-access";
 import { getOrderByNumber, type OrderDto } from "@/server/orders";
+import { getSessionUserId } from "@/server/session";
+import { OrderAccessForm } from "@/components/storefront/order-access-form";
 
 const SHIPPING_LABELS: Record<OrderDto["shipping"]["method"], string> = {
   standard: "Standardversand",
@@ -101,17 +104,36 @@ async function OrderView({ params }: PagePropsLocal) {
   const order = await getOrderByNumber(number);
   if (!order) notFound();
 
+  // PII (address, e-mail, phone, items, tracking) is only for the buyer — the browser that
+  // completed checkout (access cookie), one that verified the order's e-mail, or an admin.
+  // Unauthorized visitors never receive the details in the HTML at all.
+  const authorized =
+    (await hasOrderAccess(order.orderNumber)) || (await getSessionUserId()) !== null;
+
+  const header = (
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-sm text-muted-foreground">Vielen Dank für Ihre Bestellung!</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+          Bestellung {order.orderNumber}
+        </h1>
+      </div>
+      <StatusBadge status={order.status} />
+    </div>
+  );
+
+  if (!authorized) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        {header}
+        <OrderAccessForm orderNumber={order.orderNumber} />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">Vielen Dank für Ihre Bestellung!</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-            Bestellung {order.orderNumber}
-          </h1>
-        </div>
-        <StatusBadge status={order.status} />
-      </div>
+      {header}
 
       <Card>
         <CardContent className="space-y-6 p-5 sm:p-6">

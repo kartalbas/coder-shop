@@ -183,3 +183,29 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **Regression test:** `tests/e2e/admin-session.spec.ts` — Playwright maps a non-localhost
   hostname to loopback (`--host-resolver-rules`) and drives login + three admin pages over
   plain HTTP; fails without the fix (cookie dropped, redirect to `/admin/login`).
+
+## Issue queue (phase 7)
+
+### #2 — session secret can no longer be forged from source
+- Production refuses to serve sessions without `SESSION_SECRET` (missing or < 32 chars
+  throws on first use); outside production the secret is random per process
+  (globalThis-cached, so HMR/dev keeps sessions within one server run). The fixed
+  `DEV_SESSION_SECRET` constant is gone — tokens can no longer be forged from repository
+  contents.
+- A valid signature alone is not a session: `resolveSessionUserId` additionally requires
+  the user to exist, so deleting an admin invalidates their cookie immediately.
+
+### #3 — order confirmation PII is buyer-only
+- Order numbers are sequential, so `/bestellung/<number>` must not be a public PII
+  endpoint. Decision: a per-order **access cookie** (`order_access_<number>`, value =
+  HMAC-SHA256 of the order number with the session secret, httpOnly, 30 d) is granted by
+  the checkout Server Action; the page renders details only with that cookie or for a
+  signed-in admin. Everyone else sees number + status and a **e-mail confirmation form**
+  (case-insensitive compare against the order's e-mail, throttled 10 failures/h per
+  order, unknown order and wrong e-mail share one message).
+- Rejected alternatives: login for customers (out of scope), token in the confirmation
+  URL (URLs end up in logs/history), showing items but hiding the address (purchase
+  history is PII too).
+- Regression: `tests/e2e/order-privacy.spec.ts` (stranger sees no address/e-mail in the
+  HTML, wrong e-mail rejected, correct e-mail unlocks, cookie persists) +
+  `tests/order-access.test.ts` (token binding to the exact order number, throttle).

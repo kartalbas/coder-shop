@@ -437,3 +437,14 @@ Done — M1–M6 + QA complete.
   tokens for unknown/deleted users are rejected (tests cover all three paths).
 - e2e global setup signs with a fresh random `SESSION_SECRET` (production start).
 - Verified: `npm test` ✅ 167, lint/build ✅, `npm run test:e2e` ✅ 4/4.
+
+### #3 — order confirmation exposed every customer's PII ✅
+- `src/server/order-access.ts`: per-order HMAC access cookie (granted by the checkout
+  action, 30 d) + `verifyOrderEmailCore` (case-insensitive, throttled 10/h/order, no
+  order-enumeration oracle); `verifyOrderEmailAction` behind the new
+  `OrderAccessForm` on the page. `/bestellung/[number]` renders items/totals/address/
+  contact/tracking only for the access cookie or a signed-in admin — strangers get
+  number + status + the e-mail form, no PII in the HTML at all.
+- Verified: `tests/order-access.test.ts` (8 tests), e2e `order-privacy.spec.ts`
+  (stranger/wrong e-mail/correct e-mail/reload), full e2e ✅ 5/5, `npm test` ✅ 175,
+  lint/build ✅.

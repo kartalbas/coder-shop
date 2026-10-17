@@ -460,7 +460,11 @@ from CHF 100 subtotal.
   zod-validated client + server, mock payment (card form stub), summary sidebar sticky;
   success → confetti-light motion → redirect confirmation.
 - **Bestellung/[nummer]** — big confirmation, status timeline (state machine steps), items,
-  totals incl. VAT note "8,1 % MwSt. inbegriffen", tracking number once shipped.
+  totals incl. VAT note "8,1 % MwSt. inbegriffen", tracking number once shipped. **Buyer-only
+  PII:** order numbers are sequential/guessable, so address/e-mail/phone/items/tracking are
+  rendered only for a browser with the per-order access cookie (HMAC cookie set at checkout,
+  `src/server/order-access.ts`), after confirming the order's e-mail (throttled form), or for
+  a signed-in admin; strangers get only the number, status and the confirmation form.
 - **Admin login** — centered card, demo credentials hint.
 - **Admin dashboard** — KPI cards (Umsatz 30 Tage, offene Bestellungen, Lieferungen
   ausstehend), low-stock table (stock ≤ restockThreshold), recent orders, revenue sparkline
