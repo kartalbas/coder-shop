@@ -11,6 +11,7 @@ import { addToCart, openCartDrawer } from "@/stores/cart";
 import type { ProductDto, VariantDto } from "@/server/search";
 import { Gallery } from "./gallery";
 import { StockIndicator } from "./stock-indicator";
+import { VAT_LABEL } from "@/lib/pricing";
 
 type Dimension = { key: "color" | "size" | "storage"; label: string; values: string[] };
 
@@ -108,7 +109,7 @@ export function ProductDetail({ product }: { product: ProductDto }) {
           className="text-2xl font-semibold"
         >
           {formatChf(priceCents)}
-          <span className="ml-2 text-sm font-normal text-muted-foreground">inkl. 8,1 % MwSt.</span>
+          <span className="ml-2 text-sm font-normal text-muted-foreground">inkl. {VAT_LABEL}.</span>
         </motion.p>
 
         {dimensions.map((dimension) => (

@@ -549,3 +549,14 @@ Done — M1–M6 + QA complete.
   header/footer chips all render `PRODUCT_TYPE_LABELS` from `src/lib/menu.ts`.
 - Verified: `npm test` ✅ 236 (mega-menu sync test still green), `npm run seed` ✅
   idempotent, lint/build ✅, e2e ✅ 7/7.
+
+### #30 — VAT and shipping rules lived in the UI ✅
+- `src/lib/pricing.ts` gained `VAT_LABEL`/`VAT_INCLUSIVE_NOTE` (derived from
+  `VAT_RATE_PERCENT`, German comma) and `freeShippingProgress(subtotal)`; all 11
+  hard-coded „8,1 % MwSt." strings (pages, metadata, footer, product detail, order
+  confirmation) now interpolate them — change the rate, the copy follows.
+- Checkout shipping cards use `shippingCents()` instead of re-implementing the free
+  threshold; the copy-pasted free-shipping progress bar in cart drawer and cart page
+  became the shared `FreeShippingProgress` component over the lib rule.
+- Verified: 2 new rule tests in `src/lib/pricing.test.ts`; `npm test` ✅ 238,
+  lint/build ✅, e2e ✅ 7/7.

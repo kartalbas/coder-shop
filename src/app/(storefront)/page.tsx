@@ -9,6 +9,7 @@ import { ProductCard } from "@/components/storefront/product-card";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getFeaturedProducts } from "@/server/search";
+import { VAT_LABEL } from "@/lib/pricing";
 
 const CATEGORIES = [
   { type: "smartphone", description: "Neueste Modelle führender Marken" },
@@ -68,7 +69,7 @@ export default function HomePage() {
             Technik, Style und Komfort — in der Schweiz zuhause.
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground">
-            Smartphones, Schuhe und Kleidung zu fairen Preisen in CHF, inklusive 8,1 % MwSt. und
+            Smartphones, Schuhe und Kleidung zu fairen Preisen in CHF, inklusive {VAT_LABEL} und
             schnellem Versand.
           </p>
           <div className="flex gap-3">

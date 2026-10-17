@@ -17,6 +17,7 @@ import { ProductDetail } from "@/components/storefront/product-detail";
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
+import { VAT_LABEL } from "@/lib/pricing";
 
 interface PagePropsLocal {
   params: Promise<{ slug: string }>;
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
   const name = slug.replace(/-/g, " ");
   return {
     title: name,
-    description: `${name} — coder-shop. Preise in CHF inklusive 8,1 % MwSt.`,
+    description: `${name} — coder-shop. Preise in CHF inklusive ${VAT_LABEL}.`,
   };
 }
 

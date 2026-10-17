@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  VAT_INCLUSIVE_NOTE,
+  VAT_LABEL,
+  freeShippingProgress,
   FREE_SHIPPING_FROM_CENTS,
   SHIPPING_CENTS,
   computeTotals,
@@ -75,5 +78,31 @@ describe("computeTotals", () => {
   it("vat is derived from the VAT-inclusive total", () => {
     const totals = computeTotals([{ unitPriceCents: 1990, qty: 3 }], "standard");
     expect(totals.vatCents).toBe(totals.totalCents - Math.round((totals.totalCents * 100) / 108.1));
+  });
+});
+
+describe("VAT and free-shipping copy come from the rules (issue #30)", () => {
+  it("VAT_LABEL is derived from VAT_RATE_PERCENT with a German comma", () => {
+    expect(VAT_LABEL).toBe("8,1 % MwSt.");
+    expect(VAT_INCLUSIVE_NOTE).toBe("8,1 % MwSt. inbegriffen");
+  });
+
+  it("freeShippingProgress counts down to the threshold and caps at 100 %", () => {
+    expect(freeShippingProgress(0)).toEqual({ remainingCents: 10000, percent: 0, reached: false });
+    expect(freeShippingProgress(5000)).toEqual({
+      remainingCents: 5000,
+      percent: 50,
+      reached: false,
+    });
+    expect(freeShippingProgress(10000)).toEqual({
+      remainingCents: 0,
+      percent: 100,
+      reached: true,
+    });
+    expect(freeShippingProgress(25000)).toEqual({
+      remainingCents: 0,
+      percent: 100,
+      reached: true,
+    });
   });
 });

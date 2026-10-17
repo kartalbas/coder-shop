@@ -7,9 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ProductImage } from "@/components/storefront/product-image";
 import { formatChf } from "@/lib/format";
+import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import {
   FREE_SHIPPING_FROM_CENTS,
   SHIPPING_CENTS,
+  VAT_LABEL,
 } from "@/lib/pricing";
 import {
   cartSubtotalCents,
@@ -21,8 +23,6 @@ import {
 export function CartPageView() {
   const cart = useCart();
   const subtotal = cartSubtotalCents(cart);
-  const remaining = Math.max(0, FREE_SHIPPING_FROM_CENTS - subtotal);
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING_FROM_CENTS) * 100);
 
   if (cart.lines.length === 0) {
     return (
@@ -121,30 +121,7 @@ export function CartPageView() {
           <Card className="lg:sticky lg:top-24">
             <CardContent className="space-y-4 p-5">
               <h2 className="font-semibold">Zusammenfassung</h2>
-              <div>
-                {remaining > 0 ? (
-                  <p className="mb-1.5 text-sm text-muted-foreground">
-                    Noch {formatChf(remaining)} bis zum kostenlosen Versand
-                  </p>
-                ) : (
-                  <p className="mb-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                    Kostenloser Versand gesichert
-                  </p>
-                )}
-                <div
-                  className="h-2 overflow-hidden rounded-full bg-muted"
-                  role="progressbar"
-                  aria-valuenow={Math.round(progress)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="Fortschritt bis zum kostenlosen Versand"
-                >
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
+              <FreeShippingProgress subtotalCents={subtotal} />
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Zwischensumme</span>
@@ -153,7 +130,7 @@ export function CartPageView() {
               <p className="text-xs text-muted-foreground">
                 Versand: Standard {formatChf(SHIPPING_CENTS.standard)}, Express{" "}
                 {formatChf(SHIPPING_CENTS.express)} — ab {formatChf(FREE_SHIPPING_FROM_CENTS)}{" "}
-                kostenlos. Preise inkl. 8,1 % MwSt.
+                kostenlos. Preise inkl. {VAT_LABEL}.
               </p>
               <Button asChild size="lg" className="w-full">
                 <Link href="/kasse">Zur Kasse</Link>

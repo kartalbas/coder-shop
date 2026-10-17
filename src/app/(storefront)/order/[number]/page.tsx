@@ -13,6 +13,7 @@ import { hasOrderAccess } from "@/server/order-access";
 import { getOrderByNumber, type OrderDto } from "@/server/orders";
 import { getSessionUserId } from "@/server/session";
 import { OrderAccessForm } from "@/components/storefront/order-access-form";
+import { VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
 
 const SHIPPING_LABELS: Record<OrderDto["shipping"]["method"], string> = {
   standard: "Standardversand",
@@ -125,7 +126,7 @@ async function OrderView({ params }: PagePropsLocal) {
             </div>
           </dl>
           <p className="text-xs text-muted-foreground">
-            8,1 % MwSt. inbegriffen · Zahlungsreferenz {order.payment.reference}
+            {VAT_INCLUSIVE_NOTE} · Zahlungsreferenz {order.payment.reference}
           </p>
 
           <Separator />

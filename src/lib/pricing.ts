@@ -1,5 +1,10 @@
 export const VAT_RATE_PERCENT = 8.1;
 
+// The German-formatted VAT wording ("8,1 % MwSt.") — every UI note about VAT comes from
+// here, so changing the rate above changes the copy too (issue #30).
+export const VAT_LABEL = `${VAT_RATE_PERCENT.toFixed(1).replace(".", ",")} % MwSt.`;
+export const VAT_INCLUSIVE_NOTE = `${VAT_LABEL} inbegriffen`;
+
 export const SHIPPING_CENTS = {
   standard: 490,
   express: 1290,
@@ -36,6 +41,20 @@ export function subtotalCents(items: CartItem[]): number {
 export function shippingCents(subtotal: number, method: ShippingMethodName): number {
   if (subtotal >= FREE_SHIPPING_FROM_CENTS) return 0;
   return SHIPPING_CENTS[method];
+}
+
+// Free-shipping progress for the cart UI — the rule lives here, not in the components.
+export function freeShippingProgress(subtotal: number): {
+  remainingCents: number;
+  percent: number;
+  reached: boolean;
+} {
+  const remainingCents = Math.max(0, FREE_SHIPPING_FROM_CENTS - subtotal);
+  return {
+    remainingCents,
+    percent: Math.min(100, (subtotal / FREE_SHIPPING_FROM_CENTS) * 100),
+    reached: remainingCents === 0,
+  };
 }
 
 export function computeTotals(items: CartItem[], method: ShippingMethodName): Totals {

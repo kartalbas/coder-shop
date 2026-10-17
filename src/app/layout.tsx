@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
 import "./globals.css";
+import { VAT_LABEL } from "@/lib/pricing";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
     template: "%s | coder-shop",
   },
   description:
-    "Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive 8,1 % MwSt.",
+    `Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive ${VAT_LABEL}.`,
   openGraph: {
     type: "website",
     locale: "de_CH",
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
     siteName: "coder-shop",
     title: "coder-shop — Smartphones, Schuhe & Kleidung",
     description:
-      "Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive 8,1 % MwSt.",
+      `Premium-Onlineshop für Smartphones, Schuhe und Kleidung. Preise in CHF inklusive ${VAT_LABEL}.`,
   },
   robots: { index: true, follow: true },
 };

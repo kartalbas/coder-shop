@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { CheckoutForm } from "@/components/storefront/checkout-form";
+import { VAT_LABEL } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Kasse",
-  description: "Adresse, Versand und Zahlung — coder-shop. Preise in CHF inklusive 8,1 % MwSt.",
+  description: `Adresse, Versand und Zahlung — coder-shop. Preise in CHF inklusive ${VAT_LABEL}.`,
 };
 
 export default function CheckoutPage() {

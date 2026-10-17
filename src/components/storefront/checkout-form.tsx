@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatChf } from "@/lib/format";
-import { computeTotals, FREE_SHIPPING_FROM_CENTS, SHIPPING_CENTS } from "@/lib/pricing";
+import { computeTotals, shippingCents, VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import {
   checkoutSchema,
@@ -176,8 +176,7 @@ export function CheckoutForm() {
           </legend>
           <div className="grid gap-3 sm:grid-cols-2">
             {SHIPPING_OPTIONS.map((option) => {
-              const free = subtotal >= FREE_SHIPPING_FROM_CENTS;
-              const price = free ? 0 : SHIPPING_CENTS[option.value];
+              const price = shippingCents(subtotal, option.value);
               return (
                 <label
                   key={option.value}
@@ -287,7 +286,7 @@ export function CheckoutForm() {
                 <dd className="tabular-nums">{formatChf(totals.totalCents)}</dd>
               </div>
             </dl>
-            <p className="text-xs text-muted-foreground">8,1 % MwSt. inbegriffen</p>
+            <p className="text-xs text-muted-foreground">{VAT_INCLUSIVE_NOTE}</p>
             <Button type="submit" size="lg" className="w-full" disabled={pending}>
               {pending ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />

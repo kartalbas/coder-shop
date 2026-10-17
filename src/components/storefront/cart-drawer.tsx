@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ProductImage } from "@/components/storefront/product-image";
 import { formatChf } from "@/lib/format";
-import { FREE_SHIPPING_FROM_CENTS } from "@/lib/pricing";
+import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import {
   cartSubtotalCents,
   closeCartDrawer,
@@ -21,8 +21,6 @@ export function CartDrawer() {
   const open = useCartDrawerOpen();
   const cart = useCart();
   const subtotal = cartSubtotalCents(cart);
-  const remaining = Math.max(0, FREE_SHIPPING_FROM_CENTS - subtotal);
-  const progress = Math.min(100, (subtotal / FREE_SHIPPING_FROM_CENTS) * 100);
 
   return (
     <Sheet open={open} onOpenChange={(next) => (next ? undefined : closeCartDrawer())}>
@@ -96,25 +94,7 @@ export function CartDrawer() {
             </ul>
             <div className="border-t p-4">
               <div className="mb-3">
-                {remaining > 0 ? (
-                  <p className="mb-1 text-xs text-muted-foreground">
-                    Noch {formatChf(remaining)} bis zum kostenlosen Versand
-                  </p>
-                ) : (
-                  <p className="mb-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                    Kostenloser Versand gesichert
-                  </p>
-                )}
-                <div
-                  className="h-1.5 overflow-hidden rounded-full bg-muted"
-                  role="progressbar"
-                  aria-valuenow={Math.round(progress)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="Fortschritt bis zum kostenlosen Versand"
-                >
-                  <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
-                </div>
+                <FreeShippingProgress subtotalCents={subtotal} />
               </div>
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Zwischensumme</span>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
+import { VAT_LABEL } from "@/lib/pricing";
 
 const noSubscribe = () => () => {};
 
@@ -22,7 +23,7 @@ export function Footer() {
         <div>
           <p className="text-sm font-semibold">coder-shop</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Premium-Technik, Schuhe und Kleidung. Alle Preise in CHF inklusive 8,1 % MwSt.
+            Premium-Technik, Schuhe und Kleidung. Alle Preise in CHF inklusive {VAT_LABEL}.
           </p>
         </div>
         <nav aria-label="Footer Navigation">
