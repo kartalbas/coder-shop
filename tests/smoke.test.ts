@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import mongoose from "mongoose";
 import { ProductModel } from "@/models/product";
 import { OrderModel, type Order } from "@/models/order";
-import { clearCollections, connectTestDB, disconnectTestDB } from "./db";
+import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 function makeOrderFixture(orderNumber: string, reference: string): mongoose.mongo.OptionalId<Order> {
   const now = new Date();

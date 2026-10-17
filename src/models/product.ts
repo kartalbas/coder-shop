@@ -1,18 +1,13 @@
 import mongoose, { Schema, type Types } from "mongoose";
-import type { ProductAttributes } from "@/lib/facets";
+import type { ProductAttributes, ProductFilter } from "@/lib/facets";
+import type { ProductType } from "@/lib/product-types";
 
-export type ProductType = "smartphone" | "shoes" | "clothing";
+// Issue #35: the pure shapes live in src/lib; the model re-exports them for its consumers.
+export type { ProductType };
 
 interface ProductImage {
   src: string;
   alt: string;
-}
-
-export interface ProductFilter {
-  colors: string[];
-  sizes: string[];
-  storage: number[];
-  materials: string[];
 }
 
 export interface Variant {

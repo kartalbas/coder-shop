@@ -153,7 +153,7 @@ export function CheckoutForm() {
   return (
     <form action={handleSubmit} noValidate className="grid gap-8 lg:grid-cols-[1fr_360px]">
       <div className="space-y-8">
-        <fieldset id="adresse" className="scroll-mt-24">
+        <fieldset id="address" className="scroll-mt-24">
           <legend className="mb-4 flex items-center gap-2 text-lg font-semibold">
             <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">1</span>
             Adresse
@@ -182,7 +182,7 @@ export function CheckoutForm() {
           </div>
         </fieldset>
 
-        <fieldset id="versand" className="scroll-mt-24">
+        <fieldset id="shipping" className="scroll-mt-24">
           <legend className="mb-4 flex items-center gap-2 text-lg font-semibold">
             <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
             Versand
@@ -221,7 +221,7 @@ export function CheckoutForm() {
           </div>
         </fieldset>
 
-        <fieldset id="zahlung" className="scroll-mt-24">
+        <fieldset id="payment" className="scroll-mt-24">
           <legend className="mb-4 flex items-center gap-2 text-lg font-semibold">
             <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">3</span>
             Zahlung

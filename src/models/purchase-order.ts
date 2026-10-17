@@ -1,6 +1,8 @@
 import mongoose, { Schema, type Types } from "mongoose";
 
-export type PurchaseOrderStatus = "draft" | "ordered" | "received";
+import type { PurchaseOrderStatus } from "@/lib/purchasing/labels";
+
+export type { PurchaseOrderStatus };
 
 interface PurchaseOrderLine {
   productId: Types.ObjectId;

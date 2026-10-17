@@ -1,11 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { PurchaseOrderStatus } from "@/models/purchase-order";
-
-const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
-  draft: "Entwurf",
-  ordered: "Bestellt",
-  received: "Erhalten",
-};
+// Issue #35: the German PO copy lives in the pure lib, the component keeps only styling.
+import { PO_STATUS_LABELS } from "@/lib/purchasing/labels";
 
 // Issue #26: 600 tones failed axe contrast on the light background — 700 reaches 4.5:1.
 const TONES: Record<PurchaseOrderStatus, string> = {

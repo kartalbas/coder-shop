@@ -46,9 +46,19 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   page) is exercisable; the 70/70/60 type split, determinism and idempotency are unchanged.
 - Instant search matches the regex-escaped literal query at any **word boundary**
   (`(?:^|\b)query`), not only at string start — "iphone" must find "Apple iPhone 16".
-- Product images are local SVGs: rendered with `<img>` (`next/image` cannot optimize SVGs
-  without a custom loader); `@next/next/no-img-element` is disabled for
-  `src/components/storefront/**` only.
+- Product images are generated photos under `/products/*.webp`: rendered with `<img>`
+  (the Next image optimizer via `srcSet`, §11); `@next/next/no-img-element` is disabled
+  for `src/components/storefront/**` only. (Was "local SVGs" until the photo pipeline —
+  the rule and its scope are unchanged, only the reason.)
+- **`src/components/storefront/` instead of the planned `shop/`** (REQUIREMENTS named
+  `shop/`): the directory arrived with M2 before the deviation was recorded; "storefront"
+  is the clearer domain word next to `admin/` and renaming ~30 files plus every import
+  for cosmetics is not worth it. Recorded here as the deliberate deviation.
+- **`src/lib` purity is enforced by a test** (`tests/lib-purity.test.ts`, issue #35):
+  no lib file may import `@/models`, `@/server`, `mongoose` or `node:*`. Pure shapes
+  that models and DTOs share (`ProductType`, `ProductFilter`, `PurchaseOrderStatus`,
+  the product DTO) live in the lib and are re-exported by the model/search modules
+  their consumers already import from.
 - `<RouteTransition>` animates via `useAnimationControls` on pathname change instead of
   `key={pathname}`: re-keying the wrapper that contains the PPR suspense holes breaks
   React's resume ("Couldn't find all resumable slots … during replaying") and the dynamic

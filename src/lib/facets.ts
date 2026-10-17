@@ -9,7 +9,9 @@ export interface VariantForFacets {
   attributes: ProductAttributes;
 }
 
-export interface DerivedFilter {
+// The denormalized facet block (ARCHITECTURE §3) — the persisted `Product.filter` shape.
+// Lives here (pure) so models and DTOs can import it without touching mongoose (issue #35).
+export interface ProductFilter {
   colors: string[];
   sizes: string[];
   storage: number[];
@@ -34,7 +36,7 @@ function sortSizes(sizes: string[]): string[] {
   });
 }
 
-export function deriveFilter(variants: VariantForFacets[]): DerivedFilter {
+export function deriveFilter(variants: VariantForFacets[]): ProductFilter {
   return {
     colors: uniqueSorted(variants.map((v) => v.attributes.color)),
     sizes: sortSizes(variants.map((v) => v.attributes.size).filter((s): s is string => s != null)),

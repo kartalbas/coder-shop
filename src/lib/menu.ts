@@ -1,5 +1,5 @@
 import { CATALOG_BRANDS } from "@/lib/brands";
-import type { ProductType } from "@/models/product";
+import type { ProductType } from "@/lib/product-types";
 
 export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
   smartphone: "Smartphones",

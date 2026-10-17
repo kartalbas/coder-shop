@@ -1,39 +1,18 @@
 import { Types, type HydratedDocument } from "mongoose";
 import { connectDB } from "./db";
-import { ProductModel, type Product, type ProductFilter, type ProductType } from "@/models/product";
-import type { ProductAttributes } from "@/lib/facets";
+import { ProductModel, type Product, type ProductType } from "@/models/product";
+import type {
+  ProductDto,
+  VariantDto,
+} from "@/lib/dto";
 import { compareFacetValues } from "@/lib/facet-order";
 import { buyablePriceCents } from "@/lib/pricing";
 import { escapeRegex } from "@/lib/regex";
 import type { SortKey } from "@/lib/validations/listing";
 
-export interface VariantDto {
-  sku: string;
-  label: string;
-  priceDeltaCents: number;
-  stock: number;
-  restockThreshold: number;
-  weightGrams: number;
-  attributes: ProductAttributes;
-}
-
-export interface ProductDto {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  type: ProductType;
-  brand: string;
-  priceCents: number;
-  minPriceCents: number;
-  priceFrom: boolean;
-  images: { src: string; alt: string }[];
-  featured: boolean;
-  collection: string | null;
-  filter: ProductFilter;
-  variants: VariantDto[];
-  createdAt: string;
-}
+// Issue #35: the DTO types are pure and live in `src/lib/dto.ts`; re-exported here so
+// every existing `import … from "@/server/search"` keeps working.
+export type { ProductDto, VariantDto };
 
 type LeanProduct = Omit<Product, "_id" | "collection" | "createdAt"> & {
   _id: Types.ObjectId;

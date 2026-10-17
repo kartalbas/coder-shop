@@ -1,4 +1,4 @@
-import type { ProductDto, VariantDto } from "@/server/search";
+import type { ProductDto, VariantDto } from "@/lib/dto";
 
 type SelectionKey = "color" | "size" | "storage";
 export type Selection = Record<SelectionKey, string | null>;

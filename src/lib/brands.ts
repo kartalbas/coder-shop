@@ -1,4 +1,4 @@
-import type { ProductType } from "@/models/product";
+import type { ProductType } from "@/lib/product-types";
 
 // The catalog's brand set per product type — the single source for the seed generator,
 // the mega-menu and the tests (issue #31). Adding a brand here adds products and a menu

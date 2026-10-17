@@ -771,3 +771,23 @@ Done — M1–M6 + QA complete.
   Vendored `src/components/ui/**` is knip-ignored on purpose (canonical shadcn shape).
 - Verified: `npx knip` exit 0; `npm test` ✅ 275 (removed the tautological
   net+vat test and the same-origin block with their code), lint/build ✅, e2e ✅ 21/21.
+
+### #35 — docs match the code, naming deviations recorded/fixed ✅
+- ARCHITECTURE §2 rewritten from `git ls-files` — now includes `src/proxy.ts`,
+  `app/not-found.tsx`, `src/test/db.ts`, `checkout-claim` model, `order-access`,
+  `secure-path`, `limiter`/`rate-limit`, the DTO/labels/sites/dates/collections libs,
+  the new storefront/admin components and `knip.json`; lists nothing that doesn't
+  exist. New §13 documents the knip rule.
+- DECISIONS: the `no-img-element` justification now says generated photos (was
+  "local SVGs"); `storefront/` (not `shop/`) recorded as a deliberate deviation;
+  lib-purity rule recorded.
+- `src/lib` is pure again (guard test `tests/lib-purity.test.ts`, 20 files):
+  `ProductType` → `lib/product-types.ts`, `ProductFilter` → `lib/facets.ts`
+  (replaces the duplicate `DerivedFilter`), DTO types → `lib/dto.ts`,
+  `PurchaseOrderStatus` + `PO_STATUS_LABELS` → `lib/purchasing/labels.ts`;
+  models/search re-export what their consumers already imported.
+- DOM ids are English: `adresse|versand|zahlung` → `address|shipping|payment`,
+  `ahnliche-heading` → `related-heading`; `src/test/smoke.test.ts` moved to
+  `tests/` (test layout).
+- Verified: new purity guard fails on the pre-fix imports; `npm run knip` ✅,
+  `npm test` ✅ 303, lint/build ✅, e2e ✅ 21/21.

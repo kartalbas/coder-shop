@@ -75,9 +75,12 @@ scripts/
     prompt.ts               # pure prompt/seed/view logic (unit-tested)
     api.ts                  # image API client (fetch, retry w/ backoff, b64/url → WebP via sharp)
 src/
+  proxy.ts                  # Next 16 Proxy (Node runtime): /admin/* session gate + real 404
+                            # for unknown /produkt/[slug] before any bytes stream (§4, #28)
   app/
-    layout.tsx              # root: fonts, ThemeProvider, Toaster, <RouteTransition>
-    globals.css             # Tailwind v4 @theme, light/dark tokens
+    layout.tsx              # root: fonts, ThemeProvider, Toaster, <RouteTransition>, metadata (§2 site.ts)
+    globals.css             # Tailwind v4 @theme, light/dark tokens, @media print (packing slip)
+    not-found.tsx           # global German 404 (noindex) — used by every notFound()/proxy 404
     (storefront)/
       layout.tsx            # Header (mega-menu, search, cart badge) + CartDrawer + Footer
       page.tsx              # home
@@ -87,9 +90,9 @@ src/
       checkout/page.tsx     # public URL /kasse
       order/[number]/page.tsx      # confirmation + status — public URL /bestellung/[nummer]
     admin/                  # admin URLs stay English (internal)
-      login/page.tsx
+      (auth)/login/page.tsx
       (panel)/              # session-guarded group (layout requires the admin session)
-        layout.tsx          # sidebar
+        layout.tsx          # sidebar + mobile sheet nav
         page.tsx            # dashboard
         products/page.tsx, products/[id]/page.tsx
         orders/page.tsx, orders/[id]/page.tsx
@@ -98,74 +101,94 @@ src/
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
     api/
       search/route.ts       # GET instant search JSON
-      products/route.ts     # GET faceted listing JSON (client navigation data source)
+      products/route.ts     # GET faceted listing JSON (documented JSON API, §4)
       health/route.ts       # GET { ok } — also warms DB connection
   components/
-    ui/                     # shadcn components (button, dialog, drawer, sheet, …)
-    storefront/
+    ui/                     # vendored shadcn components (kept canonical, knip-ignored, §13)
+    storefront/             # named "storefront" (not "shop") — recorded deviation, DECISIONS
       header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx, footer.tsx
       cart-drawer.tsx, cart-button.tsx, cart-provider.tsx, cart-page-view.tsx, product-card.tsx
       listing-shell.tsx, filter-sidebar.tsx, sort-select.tsx, pagination.tsx, skeletons.tsx,
-      empty-state.tsx
+      empty-state.tsx, free-shipping-progress.tsx
       gallery.tsx, product-detail.tsx   # variant picker inlined in product-detail
       stock-indicator.tsx, related-products.tsx, checkout-form.tsx,
       product-image.tsx            # photo vs neutral placeholder (§11)
       breadcrumbs.tsx, json-ld.tsx, route-transition.tsx
+      order-status-chain.tsx, order-access-form.tsx  # confirmation (#3, #32)
     admin/
-      sidebar.tsx, login-form.tsx, order-status-badge.tsx, status-timeline.tsx,
-      transition-buttons.tsx, product-search.tsx, product-core-form.tsx, variant-editor.tsx,
+      admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
+      order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
+      product-search.tsx, product-core-form.tsx, variant-editor.tsx, image-editor.tsx,
       po-create-form.tsx, po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
       revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx
-  models/
-    product.ts order.ts user.ts supplier.ts purchase-order.ts counter.ts
+  models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
+    product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
-    format.ts             # CHF de-CH, dates, weights
-    pricing.ts            # gross/net VAT 8.1 %, totals, VAT rounding rule (§8 note)
-    stock.ts              # pure stock rules: isLowStock, stockLevel (grün/gelb/rot)
-    facets.ts             # deriveFilter(variants) — pure facet derivation (§3/§4)
-    regex.ts              # escapeRegex (shared by search + SKU search)
-    menu.ts               # mega-menu categories/brands (synced with the seed, tested)
-    images.ts             # isPhotoSrc — photo vs placeholder rule (§11)
+                          # (guard test: tests/lib-purity.test.ts)
+    product-types.ts        # ProductType union (models re-export it)
+    dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
+    format.ts               # CHF de-CH, dates, weights
+    dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
+    numbers.ts              # formatOrderNumber/formatPoNumber/formatPaymentReference
+    pricing.ts              # gross VAT 8.1 %, totals, VAT rounding + copy, buyable price (§8 note)
+    stock.ts                # pure stock rules: isLowStock, stockLevel, stockLabel
+    facets.ts               # deriveFilter(variants) + ProductFilter (pure facet derivation, §3/§4)
+    facet-order.ts          # natural facet value ordering (EU sizes, clothing sizes, storage)
+    regex.ts                # escapeRegex (shared by search + SKU search)
+    menu.ts                 # mega-menu categories/brands + PRODUCT_TYPE_LABELS (synced, tested)
+    brands.ts               # CATALOG_BRANDS — single brand set (seed + mega-menu)
+    collections.ts          # Neuheiten | Bestseller | Sale (seed, listing, home, menu)
+    product-selection.ts    # variant dimensions/selection + color→photo-slot rule (#18/#19)
+    site.ts                 # SITE_URL + absoluteUrl (metadata, JSON-LD)
+    images.ts               # isPhotoSrc — photo vs placeholder rule (§11)
     orders/state-machine.ts # statuses, transitions + validation + logging (pure)
-    orders/labels.ts      # German status/transition labels (UI copy only)
-    shipping/types.ts     # ShippingProvider interface, label/tracking result types
-    shipping/weight.ts    # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
-    validations/          # zod schemas shared by actions + forms
-  server/                 # ALL I/O: db, session, queries, providers, actions
-    db.ts                 # single connection helper (see §6)
-    env.ts                # zod-validated env access (MONGODB_URI, UPS_*, SESSION_SECRET optional)
-    numbers.ts            # mintNumber(counterId, format) — shared order/PO number minting
-    session-token.ts      # pure HMAC cookie sign/verify
-    session.ts            # admin login/session (scrypt, throttle, cookie helpers)
-    password.ts           # scrypt hash/verify (self-describing format)
-    checkout.ts           # createOrderCore (transaction)
-    orders.ts             # customer confirmation lookup (getOrderByNumber)
-    orders-admin.ts       # listOrders, transitionOrderCore (conditional write + restock)
-    products-admin.ts     # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
-    purchasing.ts         # supplier + PO cores (create/markOrdered/receive, transaction)
-    dashboard.ts          # revenue series, open counts, low stock, recent orders
-    search.ts             # Mongo query/aggregate builders + toProductDto() shared DTO mapper
-    shipping/provider.ts  # factory (env-driven)
-    shipping/ups.ts       # UpsShippingProvider (UPS REST, token cache, §4)
-    shipping/mock.ts      # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
-    shipping/label.ts     # createLabelCore (packed-only, idempotent, conditional move)
+    orders/labels.ts        # German order status labels (UI copy only)
+    purchasing/labels.ts    # PurchaseOrderStatus + German PO labels (#35)
+    shipping/types.ts       # ShippingProvider interface, label result types
+    shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
+    validations/            # zod schemas shared by actions + forms (checkout, listing,
+                            # product, purchasing, common: objectIdSchema)
+  server/                   # ALL I/O: db, session, queries, providers, actions
+    db.ts                   # single connection helper (see §6)
+    env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SESSION_SECRET optional)
+    numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
+    session-token.ts        # pure HMAC cookie sign/verify
+    session.ts              # admin login/session (scrypt, throttle, cookie helpers)
+    password.ts             # scrypt hash/verify (self-describing format)
+    limiter.ts              # token bucket (scrypt login concurrency guard)
+    rate-limit.ts           # checkout rate limit (per client)
+    secure-path.ts          # resolveInsideDir — path containment (label download)
+    order-access.ts         # per-order HMAC access cookie + e-mail verification (#3)
+    checkout.ts             # createOrderCore (transaction, idempotency claim, price check)
+    orders.ts               # customer confirmation lookup (getOrderByNumber)
+    orders-admin.ts         # listOrders, transitionOrderCore (conditional write + restock)
+    products-admin.ts       # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
+    purchasing.ts           # supplier + PO cores (create/markOrdered/receive, transaction)
+    dashboard.ts            # revenue series, open counts, low stock, recent orders
+    search.ts               # Mongo query/aggregate builders + toProductDto() shared DTO mapper
+    shipping/provider.ts    # factory (env-driven)
+    shipping/ups.ts         # UpsShippingProvider (UPS REST, token cache, §4)
+    shipping/mock.ts        # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
+    shipping/label.ts       # createLabelCore + getLabelFileCore (packed-only, idempotent)
     actions/
-      checkout.ts         # thin action wrapper → createOrderCore (transaction)
-      admin/products.ts   # updateProduct, updateVariant, toggleFeatured → *Core fns
-      admin/orders.ts     # transitionOrder → transitionOrderCore
-      admin/purchasing.ts # createSupplier, createPurchaseOrder, markOrdered,
-                          # receivePurchaseOrder → *Core fns (transaction)
-      admin/auth.ts       # login/logout → loginCore (testable without cookies())
-      admin/shipping.ts   # createLabel → createLabelCore
+      checkout.ts           # thin action wrapper → createOrderCore (transaction)
+      order-access.ts       # verifyOrderEmailAction (#3)
+      admin/products.ts     # updateProduct, updateVariant, toggleFeatured → *Core fns
+      admin/orders.ts       # transitionOrder → transitionOrderCore
+      admin/purchasing.ts   # createSupplier, createPurchaseOrder, markOrdered,
+                            # receivePurchaseOrder → *Core fns (transaction)
+      admin/auth.ts         # login/logout → loginCore (testable without cookies())
+      admin/account.ts      # changePassword → changePasswordCore
+      admin/shipping.ts     # createLabel → createLabelCore
   stores/
-    cart.ts               # useSyncExternalStore store, localStorage-persisted
+    cart.ts                 # useSyncExternalStore store, localStorage-persisted
   hooks/
     use-debounce.ts
   test/
-    setup.ts              # globalSetup: throw-away MongoMemoryReplSet (§6)
-    smoke.test.ts         # DB round-trip + transaction commit/abort
-tests/                    # integration tests (throw-away replica set) + e2e/ (Playwright, §12)
-vitest.config.ts  eslint.config.mjs  next.config.ts  components.json  postcss.config.mjs
+    setup.ts                # globalSetup: throw-away MongoMemoryReplSet (§6)
+    db.ts                   # connectTestDB/clearCollections/disconnectTestDB helpers
+tests/                      # integration + unit tests (throw-away replica set) + e2e/ (Playwright, §12)
+vitest.config.ts  eslint.config.mjs  next.config.ts  knip.json  components.json  postcss.config.mjs
 ```
 
 Server Actions are **thin wrappers** (parse zod input, call the `*Core` function in
@@ -589,3 +612,11 @@ Specs (the three required journeys):
 
 Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
 prerequisite; `npm test` and `npm run lint` are independent).
+
+## 13. Code quality (knip)
+
+`knip` (exact-pinned devDependency, `knip.json`, `npm run knip`) enforces "no dead code":
+nothing may be exported without a second-file consumer, no file may be unreachable, no
+dependency unused. Exceptions: `src/components/ui/**` is vendored shadcn code kept in
+canonical upstream shape on purpose (DECISIONS #34). CI-equivalent local checks:
+`npm run knip && npm run lint && npm test && npm run test:e2e`.
