@@ -68,6 +68,13 @@ QUALITY: domain logic (pricing incl. VAT, stock reservation, order state machine
 weight) in src/lib with Vitest unit tests. `npm run build`, `npm run lint` and `npm test` must
 pass at the end of every milestone.
 
+LANGUAGE OF CODE AND CONTENT — the user's rule: everything in the code is English — identifiers,
+file and folder names, route segments and public URLs (/account/profile, /products, /cart,
+/checkout, /orders …, never /konto, /produkte, /warenkorb, /kasse), API paths, keys, enums,
+comments, commits, docs. German is the base language of the content only (texts, translations,
+product data), served through the translation table (see #58); a language prefix in the URL
+selects the language, the path itself stays English.
+
 AGNOSTIC AND DYNAMIC — the user's rule for all code: no hard-coded values or special cases,
 no workarounds. Product types, their attributes and variant dimensions, the filters of a
 category, how stock is tracked (by quantity or by serial number), payment and shipping methods,
