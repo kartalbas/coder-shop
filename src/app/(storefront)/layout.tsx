@@ -5,6 +5,7 @@ import { Footer } from "@/components/storefront/footer";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
 import { CartProvider } from "@/components/storefront/cart-provider";
 import { LocalStoreHydrator } from "@/components/storefront/local-store-hydrator";
+import { CompareTray } from "@/components/storefront/compare-tray";
 import { WishlistSync } from "@/components/storefront/wishlist-sync";
 import { getCustomerSessionUserId } from "@/server/session";
 
@@ -22,6 +23,7 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
   return (
     <CartProvider>
       <LocalStoreHydrator />
+      <CompareTray />
       <Suspense fallback={null}>
         <WishlistSyncGate />
       </Suspense>

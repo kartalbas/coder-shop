@@ -88,6 +88,8 @@ src/
       layout.tsx            # Header (mega-menu, search, cart badge) + CartDrawer + Footer
       page.tsx              # home
       products/page.tsx     # listing — public URL /produkte (rewrite)
+      products/vergleichen/page.tsx  # smartphone comparison — public URL
+                            # /produkte/vergleichen?slugs=… (#48)
       products/[slug]/page.tsx      # public URL /produkt/[slug]
       cart/page.tsx         # full cart page — public URL /warenkorb (drawer is global)
       checkout/page.tsx     # public URL /kasse (prefill + login/guest choice, #39)
@@ -144,8 +146,8 @@ src/
       wishlist-heart.tsx, wishlist-sync.tsx, wishlist-merge-on-visit.tsx,
       wishlist-remove-button.tsx, local-store-hydrator.tsx,
       recently-viewed.tsx, restock-alert-form.tsx,    # wishlist + recently viewed +
-      star-rating.tsx, review-form.tsx, review-section.tsx  # back-in-stock (#46) +
-                                                     # verified-buyer reviews (#47)
+      star-rating.tsx, review-form.tsx, review-section.tsx,  # reviews (#47)
+      compare-toggle.tsx, compare-tray.tsx            # smartphone comparison (#48)
     admin/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
@@ -196,6 +198,7 @@ src/
     discounts.ts            # pure discount math + validity window (#45)
     reviews.ts              # pure review rules: statuses, purchase rule, rating
                             # aggregation + distribution (#47)
+    compare.ts              # comparison rows + difference detection (#48)
     invoices.ts             # pure invoice rules: due date, open amount, overdue, credit
                             # default, ISO-11649 QRR reference + SPC QR payload (#40)
     mail-templates.ts       # German e-mail templates as pure functions (#39/#44),
@@ -272,6 +275,7 @@ src/
     cart.ts                 # useSyncExternalStore store, localStorage-persisted
     wishlist.ts             # local wishlist (newest-first slugs), synced to the account (#46)
     recently-viewed.ts      # last viewed slugs, local to the browser (#46)
+    compare.ts              # up to 4 smartphone slugs to compare, local (#48)
   hooks/
     use-debounce.ts
   test/

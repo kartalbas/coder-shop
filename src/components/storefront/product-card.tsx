@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatChf } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { CompareToggle } from "@/components/storefront/compare-toggle";
 import { ProductImage } from "@/components/storefront/product-image";
 import { StarRating } from "@/components/storefront/star-rating";
 import { WishlistHeart } from "@/components/storefront/wishlist-heart";
@@ -54,11 +55,13 @@ export function ProductCard({ product }: { product: ProductDto }) {
         </div>
       </Link>
       {/* Issue #46: the heart sits beside the link (a button inside an <a> is invalid). */}
-      <WishlistHeart
-        slug={product.slug}
-        name={product.name}
-        className="absolute right-2 top-2 z-10"
-      />
+      <div className="absolute right-2 top-2 z-10 flex flex-col gap-1.5">
+        <WishlistHeart slug={product.slug} name={product.name} />
+        {/* Issue #48: smartphones can be put into the side-by-side comparison. */}
+        {product.type === "smartphone" && (
+          <CompareToggle slug={product.slug} name={product.name} />
+        )}
+      </div>
     </div>
   );
 }

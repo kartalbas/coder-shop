@@ -18,6 +18,7 @@ import {
 } from "@/lib/product-selection";
 import { buyablePriceCents } from "@/lib/pricing";
 import { Gallery } from "./gallery";
+import { CompareToggle } from "./compare-toggle";
 import { RestockAlertForm } from "./restock-alert-form";
 import { StockIndicator } from "./stock-indicator";
 import { WishlistHeart } from "./wishlist-heart";
@@ -95,7 +96,13 @@ export function ProductDetail({ product }: { product: ProductDto }) {
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
           </div>
           {/* Issue #46: the wishlist heart on the product page. */}
-          <WishlistHeart slug={product.slug} name={product.name} className="mt-1 shrink-0" />
+          <div className="mt-1 flex shrink-0 gap-2">
+            <WishlistHeart slug={product.slug} name={product.name} />
+            {/* Issue #48: smartphones join the side-by-side comparison. */}
+            {product.type === "smartphone" && (
+              <CompareToggle slug={product.slug} name={product.name} />
+            )}
+          </div>
         </div>
 
         <motion.p

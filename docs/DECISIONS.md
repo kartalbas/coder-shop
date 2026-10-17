@@ -473,3 +473,16 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   field instead of aggregating per request — same denormalization rule as `filter`.
 - **`authorName` is copied at submission** — the review keeps the name it was written
   under even if the account changes or the aggregate is re-sorted later.
+
+### #48 — comparison: URL is the truth, selection is local
+- **The comparison page reads its slugs from the URL** (`/produkte/vergleichen?slugs=…`),
+  so a comparison is shareable and reload-safe; the localStorage list (`compare:v1`,
+  ≤ 4 slugs) only feeds the tray and the link. Unknown/non-smartphone slugs are dropped
+  server-side (`comparableProducts`), a selection below two phones shows a German hint
+  instead of an empty table.
+- **Only smartphones get the toggle** (rendered for `type === "smartphone"` on cards and
+  the product page) — the issue scopes comparison to phones; shoes/clothing have
+  per-type specs that would need their own row sets.
+- **Difference highlighting is a pure rule** (`buildComparisonRows`): a row differs when
+  its formatted values are not all equal; the UI tints the row and adds an sr-only
+  "(Unterschied)" so the highlight is not color-only.

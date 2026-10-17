@@ -1083,3 +1083,31 @@ Done — M1–M6 + QA complete.
   pending invisible → admin approves + answers → published with badge/average/
   AggregateRating, no second form; non-buyer sees no form) — `npm test` ✅ 425,
   lint/build ✅, `npm run test:e2e` ✅ 31/31.
+
+## ISSUES — queue session 10 (2026-10-17)
+
+### Gate recovery (before the queue) ✅
+- The gate's 14 uncommitted files were the finished but uncommitted #48 comparison
+  work (store, lib, tray/toggle, page, rewrite, tests, docs). Verified as-is
+  (lint/knip/build/test/e2e all green after two knip `export` removals:
+  `subscribeCompare`, and pre-existing `recomputeProductRatingCore` from #47),
+  committed and pushed as the #48 fix.
+
+### #48 — compare smartphones side by side ✅
+- `src/stores/compare.ts`: up to 4 smartphone slugs, localStorage (`compare:v1`,
+  dedup, cap, corrupt-payload rejection), hydrate-after-mount via the shared
+  `LocalStoreHydrator`; `CompareToggle` (Scale icon, `aria-pressed`) on smartphone
+  cards and the product page next to the wishlist heart; floating `CompareTray`
+  ("N im Vergleich", Vergleichen disabled below 2, clear button).
+- `/produkte/vergleichen?slugs=…` (rewrite before the product-slug rule): server
+  page resolving the slugs (`getProductsBySlugs`, non-smartphones and unknown
+  dropped, ≤ 4 kept), table of Preis/Marke/Speicheroptionen/Farben/Gewicht/
+  Varianten/Verfügbar from pure `buildComparisonRows` (`src/lib/compare.ts`);
+  differing rows tinted + sr-only "(Unterschied)"; horizontal scroll + sticky
+  feature column on mobile; < 2 phones → German hint, no slugs → 404.
+- Verified: `src/lib/compare.test.ts` (5: comparable filter/cap, row values,
+  difference detection, price "ab" + weight range formats), `src/stores/compare.test.ts`
+  (4: round-trip, corrupt rejection, toggle/cap/dedup, hydrate); new e2e
+  `compare.spec.ts` (4 distinct-brand phones toggled → tray → table with highlighted
+  Marke row → clear; single slug → hint) — `npm test` ✅ 432, lint/knip/build ✅,
+  `npm run test:e2e` ✅ 33/33.

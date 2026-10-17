@@ -35,6 +35,8 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/produkte", destination: "/products" },
+      // Smartphone comparison (issue #48) — before the generic product-slug rewrite.
+      { source: "/produkte/vergleichen", destination: "/products/vergleichen" },
       { source: "/produkt/:slug", destination: "/products/:slug" },
       { source: "/warenkorb", destination: "/cart" },
       { source: "/kasse", destination: "/checkout" },

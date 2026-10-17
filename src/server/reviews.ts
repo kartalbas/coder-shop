@@ -43,7 +43,7 @@ function toReviewDto(review: Review & { _id: Types.ObjectId }): ReviewDto {
 }
 
 // Recompute the product's denormalized rating from its approved reviews.
-export async function recomputeProductRatingCore(productId: string): Promise<void> {
+async function recomputeProductRatingCore(productId: string): Promise<void> {
   await connectDB();
   const ratings = await ReviewModel.find({ productId, status: "approved" })
     .select("rating")
