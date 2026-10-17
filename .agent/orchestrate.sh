@@ -50,7 +50,7 @@ gate() {
   run_check "npm test" npm test || rc=1
   run_check "npm run lint" npm run lint || rc=1
   run_check "npm run build" npm run build || rc=1
-  if [[ "$m" == QA ]]; then run_check "npm run test:e2e" npm run test:e2e || rc=1; fi
+  if [[ "$m" == QA || "$m" == ISSUES ]]; then run_check "npm run test:e2e" npm run test:e2e || rc=1; fi
   if (( rc == 0 )); then
     # its own process group, so stopping it also stops next-server and the mongod it started
     setsid npx next start -p "$GATE_PORT" >"$LOGS/gate-server.log" 2>&1 & pid=$!
@@ -73,7 +73,9 @@ gate() {
   if [[ -n "$(git status --porcelain)" ]]; then
     echo "git status: $(git status --porcelain | wc -l) uncommitted file(s)" >>"$out"; rc=1
   fi
-  if ! git log --format=%s "$since..HEAD" | grep -q "^$m:"; then
+  if [[ "$m" == ISSUES ]]; then
+    [[ -n "$(git log --oneline "$since..HEAD")" ]] || { echo "git log: no commit since this session started" >>"$out"; rc=1; }
+  elif ! git log --format=%s "$since..HEAD" | grep -q "^$m:"; then
     echo "git log: no commit \"$m: …\" since this milestone started" >>"$out"; rc=1
   fi
   git fetch -q origin 2>/dev/null
@@ -89,6 +91,7 @@ prompt_for() {  # prompt_for M GATEFILE OUT
   case "$m" in
     M6) cp .agent/prompts/6-images.md "$outp" ;;
     QA) cp .agent/prompts/qa.md "$outp" ;;
+    ISSUES) cp .agent/prompts/issues.md "$outp" ;;
     *)  sed "s|{{M}}|$m|g" .agent/prompts/4-milestone.md >"$outp" ;;
   esac
   python3 - "$outp" "$report" <<'PY'
@@ -134,6 +137,28 @@ milestone() {
   return 1
 }
 
+# issues_loop — sessions on the GitHub issue queue of this repository until it is empty; each
+# session is gated like a milestone, a red gate goes into the next session's prompt.
+issues_loop() {
+  local n=0 since gatef="" prompt open
+  while :; do
+    open="$(gh issue list -R "$GH_REPO" --state open --limit 200 --json number --jq length 2>/dev/null)"
+    log "ISSUES: ${open:-?} open"
+    [[ "${open:-1}" == 0 ]] && { log "ISSUES: queue empty"; break; }
+    (( n >= ${ISSUE_SESSIONS:-12} )) && { log "ISSUES: session limit reached"; break; }
+    past_deadline && { log "ISSUES: deadline $DEADLINE reached"; break; }
+    n=$((n + 1)); since="$(git rev-parse HEAD)"
+    prompt="$LOGS/ISSUES-$n-prompt.md"; prompt_for ISSUES "$gatef" "$prompt"
+    web_stop
+    log "ISSUES session $n (≤ ${SESSION_MIN} min)"
+    env -u LLAMA_API_KEY GH_REPO="$GH_REPO" "$REPO/.agent/prompts/run-phase.sh" "ISSUES-$n" "$prompt" "$SESSION_MIN"
+    gatef="$LOGS/gate-ISSUES-$n.txt"
+    if gate ISSUES "$gatef" "$since"; then log "ISSUES session $n: GATE GREEN"; : >"$gatef"
+    else log "ISSUES session $n: gate red — $(grep -c . "$gatef") report line(s) go to the next session"; fi
+    web_start
+  done
+}
+
 image_batch() {
   local n before after
   before="$(find public/products -type f \( -name '*.webp' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' \) | wc -l)"
@@ -175,8 +200,10 @@ done
 log "orchestrator start: milestones ${*:-M2 M6 M3 M4 M5} (default order), deadline $DEADLINE, image batch until $BATCH_END, ≤ $MAX_ATTEMPTS sessions × $SESSION_MIN min"
 # a session already running (started by hand) finishes first
 while systemctl --user is-active --quiet coder-shop-m2; do sleep 20; done
+export GH_REPO="${GH_REPO:-kartalbas/coder-shop}"
 ms=("$@"); (( ${#ms[@]} )) || ms=(M2 M6 M3 M4 M5)
 for m in "${ms[@]}"; do
+  if [[ "$m" == ISSUES ]]; then issues_loop; continue; fi
   if [[ "$m" == M6 ]]; then
     strata_with_images
     if milestone M6; then image_batch; else log "M6 not passed — no image batch"; fi
