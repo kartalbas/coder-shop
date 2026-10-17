@@ -53,9 +53,16 @@ ADMIN (/admin, login with a seeded admin user; credentials in README):
 
 DATA: a deterministic seed script with exactly 200 products: 70 smartphones, 70 shoes,
 60 clothing items, realistic names/brands/descriptions/prices, variants per type, stock,
-weights. Every product has 1–5 images: generate them locally as distinct SVG files
-(product-type silhouette, colour per variant, angle/detail variations) under
-public/products/ — no external image URLs.
+weights. Every product has 1–5 images.
+IMAGES must look like real product photography — studio product photos on a clean background,
+one image per view (front, side, back, detail, lifestyle), matching the product type and each
+variant's colour; no drawings, icons or cartoon SVGs. They are generated locally with the image
+model on the LLM server: POST http://192.168.10.210:8080/v1/images/generations (OpenAI images
+API: prompt, size "768x768", seed; Authorization: Bearer $LLAMA_API_KEY from the environment),
+by an idempotent script (scripts/images/) that skips images already on disk, writes WebP/JPEG
+under public/products/, and records the paths on the product documents. No brand logos or
+trademarks in prompts. Generated images are not committed (Qwen-Image is licensed for
+non-commercial research use only). Until they exist, the storefront shows a neutral placeholder.
 
 QUALITY: domain logic (pricing incl. VAT, stock reservation, order state machine, shipping
 weight) in src/lib with Vitest unit tests. `npm run build`, `npm run lint` and `npm test` must
