@@ -6,6 +6,8 @@ export interface User {
   name: string;
   passwordHash: string;
   role: "admin";
+  // Tokens issued before this instant are revoked (logout / password change).
+  sessionsInvalidBefore?: Date;
 }
 
 export type UserDocument = HydratedDocument<User>;
@@ -16,6 +18,7 @@ const userSchema = new Schema<User>(
     name: { type: String, required: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ["admin"], required: true, default: "admin" },
+    sessionsInvalidBefore: { type: Date },
   },
   { versionKey: false },
 );

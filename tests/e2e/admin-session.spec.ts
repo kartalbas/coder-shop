@@ -37,3 +37,30 @@ test("admin: session survives navigation over plain HTTP on a non-localhost host
     await expect(page).toHaveURL(`${LAN_BASE}${target}`);
   }
 });
+
+// Issue #6: logout used to only delete the cookie — a captured copy of the token stayed
+// valid for its full 12 h. Sessions are now revoked server-side.
+test("logout invalidates the session token everywhere, not just in this browser", async ({
+  page,
+  context,
+  request,
+}) => {
+  await page.goto("/admin/login");
+  await page.fill("#email", ADMIN_EMAIL);
+  await page.fill("#password", ADMIN_PASSWORD);
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+
+  const stolen = (await context.cookies()).find((c) => c.name === "admin_session")?.value;
+  expect(stolen).toBeDefined();
+
+  await page.getByRole("button", { name: "Abmelden" }).click();
+  await expect(page).toHaveURL(/\/admin\/login/);
+
+  const response = await request.get("/admin/labels/000000000000000000000000", {
+    headers: { cookie: `admin_session=${stolen}` },
+    maxRedirects: 0,
+  });
+  expect(response.status()).toBe(307);
+  expect(response.headers().location).toContain("/admin/login");
+});

@@ -50,6 +50,8 @@ export function sessionSecret(): string {
 export interface SessionPayload {
   userId: string;
   exp: number;
+  /** Issued-at (ms epoch); tokens older than the user's `sessionsInvalidBefore` are revoked. */
+  iat?: number;
 }
 
 function sign(payload: string, secret: string): Buffer {
@@ -79,10 +81,12 @@ export function verifySessionToken(
     return null;
   }
   if (typeof payload.userId !== "string" || typeof payload.exp !== "number") return null;
+  if (payload.iat !== undefined && typeof payload.iat !== "number") return null;
   if (payload.exp <= now) return null;
   return payload;
 }
 
 export function createSessionToken(userId: string, ttlSeconds = SESSION_TTL_SECONDS): string {
-  return signSessionToken({ userId, exp: Date.now() + ttlSeconds * 1000 });
+  const iat = Date.now();
+  return signSessionToken({ userId, iat, exp: iat + ttlSeconds * 1000 });
 }

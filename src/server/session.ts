@@ -160,8 +160,22 @@ export async function resolveSessionUserId(token: string | undefined): Promise<s
   const payload = verifySessionToken(token);
   if (!payload) return null;
   await connectDB();
-  const user = await UserModel.findById(payload.userId).select("_id").lean().exec();
-  return user ? payload.userId : null;
+  const user = await UserModel.findById(payload.userId)
+    .select("_id sessionsInvalidBefore")
+    .lean()
+    .exec();
+  if (!user) return null;
+  if (user.sessionsInvalidBefore && (payload.iat ?? 0) < user.sessionsInvalidBefore.getTime()) {
+    return null;
+  }
+  return payload.userId;
+}
+
+// Logout / forced sign-out: every token issued before now stops working, even a captured
+// copy of the cookie (the LAN mode serves plain HTTP).
+export async function revokeSessionsCore(userId: string): Promise<void> {
+  await connectDB();
+  await UserModel.updateOne({ _id: userId }, { $set: { sessionsInvalidBefore: new Date() } });
 }
 
 // The seeded password can only be set at first seed; this is the way to change it later.
@@ -179,6 +193,8 @@ export async function changePasswordCore(
   const valid = await verifyPassword(currentPassword, user.passwordHash);
   if (!valid) return { ok: false, error: "Das aktuelle Passwort ist falsch." };
   user.passwordHash = await hashPassword(newPassword);
+  // A password change also signs out every existing session.
+  user.sessionsInvalidBefore = new Date();
   await user.save();
   return { ok: true };
 }

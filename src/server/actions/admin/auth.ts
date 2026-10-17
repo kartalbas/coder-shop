@@ -3,7 +3,14 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { clearSessionCookie, loginCore, resolveClientIp, setSessionCookie } from "@/server/session";
+import {
+  clearSessionCookie,
+  loginCore,
+  requireAdminSession,
+  resolveClientIp,
+  revokeSessionsCore,
+  setSessionCookie,
+} from "@/server/session";
 import { env } from "@/server/env";
 
 export interface LoginActionState {
@@ -42,6 +49,10 @@ export async function loginAction(
 }
 
 export async function logoutAction(): Promise<void> {
+  // Revoke server-side first: deleting only the cookie would leave the token valid for
+  // its full 12 h — a captured copy would still work.
+  const userId = await requireAdminSession();
+  await revokeSessionsCore(userId);
   await clearSessionCookie();
   redirect("/admin/login");
 }

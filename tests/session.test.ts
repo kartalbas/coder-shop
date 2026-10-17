@@ -8,6 +8,7 @@ import {
   resetLoginThrottle,
   resolveClientIp,
   resolveSessionUserId,
+  revokeSessionsCore,
   signSessionToken,
   verifySessionToken,
 } from "@/server/session";
@@ -235,6 +236,26 @@ describe("resolveSessionUserId", () => {
     expect(await resolveSessionUserId(undefined)).toBeNull();
     expect(await resolveSessionUserId("gibts-nicht")).toBeNull();
   });
+
+  it("rejects tokens issued before a logout (revokeSessionsCore) but accepts fresh ones", async () => {
+    const user = await UserModel.create({
+      email: "logout@codershop.ch",
+      name: "Logout Admin",
+      passwordHash: await hashPassword("Logout!2026"),
+      role: "admin",
+    });
+    const stolen = createSessionToken(user._id.toString());
+    expect(await resolveSessionUserId(stolen)).toBe(user._id.toString());
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await revokeSessionsCore(user._id.toString());
+    expect(await resolveSessionUserId(stolen)).toBeNull();
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(await resolveSessionUserId(createSessionToken(user._id.toString()))).toBe(
+      user._id.toString(),
+    );
+  });
 });
 
 describe("changePasswordCore", () => {
@@ -278,5 +299,13 @@ describe("changePasswordCore", () => {
     expect(
       (await loginCore("admin@codershop.ch", "Neues!Passwort1", { ip: "10.9.9.8" })).ok,
     ).toBe(true);
+  });
+
+  it("signs out all existing sessions when the password changes", async () => {
+    const token = createSessionToken(userId);
+    expect(await resolveSessionUserId(token)).toBe(userId);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect((await changePasswordCore(userId, "Neues!Passwort1", "Noch!Besser123")).ok).toBe(true);
+    expect(await resolveSessionUserId(token)).toBeNull();
   });
 });

@@ -227,3 +227,12 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   account limit applies.
 - scrypt (32 MiB/verification) runs through a limiter (`src/server/limiter.ts`, 2 parallel,
   queue 8, then a German busy error), so parallel scripted logins cannot exhaust the server.
+
+### #6 — logout revokes the session server-side
+- Tokens carry `iat`; the user document carries `sessionsInvalidBefore`. Logout (and a
+  password change) sets `sessionsInvalidBefore = now`, so every token issued before that
+  instant is dead everywhere — a captured cookie from the LAN's plain-HTTP mode stops
+  working immediately. `resolveSessionUserId` enforces it (the proxy stays a signature-only
+  fast gate without DB access; pages/actions do the full check).
+- Chosen over a per-session collection: one field, no join, and "sign out everywhere" is
+  exactly the semantics we want for logout and forced sign-out.

@@ -462,3 +462,9 @@ Done — M1–M6 + QA complete.
   entry), scrypt limiter (2 parallel / queue 8, busy error beyond).
 - Verified: `tests/limiter.test.ts` (3), `resolveClientIp` + cross-IP account-throttle
   tests; `npm test` ✅ 188, lint/build/e2e ✅ 5/5.
+
+### #6 — logout left the token valid for 12 h ✅
+- `iat` in the session payload + `sessionsInvalidBefore` on the user; `revokeSessionsCore`
+  on logout and on password change; enforced in `resolveSessionUserId`.
+- Verified: revocation tests (logout, fresh token after, password-change sign-out) +
+  e2e: copied cookie gets a real 307 after logout; `npm test` ✅ 190, e2e ✅ 6/6.
