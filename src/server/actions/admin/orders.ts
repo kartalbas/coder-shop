@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ORDER_STATUSES, IllegalTransitionError, type OrderStatus } from "@/lib/orders/state-machine";
+import { objectIdSchema } from "@/lib/validations/common";
 import { transitionOrderCore } from "@/server/orders-admin";
 import { getAdminEmail, requireAdminSession } from "@/server/session";
 
@@ -12,7 +13,7 @@ export interface TransitionActionState {
 }
 
 const transitionSchema = z.object({
-  orderId: z.string().min(1),
+  orderId: objectIdSchema,
   to: z.enum(ORDER_STATUSES as [OrderStatus, ...OrderStatus[]]),
   note: z.string().trim().max(200).optional(),
 });

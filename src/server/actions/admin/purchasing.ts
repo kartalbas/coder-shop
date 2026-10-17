@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { objectIdSchema } from "@/lib/validations/common";
 import {
   createPurchaseOrderCore,
   createSupplierCore,
@@ -67,15 +69,17 @@ export async function createPurchaseOrderAction(
   redirect(`/admin/purchasing/${result.poId}`);
 }
 
+const poIdSchema = objectIdSchema;
+
 export async function markPurchaseOrderOrderedAction(
   _previous: PurchasingActionState | null,
   formData: FormData,
 ): Promise<PurchasingActionState> {
   await requireAdminSession();
-  const poId = formData.get("poId");
-  if (typeof poId !== "string") return { error: "Ungültige Anfrage." };
+  const poId = poIdSchema.safeParse(formData.get("poId"));
+  if (!poId.success) return { error: "Ungültige Anfrage." };
 
-  const result = await markPurchaseOrderOrderedCore(poId);
+  const result = await markPurchaseOrderOrderedCore(poId.data);
   if (!result.ok) return { error: result.error };
 
   revalidatePurchasing();
@@ -87,10 +91,10 @@ export async function receivePurchaseOrderAction(
   formData: FormData,
 ): Promise<PurchasingActionState & { summary?: string }> {
   await requireAdminSession();
-  const poId = formData.get("poId");
-  if (typeof poId !== "string") return { error: "Ungültige Anfrage." };
+  const poId = poIdSchema.safeParse(formData.get("poId"));
+  if (!poId.success) return { error: "Ungültige Anfrage." };
 
-  const result = await receivePurchaseOrderCore(poId);
+  const result = await receivePurchaseOrderCore(poId.data);
   if (!result.ok) return { error: result.error };
 
   revalidatePurchasing();
@@ -102,7 +106,13 @@ export async function receivePurchaseOrderAction(
   };
 }
 
-export async function searchSkuAction(query: string): Promise<SkuSearchHit[]> {
+const skuQuerySchema = z.string().trim().max(100);
+
+export async function searchSkuAction(query: unknown): Promise<SkuSearchHit[]> {
   await requireAdminSession();
-  return searchVariantsBySku(query);
+  // Boundary validation: this action is called directly from the client with arbitrary
+  // values; anything but a short string is simply "no search", never a 500.
+  const parsed = skuQuerySchema.safeParse(query);
+  if (!parsed.success) return [];
+  return searchVariantsBySku(parsed.data);
 }

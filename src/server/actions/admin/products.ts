@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { objectIdSchema } from "@/lib/validations/common";
 import {
   toggleFeaturedCore,
   updateProductCore,
@@ -33,14 +35,14 @@ export async function updateProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   await requireAdminSession();
-  const productId = formData.get("productId");
+  const productId = objectIdSchema.safeParse(formData.get("productId"));
   const payload = parsePayload(formData);
-  if (typeof productId !== "string" || payload === null) return { error: "Ungültige Anfrage." };
+  if (!productId.success || payload === null) return { error: "Ungültige Anfrage." };
 
-  const result = await updateProductCore(productId, payload);
+  const result = await updateProductCore(productId.data, payload);
   if (!result.ok) return { error: result.error };
 
-  revalidateProducts(productId);
+  revalidateProducts(productId.data);
   return { ok: true };
 }
 
@@ -49,17 +51,17 @@ export async function updateVariantAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   await requireAdminSession();
-  const productId = formData.get("productId");
-  const sku = formData.get("sku");
+  const productId = objectIdSchema.safeParse(formData.get("productId"));
+  const sku = z.string().min(1).max(64).safeParse(formData.get("sku"));
   const payload = parsePayload(formData);
-  if (typeof productId !== "string" || typeof sku !== "string" || payload === null) {
+  if (!productId.success || !sku.success || payload === null) {
     return { error: "Ungültige Anfrage." };
   }
 
-  const result = await updateVariantCore(productId, sku, payload);
+  const result = await updateVariantCore(productId.data, sku.data, payload);
   if (!result.ok) return { error: result.error };
 
-  revalidateProducts(productId);
+  revalidateProducts(productId.data);
   return { ok: true };
 }
 
@@ -68,12 +70,12 @@ export async function toggleFeaturedAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   await requireAdminSession();
-  const productId = formData.get("productId");
-  if (typeof productId !== "string") return { error: "Ungültige Anfrage." };
+  const productId = objectIdSchema.safeParse(formData.get("productId"));
+  if (!productId.success) return { error: "Ungültige Anfrage." };
 
-  const result = await toggleFeaturedCore(productId);
+  const result = await toggleFeaturedCore(productId.data);
   if (!result.ok) return { error: result.error };
 
-  revalidateProducts(productId);
+  revalidateProducts(productId.data);
   return { ok: true };
 }

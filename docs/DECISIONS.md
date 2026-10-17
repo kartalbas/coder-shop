@@ -255,3 +255,9 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   (`createRateLimiter`, fixed window, keyed like the login throttle — without a trusted
   proxy all clients share one bucket, which is still far above human demo usage).
   `createOrderCore` itself stays unthrottled for integration tests.
+
+### #9 — every Server Action validates its input at the boundary
+- Shared `objectIdSchema` (`src/lib/validations/common.ts`); all admin actions parse their
+  form values through zod (ids must be real ObjectIds, SKU queries are length-bounded
+  strings) and answer bad input with the German "Ungültige Anfrage." instead of a 500.
+  `searchSkuAction` takes `unknown` and degrades to an empty result.

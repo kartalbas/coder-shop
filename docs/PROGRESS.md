@@ -479,3 +479,9 @@ Done — M1–M6 + QA complete.
 - Caps 20 lines / 10 per line / 10 per SKU (merged) in `checkoutSchema`; rate limit
   10 orders/10 min per client in the checkout action (`src/server/rate-limit.ts`).
 - Verified: `tests/checkout-limits.test.ts` (7); `npm test` ✅ 201, build/e2e ✅ 7/7.
+
+### #9 — unvalidated server-action inputs → 500s ✅
+- `objectIdSchema` shared; purchasing/products/orders/shipping actions zod-validated;
+  `searchSkuAction(unknown)` → `[]` on junk.
+- Verified: `tests/action-validation.test.ts` (4, incl. the number-query repro);
+  `npm test` ✅ 205, lint/build/e2e ✅.

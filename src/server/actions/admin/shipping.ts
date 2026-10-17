@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { objectIdSchema } from "@/lib/validations/common";
 import { createLabelCore } from "@/server/shipping/label";
 import { requireAdminSession } from "@/server/session";
 
@@ -16,12 +17,10 @@ export async function createLabelAction(
 ): Promise<CreateLabelActionState> {
   await requireAdminSession();
 
-  const orderId = formData.get("orderId");
-  if (typeof orderId !== "string" || orderId.length === 0) {
-    return { error: "Ungültige Anfrage." };
-  }
+  const orderId = objectIdSchema.safeParse(formData.get("orderId"));
+  if (!orderId.success) return { error: "Ungültige Anfrage." };
 
-  const result = await createLabelCore(orderId);
+  const result = await createLabelCore(orderId.data);
   if (!result.ok) return { error: result.error };
 
   revalidatePath("/admin/orders");
