@@ -1084,6 +1084,25 @@ Done — M1–M6 + QA complete.
   AggregateRating, no second form; non-buyer sees no form) — `npm test` ✅ 425,
   lint/build ✅, `npm run test:e2e` ✅ 31/31.
 
+## ISSUES — queue session 11 (2026-10-17)
+
+### #59 — calm, stable layout: no jumping on navigation, nothing overlapping ✅
+- Page jump: `RouteTransition` no longer slides the whole page (`y: 8` → 0) on every
+  pathname change — a calm opacity-only fade (150 ms); `html` gets
+  `scrollbar-gutter: stable` so navigating between pages of different heights cannot
+  shift content horizontally when the vertical scrollbar appears/disappears.
+- Toast overlap: the Toaster moved from `bottom-right` to `bottom-center` — it sat on
+  the cart drawer's and the cart summary's „Zur Kasse“; adding to the cart fires no
+  toast at all anymore (the drawer opening + animated badge is the feedback per §8),
+  so nothing floats over the drawer while it is open.
+- Verified: new e2e `tests/e2e/layout-stability.spec.ts` (4: sampled the transition
+  wrapper's computed transform through two real navigations — never non-identity,
+  header box identical before/after; `scrollbar-gutter` is `stable`; add-to-cart opens
+  the drawer with zero toasts and an unobstructed, hittable „Zur Kasse“; a login-error
+  toast's box never intersects the submit or the header cart button) — the transform
+  and no-toast assertions fail on the pre-fix build; `npm test` ✅ 438, lint/build ✅,
+  `npm run test:e2e` ✅ 39/39.
+
 ## ISSUES — queue session 10 (2026-10-17)
 
 ### Gate recovery (before the queue) ✅

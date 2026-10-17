@@ -644,8 +644,13 @@ all use **`MongoMemoryReplSet` (single-node)** — no compensation scheme anywhe
   `localStorage` (`cart:v1`), hydrated after mount (no SSR mismatch), badge + drawer update
   optimistically from any page; quantity changes animate.
 - **Navigation**: `next/link` prefetch on viewport entry; `<RouteTransition>` keys on
-  `usePathname()` with motion fade/slide **enter-only** (150–250 ms, respects
-  `prefers-reduced-motion`) — App Router unmounts the old tree immediately, so exit animations
+  `usePathname()` with a motion **opacity-only** fade **enter-only** (150 ms — issue #59:
+  the old `y` slide visibly shifted the whole page on every click; `html` also reserves
+  the scrollbar via `scrollbar-gutter: stable` so pages of different heights cannot
+  shift content horizontally; toasts sit `bottom-center` so they never cover the cart
+  drawer's or the cart summary's „Zur Kasse“, and adding to the cart gives feedback by
+  opening the drawer instead of a toast; respects `prefers-reduced-motion`
+  ) — App Router unmounts the old tree immediately, so exit animations
   are explicitly not attempted; mega-menu opens on hover (desktop) / tap (mobile).
 - **Mutation UX**: checkout and admin actions use `useActionState`/`useFormStatus` with
   optimistic UI where safe (cart, wishlist-free), toasts for feedback.

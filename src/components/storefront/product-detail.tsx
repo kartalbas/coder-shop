@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatChf, formatWeight } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -75,7 +74,8 @@ export function ProductDetail({ product }: { product: ProductDto }) {
       },
       qty,
     );
-    toast.success("Zum Warenkorb hinzugefügt", { description: `${product.name} — ${variant.label}` });
+    // Issue #59: no toast here — the drawer opening (with the animated badge) is the
+    // feedback; the toast only collided with the drawer's „Zur Kasse“.
     openCartDrawer();
   };
 

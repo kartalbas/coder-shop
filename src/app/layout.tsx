@@ -47,7 +47,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <RouteTransition>{children}</RouteTransition>
-          <Toaster richColors position="bottom-right" />
+          {/* Issue #59: bottom-right sat on top of the cart drawer's and the cart
+              summary's „Zur Kasse“ — bottom-center keeps them free. */}
+          <Toaster richColors position="bottom-center" />
         </ThemeProvider>
       </body>
     </html>

@@ -126,6 +126,9 @@
   }
   html {
     @apply font-sans;
+    /* Issue #59: pages of different heights used to toggle the vertical scrollbar and
+       shift all content horizontally on navigation — reserve the gutter always. */
+    scrollbar-gutter: stable;
   }
 }
 
