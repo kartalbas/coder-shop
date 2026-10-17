@@ -124,6 +124,18 @@ describe("transitionOrderCore", () => {
     expect(after?.statusLog).toEqual(before?.statusLog);
   });
 
+  it("refuses the manual packed → shipped — only label creation may ship (issue #10)", async () => {
+    const product = await seedProduct("TR-2b", 10);
+    const order = await seedOrder("packed", "TR-2b", 1, product._id);
+
+    await expect(
+      transitionOrderCore(order._id.toString(), "shipped"),
+    ).rejects.toBeInstanceOf(IllegalTransitionError);
+
+    const after = await OrderModel.findById(order._id).lean<Order>().exec();
+    expect(after?.status).toBe("packed");
+  });
+
   it("rejects a same-state transition", async () => {
     const product = await seedProduct("TR-3", 10);
     const order = await seedOrder("paid", "TR-3", 1, product._id);

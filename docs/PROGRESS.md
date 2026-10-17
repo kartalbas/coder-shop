@@ -485,3 +485,8 @@ Done — M1–M6 + QA complete.
   `searchSkuAction(unknown)` → `[]` on junk.
 - Verified: `tests/action-validation.test.ts` (4, incl. the number-query repro);
   `npm test` ✅ 205, lint/build/e2e ✅.
+
+### #10 — manual packed → shipped skipped the label ✅
+- Label-only transition: `viaLabel` required in the state machine, excluded from
+  `allowedTransitions` (no "→ Versandt" button on packed orders).
+- Verified: state-machine + `transitionOrderCore` tests; e2e shipping journey ✅.

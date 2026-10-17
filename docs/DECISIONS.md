@@ -261,3 +261,10 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   form values through zod (ids must be real ObjectIds, SKU queries are length-bounded
   strings) and answer bad input with the German "Ungültige Anfrage." instead of a 500.
   `searchSkuAction` takes `unknown` and degrades to an empty result.
+
+### #10 — shipped only via label creation
+- `packed → shipped` stays in the graph but is **label-only**: `canTransition`/`transition`
+  require `{ viaLabel: true }` (only `createLabelCore` passes it), and
+  `allowedTransitions` — what the admin UI renders — excludes it. A manual
+  "→ Versandt" from `packed` now raises `IllegalTransitionError` ("Dieser Statuswechsel
+  ist nicht erlaubt"), so a shipped order can never lack a tracking number.

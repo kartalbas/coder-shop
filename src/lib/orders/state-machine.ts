@@ -33,6 +33,14 @@ export const ORDER_STATUSES = Object.keys(TRANSITIONS) as OrderStatus[];
 
 export const RESTOCK_STATUSES: readonly OrderStatus[] = ["new", "paid", "picking"];
 
+// `packed → shipped` exists in the graph but only label creation may take it
+// (REQUIREMENTS: "Creating a label moves the order to shipped") — a manual transition
+// would produce a shipped order without tracking number, and label creation would then
+// be impossible forever (issue #10).
+export function isLabelOnlyTransition(from: OrderStatus, to: OrderStatus): boolean {
+  return from === "packed" && to === "shipped";
+}
+
 export class IllegalTransitionError extends Error {
   constructor(
     readonly from: OrderStatus,
@@ -43,12 +51,19 @@ export class IllegalTransitionError extends Error {
   }
 }
 
-export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
-  return TRANSITIONS[from].includes(to);
+export function canTransition(
+  from: OrderStatus,
+  to: OrderStatus,
+  opts: { viaLabel?: boolean } = {},
+): boolean {
+  if (!TRANSITIONS[from].includes(to)) return false;
+  return !isLabelOnlyTransition(from, to) || opts.viaLabel === true;
 }
 
+// Transitions a human may trigger from the admin UI — everything except the
+// label-only `packed → shipped`, which is offered as "UPS-Etikett erstellen".
 export function allowedTransitions(from: OrderStatus): readonly OrderStatus[] {
-  return TRANSITIONS[from];
+  return TRANSITIONS[from].filter((to) => !isLabelOnlyTransition(from, to));
 }
 
 export function transitionsWithRestock(from: OrderStatus, to: OrderStatus): boolean {
@@ -58,9 +73,9 @@ export function transitionsWithRestock(from: OrderStatus, to: OrderStatus): bool
 export function transition<T extends OrderLike>(
   order: T,
   to: OrderStatus,
-  opts: { note?: string; by?: string; at?: Date } = {},
+  opts: { note?: string; by?: string; at?: Date; viaLabel?: boolean } = {},
 ): T {
-  if (!canTransition(order.status, to)) {
+  if (!canTransition(order.status, to, opts)) {
     throw new IllegalTransitionError(order.status, to);
   }
   const entry: OrderStatusLogEntry = {

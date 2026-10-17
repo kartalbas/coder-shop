@@ -64,6 +64,7 @@ export async function createLabelCore(
   const updated = transition({ status: order.status, statusLog: order.statusLog }, "shipped", {
     note: `UPS-Sendung ${label.trackingNumber}`,
     by: provider.name,
+    viaLabel: true,
   });
 
   const labelPath = path.join(LABELS_DIR, `${order.orderNumber}.pdf`);

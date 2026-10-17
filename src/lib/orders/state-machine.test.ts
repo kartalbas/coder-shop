@@ -4,6 +4,7 @@ import {
   ORDER_STATUSES,
   allowedTransitions,
   canTransition,
+  isLabelOnlyTransition,
   transition,
   transitionsWithRestock,
   type OrderLike,
@@ -25,7 +26,7 @@ const ALLOWED_KEYS = new Set(ALLOWED.map(([from, to]) => `${from}→${to}`));
 
 describe("canTransition — full graph", () => {
   it.each(ALLOWED)("%s → %s is allowed", (from, to) => {
-    expect(canTransition(from, to)).toBe(true);
+    expect(canTransition(from, to, { viaLabel: true })).toBe(true);
   });
 
   it("rejects every other pair (including same-state)", () => {
@@ -39,6 +40,27 @@ describe("canTransition — full graph", () => {
     for (const [from, to] of rejected) {
       expect(canTransition(from, to), `${from} → ${to}`).toBe(false);
     }
+  });
+
+  it("packed → shipped is label-only (issue #10)", () => {
+    expect(isLabelOnlyTransition("packed", "shipped")).toBe(true);
+    expect(isLabelOnlyTransition("paid", "shipped")).toBe(false);
+    expect(canTransition("packed", "shipped")).toBe(false);
+    expect(canTransition("packed", "shipped", { viaLabel: true })).toBe(true);
+    expect(() => transition({ status: "packed", statusLog: [] }, "shipped")).toThrow(
+      IllegalTransitionError,
+    );
+    const next = transition(
+      { status: "packed", statusLog: [] },
+      "shipped",
+      { viaLabel: true, note: "UPS-Sendung 1Z" },
+    );
+    expect(next.status).toBe("shipped");
+  });
+
+  it("the admin UI never offers the label-only transition", () => {
+    expect(allowedTransitions("packed")).toEqual([]);
+    expect(allowedTransitions("picking")).toEqual(["packed", "cancelled"]);
   });
 
   it("cancelled is reachable exactly from new, paid and picking", () => {
@@ -99,7 +121,7 @@ describe("transition", () => {
   it("walks the full happy path with one log entry per step", () => {
     let o: OrderLike = { status: "new", statusLog: [] };
     for (const to of ["paid", "picking", "packed", "shipped", "delivered"] as OrderStatus[]) {
-      o = transition(o, to);
+      o = transition(o, to, { viaLabel: true });
     }
     expect(o.status).toBe("delivered");
     expect(o.statusLog.map((e) => e.status)).toEqual([
