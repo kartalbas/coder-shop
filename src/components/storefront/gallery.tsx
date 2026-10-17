@@ -109,7 +109,12 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
                 index === imageIndex ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100",
               )}
             >
-              <ProductImage src={image.src} alt="" className="size-full object-contain" />
+              <ProductImage
+                src={image.src}
+                alt=""
+                sizes="64px"
+                className="size-full object-contain"
+              />
             </button>
           ))}
         </div>
@@ -122,6 +127,7 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
               src={images[openIndex].src}
               alt={images[openIndex].alt}
               loading="eager"
+              sizes="(max-width: 768px) 95vw, 768px"
               className="max-h-[80vh] w-full object-contain"
             />
           )}

@@ -602,6 +602,20 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #25 — listing: one request per change, cached photos, sized images, scroll ✅
+- `ListingShell` no longer fetches `/api/products` in parallel to the router re-render —
+  the `router.replace` navigation already carries the new server-rendered data, so every
+  filter/sort/page change is exactly one request (`useTransition` drives the skeleton).
+  `/api/products` stays as the documented JSON API (ARCHITECTURE §4).
+- Generated photos (`/products/*.webp|jpg|…`) get `Cache-Control: public, max-age=86400,
+  stale-while-revalidate=604800` via `next.config.ts` instead of `max-age=0`.
+- `ProductImage` emits a `srcSet` over the image optimizer (128/256/384/640 w) with a
+  `sizes` hint — cards pick a slot-sized variant (verified: 1.5 KB at 128 w vs 40 KB
+  full-size); gallery thumbs ask for 64 px, the zoom dialog for up to 768 px.
+- Changing the page scrolls the grid back to the top.
+- Verified live (`npm run start` + curl): photo header, `srcSet` in listing HTML,
+  optimizer 200 `image/jpeg`; `npm test` ✅ 274, lint/build ✅, e2e ✅ 8/8.
+
 ### #24 — filters behave like in a good shop ✅
 - Multi-value facets: `brand=Apple,Samsung` (comma lists parsed by `listingParamsSchema`,
   `$in` in `buildListingFilter`), checkboxes now really toggle list members.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { SlidersHorizontal } from "lucide-react";
@@ -26,10 +26,11 @@ const FACET_KEYS: FacetKey[] = ["brand", "size", "color", "storage", "material"]
 export function ListingShell({ initial }: { initial: ListingResult }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [data, setData] = useState<ListingResult>(initial);
-  const [pending, setPending] = useState(false);
-  const initialQuery = useRef(searchParams.toString());
-  const skipFirst = useRef(true);
+  // Issue #25: the router re-render triggered by `router.replace` already carries the new
+  // listing data (the server page runs the same query) — the old extra client fetch of
+  // /api/products made every change load the data twice. Now: one navigation, one request.
+  const [pending, startTransition] = useTransition();
+  const data = initial;
 
   const type = searchParams.get("type") ?? "";
   const collection = searchParams.get("collection");
@@ -52,28 +53,23 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
       }
       if (!("page" in updates)) next.delete("page");
       const qs = next.toString();
-      router.replace(qs ? `/produkte?${qs}` : "/produkte", { scroll: false });
+      startTransition(() => {
+        router.replace(qs ? `/produkte?${qs}` : "/produkte", { scroll: false });
+      });
     },
     [router, searchParams],
   );
 
+  // Issue #25: a new page shows the top of the grid, not the middle of the old one.
+  const page = searchParams.get("page") ?? "1";
+  const firstPageRender = useRef(true);
   useEffect(() => {
-    if (skipFirst.current && searchParams.toString() === initialQuery.current) {
-      skipFirst.current = false;
+    if (firstPageRender.current) {
+      firstPageRender.current = false;
       return;
     }
-    skipFirst.current = false;
-    const controller = new AbortController();
-    setPending(true);
-    fetch(`/api/products?${searchParams.toString()}`, { signal: controller.signal })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((result: ListingResult | null) => {
-        if (result) setData(result);
-      })
-      .catch(() => undefined)
-      .finally(() => setPending(false));
-    return () => controller.abort();
-  }, [searchParams]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page]);
 
   const toggleFacet = (key: FacetKey, value: string) => {
     const current = selected[key] ?? [];
@@ -100,7 +96,9 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
     const next = new URLSearchParams();
     if (type) next.set("type", type);
     const qs = next.toString();
-    router.replace(qs ? `/produkte?${qs}` : "/produkte", { scroll: false });
+    startTransition(() => {
+      router.replace(qs ? `/produkte?${qs}` : "/produkte", { scroll: false });
+    });
   };
 
   const sidebar = (

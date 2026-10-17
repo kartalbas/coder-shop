@@ -7,6 +7,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Issue #25: generated product photos change essentially never (a re-run of
+        // `npm run images` overwrites a slot) — cache them for a day and revalidate
+        // in the background instead of `max-age=0` on every view.
+        source: "/products/:base.:ext(webp|jpe?g|png|avif)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
