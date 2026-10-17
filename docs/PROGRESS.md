@@ -447,6 +447,22 @@ Done — M1–M6 + QA complete.
   no tab stops in options, 700 contrast tones) — fails on the pre-fix build;
   `npm test` ✅ 274, lint/build ✅, `npm run test:e2e` ✅ 13/13.
 
+### #27 — cart and checkout rough edges ✅
+- No empty-cart flash: `useCartHydrated()` (store) — `/warenkorb` and `/kasse` render a
+  skeleton until the persisted cart is loaded instead of rendering the empty state and
+  swapping.
+- Empty `/kasse` has a single `<h1>` (the page's „Kasse"; the form's empty message is no
+  longer a heading) and its „Weiter einkaufen" is a client-side `Link`, not a
+  full-reload `<a>`.
+- The drawer's „Zur Kasse" now goes to `/kasse` (was `/warenkorb`).
+- Mock card fields carry no `name` attributes — card data is a UI stub and is never
+  part of the submitted form data.
+- Verified: new e2e `tests/e2e/cart-checkout.spec.ts` (5 tests: no empty-state flash on
+  reload of either page via a MutationObserver that records any appearance of the
+  empty text, one `<h1>` on empty/filled `/kasse`, drawer → `/kasse`, card inputs have
+  no `name`) — fails on the pre-fix build; `npm test` ✅ 274, lint/build ✅,
+  `npm run test:e2e` ✅ 18/18.
+
 ## ISSUES — queue session 1 (2026-10-17)
 
 ### #2 — forgeable admin sessions without SESSION_SECRET ✅

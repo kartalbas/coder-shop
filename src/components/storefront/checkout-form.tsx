@@ -19,7 +19,8 @@ import {
   type ShippingMethodParam,
 } from "@/lib/validations/checkout";
 import { createOrderAction, type CheckoutActionState } from "@/server/actions/checkout";
-import { cartSubtotalCents, clearCart, syncPrices, useCart } from "@/stores/cart";
+import Link from "next/link";
+import { cartSubtotalCents, clearCart, syncPrices, useCart, useCartHydrated } from "@/stores/cart";
 
 const CUSTOMER_FIELDS: {
   key: keyof CheckoutCustomer;
@@ -57,6 +58,7 @@ function fieldErrorsFrom(error: ZodError): FieldErrors {
 export function CheckoutForm() {
   const router = useRouter();
   const cart = useCart();
+  const hydrated = useCartHydrated();
   const [shippingMethod, setShippingMethod] = useState<ShippingMethodParam>("standard");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [state, formAction, pending] = useActionState<CheckoutActionState | null, FormData>(
@@ -96,13 +98,24 @@ export function CheckoutForm() {
     }
   }, [state]);
 
+  // Issue #27: no empty-cart flash — the page keeps its single <h1>, the form area
+  // stays a skeleton until the persisted cart is loaded.
+  if (!hydrated) {
+    return (
+      <div className="grid gap-8 lg:grid-cols-[1fr_360px]" aria-busy="true">
+        <div className="h-96 animate-pulse rounded-xl bg-muted" />
+        <div className="h-64 animate-pulse rounded-xl bg-muted" />
+      </div>
+    );
+  }
+
   if (cart.lines.length === 0) {
     return (
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-4 py-24 text-center">
-        <h1 className="text-2xl font-bold">Es gibt nichts zu bezahlen</h1>
+        <p className="text-2xl font-bold">Es gibt nichts zu bezahlen</p>
         <p className="text-muted-foreground">Ihr Warenkorb ist leer.</p>
         <Button asChild size="lg" variant="outline">
-          <a href="/produkte">Weiter einkaufen</a>
+          <Link href="/produkte">Weiter einkaufen</Link>
         </Button>
       </div>
     );
@@ -219,16 +232,17 @@ export function CheckoutForm() {
                 <Lock className="size-4" aria-hidden />
                 Demo-Zahlung — es wird keine echte Karte belastet.
               </p>
+              {/* Issue #27: deliberately no name attributes — the mock card data is a
+                  UI stub and must never be part of the submitted form data. */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="cardName">Karteninhaber</Label>
-                  <Input id="cardName" name="cardName" placeholder="Max Muster" autoComplete="cc-name" />
+                  <Input id="cardName" placeholder="Max Muster" autoComplete="cc-name" />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="cardNumber">Kartennummer</Label>
                   <Input
                     id="cardNumber"
-                    name="cardNumber"
                     inputMode="numeric"
                     autoComplete="cc-number"
                     placeholder="4242 4242 4242 4242"
@@ -236,13 +250,12 @@ export function CheckoutForm() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="cardExpiry">Gültig bis</Label>
-                  <Input id="cardExpiry" name="cardExpiry" autoComplete="cc-exp" placeholder="12/28" />
+                  <Input id="cardExpiry" autoComplete="cc-exp" placeholder="12/28" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="cardCvc">CVC</Label>
                   <Input
                     id="cardCvc"
-                    name="cardCvc"
                     inputMode="numeric"
                     autoComplete="cc-csc"
                     placeholder="123"

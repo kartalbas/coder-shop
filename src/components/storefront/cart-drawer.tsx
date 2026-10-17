@@ -102,7 +102,7 @@ export function CartDrawer() {
               </div>
               <Separator className="mb-3" />
               <Button asChild className="w-full" size="lg">
-                <Link href="/warenkorb" onClick={closeCartDrawer}>Zur Kasse</Link>
+                <Link href="/kasse" onClick={closeCartDrawer}>Zur Kasse</Link>
               </Button>
             </div>
           </>

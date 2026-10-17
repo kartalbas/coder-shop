@@ -18,11 +18,27 @@ import {
   removeLine,
   updateQty,
   useCart,
+  useCartHydrated,
 } from "@/stores/cart";
 
 export function CartPageView() {
   const cart = useCart();
+  const hydrated = useCartHydrated();
   const subtotal = cartSubtotalCents(cart);
+
+  // Issue #27: until the persisted cart is loaded, neither the cart nor the empty
+  // state may render — that swap was the visible flash.
+  if (!hydrated) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8" aria-busy="true">
+        <div className="h-9 w-44 animate-pulse rounded-lg bg-muted" />
+        <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_360px]">
+          <div className="h-64 animate-pulse rounded-xl bg-muted" />
+          <div className="h-48 animate-pulse rounded-xl bg-muted" />
+        </div>
+      </div>
+    );
+  }
 
   if (cart.lines.length === 0) {
     return (

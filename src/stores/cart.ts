@@ -109,6 +109,16 @@ export function useCart(): CartState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
+// Issue #27: pages must not flash the empty-cart state while the persisted cart is
+// still being read from localStorage — they render a skeleton until this is true.
+export function useCartHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => hydrated,
+    () => false,
+  );
+}
+
 export function cartCount(cart: CartState): number {
   return cart.lines.reduce((sum, line) => sum + line.qty, 0);
 }
