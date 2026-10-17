@@ -8,6 +8,7 @@ const ACCOUNT_LINKS = [
   { href: "/konto", label: "Übersicht" },
   { href: "/konto/bestellungen", label: "Bestellungen" },
   { href: "/konto/rechnungen", label: "Rechnungen" },
+  { href: "/konto/wunschliste", label: "Wunschliste" },
   { href: "/konto/adressen", label: "Adressen" },
   { href: "/konto/profil", label: "Profil" },
 ];

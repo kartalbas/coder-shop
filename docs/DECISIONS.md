@@ -436,3 +436,24 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   value can never change the booked price. The normalized code is part of the #15
   idempotency fingerprint: the same cart with and without a code are different
   submissions.
+
+### #46 — wishlist: local store as working copy, account as the mirror
+- **The browser store is the truth for the visitor; the account document is the copy
+  it syncs into.** Guests keep `wishlist:v1` in localStorage only; while a customer
+  session exists, `WishlistSync` mirrors it: one **merge** on mount (local items join
+  the stored ones, local order wins — this is the login sync that makes the wishlist
+  survive logout/login), a **replace** on every later local change. A response is only
+  applied while nothing changed locally since it was sent, so a toggle during a
+  round-trip is never clobbered. No server round-trip per heart click.
+- **Synced content is slugs, never prices or DTOs.** The server re-resolves them
+  against the products collection (unknown slugs are dropped), so the account copy can
+  never hold stale prices or point at deleted products.
+- **"Zuletzt angesehen" stays local.** It is browsing history of *this* browser, not
+  account data — no model, no sync; the rail fetches the products from
+  `GET /api/recently-viewed?slugs=…` (≤ 12 slugs, order preserved, unknown skipped).
+- **Back-in-stock alerts notify at most once per sell-out.** One document per
+  (`sku`, lower-case e-mail) with `_id = sku|email` (idempotent subscribe); the
+  restock hook (`notifyRestockedCore` after goods receipt and after a cancel restock)
+  stamps `notifiedAt`, so a second restock does not mail again — a new sell-out needs
+  a fresh subscription. The mail goes through the #44 transport and never fails the
+  workflow it hangs on (same rule as every other workflow mail).

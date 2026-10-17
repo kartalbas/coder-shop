@@ -14,6 +14,7 @@ import {
 } from "@/models/purchase-order";
 import { SupplierModel, type Supplier } from "@/models/supplier";
 import { mintNumber } from "./numbers";
+import { notifyRestockedCore } from "./restock-alerts";
 import { connectDB } from "./db";
 
 export type PurchasingResult = { ok: true } | { ok: false; error: string };
@@ -272,6 +273,13 @@ export async function receivePurchaseOrderCore(
     po.receivedAt = new Date();
     await po.save({ session });
     await session.commitTransaction();
+    // Issue #46: goods receipt is the canonical restock — notify waiting customers.
+    // Never fails the receipt itself.
+    try {
+      await notifyRestockedCore(restocked.map((line) => line.sku));
+    } catch (error) {
+      console.error("Wieder-verfügbar-Benachrichtigung fehlgeschlagen", error);
+    }
     return { ok: true, restocked };
   } catch (error) {
     if (session.inTransaction()) await session.abortTransaction();

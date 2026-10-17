@@ -18,7 +18,9 @@ import {
 } from "@/lib/product-selection";
 import { buyablePriceCents } from "@/lib/pricing";
 import { Gallery } from "./gallery";
+import { RestockAlertForm } from "./restock-alert-form";
 import { StockIndicator } from "./stock-indicator";
+import { WishlistHeart } from "./wishlist-heart";
 import { VAT_LABEL } from "@/lib/pricing";
 
 export function ProductDetail({ product }: { product: ProductDto }) {
@@ -87,9 +89,13 @@ export function ProductDetail({ product }: { product: ProductDto }) {
         }}
       />
       <div className="flex flex-col gap-5">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-muted-foreground">{product.brand}</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm uppercase tracking-wide text-muted-foreground">{product.brand}</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
+          </div>
+          {/* Issue #46: the wishlist heart on the product page. */}
+          <WishlistHeart slug={product.slug} name={product.name} className="mt-1 shrink-0" />
         </div>
 
         <motion.p
@@ -190,6 +196,11 @@ export function ProductDetail({ product }: { product: ProductDto }) {
             Variante: {variant.label} · Gewicht: {formatWeight(variant.weightGrams)} · Art.-Nr.{" "}
             {variant.sku}
           </p>
+        )}
+
+        {/* Issue #46: a chosen variant that is sold out offers the back-in-stock mail. */}
+        {variant && stock === 0 && (
+          <RestockAlertForm sku={variant.sku} productName={`${product.name} — ${variant.label}`} />
         )}
       </div>
     </div>

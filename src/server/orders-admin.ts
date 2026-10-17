@@ -5,9 +5,10 @@ import {
   transitionsWithRestock,
   type OrderStatus,
 } from "@/lib/orders/state-machine";
-import { OrderModel, type Order, type OrderDocument } from "@/models/order";
+import { OrderModel, type Order, type OrderDocument, type OrderLine } from "@/models/order";
 import { ProductModel } from "@/models/product";
 import { connectDB } from "./db";
+import { notifyRestockedCore } from "./restock-alerts";
 
 export type OrderFilter = OrderStatus | "all";
 
@@ -149,11 +150,21 @@ export async function transitionOrderCore(
       };
     }
 
-    if (transitionsWithRestock(from, to)) {
+    const restock = transitionsWithRestock(from, to);
+    if (restock) {
       await restockLines(order, session);
     }
 
     await session.commitTransaction();
+    // Issue #46: a cancel that puts stock back can satisfy waiting customers too —
+    // the mail never fails the transition.
+    if (restock) {
+      try {
+        await notifyRestockedCore(order.lines.map((line: OrderLine) => line.sku));
+      } catch (error) {
+        console.error("Wieder-verfügbar-Benachrichtigung fehlgeschlagen", error);
+      }
+    }
     return { ok: true, status: updated.status };
   } catch (error) {
     if (session.inTransaction()) await session.abortTransaction();

@@ -12,6 +12,7 @@ import {
 import { Breadcrumbs } from "@/components/storefront/breadcrumbs";
 import { JsonLd } from "@/components/storefront/json-ld";
 import { ProductDetail } from "@/components/storefront/product-detail";
+import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefront/recently-viewed";
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
@@ -82,6 +83,9 @@ async function ProductView({ params }: PagePropsLocal) {
 
       <div className="mt-12" />
       <RelatedProducts products={related} />
+      {/* Issue #46: remember this product, and show the rest of the history. */}
+      <RecentlyViewedTracker slug={product.slug} />
+      <RecentlyViewedRail excludeSlug={product.slug} />
       <JsonLd product={product} />
     </div>
   );

@@ -100,7 +100,8 @@ src/
                             # passwort-zuruecksetzen
         (portal)/           # session-guarded: layout (nav), page (overview),
                             # bestellungen (list+search+claim+reorder), adressen, profil,
-                            # rechnungen (offene Rechnungen mit Fälligkeit/Überfällig, #40)
+                            # rechnungen (offene Rechnungen mit Fälligkeit/Überfällig, #40),
+                            # wunschliste (gemerkte Produkte, #46)
     admin/                  # admin URLs stay English (internal)
       (auth)/login/page.tsx
       (panel)/              # session-guarded group (layout requires the admin session)
@@ -121,6 +122,7 @@ src/
     api/
       search/route.ts       # GET instant search JSON
       products/route.ts     # GET faceted listing JSON (documented JSON API, §4)
+      recently-viewed/route.ts  # GET products behind remembered slugs, newest first (#46)
       health/route.ts       # GET { ok } — also warms DB connection
   components/
     ui/                     # vendored shadcn components (kept canonical, knip-ignored, §13)
@@ -137,7 +139,11 @@ src/
       account-nav.tsx, customer-login-form.tsx, register-form.tsx, password-reset-forms.tsx,
       claim-order-form.tsx, reorder-button.tsx, address-book.tsx, customer-password-form.tsx,
       account-logout-button.tsx,                     # customer portal (#39)
-      discount-input.tsx                             # code field with live feedback (#45)
+      discount-input.tsx,                            # code field with live feedback (#45)
+      wishlist-heart.tsx, wishlist-sync.tsx, wishlist-merge-on-visit.tsx,
+      wishlist-remove-button.tsx, local-store-hydrator.tsx,
+      recently-viewed.tsx, restock-alert-form.tsx    # wishlist + recently viewed +
+                                                     # back-in-stock alerts (#46)
     admin/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
@@ -155,6 +161,7 @@ src/
     discount-usage.ts       # (code, customer) redemptions — unique _id enforces once-each (#45)
     password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
     mail-message.ts         # dev outbox messages (#39/#44)
+    restock-alert.ts        # (sku, e-mail) back-in-stock subscriptions, notify-once (#46)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
                           # (guard test: tests/lib-purity.test.ts)
     product-types.ts        # ProductType union (models re-export it)
@@ -223,6 +230,9 @@ src/
                             # picker searches: variants by sku/name/brand + suppliers (#42)
     dashboard.ts            # revenue series, open counts, low stock, recent orders
     search.ts               # Mongo query/aggregate builders + toProductDto() shared DTO mapper
+    wishlist.ts             # account wishlist: sync (merge/replace), list, remove (#46)
+    restock-alerts.ts       # subscribe + notifyRestockedCore (goods receipt / cancel
+                            # restock → one mail per waiting address, #46)
     shipping/provider.ts    # factory (env-driven)
     shipping/ups.ts         # UpsShippingProvider (UPS REST, token cache, §4)
     shipping/mock.ts        # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
@@ -246,8 +256,12 @@ src/
                             # → *Core fns (#40)
       admin/pickup.ts       # markPickupReady, handoverPickup → *Core fns (#41)
       admin/discounts.ts    # createDiscount, setDiscountActive → *Core fns (#45)
+      wishlist.ts           # syncWishlistAction (merge/replace), removeWishlistItemAction (#46)
+      restock-alerts.ts     # subscribeRestockAlertAction (#46)
   stores/
     cart.ts                 # useSyncExternalStore store, localStorage-persisted
+    wishlist.ts             # local wishlist (newest-first slugs), synced to the account (#46)
+    recently-viewed.ts      # last viewed slugs, local to the browser (#46)
   hooks/
     use-debounce.ts
   test/
@@ -348,10 +362,13 @@ Indexes: `{ orderNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`, `{ 'custom
 ### User (`users`) — admin login and customer accounts (#39)
 `{ email (unique, lowercase), name, passwordHash, role: 'admin' | 'customer',
 sessionsInvalidBefore?, addresses: [{ label, street, postalCode, city, country,
-kind: 'shipping'|'billing', isDefault }], creditLimitCents?, blocked?, notes? }` —
+kind: 'shipping'|'billing', isDefault }], creditLimitCents?, blocked?, notes?,
+wishlist: string[] }` —
 `creditLimitCents` (personal invoice credit, #40; unset = shop default
 `DEFAULT_CREDIT_LIMIT_CENTS`); `blocked` refuses customer login (issue #43, revealed
 only with the correct password) and `notes` is the admin's internal remark;
+`wishlist` (issue #46) is the account copy of the browser wishlist: product slugs,
+newest first, capped at 100, only products that still exist;
 `passwordHash` format
 `scrypt$N$r$p$salt$hash` with explicit params (§4). Customers carry the address book
 (one default per kind); admins never have addresses.
@@ -363,6 +380,12 @@ Seeded: `admin@codershop.ch` (password via `ADMIN_PASSWORD`, issue #4).
 
 ### MailMessage (`mail_messages`, #39/#44)
 Dev outbox: `{ to, subject, html, text, sentAt }` — every mail the shop would send.
+
+### RestockAlert (`restock_alerts`, #46)
+`_id` is `sku|lower-case-email`, so double subscriptions are idempotent;
+`{ sku, email, productSlug, variantLabel, createdAt, notifiedAt? }` — `notifiedAt` is
+stamped when the back-in-stock mail goes out, so each address is notified at most once
+per sell-out. Index `{ sku: 1, notifiedAt: 1 }`.
 
 ### Supplier (`suppliers`)
 `{ name, email, phone?, leadTimeDays, active }`.

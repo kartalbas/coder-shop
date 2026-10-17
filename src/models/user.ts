@@ -30,6 +30,9 @@ export interface User {
   // internal remarks the admin keeps on the account.
   blocked?: boolean;
   notes?: string;
+  // Wishlist (issue #46): product slugs, newest first — the account copy the local
+  // browser list syncs into while logged in.
+  wishlist: string[];
 }
 
 const addressSchema = new Schema<CustomerAddress>(
@@ -56,6 +59,7 @@ const userSchema = new Schema<User>(
     creditLimitCents: { type: Number, min: 0 },
     blocked: { type: Boolean, default: false },
     notes: { type: String, trim: true, maxlength: 2000 },
+    wishlist: { type: [String], default: [] },
   },
   { versionKey: false },
 );

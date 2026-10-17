@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront/product-card";
+import { RecentlyViewedRail } from "@/components/storefront/recently-viewed";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getCollectionProducts, getFeaturedProducts } from "@/server/search";
@@ -177,6 +178,9 @@ export default function HomePage() {
       <Suspense fallback={<FeaturedRailSkeleton />}>
         <FeaturedRail />
       </Suspense>
+
+      {/* Issue #46: "Zuletzt angesehen" from this browser's history (client-side). */}
+      <RecentlyViewedRail />
     </>
   );
 }

@@ -113,6 +113,20 @@ export function pickupReadyMail(input: {
   );
 }
 
+// Back in stock (issue #46) — sent to every address waiting on a sold-out variant.
+export function restockAlertMail(input: {
+  productName: string;
+  variantLabel: string;
+  link: string;
+}): MailContent {
+  return layout(
+    "Wieder an Lager",
+    `<p>Guten Tag,</p><p><strong>${input.productName} — ${input.variantLabel}</strong> ist wieder an Lager. Wie gewünscht geben wir Ihnen früh Bescheid — solange der Vorrat reicht.</p>`,
+    `Guten Tag,\n\n${input.productName} — ${input.variantLabel} ist wieder an Lager. Wie gewünscht geben wir Ihnen früh Bescheid — solange der Vorrat reicht.`,
+    { label: "Zum Artikel", url: input.link },
+  );
+}
+
 export function passwordResetMail(name: string, link: string): MailContent {
   return layout(
     "Passwort zurücksetzen",

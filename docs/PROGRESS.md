@@ -1018,3 +1018,40 @@ Done — M1–M6 + QA complete.
   order, unknown code, refused code writes nothing, admin stats, bad create input,
   failed redemption releases the claim for a corrected resubmit); pricing test for the
   discount parameter. `npm test` ✅ 395, lint/knip/build ✅, `npm run test:e2e` ✅ 27/27.
+
+## ISSUES — queue session 9 (2026-10-17)
+
+### Gate recovery (before the queue) ✅
+- The gate's e2e EADDRINUSE on port 3100 was again a stale process from an earlier
+  session; it had exited on its own before this session started (port verified free,
+  full e2e green). No code change — the #7-era guard in `global-setup.ts` refuses to
+  start while the port is taken, which is exactly what fired.
+
+### #46 — wishlist, recently viewed, back-in-stock alerts ✅
+- **Wishlist**: heart on every product card and on the product page (disabled until
+  the store hydrates, `aria-pressed`); `src/stores/wishlist.ts` — localStorage
+  (`wishlist:v1`, newest-first, dedup, cap 100, corrupt-payload rejection). While a
+  customer session exists the storefront layout renders `WishlistSync` (session check
+  behind `connection()` + Suspense so the static shell survives): merge on mount =
+  the login sync, replace on later changes, responses applied only while nothing
+  changed locally meanwhile. Account copy: `user.wishlist` slugs, re-resolved against
+  the products collection on every sync (unknown slugs dropped). Portal
+  `/konto/wunschliste` (server-rendered, `WishlistMergeOnVisit` catches local items
+  that have not merged yet, remove button updates account + local mirror).
+- **Zuletzt angesehen**: `src/stores/recently-viewed.ts` (browser-local, cap 12) +
+  `RecentlyViewedTracker` on the product page and `RecentlyViewedRail` on home and
+  product pages (renders nothing without history); products come from the new
+  `GET /api/recently-viewed?slugs=…` (≤ 12, requested order, unknown skipped).
+- **Back-in-stock**: sold-out variant on the product page offers
+  „Benachrichtigen, wenn wieder verfügbar“ (`RestockAlertForm`, guests included);
+  `restock_alerts` documents keyed `sku|email` (idempotent subscribe), notified once
+  per sell-out via `notifiedAt` — hooked into goods receipt and cancel-restock, mail
+  through the #44 transport, never fails the workflow.
+- Verified: `src/stores/wishlist.test.ts` (serialize/deserialize/sanitize/toggle/cap),
+  `tests/wishlist.test.ts` (merge keeps local order + drops unknown slugs, replace is
+  the truth, cap, remove, non-customer refused, portal list order),
+  `tests/restock-alerts.test.ts` (subscribe idempotent + unknown sku + already-in-stock,
+  notify only in-stock skus, once per alert, mail in the outbox, receipt + cancel
+  restock trigger it); new e2e `wishlist.spec.ts` (heart on card → rail → logout/login
+  keeps the wishlist in the portal; sold-out variant → subscribe → outbox entry) —
+  `npm test` ✅ 413, lint/build ✅, `npm run test:e2e` ✅ 29/29.

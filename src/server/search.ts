@@ -204,6 +204,19 @@ export async function getProductBySlug(slug: string): Promise<ProductDto | null>
   return product ? toProductDto(product) : null;
 }
 
+// Products behind remembered slugs (issue #46 "Zuletzt angesehen"), in the requested
+// order; unknown slugs are skipped.
+export async function getProductsBySlugs(slugs: string[]): Promise<ProductDto[]> {
+  if (slugs.length === 0) return [];
+  await connectDB();
+  const docs = await ProductModel.find({ slug: { $in: slugs } }).lean<LeanProduct[]>().exec();
+  const bySlug = new Map(docs.map((doc) => [doc.slug, doc]));
+  return slugs
+    .map((slug) => bySlug.get(slug))
+    .filter((doc): doc is LeanProduct => doc !== undefined)
+    .map(toProductDto);
+}
+
 export async function getRelatedProducts(product: ProductDto, limit = 4): Promise<ProductDto[]> {
   await connectDB();
   const docs = await ProductModel.find({
