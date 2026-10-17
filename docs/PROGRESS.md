@@ -468,3 +468,9 @@ Done — M1–M6 + QA complete.
   on logout and on password change; enforced in `resolveSessionUserId`.
 - Verified: revocation tests (logout, fresh token after, password-change sign-out) +
   e2e: copied cookie gets a real 307 after logout; `npm test` ✅ 190, e2e ✅ 6/6.
+
+### #7 — no security headers; Secure flag trusted a Next-filled header ✅
+- Global nosniff/Referrer-P/frame-ancestors 'none'+X-FRAME-OPTIONS DENY/HSTS, poweredBy off;
+  `x-forwarded-proto` only trusted with `TRUST_PROXY_HEADERS` (pure
+  `decideSessionCookieSecure` + tests).
+- Verified: e2e `security-headers.spec.ts`, 4 decision tests; `npm test` ✅ 194, e2e ✅ 7/7.

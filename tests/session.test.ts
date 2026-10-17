@@ -4,6 +4,7 @@ import { hashPassword } from "@/server/password";
 import {
   changePasswordCore,
   createSessionToken,
+  decideSessionCookieSecure,
   loginCore,
   resetLoginThrottle,
   resolveClientIp,
@@ -170,6 +171,56 @@ describe("loginCore", () => {
     const freshIp = await loginCore("admin@codershop.ch", "Admin!2026", { ip: "10.2.55.1" });
     expect(freshIp.ok).toBe(false);
     if (!freshIp.ok) expect(freshIp.error).toContain("Zu viele Fehlversuche");
+  });
+});
+
+describe("decideSessionCookieSecure", () => {
+  it("prefers the explicit SESSION_COOKIE_SECURE", () => {
+    expect(
+      decideSessionCookieSecure({
+        explicit: true,
+        forwardedProto: undefined,
+        origin: "http://lan.test:4000",
+        referer: null,
+        isProduction: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("uses the browser's own Origin/Referer scheme", () => {
+    const base = { explicit: undefined, forwardedProto: undefined, referer: null };
+    expect(
+      decideSessionCookieSecure({ ...base, origin: "https://shop.example", isProduction: true }),
+    ).toBe(true);
+    expect(
+      decideSessionCookieSecure({ ...base, origin: null, referer: "http://lan.test/x", isProduction: true }),
+    ).toBe(false);
+  });
+
+  it("falls back to NODE_ENV when no request protocol is known", () => {
+    expect(
+      decideSessionCookieSecure({
+        explicit: undefined,
+        forwardedProto: undefined,
+        origin: null,
+        referer: null,
+        isProduction: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("an https deployment without X-Forwarded-Proto from the proxy still gets Secure", () => {
+    // The caller only passes forwardedProto behind a trusted proxy; here the TLS proxy
+    // sends nothing and Next's own `http` value must NOT reach this decision.
+    expect(
+      decideSessionCookieSecure({
+        explicit: undefined,
+        forwardedProto: undefined,
+        origin: null,
+        referer: null,
+        isProduction: true,
+      }),
+    ).toBe(true);
   });
 });
 

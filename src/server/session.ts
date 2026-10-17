@@ -231,17 +231,37 @@ function protocolOfUrl(value: string | null): string | null {
 // A `Secure` cookie is only stored by browsers on trustworthy origins — over plain HTTP that
 // is https plus localhost/127.*, so a production server on a LAN address would silently
 // discard the session and bounce the admin back to the login on every click. Decide per
-// request: explicit SESSION_COOKIE_SECURE wins, else the request's own protocol (proxy
-// hint first, then the browser's Origin/Referer), else the old NODE_ENV default.
+// request: explicit SESSION_COOKIE_SECURE wins, else the request's own protocol, else the
+// old NODE_ENV default. `x-forwarded-proto` is only consulted behind a trusted proxy —
+// Next fills it in itself with `http` when a TLS proxy does not send it, which would strip
+// `Secure` on an https site.
+export function decideSessionCookieSecure(input: {
+  explicit: boolean | undefined;
+  forwardedProto: string | undefined;
+  origin: string | null;
+  referer: string | null;
+  isProduction: boolean;
+}): boolean {
+  if (input.explicit !== undefined) return input.explicit;
+  const protocol =
+    input.forwardedProto || protocolOfUrl(input.origin) || protocolOfUrl(input.referer);
+  if (protocol) return protocol === "https";
+  return input.isProduction;
+}
+
 export async function resolveSessionCookieSecure(): Promise<boolean> {
-  if (env.sessionCookieSecure !== undefined) return env.sessionCookieSecure;
   const { headers } = await import("next/headers");
   const all = await headers();
-  const forwarded = all.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const protocol =
-    forwarded || protocolOfUrl(all.get("origin")) || protocolOfUrl(all.get("referer"));
-  if (protocol) return protocol === "https";
-  return process.env.NODE_ENV === "production";
+  const forwardedProto = env.trustProxyHeaders
+    ? all.get("x-forwarded-proto")?.split(",")[0]?.trim()
+    : undefined;
+  return decideSessionCookieSecure({
+    explicit: env.sessionCookieSecure,
+    forwardedProto,
+    origin: all.get("origin"),
+    referer: all.get("referer"),
+    isProduction: process.env.NODE_ENV === "production",
+  });
 }
 
 export async function setSessionCookie(token: string): Promise<void> {

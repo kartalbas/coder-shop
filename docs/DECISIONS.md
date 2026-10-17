@@ -236,3 +236,15 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   fast gate without DB access; pages/actions do the full check).
 - Chosen over a per-session collection: one field, no join, and "sign out everywhere" is
   exactly the semantics we want for logout and forced sign-out.
+
+### #7 — security headers and the Secure-cookie protocol decision
+- `next.config.ts` sends on every response: `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` +
+  `Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'` (nothing on the site
+  is framed; a full script CSP is omitted deliberately — Next/PPR inline scripts would need
+  nonces and the app has no user-generated HTML injection surface), HSTS, and
+  `poweredByHeader: false`.
+- `x-forwarded-proto` is only consulted for the cookie's `Secure` flag when
+  `TRUST_PROXY_HEADERS=true` — Next fills it with `http` itself when a TLS proxy does not
+  send it, which silently stripped `Secure` on https sites. Otherwise the browser's own
+  Origin/Referer scheme decides (BUG1 behavior preserved), then the NODE_ENV default.
