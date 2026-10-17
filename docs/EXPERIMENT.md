@@ -125,6 +125,15 @@ Stack as built: Next.js 16.4.2, React 19.3.1, TypeScript 6.0.3, Mongoose 9.11.2,
   mongod kept running, held `data/mongo`, and the shop on :4000 found no database. Fixed
   (process group), re-run; M2 counted as green.
 
+## After the handover — bugs reported by the user
+
+| Issue | Report | Coder | Result |
+|---|---|---|---|
+| [#1](https://github.com/kartalbas/coder-shop/issues/1) | every admin menu click asks for the login again (opened via the LAN address) | 1 session, 5 min, from the report and the lead's LAN-vs-localhost observation only | root cause found (the session cookie was `Secure` whenever `NODE_ENV=production`, which browsers do not store over plain HTTP on a LAN address); `Secure` now follows the request's protocol (incl. `X-Forwarded-Proto` behind a TLS proxy) with an explicit `SESSION_COOKIE_SECURE` override; an e2e test that fails without the fix; gate and 4/4 e2e green; issue closed by the commit |
+
+The e2e suite had missed it because it ran against `localhost`, which browsers treat as a secure
+origin.
+
 ## The product photos
 
 576 photos, generated on the same RTX 5080 with **Qwen-Image-2.1-Turbo** (Q8_0, 8 steps,
