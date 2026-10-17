@@ -5,6 +5,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { PasswordForm } from "@/components/admin/password-form";
 import { RevenueSparkline } from "@/components/admin/revenue-sparkline";
 import { formatChf, formatDate } from "@/lib/format";
 import { getDashboardData, REVENUE_WINDOW_DAYS } from "@/server/dashboard";
@@ -172,6 +173,18 @@ async function DashboardView() {
           )}
         </section>
       </div>
+
+      <section aria-label="Passwort ändern" className="mt-8">
+        <h2 className="text-lg font-semibold">Passwort ändern</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Das Seed-Passwort gilt nur beim ersten Anlegen — hier ändern Sie es jederzeit.
+        </p>
+        <Card className="mt-3">
+          <CardContent className="p-5 sm:p-6">
+            <PasswordForm />
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

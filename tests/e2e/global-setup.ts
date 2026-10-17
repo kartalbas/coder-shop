@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
+import { ADMIN_PASSWORD } from "./helpers";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const PORT = Number(process.env.E2E_PORT ?? 3100);
@@ -58,6 +59,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   console.log("[e2e] seeding a fresh database…");
   await run(path.join(REPO_ROOT, "node_modules", ".bin", "tsx"), ["scripts/seed/seed.ts", "--fresh"], {
     MONGODB_URI: mongoUri,
+    ADMIN_PASSWORD,
   });
 
   console.log(`[e2e] starting production build on port ${PORT}…`);

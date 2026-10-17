@@ -22,9 +22,12 @@ export default function LoginPage() {
       </CardHeader>
       <CardContent className="space-y-4">
         <LoginForm />
-        <p className="rounded-lg bg-muted p-3 text-center text-xs text-muted-foreground">
-          Demo-Zugang: admin@codershop.ch · Admin!2026
-        </p>
+        {process.env.NODE_ENV !== "production" && (
+          <p className="rounded-lg bg-muted p-3 text-center text-xs text-muted-foreground">
+            Demo-Zugang: admin@codershop.ch — das Passwort kommt aus dem Seed
+            (<code>ADMIN_PASSWORD</code> bzw. dessen Ausgabe).
+          </p>
+        )}
       </CardContent>
     </Card>
   );

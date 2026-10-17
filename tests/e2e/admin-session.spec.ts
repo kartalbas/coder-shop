@@ -21,6 +21,8 @@ test("admin: session survives navigation over plain HTTP on a non-localhost host
   context,
 }) => {
   await page.goto(`${LAN_BASE}/admin/login`);
+  // Issue #4: the production login page must not print credentials.
+  expect(await page.content()).not.toContain(ADMIN_PASSWORD);
   await page.fill("#email", ADMIN_EMAIL);
   await page.fill("#password", ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Anmelden" }).click();

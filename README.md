@@ -65,7 +65,11 @@ npm run test:e2e  # Playwright (Chromium): full journeys against a production bu
 
 ## Admin
 
-`/admin` — login with the seeded admin user: `admin@codershop.ch` / `Admin!2026`.
+`/admin` — login with the seeded admin user `admin@codershop.ch`. Its password is **not** a
+source-code constant: `npm run seed` uses `ADMIN_PASSWORD` if set and otherwise generates a
+random one, printed exactly once in the seed output. A re-seed never resets the password of
+an existing admin; change it later under Dashboard → „Passwort ändern". The login page shows
+a demo hint only in development builds, never in production.
 Dashboard (revenue, open orders, low stock), products (search, edit core data, variants with
 price delta/stock/weight/attributes, images, featured toggle), orders, packing + UPS labels,
 purchasing (suppliers, purchase orders with goods receipt).
@@ -79,6 +83,7 @@ All optional for local development (sensible defaults / embedded database):
 | `MONGODB_URI` | External MongoDB. **Required in production** — must be a replica-set-capable URI (core functions use transactions). Without it, the embedded `mongodb-memory-server` replica set is used (dev/seed/test only). |
 | `SESSION_SECRET` | Secret for the admin session cookie HMAC. **Required in production** (≥ 32 characters, e.g. `openssl rand -base64 48`); outside production a random per-process secret is generated. |
 | `SESSION_COOKIE_SECURE` | `true`/`false` to pin the admin session cookie's `Secure` flag. Unset (default) sets it per request from the request protocol (https → `Secure`, plain http → not), so the admin also works from other machines on the LAN over http. See DECISIONS. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Used by `npm run seed` only, for the initial admin user. Without `ADMIN_PASSWORD` a random password is generated and printed once; an existing admin's password is never changed by the seed. |
 | `UPS_CLIENT_ID` / `UPS_CLIENT_SECRET` / `UPS_ACCOUNT` | Set **all three** to create real UPS labels via `UpsShippingProvider`; otherwise the `MockUpsProvider` generates `1Z…` tracking numbers and PDF labels in `data/labels/`. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL for metadata/Open Graph (defaults to `http://localhost:3000`). |
 | `MONGOMS_SYSTEM_BINARY` | Path to a local mongod if the mongodb-memory-server binary download/detection fails. |

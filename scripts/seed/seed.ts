@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
 import { computeTotals, type ShippingMethodName } from "@/lib/pricing";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
@@ -19,8 +20,16 @@ import { productSvg } from "./svg";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
-const ADMIN_EMAIL = "admin@codershop.ch";
-const ADMIN_PASSWORD = "Admin!2026";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@codershop.ch";
+
+// The admin password is not a source-code constant: `ADMIN_PASSWORD` env wins, otherwise a
+// random one is generated and printed exactly once. A re-seed never touches the password of
+// an existing admin user.
+function adminPassword(): { password: string; generated: boolean } {
+  const fromEnv = process.env.ADMIN_PASSWORD;
+  if (fromEnv) return { password: fromEnv, generated: false };
+  return { password: randomBytes(12).toString("base64url"), generated: true };
+}
 
 const SUPPLIERS = [
   { name: "TechDirect GmbH", email: "orders@techdirect.ch", phone: "+41 44 555 01 01", leadTimeDays: 7 },
@@ -81,13 +90,19 @@ async function seedProducts(): Promise<number> {
   return catalog.length;
 }
 
-async function seedUser(): Promise<void> {
-  const passwordHash = await hashPassword(ADMIN_PASSWORD);
-  await UserModel.updateOne(
+export async function seedUser(): Promise<{ created: boolean; generatedPassword?: string }> {
+  const { password, generated } = adminPassword();
+  const passwordHash = await hashPassword(password);
+  const result = await UserModel.updateOne(
     { email: ADMIN_EMAIL },
-    { $set: { email: ADMIN_EMAIL, name: "Shop Admin", passwordHash, role: "admin" } },
+    {
+      $set: { name: "Shop Admin", role: "admin" },
+      $setOnInsert: { passwordHash },
+    },
     { upsert: true },
   );
+  const created = result.upsertedCount > 0;
+  return { created, ...(created && generated ? { generatedPassword: password } : {}) };
 }
 
 async function seedSuppliers() {
@@ -255,7 +270,14 @@ async function main(): Promise<void> {
   const now = new Date();
   const rng = mulberry32(987654321);
   const productCount = await seedProducts();
-  await seedUser();
+  const user = await seedUser();
+  if (user.created && user.generatedPassword) {
+    console.log(
+      `\nAdmin-Benutzer angelegt: ${ADMIN_EMAIL}\nAdmin-Passwort (einmalig angezeigt, bitte notieren): ${user.generatedPassword}\n`,
+    );
+  } else if (!user.created) {
+    console.log(`Admin-Benutzer ${ADMIN_EMAIL} existiert — Passwort unverändert.`);
+  }
   const suppliers = await seedSuppliers();
   await seedOrders(rng, now);
   await seedPurchaseOrders(rng, suppliers, now);
@@ -274,12 +296,14 @@ async function main(): Promise<void> {
   process.exit(0);
 }
 
-main().catch(async (error: unknown) => {
-  console.error("seed failed:", error);
-  try {
-    await disconnectDB();
-  } catch {
-    // already down
-  }
-  process.exit(1);
-});
+if (!process.env.VITEST) {
+  main().catch(async (error: unknown) => {
+    console.error("seed failed:", error);
+    try {
+      await disconnectDB();
+    } catch {
+      // already down
+    }
+    process.exit(1);
+  });
+}

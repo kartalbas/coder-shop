@@ -1,7 +1,7 @@
 import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
 import { env } from "./env";
-import { verifyPassword } from "./password";
+import { verifyPassword, hashPassword } from "./password";
 import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -120,8 +120,26 @@ export async function resolveSessionUserId(token: string | undefined): Promise<s
   return user ? payload.userId : null;
 }
 
-export async function getSessionUserId(): Promise<string | null> {
-  const { cookies } = await import("next/headers");
+// The seeded password can only be set at first seed; this is the way to change it later.
+export async function changePasswordCore(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (newPassword.length < 10) {
+    return { ok: false, error: "Das neue Passwort braucht mindestens 10 Zeichen." };
+  }
+  await connectDB();
+  const user = await UserModel.findById(userId).exec();
+  if (!user) return { ok: false, error: "Benutzer nicht gefunden." };
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!valid) return { ok: false, error: "Das aktuelle Passwort ist falsch." };
+  user.passwordHash = await hashPassword(newPassword);
+  await user.save();
+  return { ok: true };
+}
+
+export async function getSessionUserId(): Promise<string | null> {  const { cookies } = await import("next/headers");
   const store = await cookies();
   return resolveSessionUserId(store.get(SESSION_COOKIE)?.value);
 }

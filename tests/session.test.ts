@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { UserModel } from "@/models/user";
 import { hashPassword } from "@/server/password";
 import {
+  changePasswordCore,
   createSessionToken,
   loginCore,
   resetLoginThrottle,
@@ -204,5 +205,49 @@ describe("resolveSessionUserId", () => {
   it("rejects forged or empty tokens", async () => {
     expect(await resolveSessionUserId(undefined)).toBeNull();
     expect(await resolveSessionUserId("gibts-nicht")).toBeNull();
+  });
+});
+
+describe("changePasswordCore", () => {
+  let userId: string;
+
+  beforeAll(async () => {
+    await connectTestDB();
+    await clearCollections();
+    const user = await UserModel.create({
+      email: "admin@codershop.ch",
+      name: "Shop Admin",
+      passwordHash: await hashPassword("Admin!2026"),
+      role: "admin",
+    });
+    userId = user._id.toString();
+  });
+
+  afterAll(disconnectTestDB);
+
+  beforeEach(() => {
+    resetLoginThrottle();
+  });
+
+  it("rejects a wrong current password", async () => {
+    const result = await changePasswordCore(userId, "falsch", "Neues!Passwort1");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/aktuell/i);
+  });
+
+  it("rejects a too-short new password", async () => {
+    const result = await changePasswordCore(userId, "Admin!2026", "kurz");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/10 Zeichen/);
+  });
+
+  it("changes the password and the new one logs in", async () => {
+    expect((await changePasswordCore(userId, "Admin!2026", "Neues!Passwort1")).ok).toBe(true);
+    expect((await loginCore("admin@codershop.ch", "Admin!2026", { ip: "10.9.9.9" })).ok).toBe(
+      false,
+    );
+    expect(
+      (await loginCore("admin@codershop.ch", "Neues!Passwort1", { ip: "10.9.9.8" })).ok,
+    ).toBe(true);
   });
 });

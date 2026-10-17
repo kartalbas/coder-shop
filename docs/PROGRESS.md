@@ -448,3 +448,11 @@ Done — M1–M6 + QA complete.
 - Verified: `tests/order-access.test.ts` (8 tests), e2e `order-privacy.spec.ts`
   (stranger/wrong e-mail/correct e-mail/reload), full e2e ✅ 5/5, `npm test` ✅ 175,
   lint/build ✅.
+
+### #4 — admin password public and reset by every seed ✅
+- Seed: `ADMIN_PASSWORD` env or a random once-printed password; existing admin's password
+  survives re-seeds (`$setOnInsert`); login page hint is dev-only; new
+  Dashboard „Passwort ändern" (`changePasswordCore` + action + form).
+- Verified: `tests/seed-user.test.ts` (3), `changePasswordCore` tests (3), e2e asserts the
+  production login page contains no password; full e2e ✅ 5/5, `npm test` ✅ 181,
+  lint/build ✅.

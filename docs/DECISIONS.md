@@ -209,3 +209,11 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - Regression: `tests/e2e/order-privacy.spec.ts` (stranger sees no address/e-mail in the
   HTML, wrong e-mail rejected, correct e-mail unlocks, cookie persists) +
   `tests/order-access.test.ts` (token binding to the exact order number, throttle).
+
+### #4 — admin password: no source-code constant, no reset, no on-screen credentials
+- The seed no longer writes a fixed password: `ADMIN_PASSWORD` env wins, otherwise a random
+  one is generated and printed **once** at creation; a re-seed never touches an existing
+  admin's password (`$setOnInsert`). The login page shows the demo hint only in development
+  builds (`NODE_ENV !== "production"`), and the dashboard has a „Passwort ändern" form
+  (`changePasswordCore` — verifies the current password, ≥ 10 chars) so there is a way to
+  change it. e2e seeds pass `ADMIN_PASSWORD` explicitly.
