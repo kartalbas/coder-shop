@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PAYMENT_METHODS } from "@/lib/payments";
 
-const shippingMethods = ["standard", "express"] as const;
+const shippingMethods = ["standard", "express", "pickup"] as const;
 export type ShippingMethodParam = (typeof shippingMethods)[number];
 
 const checkoutCustomerSchema = z.object({
@@ -44,6 +44,20 @@ export const checkoutSchema = z
     // limit — that is a server decision; the schema only bounds the choice itself.
     paymentMethod: z.enum(PAYMENT_METHODS).default("mock"),
   })
+  .refine(
+    // Issue #41: „Bei Abholung“ is paid at the counter, so it only exists together with
+    // store pickup; an invoice order is always delivered (its credit flow assumes a
+    // shipping address and a parcel workflow).
+    (data) => {
+      if (data.paymentMethod === "pickup") return data.shippingMethod === "pickup";
+      if (data.paymentMethod === "invoice") return data.shippingMethod !== "pickup";
+      return true;
+    },
+    {
+      message: "Bezahlung bei Abholung ist nur mit Abholung im Laden möglich.",
+      path: ["paymentMethod"],
+    },
+  )
   .refine(
     (data) => {
       const bySku = new Map<string, number>();

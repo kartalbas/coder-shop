@@ -19,6 +19,7 @@ import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
 import { getInvoiceCreditUsageCents } from "./invoices";
 import { mintNumber } from "./numbers";
+import { generatePickupCode } from "./pickup";
 
 export type CreateOrderResult =
   | { ok: true; orderNumber: string; totals: Totals }
@@ -207,6 +208,12 @@ async function runCheckout(
         qrReference: qrReferenceForOrder(minted.year, minted.seq),
       },
     };
+  } else if (paymentMethod === "pickup") {
+    // Pay at the counter (issue #41): the order stays unpaid until the handover.
+    payment = {
+      method: "pickup" as const,
+      reference: formatPaymentReference(minted.seq),
+    };
   } else {
     const paid = transition({ status: "new" as OrderStatus, statusLog }, "paid", {
       note: "Mock-Zahlung bestätigt",
@@ -231,7 +238,11 @@ async function runCheckout(
         customer,
         lines: orderLines,
         totals,
-        shipping: { method: shippingMethod },
+        shipping: {
+          method: shippingMethod,
+          // Pickup orders carry the handover code from the start (issue #41).
+          ...(shippingMethod === "pickup" && { pickup: { code: generatePickupCode() } }),
+        },
         payment,
       },
     ],

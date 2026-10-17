@@ -14,6 +14,7 @@ import { formatChf } from "@/lib/format";
 import { INVOICE_DUE_DAYS } from "@/lib/invoices";
 import { PAYMENT_LABELS, type PaymentMethodName } from "@/lib/payments";
 import { computeTotals, shippingCents, VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
+import { STORE } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
   checkoutSchema,
@@ -44,6 +45,8 @@ const CUSTOMER_FIELDS: {
 const SHIPPING_OPTIONS: { value: ShippingMethodParam; title: string; hint: string }[] = [
   { value: "standard", title: "Standard", hint: "2–4 Werktage" },
   { value: "express", title: "Express", hint: "nächster Werktag" },
+  // Issue #41: store pickup — free, with the store's address and opening hours.
+  { value: "pickup", title: "Abholung im Laden", hint: `${STORE.city} · ${STORE.hours[0]}` },
 ];
 
 type FieldErrors = Partial<Record<string, string>>;
@@ -226,7 +229,18 @@ export function CheckoutForm({
                       name="shippingMethod"
                       value={option.value}
                       checked={shippingMethod === option.value}
-                      onChange={() => setShippingMethod(option.value)}
+                      onChange={() => {
+                        setShippingMethod(option.value);
+                        // Issue #41: the payment choices depend on the shipping method —
+                        // „Rechnung“ needs delivery, „bei Abholung“ needs pickup.
+                        setPaymentMethod((current) =>
+                          current === "invoice" && option.value === "pickup"
+                            ? "mock"
+                            : current === "pickup" && option.value !== "pickup"
+                              ? "mock"
+                              : current,
+                        );
+                      }}
                       className="size-4 accent-primary"
                     />
                     <span>
@@ -249,7 +263,13 @@ export function CheckoutForm({
             Zahlung
           </legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            {(["mock", ...(invoiceAvailable ? (["invoice"] as const) : [])] as PaymentMethodName[]).map(
+            {(shippingMethod === "pickup"
+              ? (["mock", "pickup"] as PaymentMethodName[])
+              : ([
+                  "mock",
+                  ...(invoiceAvailable ? (["invoice"] as const) : []),
+                ] as PaymentMethodName[])
+            ).map(
               (method) => (
                 <label
                   key={method}
@@ -272,7 +292,9 @@ export function CheckoutForm({
                       <span className="block text-xs text-muted-foreground">
                         {method === "invoice"
                           ? `Zahlbar innert ${INVOICE_DUE_DAYS} Tagen`
-                          : "Sofort, Demo"}
+                          : method === "pickup"
+                            ? "Bar oder Karte vor Ort"
+                            : "Sofort, Demo"}
                       </span>
                     </span>
                   </span>
@@ -290,6 +312,21 @@ export function CheckoutForm({
                     Mein Konto → Rechnungen
                   </Link>
                   .
+                </p>
+              </CardContent>
+            </Card>
+          ) : paymentMethod === "pickup" ? (
+            <Card className="mt-3">
+              <CardContent className="space-y-1 p-5 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">
+                  {STORE.name} · {STORE.street}, {STORE.postalCode} {STORE.city}
+                </p>
+                {STORE.hours.map((hour) => (
+                  <p key={hour}>{hour}</p>
+                ))}
+                <p className="pt-1">
+                  Sie zahlen erst bei der Abholung — bar oder per Karte. Den Abholcode
+                  erhalten Sie mit der Bestellbestätigung.
                 </p>
               </CardContent>
             </Card>

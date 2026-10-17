@@ -9,7 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrderStatusChain } from "@/components/storefront/order-status-chain";
+import QRCode from "qrcode";
 import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";
+import { HAPPY_PATH, PICKUP_PATH } from "@/lib/orders/state-machine";
+import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
+import { STORE } from "@/lib/store";
 import { mayViewOrderDetails } from "@/server/order-access";
 import { getOrderByNumber, type OrderDto } from "@/server/orders";
 import { OrderAccessForm } from "@/components/storefront/order-access-form";
@@ -18,6 +22,7 @@ import { VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
 const SHIPPING_LABELS: Record<OrderDto["shipping"]["method"], string> = {
   standard: "Standardversand",
   express: "Expressversand",
+  pickup: "Abholung im Laden",
 };
 
 interface PagePropsLocal {
@@ -43,6 +48,12 @@ async function OrderView({ params }: PagePropsLocal) {
   // customer account (issue #39), or an admin. Unauthorized visitors never receive the
   // details in the HTML at all.
   const authorized = await mayViewOrderDetails(order.orderNumber);
+
+  // Pickup QR for the counter (issue #41) — only rendered for the authorized buyer.
+  const pickupQr =
+    authorized && order.shipping.pickup
+      ? await QRCode.toDataURL(order.shipping.pickup.code, { margin: 1, width: 160 })
+      : null;
 
   const header = (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -71,7 +82,11 @@ async function OrderView({ params }: PagePropsLocal) {
 
       <Card>
         <CardContent className="space-y-6 p-5 sm:p-6">
-          <OrderStatusChain status={order.status} statusLog={order.statusLog} />
+          <OrderStatusChain
+            status={order.status}
+            statusLog={order.statusLog}
+            path={order.shipping.method === "pickup" ? PICKUP_PATH : HAPPY_PATH}
+          />
 
           {order.shipping.trackingNumber && (
             <div className="flex items-center gap-3 rounded-xl border bg-muted/40 p-4">
@@ -109,6 +124,54 @@ async function OrderView({ params }: PagePropsLocal) {
               >
                 Rechnung als PDF
               </Link>
+            </div>
+          )}
+
+          {order.shipping.pickup && (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-muted/40 p-4">
+              <div className="text-sm">
+                <p className="font-medium">Abholung im Laden</p>
+                <address className="mt-1 not-italic text-xs text-muted-foreground">
+                  {STORE.name}
+                  <br />
+                  {STORE.street}, {STORE.postalCode} {STORE.city}
+                  <br />
+                  {STORE.hours.join(" · ")}
+                </address>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {order.status === "picked_up"
+                    ? `Abgeholt am ${
+                        order.shipping.pickup.pickedUpAt
+                          ? formatDateTime(new Date(order.shipping.pickup.pickedUpAt))
+                          : ""
+                      }${
+                        order.shipping.pickup.paymentType
+                          ? ` · bezahlt (${PICKUP_PAYMENT_TYPE_LABELS[order.shipping.pickup.paymentType]})`
+                          : ""
+                      }`
+                    : order.status === "ready"
+                      ? "Bereit zur Abholung — Code und QR-Code an der Kasse zeigen."
+                      : "Sie erhalten den Abholcode, sobald die Bestellung bereit liegt."}
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Abholcode</p>
+                  <p className="font-mono text-2xl font-bold tracking-widest">
+                    {order.shipping.pickup.code}
+                  </p>
+                </div>
+                {pickupQr && (
+                  /* eslint-disable-next-line @next/next/no-img-element -- inline data URL, not an optimizable asset */
+                  <img
+                    src={pickupQr}
+                    alt={`QR-Code mit Abholcode ${order.shipping.pickup.code}`}
+                    width={120}
+                    height={120}
+                    className="rounded-lg border bg-white p-1"
+                  />
+                )}
+              </div>
             </div>
           )}
 
@@ -156,7 +219,9 @@ async function OrderView({ params }: PagePropsLocal) {
 
           <div className="grid gap-6 text-sm sm:grid-cols-2">
             <div>
-              <h2 className="mb-1 font-medium">Lieferadresse</h2>
+              <h2 className="mb-1 font-medium">
+                {order.shipping.method === "pickup" ? "Rechnungsadresse" : "Lieferadresse"}
+              </h2>
               <address className="not-italic text-muted-foreground">
                 {order.customer.name}
                 <br />

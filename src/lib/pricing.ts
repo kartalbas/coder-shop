@@ -8,6 +8,8 @@ export const VAT_INCLUSIVE_NOTE = `${VAT_LABEL} inbegriffen`;
 export const SHIPPING_CENTS = {
   standard: 490,
   express: 1290,
+  // Store pickup (issue #41) is always free — the free-shipping threshold is irrelevant.
+  pickup: 0,
 } as const;
 
 export const FREE_SHIPPING_FROM_CENTS = 10000;
@@ -46,6 +48,7 @@ export function subtotalCents(items: CartItem[]): number {
 }
 
 export function shippingCents(subtotal: number, method: ShippingMethodName): number {
+  if (method === "pickup") return 0;
   if (subtotal >= FREE_SHIPPING_FROM_CENTS) return 0;
   return SHIPPING_CENTS[method];
 }

@@ -393,3 +393,26 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **Invoice PDFs live in `data/invoices/`** (outside the web root, like labels) and are
   generated on demand; served only by the two guarded routes (admin session, or the
   order-visibility rule behind `/bestellung/…/rechnung`).
+
+### #41 — pickup: two new statuses instead of a parallel order kind
+- **`ready` and `picked_up` are real order statuses, gated by the shipping method in the
+  transition context.** The alternative (a boolean flag on the parcel statuses) would
+  have forked every downstream check ("packed but actually at the counter?"). Instead
+  the state machine separates the chains: pickup orders never enter
+  `packed/shipped/delivered`, parcel orders never enter `ready/picked_up`, and the
+  shipping method must be in the context for either chain to move — a default (parcel)
+  context cannot accidentally open the pickup edges.
+- **`ready → picked_up` is handover-only** (like `packed → shipped` is label-only, #10):
+  it records the payment (cash/card, `payment.paidAt` if still unpaid), so it belongs to
+  the pickup queue's handover action with the code check, never to the status buttons.
+- **The handover code is a convenience, not a secret.** 6 unambiguous characters
+  (no O/0/I/1), shown on the confirmation, in the portal and in the admin queue; plain
+  equality after normalization. It prevents handing the wrong parcel to the wrong
+  person at the counter — it authenticates nothing (the order number is equally public).
+- **Pickup payment only with pickup shipping; invoice never with pickup.** Enforced in
+  `checkoutSchema`: „bei Abholung“ is paid at the counter, and the invoice credit/
+  reminder flow assumes a parcel workflow with a shipping address.
+- **The customer chain skips `picking`** (`new → ready → picked_up`): an order may be
+  marked ready directly from `new`, and a milestone chain must not contain a step that
+  can be skipped.
+- **Cancelling a `ready` order restocks** — the goods never left the shop.

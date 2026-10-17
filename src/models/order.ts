@@ -1,10 +1,16 @@
 import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
-import { PAYMENT_METHODS, type PaymentMethodName } from "@/lib/payments";
+import type { ShippingMethodName } from "@/lib/pricing";
+import {
+  PAYMENT_METHODS,
+  PICKUP_PAYMENT_TYPES,
+  type PaymentMethodName,
+  type PickupPaymentType,
+} from "@/lib/payments";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/state-machine";
 
 export type { OrderStatus };
 
-type ShippingMethod = "standard" | "express";
+type ShippingMethod = ShippingMethodName;
 
 export interface StatusLogEntry {
   status: OrderStatus;
@@ -41,12 +47,22 @@ interface OrderTotals {
   vatCents: number;
 }
 
+// Store pickup bookkeeping (issue #41): the code the customer shows at the counter,
+// when the order was marked ready, and how the handover was paid.
+interface OrderPickup {
+  code: string;
+  readyAt?: Date;
+  pickedUpAt?: Date;
+  paymentType?: PickupPaymentType;
+}
+
 interface OrderShipping {
   method: ShippingMethod;
   carrier?: "ups";
   trackingNumber?: string;
   labelPath?: string;
   parcelWeightGrams?: number;
+  pickup?: OrderPickup;
 }
 
 // Invoice bookkeeping for payment.method "invoice" (issue #40): the open amount is
@@ -132,13 +148,24 @@ const totalsSchema = new Schema<OrderTotals>(
   { _id: false },
 );
 
+const pickupSchema = new Schema<OrderPickup>(
+  {
+    code: { type: String, required: true },
+    readyAt: { type: Date },
+    pickedUpAt: { type: Date },
+    paymentType: { type: String, enum: PICKUP_PAYMENT_TYPES },
+  },
+  { _id: false },
+);
+
 const shippingSchema = new Schema<OrderShipping>(
   {
-    method: { type: String, enum: ["standard", "express"], required: true },
+    method: { type: String, enum: ["standard", "express", "pickup"], required: true },
     carrier: { type: String, enum: ["ups"] },
     trackingNumber: { type: String },
     labelPath: { type: String },
     parcelWeightGrams: { type: Number },
+    pickup: { type: pickupSchema },
   },
   { _id: false },
 );

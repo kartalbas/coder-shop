@@ -72,7 +72,11 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
 
 export async function listPackingQueue(): Promise<OrderListItem[]> {
   await connectDB();
-  const orders = await OrderModel.find({ status: { $in: ["picking", "packed"] } })
+  // Pickup orders live in the pickup queue (issue #41), not in the parcel packing list.
+  const orders = await OrderModel.find({
+    status: { $in: ["picking", "packed"] },
+    "shipping.method": { $ne: "pickup" },
+  })
     .sort({ status: 1, createdAt: 1 })
     .lean<Order[]>()
     .exec();
@@ -119,13 +123,18 @@ export async function transitionOrderCore(
     }
 
     const from = order.status;
-    // The order's payment method is part of the transition context (issue #40):
-    // invoice orders may go new → picking unpaid, and their new → paid belongs to
-    // the invoice payment, not to these buttons.
-    const updated = transition({ ...order.toObject(), paymentMethod: order.payment.method }, to, {
-      ...opts,
-      paymentMethod: order.payment.method,
-    });
+    // The order's payment and shipping method are part of the transition context
+    // (issues #40/#41): invoice orders may go new → picking unpaid, pickup orders move
+    // through ready → picked_up via the handover action, not these buttons.
+    const updated = transition(
+      {
+        ...order.toObject(),
+        paymentMethod: order.payment.method,
+        shippingMethod: order.shipping.method,
+      },
+      to,
+      { ...opts, paymentMethod: order.payment.method, shippingMethod: order.shipping.method },
+    );
 
     const moved = await OrderModel.updateOne(
       { _id: order._id, status: from },

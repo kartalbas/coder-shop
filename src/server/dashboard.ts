@@ -6,15 +6,17 @@ import { ProductModel, type Product } from "@/models/product";
 import { connectDB } from "./db";
 import type { OrderListItem } from "./orders-admin";
 
+// `picked_up` counts as revenue (issue #41): its payment is recorded at the handover.
 const REVENUE_STATUSES: OrderStatus[] = [
   "paid",
   "picking",
   "packed",
   "shipped",
   "delivered",
+  "picked_up",
 ];
 
-const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "paid", "picking", "packed"];
+const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "paid", "picking", "packed", "ready"];
 
 export const REVENUE_WINDOW_DAYS = 30;
 
@@ -33,6 +35,7 @@ export interface DashboardData {
   revenueSeries: number[];
   openOrders: number;
   pendingShipments: number;
+  readyForPickup: number;
   lowStock: LowStockRow[];
   recentOrders: OrderListItem[];
 }
@@ -96,12 +99,18 @@ export async function getLowStockVariants(limit = 25): Promise<LowStockRow[]> {
   return rows.slice(0, limit);
 }
 
-async function getOpenOrders(): Promise<{ open: number; pendingShipments: number }> {
-  const [open, pendingShipments] = await Promise.all([
+async function getOpenOrders(): Promise<{
+  open: number;
+  pendingShipments: number;
+  readyForPickup: number;
+}> {
+  const [open, pendingShipments, readyForPickup] = await Promise.all([
     OrderModel.countDocuments({ status: { $in: OPEN_ORDER_STATUSES } }),
     OrderModel.countDocuments({ status: "packed" }),
+    // Pickup orders waiting at the counter (issue #41).
+    OrderModel.countDocuments({ status: "ready" }),
   ]);
-  return { open, pendingShipments };
+  return { open, pendingShipments, readyForPickup };
 }
 
 async function getRecentOrders(limit: number): Promise<OrderListItem[]> {
@@ -145,6 +154,7 @@ export async function getDashboardData(now = new Date()): Promise<DashboardData>
     revenueSeries: revenue.series,
     openOrders: counts.open,
     pendingShipments: counts.pendingShipments,
+    readyForPickup: counts.readyForPickup,
     lowStock,
     recentOrders,
   };

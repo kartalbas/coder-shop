@@ -9,7 +9,8 @@ import { LabelButton } from "@/components/admin/label-actions";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { StatusTimeline } from "@/components/admin/status-timeline";
 import { TransitionButtons } from "@/components/admin/transition-buttons";
-import { formatChf, formatDate, formatWeight } from "@/lib/format";
+import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";
+import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
 import { PAYMENT_LABELS } from "@/lib/payments";
 import { allowedTransitions } from "@/lib/orders/state-machine";
 import { getOrderById } from "@/server/orders-admin";
@@ -29,7 +30,10 @@ async function OrderDetail({ params }: PagePropsLocal) {
   const order = await getOrderById(id);
   if (!order) notFound();
 
-  const targets = allowedTransitions(order.status, { paymentMethod: order.payment.method });
+  const targets = allowedTransitions(order.status, {
+    paymentMethod: order.payment.method,
+    shippingMethod: order.shipping.method,
+  });
   const canCreateLabel = order.status === "packed";
   const shipped = order.status === "shipped" || order.status === "delivered";
 
@@ -82,6 +86,25 @@ async function OrderDetail({ params }: PagePropsLocal) {
           </div>
         )}
       </section>
+
+      {order.shipping.pickup && (
+        <section className="mt-6 rounded-xl border bg-card p-5" aria-label="Abholung">
+          <h2 className="mb-2 text-sm font-semibold">Abholung im Laden</h2>
+          <p className="text-sm">
+            Abholcode: <span className="font-mono font-semibold tracking-wider">{order.shipping.pickup.code}</span>
+          </p>
+          {order.shipping.pickup.pickedUpAt && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Abgeholt am {formatDateTime(order.shipping.pickup.pickedUpAt)}
+              {order.shipping.pickup.paymentType &&
+                ` · bezahlt (${PICKUP_PAYMENT_TYPE_LABELS[order.shipping.pickup.paymentType]})`}
+            </p>
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            Bereitstellen und Übergabe laufen über die Abholungs-Queue.
+          </p>
+        </section>
+      )}
 
       <div className="mt-6 grid gap-6 sm:grid-cols-2">
         <section className="rounded-xl border bg-card p-5" aria-label="Statusverlauf">

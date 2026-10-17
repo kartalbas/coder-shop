@@ -95,3 +95,40 @@ describe("createRateLimiter", () => {
     expect(limiter.check("a", t0 + 11_000).allowed).toBe(true);
   });
 });
+
+describe("checkout shipping/payment combinations (issue #41)", () => {
+  it("accepts pickup shipping with pickup payment and with the demo card", () => {
+    expect(
+      checkoutSchema.safeParse({ ...payload([{ sku: "A", qty: 1 }]), shippingMethod: "pickup", paymentMethod: "pickup" })
+        .success,
+    ).toBe(true);
+    expect(
+      checkoutSchema.safeParse({ ...payload([{ sku: "A", qty: 1 }]), shippingMethod: "pickup", paymentMethod: "mock" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects pickup payment without pickup shipping", () => {
+    const parsed = checkoutSchema.safeParse({
+      ...payload([{ sku: "A", qty: 1 }]),
+      shippingMethod: "standard",
+      paymentMethod: "pickup",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects invoice with pickup shipping", () => {
+    expect(
+      checkoutSchema.safeParse({
+        ...payload([{ sku: "A", qty: 1 }]),
+        shippingMethod: "pickup",
+        paymentMethod: "invoice",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("defaults the payment method to the demo card", () => {
+    const parsed = checkoutSchema.safeParse(payload([{ sku: "A", qty: 1 }]));
+    expect(parsed.success && parsed.data.paymentMethod).toBe("mock");
+  });
+});

@@ -26,7 +26,7 @@ async function DashboardView() {
         Umsatz der letzten {REVENUE_WINDOW_DAYS} Tage (Status bezahlt bis zugestellt).
       </p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
             <CardDescription>Umsatz ({REVENUE_WINDOW_DAYS} Tage)</CardDescription>
@@ -63,6 +63,20 @@ async function DashboardView() {
               className="text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
             >
               Zur Kommissionierung
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Abholungen bereit</CardDescription>
+            <CardTitle className="text-2xl tabular-nums">{data.readyForPickup}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/admin/pickup"
+              className="text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Zur Abholung
             </Link>
           </CardContent>
         </Card>

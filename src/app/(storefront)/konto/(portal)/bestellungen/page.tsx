@@ -84,6 +84,8 @@ export default async function AccountOrdersPage({ searchParams }: PageProps) {
                     {formatDate(new Date(order.createdAt))} · {order.itemCount}{" "}
                     {order.itemCount === 1 ? "Artikel" : "Artikel"}
                     {order.trackingNumber && ` · Sendung ${order.trackingNumber}`}
+                    {/* Issue #41: the pickup code belongs to the order, not the parcel. */}
+                    {order.pickupCode && ` · Abholung, Code ${order.pickupCode}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

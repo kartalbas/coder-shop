@@ -11,6 +11,8 @@ export interface AccountOrderSummary {
   totalCents: number;
   itemCount: number;
   trackingNumber?: string;
+  // Store pickup (issue #41): the code to show at the counter.
+  pickupCode?: string;
 }
 
 // Orders of the account: everything ordered while logged in, plus guest orders with the
@@ -44,7 +46,7 @@ export async function listAccountOrders(
   const orders = await OrderModel.find(filter)
     .sort({ createdAt: -1 })
     .limit(200)
-    .select("orderNumber status createdAt totals lines shipping.trackingNumber")
+    .select("orderNumber status createdAt totals lines shipping.trackingNumber shipping.pickup.code")
     .lean<Order[]>()
     .exec();
 
@@ -56,6 +58,9 @@ export async function listAccountOrders(
     itemCount: order.lines.reduce((sum, line) => sum + line.qty, 0),
     ...(order.shipping.trackingNumber !== undefined && {
       trackingNumber: order.shipping.trackingNumber,
+    }),
+    ...(order.shipping.pickup?.code !== undefined && {
+      pickupCode: order.shipping.pickup.code,
     }),
   }));
 }

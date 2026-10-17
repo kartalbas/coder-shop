@@ -14,9 +14,13 @@ export interface OrderChainEntry {
 export function OrderStatusChain({
   status,
   statusLog,
+  path = HAPPY_PATH,
 }: {
   status: OrderStatus;
   statusLog: OrderChainEntry[];
+  // The milestone chain to render — HAPPY_PATH for parcels, PICKUP_PATH for store
+  // collection (issue #41).
+  path?: readonly OrderStatus[];
 }) {
   const reached = new Set(statusLog.map((entry) => entry.status));
   if (status === "cancelled") {
@@ -37,7 +41,7 @@ export function OrderStatusChain({
   }
   return (
     <ol className="flex flex-wrap gap-y-3" aria-label="Bestellstatus">
-      {HAPPY_PATH.map((step, index) => {
+      {path.map((step, index) => {
         const done = reached.has(step);
         const entry = statusLog.find((e) => e.status === step);
         return (

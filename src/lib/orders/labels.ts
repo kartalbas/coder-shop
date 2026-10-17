@@ -7,5 +7,7 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   packed: "Verpackt",
   shipped: "Versandt",
   delivered: "Zugestellt",
+  ready: "Bereit zur Abholung",
+  picked_up: "Abgeholt",
   cancelled: "Storniert",
 };

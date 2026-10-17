@@ -113,6 +113,7 @@ src/
         mails/page.tsx      # dev outbox: every mail the shop would have sent (#39/#44)
         invoices/page.tsx   # invoice list + filters (offen/überfällig/bezahlt), payment +
                             # reminder + credit-limit actions (#40)
+        pickup/page.tsx     # pickup queue: bereitstellen, Code-Übergabe + Zahlung (#41)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
       invoices/[orderId]/route.ts  # GET invoice PDF (session-guarded, §4, #40)
     api/
@@ -140,7 +141,8 @@ src/
       product-search.tsx, product-core-form.tsx, variant-editor.tsx, image-editor.tsx,
       po-create-form.tsx, po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
        revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx,
-       invoice-actions.tsx          # payment / reminder / credit-limit forms (#40)
+       invoice-actions.tsx,         # payment / reminder / credit-limit forms (#40)
+       pickup-actions.tsx           # mark-ready + handover (code, cash/card) forms (#41)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
     password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
@@ -169,7 +171,9 @@ src/
     shipping/types.ts       # ShippingProvider interface, label result types
     shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
     order-visibility.ts     # who may see full order PII (cookie/admin/owning account, #39)
-    payments.ts             # PaymentMethodName ('mock' | 'invoice') + German labels (#40)
+    payments.ts             # PaymentMethodName ('mock' | 'invoice' | 'pickup') + labels,
+                            # pickup payment types (cash/card) (#40/#41)
+    store.ts                # pickup store address + opening hours (single source, #41)
     invoices.ts             # pure invoice rules: due date, open amount, overdue, credit
                             # default, ISO-11649 QRR reference + SPC QR payload (#40)
     mail-templates.ts       # German e-mail templates as pure functions (#39/#44),
@@ -195,6 +199,8 @@ src/
     invoices.ts             # invoice cores: lists (admin/portal), credit usage/limits,
                             # recordInvoicePaymentCore, sendInvoiceReminderCore,
                             # getInvoiceFileCore (transaction + conditional writes, #40)
+    pickup.ts               # pickup cores: code generation, queue, markPickupReadyCore,
+                            # handoverPickupCore (code check + payment in one txn, #41)
     invoices-pdf.ts         # invoice PDF with Swiss QR-bill section (pdf-lib + qrcode, #40)
     orders.ts               # customer confirmation lookup (getOrderByNumber)
     orders-admin.ts         # listOrders, transitionOrderCore (conditional write + restock)
@@ -220,6 +226,7 @@ src/
       admin/shipping.ts     # createLabel → createLabelCore
       admin/invoices.ts     # recordInvoicePayment, sendInvoiceReminder, setCreditLimit
                             # → *Core fns (#40)
+      admin/pickup.ts       # markPickupReady, handoverPickup → *Core fns (#41)
   stores/
     cart.ts                 # useSyncExternalStore store, localStorage-persisted
   hooks/
@@ -295,23 +302,26 @@ Indexes:
 ```ts
 {
   orderNumber: string     // unique, "B-2026-000123" via atomic counter
-  status: 'new' | 'paid' | 'picking' | 'packed' | 'shipped' | 'delivered' | 'cancelled'
+  status: 'new' | 'paid' | 'picking' | 'packed' | 'shipped' | 'delivered'
+          | 'ready' | 'picked_up' | 'cancelled'
   statusLog: [{ status, at: Date, note?, by? }]
   userId?: ObjectId         // owning customer account (ordered logged-in or claimed, #39)
   customer: { name, email, phone, street, postalCode, city, country }
   lines: [{ productId, sku, name, variantLabel, qty, unitPriceCents,
             totalCents, weightGrams }]
   totals: { subtotalCents, shippingCents, totalCents, vatCents }
-  shipping: { method: 'standard'|'express', carrier?: 'ups',
-              trackingNumber?, labelPath?, parcelWeightGrams? }
-  payment: { method: 'mock' | 'invoice', reference: string, paidAt?: Date,
+  shipping: { method: 'standard'|'express'|'pickup', carrier?: 'ups',
+              trackingNumber?, labelPath?, parcelWeightGrams?,
+              pickup?: { code, readyAt?, pickedUpAt?, paymentType?: 'cash'|'card' } }
+  payment: { method: 'mock' | 'invoice' | 'pickup', reference: string, paidAt?: Date,
              invoice?: { dueAt, paidCents, qrReference, reminder1At?, reminder2At? } }
   createdAt, updatedAt
 }
 ```
 `payment.invoice` (issue #40) carries the invoice bookkeeping: open amount is
 `totals.totalCents − invoice.paidCents`, overdue once `dueAt` passed, reminder levels dated
-so the 2nd cannot precede the 1st.
+so the 2nd cannot precede the 1st. `shipping.pickup` (issue #41) carries the handover code
+(6 unambiguous characters) and how the on-site payment was taken.
 Indexes: `{ orderNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`, `{ 'customer.email': 1 }`,
 `{ userId: 1, createdAt: -1 }`, `{ 'payment.method': 1, 'payment.invoice.dueAt': 1 }`.
 
@@ -372,8 +382,14 @@ results and are covered by Vitest integration tests against the real replica set
   cancel — **no reservations**; `lib/stock.ts` stays pure (predicates only), the DB loop lives
   here.
 - `transitionOrderCore(orderId, to, note, by)` — delegates to the state machine; cancel from
-  `new`/`paid`/`picking` restocks **in the same transaction** (§5). The order's
-  `payment.method` is part of the transition context (§5, #40).
+  `new`/`paid`/`picking`/`ready` restocks **in the same transaction** (§5). The order's
+  `payment.method` and `shipping.method` are part of the transition context (§5, #40/#41).
+- Pickup cores (issue #41, `src/server/pickup.ts`): `markPickupReadyCore(orderId, by)` —
+  `new`/`picking → ready` (conditional on the loaded status, stamps `pickup.readyAt`);
+  `handoverPickupCore(orderId, code, paymentType, by)` — the code the customer shows must
+  match, then `ready → picked_up` (`viaPickupHandover`) **and** the payment
+  (`payment.paidAt` if still unpaid, `paymentType`) are recorded in one transaction.
+  `listPickupQueueCore` is the admin queue; the packing queue excludes pickup orders.
 - Invoice cores (issue #40, `src/server/invoices.ts`): `recordInvoicePaymentCore(orderId,
   amountCents, by)` — partial payments up to the open balance, conditional on the loaded
   state; settling a still-`new` order moves it to `paid` through the state machine
@@ -449,9 +465,13 @@ and the mock.
 
 ```
 new → paid → picking → packed → shipped → delivered
-new → picking                                   (invoice orders only, #40 — process before payment)
-cancelled reachable from: new, paid, picking   (not from packed/shipped/delivered)
+new → picking                                   (invoice/pickup orders only, #40/#41)
+new/picking → ready → picked_up                 (pickup orders only, #41 — store collection;
+                                                 the handover records the payment)
+cancelled reachable from: new, paid, picking, ready   (not from packed/shipped/delivered)
 ```
+Pickup orders never enter `packed`/`shipped`/`delivered`, parcel orders never enter
+`ready`/`picked_up` — the shipping method in the transition context separates the chains.
 - `canTransition(from, to, ctx)` from an explicit adjacency map; the context carries
   `viaLabel`, `viaInvoicePayment` and the order's `paymentMethod`. `new → picking` is legal
   **only for invoice orders**; `new → paid` of an invoice order is legal **only** via

@@ -885,3 +885,33 @@ Done — M1–M6 + QA complete.
   `invoice-payment.spec.ts` (register → invoice checkout → confirmation + PDF → portal
   open → admin marks paid → both sides settled). `npm test` ✅ 350, lint/knip/build ✅,
   `npm run test:e2e` ✅ 25/25.
+
+### #41 — payment on pickup (Bezahlung bei Abholung) ✅
+- Checkout: Versand-Option „Abholung im Laden“ (gratis, `SHIPPING_CENTS.pickup = 0`,
+  Store-Adresse + Öffnungszeiten aus `src/lib/store.ts`) und Zahlung „Bei Abholung“
+  (nur mit Abholung, Schema-Refine; Rechnung+Abholung abgelehnt). Pickup-Bestellungen
+  entstehen `new`/unbezahlt mit 6-stelligem Abholcode (eindeutiger Alphabet) auf
+  `shipping.pickup`; Karte+Abholung zahlt sofort wie bisher.
+- State machine: neue Status `ready` („Bereit zur Abholung“) und `picked_up`
+  („Abgeholt“), nur mit `shippingMethod: "pickup"` im Kontext erreichbar; Pickup-
+  Bestellungen bleiben aus der Paket-Kette ausgeschlossen (auch `packed → shipped`
+  mit Etikett); `ready → picked_up` ist übergabe-only (wie Label-only #10); Cancel
+  aus `ready` restockt; `PICKUP_PATH` (new → ready → picked_up) ersetzt die Kette auf
+  der Bestätigungsseite.
+- `src/server/pickup.ts`: `markPickupReadyCore` (new/picking → ready, Stempel),
+  `handoverPickupCore` (Code-Prüfung, `ready → picked_up` + `payment.paidAt` +
+  Bar/Karte in einer Transaktion, bedingter Write), `listPickupQueueCore`;
+  Kommissionierungs-Queue schliesst Pickup aus; Dashboard: KPI „Abholungen bereit“,
+  `picked_up` zählt zum Umsatz.
+- Bestätigung: Abhol-Block mit Ladenadresse, Öffnungszeiten, Code + QR-Code
+  (`qrcode`, nur für Berechtigte gerendert) und Statushinweis; Portal-
+  Bestellungsliste zeigt den Code; Admin `/admin/pickup` (Bereitstellen,
+  Code-Eingabe + Bar/Karte, Toasts), Navigation + Badge-Töne + Admin-Detail-Block.
+- Verified: state-machine-Unit-Tests (Pickup-Kette, Button-Ausblendung, Restock),
+  Schema-Tests (Kombinationsregeln), `tests/pickup.test.ts` (10: Code-Format,
+  Unpaid-Erzeugung + Gratisversand, Kombi-Ablehnung, gesamter Queue-Flow inkl.
+  falschem Code und Statusbutton-Sperre, direkt bereit aus `new`, Karten-Abholung
+  ohne Doppelzahlung, Cancel restockt, Ketten-Trennung, Gast-Checkout); e2e
+  `pickup.spec.ts` (Gast-Checkout → Code/QR → Bereitstellen → falscher Code →
+  Übergabe mit Karte → „Abgeholt“ + bezahlt). `npm test` ✅ 368, lint/knip/build ✅,
+  `npm run test:e2e` ✅ 26/26.

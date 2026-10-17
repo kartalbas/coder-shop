@@ -1,4 +1,5 @@
 import { openAmountCents } from "@/lib/invoices";
+import type { PickupPaymentType } from "@/lib/payments";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "./db";
 
@@ -20,6 +21,7 @@ export interface OrderDto {
     method: Order["shipping"]["method"];
     trackingNumber?: string;
     parcelWeightGrams?: number;
+    pickup?: { code: string; readyAt?: string; pickedUpAt?: string; paymentType?: PickupPaymentType };
   };
   payment: {
     method: Order["payment"]["method"];
@@ -60,6 +62,20 @@ export async function getOrderByNumber(orderNumber: string): Promise<OrderDto | 
       }),
       ...(order.shipping.parcelWeightGrams !== undefined && {
         parcelWeightGrams: order.shipping.parcelWeightGrams,
+      }),
+      ...(order.shipping.pickup !== undefined && {
+        pickup: {
+          code: order.shipping.pickup.code,
+          ...(order.shipping.pickup.readyAt !== undefined && {
+            readyAt: order.shipping.pickup.readyAt.toISOString(),
+          }),
+          ...(order.shipping.pickup.pickedUpAt !== undefined && {
+            pickedUpAt: order.shipping.pickup.pickedUpAt.toISOString(),
+          }),
+          ...(order.shipping.pickup.paymentType !== undefined && {
+            paymentType: order.shipping.pickup.paymentType,
+          }),
+        },
       }),
     },
     payment: {

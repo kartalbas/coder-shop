@@ -105,12 +105,57 @@ describe("canTransition — full graph", () => {
       "cancelled",
     ]);
   });
+
+  it("the pickup chain is pickup-only and handover-gated (issue #41)", () => {
+    // Without the pickup context none of the new edges exists.
+    expect(canTransition("new", "ready")).toBe(false);
+    expect(canTransition("picking", "ready")).toBe(false);
+    expect(canTransition("ready", "picked_up")).toBe(false);
+    expect(canTransition("ready", "cancelled")).toBe(false);
+
+    // With pickup shipping the chain opens — except the handover itself.
+    expect(canTransition("new", "ready", { shippingMethod: "pickup" })).toBe(true);
+    expect(canTransition("picking", "ready", { shippingMethod: "pickup" })).toBe(true);
+    expect(canTransition("ready", "cancelled", { shippingMethod: "pickup" })).toBe(true);
+    expect(canTransition("ready", "picked_up", { shippingMethod: "pickup" })).toBe(false);
+    expect(
+      canTransition("ready", "picked_up", { shippingMethod: "pickup", viaPickupHandover: true }),
+    ).toBe(true);
+
+    // A pickup order never enters the parcel chain.
+    expect(canTransition("picking", "packed", { shippingMethod: "pickup" })).toBe(false);
+    expect(canTransition("packed", "shipped", { shippingMethod: "pickup", viaLabel: true })).toBe(
+      false,
+    );
+    // And a parcel order never enters the pickup chain.
+    expect(canTransition("picking", "ready", { shippingMethod: "standard" })).toBe(false);
+
+    // Unpaid processing also covers pickup payment; new → paid is closed for it.
+    expect(canTransition("new", "picking", { paymentMethod: "pickup" })).toBe(true);
+    expect(canTransition("new", "paid", { paymentMethod: "pickup" })).toBe(false);
+  });
+
+  it("the admin buttons show the pickup chain only for pickup orders", () => {
+    expect(allowedTransitions("new", { shippingMethod: "pickup", paymentMethod: "pickup" })).toEqual(
+      ["picking", "ready", "cancelled"],
+    );
+    expect(allowedTransitions("picking", { shippingMethod: "pickup" })).toEqual([
+      "ready",
+      "cancelled",
+    ]);
+    // The handover is never a button — it records the payment in the pickup queue.
+    expect(allowedTransitions("ready", { shippingMethod: "pickup" })).toEqual(["cancelled"]);
+    expect(allowedTransitions("picked_up")).toEqual([]);
+  });
 });
 
 describe("transitionsWithRestock", () => {
-  it.each(["new", "paid", "picking"] as OrderStatus[])("cancel from %s restocks", (from) => {
-    expect(transitionsWithRestock(from, "cancelled")).toBe(true);
-  });
+  it.each(["new", "paid", "picking", "ready"] as OrderStatus[])(
+    "cancel from %s restocks",
+    (from) => {
+      expect(transitionsWithRestock(from, "cancelled")).toBe(true);
+    },
+  );
 
   it.each(["packed", "shipped", "delivered", "cancelled"] as OrderStatus[])(
     "cancel from %s does not restock (not allowed at all)",
