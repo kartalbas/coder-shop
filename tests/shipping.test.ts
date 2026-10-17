@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MOCK_TRACKING_PATTERN, type LabelRequest, type ShippingProvider } from "@/lib/shipping/types";
 import { OrderModel, type Order, type OrderStatus } from "@/models/order";
 import { MockUpsProvider } from "@/server/shipping/mock";
-import { LABELS_DIR, createLabelCore } from "@/server/shipping/label";
+import { LABELS_DIR, createLabelCore, getLabelFileCore } from "@/server/shipping/label";
 import { UpsShippingProvider } from "@/server/shipping/ups";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
@@ -327,5 +327,63 @@ describe("createLabelCore", () => {
   it("returns an error for an unknown order", async () => {
     const result = await createLabelCore("000000000000000000000000", new MockUpsProvider());
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("getLabelFileCore (issue #32)", () => {
+  const cleanup: string[] = [];
+
+  beforeAll(async () => {
+    await connectTestDB();
+  });
+
+  afterAll(async () => {
+    await Promise.all(cleanup.map((file) => fs.rm(file, { force: true })));
+  });
+
+  it("serves the label PDF of an order that has one", async () => {
+    const order = await seedOrder("packed", "9001");
+    const label = await createLabelCore(order._id.toString(), new MockUpsProvider());
+    expect(label.ok).toBe(true);
+    if (!label.ok) return;
+    cleanup.push(path.resolve(label.labelPath));
+
+    const result = await getLabelFileCore(order._id.toString());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.orderNumber).toBe(order.orderNumber);
+    expect(result.pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  });
+
+  it("refuses a label path that escapes the labels directory", async () => {
+    const order = await seedOrder("packed", "9002");
+    await OrderModel.updateOne(
+      { _id: order._id },
+      { $set: { "shipping.labelPath": "data/labels/../../.env" } },
+    );
+    const result = await getLabelFileCore(order._id.toString());
+    expect(result).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it("404s when the recorded file is gone, when there is no label and for bad ids", async () => {
+    const order = await seedOrder("packed", "9003");
+    await OrderModel.updateOne(
+      { _id: order._id },
+      { $set: { "shipping.labelPath": "data/labels/B-2026-999999.pdf" } },
+    );
+    expect(await getLabelFileCore(order._id.toString())).toMatchObject({
+      ok: false,
+      status: 404,
+    });
+
+    const noLabel = await seedOrder("packed", "9004");
+    expect(await getLabelFileCore(noLabel._id.toString())).toMatchObject({
+      ok: false,
+      status: 404,
+    });
+    expect(await getLabelFileCore("kein-object-id")).toMatchObject({
+      ok: false,
+      status: 404,
+    });
   });
 });

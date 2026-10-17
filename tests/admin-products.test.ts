@@ -8,6 +8,7 @@ import {
   updateProductCore,
   updateVariantCore,
 } from "@/server/products-admin";
+import { adminProductsQuerySchema } from "@/lib/validations/listing";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 async function seedProduct(slug: string, brand: string, featured = false) {
@@ -153,5 +154,26 @@ describe("admin product management", () => {
     const product = await ProductModel.findOne({ slug: "beta" }).exec();
     const dto = await getProductForAdmin(product!._id.toString());
     expect(dto?.slug).toBe("beta");
+  });
+});
+
+describe("adminProductsQuerySchema (issue #32)", () => {
+  it("passes through valid search parameters", () => {
+    expect(
+      adminProductsQuerySchema.parse({ q: "iphone", type: "smartphone", page: "2" }),
+    ).toEqual({ q: "iphone", type: "smartphone", page: 2 });
+  });
+
+  it("falls back to unset instead of breaking on junk", () => {
+    expect(adminProductsQuerySchema.parse({ q: "", type: "quatsch", page: "abc" })).toEqual({});
+    expect(adminProductsQuerySchema.parse({ page: "0" })).toEqual({});
+    expect(adminProductsQuerySchema.parse({})).toEqual({});
+  });
+
+  it("takes the first value of repeated parameters", () => {
+    expect(adminProductsQuerySchema.parse({ q: ["a", "b"], page: ["3", "9"] })).toEqual({
+      q: "a",
+      page: 3,
+    });
   });
 });

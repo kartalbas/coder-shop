@@ -521,3 +521,17 @@ Done — M1–M6 + QA complete.
   (explicit-false override, trusted x-forwarded-proto both ways, unparseable
   origin/referer, dev default).
 - Verified: `npm test` ✅ 230, lint/build ✅, e2e ✅ 7/7.
+
+### #32 — routes were not thin anymore ✅
+- Label download: look-up, path containment and file read moved into
+  `getLabelFileCore` (`src/server/shipping/label.ts`); the route keeps only the session
+  guard and response mapping. Covered by 3 new integration tests in
+  `tests/shipping.test.ts` (serves PDF, refuses escaping paths, 404s).
+- Order confirmation: its private `StatusBadge`/`Timeline` are gone — the page uses the
+  shared `OrderStatusBadge` (same tones as the admin now) and the new
+  `OrderStatusChain` component (`src/components/storefront/order-status-chain.tsx`),
+  which renders the new `HAPPY_PATH` from the state machine.
+- Admin products page: `?q/?type/?page` parsed by `adminProductsQuerySchema`
+  (`src/lib/validations/listing.ts`, junk falls back to unset) instead of hand casts;
+  3 schema tests.
+- Verified: `npm test` ✅ 236, lint/build ✅, e2e ✅ 7/7.

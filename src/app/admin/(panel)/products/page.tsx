@@ -10,7 +10,7 @@ import { ProductSearch } from "@/components/admin/product-search";
 import { formatChf } from "@/lib/format";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import type { ProductType } from "@/models/product";
-import { productTypes } from "@/lib/validations/listing";
+import { adminProductsQuerySchema, productTypes } from "@/lib/validations/listing";
 import { cn } from "@/lib/utils";
 import { listProductsAdmin } from "@/server/products-admin";
 
@@ -31,12 +31,9 @@ async function ProductsView({
 }) {
   await connection();
   const params = await searchParams;
-  const q = typeof params.q === "string" ? params.q : undefined;
-  const rawType = typeof params.type === "string" ? params.type : undefined;
-  const type = productTypes.includes(rawType as ProductType) ? (rawType as ProductType) : undefined;
-  const page = typeof params.page === "string" ? Number(params.page) : 1;
+  const { q, type, page = 1 } = adminProductsQuerySchema.parse(params);
 
-  const result = await listProductsAdmin({ q, type, page: Number.isFinite(page) ? page : 1 });
+  const result = await listProductsAdmin({ q, type, page });
   const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
   const linkFor = (targetPage: number, nextType?: ProductType) => {

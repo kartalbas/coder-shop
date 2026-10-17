@@ -26,3 +26,11 @@ export type ListingParams = z.infer<typeof listingParamsSchema>;
 export const searchQuerySchema = z.object({
   q: first.pipe(z.string().max(100)).optional(),
 });
+
+// Admin product list search parameters — validated instead of hand-parsed with casts
+// (issue #32); every field falls back to "unset" instead of breaking the page.
+export const adminProductsQuerySchema = z.object({
+  q: first.pipe(z.string().max(100)).optional().catch(undefined),
+  type: first.pipe(z.enum(productTypes)).optional().catch(undefined),
+  page: first.transform(Number).pipe(z.number().int().min(1)).optional().catch(undefined),
+});

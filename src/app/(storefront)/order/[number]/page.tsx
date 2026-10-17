@@ -3,14 +3,12 @@ export const instant = false;
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { Check, Circle, PackageCheck, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { PackageCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusChain } from "@/components/storefront/order-status-chain";
 import { formatChf, formatDateTime, formatWeight } from "@/lib/format";
-import { STATUS_LABELS } from "@/lib/orders/labels";
-import type { OrderStatus } from "@/lib/orders/state-machine";
-import { cn } from "@/lib/utils";
 import { hasOrderAccess } from "@/server/order-access";
 import { getOrderByNumber, type OrderDto } from "@/server/orders";
 import { getSessionUserId } from "@/server/session";
@@ -20,8 +18,6 @@ const SHIPPING_LABELS: Record<OrderDto["shipping"]["method"], string> = {
   standard: "Standardversand",
   express: "Expressversand",
 };
-
-const CHAIN: OrderStatus[] = ["new", "paid", "picking", "packed", "shipped", "delivered"];
 
 interface PagePropsLocal {
   params: Promise<{ number: string }>;
@@ -33,69 +29,6 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
     title: `Bestellung ${number}`,
     description: `Status und Details Ihrer Bestellung ${number} — coder-shop.`,
   };
-}
-
-function StatusBadge({ status }: { status: OrderStatus }) {
-  const tone =
-    status === "cancelled"
-      ? "bg-destructive/10 text-destructive border-destructive/30"
-      : status === "delivered"
-        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-        : "bg-primary/10 text-primary border-primary/30";
-  return <Badge variant="outline" className={tone}>{STATUS_LABELS[status]}</Badge>;
-}
-
-function Timeline({ order }: { order: OrderDto }) {
-  const reached = new Set(order.statusLog.map((entry) => entry.status));
-  if (order.status === "cancelled") {
-    const cancelledAt = order.statusLog.find((entry) => entry.status === "cancelled");
-    return (
-      <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-        <X className="size-5 shrink-0 text-destructive" aria-hidden />
-        <div>
-          <p className="font-medium text-destructive">Bestellung storniert</p>
-          {cancelledAt && (
-            <p className="text-sm text-muted-foreground">
-              am {formatDateTime(new Date(cancelledAt.at))}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-  return (
-    <ol className="flex flex-wrap gap-y-3" aria-label="Bestellstatus">
-      {CHAIN.map((step, index) => {
-        const done = reached.has(step);
-        const entry = order.statusLog.find((e) => e.status === step);
-        return (
-          <li key={step} className="flex items-center">
-            {index > 0 && <span className="mx-2 h-px w-6 bg-border sm:w-10" aria-hidden />}
-            <div className="flex flex-col items-center gap-1 text-center">
-              {done ? (
-                <Check className="size-5 text-primary" aria-hidden />
-              ) : (
-                <Circle className="size-5 text-muted-foreground/40" aria-hidden />
-              )}
-              <span
-                className={cn(
-                  "text-xs",
-                  done ? "font-medium text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {STATUS_LABELS[step]}
-              </span>
-              {entry && (
-                <span className="text-[10px] text-muted-foreground">
-                  {formatDateTime(new Date(entry.at))}
-                </span>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 async function OrderView({ params }: PagePropsLocal) {
@@ -118,7 +51,7 @@ async function OrderView({ params }: PagePropsLocal) {
           Bestellung {order.orderNumber}
         </h1>
       </div>
-      <StatusBadge status={order.status} />
+      <OrderStatusBadge status={order.status} />
     </div>
   );
 
@@ -137,7 +70,7 @@ async function OrderView({ params }: PagePropsLocal) {
 
       <Card>
         <CardContent className="space-y-6 p-5 sm:p-6">
-          <Timeline order={order} />
+          <OrderStatusChain status={order.status} statusLog={order.statusLog} />
 
           {order.shipping.trackingNumber && (
             <div className="flex items-center gap-3 rounded-xl border bg-muted/40 p-4">

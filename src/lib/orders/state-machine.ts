@@ -33,6 +33,17 @@ export const ORDER_STATUSES = Object.keys(TRANSITIONS) as OrderStatus[];
 
 export const RESTOCK_STATUSES: readonly OrderStatus[] = ["new", "paid", "picking"];
 
+// The non-cancelled path through the graph — the single source for anything that renders
+// or reasons about "how far is this order" (issue #31).
+export const HAPPY_PATH: readonly OrderStatus[] = [
+  "new",
+  "paid",
+  "picking",
+  "packed",
+  "shipped",
+  "delivered",
+];
+
 // `packed → shipped` exists in the graph but only label creation may take it
 // (REQUIREMENTS: "Creating a label moves the order to shipped") — a manual transition
 // would produce a shipped order without tracking number, and label creation would then
