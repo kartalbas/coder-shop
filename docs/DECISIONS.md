@@ -457,3 +457,19 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   stamps `notifiedAt`, so a second restock does not mail again — a new sell-out needs
   a fresh subscription. The mail goes through the #44 transport and never fails the
   workflow it hangs on (same rule as every other workflow mail).
+
+### #47 — reviews: purchase-proven, moderation-gated, rating denormalized
+- **A review requires a real purchase.** The buyer must own an order containing the
+  product whose status counts as purchased (pure `countsAsPurchase`: everything
+  except `new` and `cancelled` — an unpaid invoice/pickup order or a cancelled one
+  proves nothing). The check runs server-side on submit; the UI only hides the form.
+- **One review per (product, buyer)** — unique `{ productId, userId }`; a second
+  attempt is a clean German error, the index makes the race safe.
+- **Moderation gate: new reviews are `pending`, only `approved` are public.**
+  Admin approves, hides (e.g. abuse) and answers. Nothing customer-written renders
+  unmoderated; the buyer sees "in Prüfung" meanwhile.
+- **The approved aggregate is denormalized onto the product** (`rating.average/count`,
+  recomputed on approve/hide): listing cards, `sort=rating` and JSON-LD read one
+  field instead of aggregating per request — same denormalization rule as `filter`.
+- **`authorName` is copied at submission** — the review keeps the name it was written
+  under even if the account changes or the aggregate is re-sorted later.

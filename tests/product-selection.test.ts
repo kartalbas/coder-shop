@@ -37,6 +37,7 @@ function product(variants: VariantDto[]): ProductDto {
     collection: null,
     filter: { colors: [], sizes: [], storage: [], materials: [] },
     variants,
+    rating: { average: 0, count: 0 },
     createdAt: new Date().toISOString(),
   };
 }

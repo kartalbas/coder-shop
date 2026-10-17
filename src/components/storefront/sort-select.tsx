@@ -13,6 +13,7 @@ const OPTIONS: { value: SortKey; label: string }[] = [
   { value: "newest", label: "Neueste" },
   { value: "price-asc", label: "Preis aufsteigend" },
   { value: "price-desc", label: "Preis absteigend" },
+  { value: "rating", label: "Beste Bewertungen" },
 ];
 
 export function SortSelect({ value, onChange }: { value: SortKey; onChange: (sort: SortKey) => void }) {

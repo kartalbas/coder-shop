@@ -1055,3 +1055,31 @@ Done — M1–M6 + QA complete.
   restock trigger it); new e2e `wishlist.spec.ts` (heart on card → rail → logout/login
   keeps the wishlist in the portal; sold-out variant → subscribe → outbox entry) —
   `npm test` ✅ 413, lint/build ✅, `npm run test:e2e` ✅ 29/29.
+
+### #47 — product reviews and ratings ✅
+- Pure rules `src/lib/reviews.ts`: statuses + labels, `countsAsPurchase` (every order
+  status except `new`/`cancelled`), `aggregateRating` (one-decimal average, star
+  distribution, junk values ignored).
+- Model `reviews`: one per (product, buyer) via unique `{ productId, userId }`,
+  `rating 1–5`, `status pending|approved|hidden`, optional title and `adminReply`;
+  only buyers of the product may submit (server-checked against their orders), new
+  reviews start `pending`.
+- `src/server/reviews.ts`: `submitReviewCore` (purchase check, authorName copy,
+  duplicate → clean error), `getProductReviewsCore` (approved, newest first +
+  aggregate), `hasPurchasedCore`/`getUserReviewCore` for the form gate, admin
+  `listReviewsCore`/`setReviewStatusCore`/`replyToReviewCore`; the approved aggregate
+  is denormalized to `product.rating` on every moderation change (DECISIONS).
+- Storefront: `ReviewSection` on the product page (average, distribution bars,
+  reviews with „Verifizierter Kauf" badge and the shop's answer; form only for
+  logged-in buyers who have not reviewed yet), `StarRating` on product cards once
+  rated, listing sort „Beste Bewertungen" (`sort=rating`, unrated last), JSON-LD
+  `AggregateRating`.
+- Admin `/admin/reviews` („Bewertungen" in the nav): status tabs, per-review
+  Freigeben/Verstecken and the answer field.
+- Verified: `src/lib/reviews.test.ts` (4), `tests/reviews.test.ts` (7: buyer-only +
+  pending start, cancelled/new prove nothing, one per buyer, approval publishes with
+  the right average + denormalized product rating, hide removes from both, answer
+  stored, junk ids clean); new e2e `reviews.spec.ts` (register → buy → 5 stars →
+  pending invisible → admin approves + answers → published with badge/average/
+  AggregateRating, no second form; non-buyer sees no form) — `npm test` ✅ 425,
+  lint/build ✅, `npm run test:e2e` ✅ 31/31.

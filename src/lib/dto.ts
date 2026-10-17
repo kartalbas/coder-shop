@@ -29,5 +29,7 @@ export interface ProductDto {
   collection: string | null;
   filter: ProductFilter;
   variants: VariantDto[];
+  // Approved-review rating (issue #47); count 0 = not yet rated.
+  rating: { average: number; count: number };
   createdAt: string;
 }

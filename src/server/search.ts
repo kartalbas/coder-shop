@@ -52,6 +52,7 @@ export function toProductDto(product: LeanProduct | HydratedDocument<Product>): 
       weightGrams: v.weightGrams,
       attributes: { ...v.attributes },
     })),
+    rating: { average: p.rating?.average ?? 0, count: p.rating?.count ?? 0 },
     createdAt: p.createdAt.toISOString(),
   };
 }
@@ -75,6 +76,8 @@ const SORTS: Record<SortKey, Record<string, 1 | -1>> = {
   "price-asc": { priceCents: 1, _id: 1 },
   "price-desc": { priceCents: -1, _id: 1 },
   newest: { createdAt: -1, _id: 1 },
+  // Issue #47: best-rated first; unrated products (average 0) fall to the back.
+  rating: { "rating.average": -1, _id: 1 },
 };
 
 export function buildListingFilter(query: ListingQuery): Record<string, unknown> {

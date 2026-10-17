@@ -117,6 +117,7 @@ src/
         pickup/page.tsx     # pickup queue: bereitstellen, Code-Übergabe + Zahlung (#41)
         customers/page.tsx, customers/[id]/page.tsx  # customer list + detail (#43)
         discounts/page.tsx  # discount codes: create, activate/deactivate, usage stats (#45)
+        reviews/page.tsx    # review moderation: approve, hide, answer (#47)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
       invoices/[orderId]/route.ts  # GET invoice PDF (session-guarded, §4, #40)
     api/
@@ -142,8 +143,9 @@ src/
       discount-input.tsx,                            # code field with live feedback (#45)
       wishlist-heart.tsx, wishlist-sync.tsx, wishlist-merge-on-visit.tsx,
       wishlist-remove-button.tsx, local-store-hydrator.tsx,
-      recently-viewed.tsx, restock-alert-form.tsx    # wishlist + recently viewed +
-                                                     # back-in-stock alerts (#46)
+      recently-viewed.tsx, restock-alert-form.tsx,    # wishlist + recently viewed +
+      star-rating.tsx, review-form.tsx, review-section.tsx  # back-in-stock (#46) +
+                                                     # verified-buyer reviews (#47)
     admin/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
@@ -153,8 +155,9 @@ src/
        revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx,
        invoice-actions.tsx,         # payment / reminder / credit-limit forms (#40)
         customer-actions.tsx,        # block / notes / password-reset forms (#43)
-        pickup-actions.tsx,          # mark-ready + handover (code, cash/card) forms (#41)
-        discount-forms.tsx           # create + activate/deactivate codes (#45)
+         pickup-actions.tsx,          # mark-ready + handover (code, cash/card) forms (#41)
+         discount-forms.tsx,          # create + activate/deactivate codes (#45)
+         review-actions.tsx           # approve / hide / answer a review (#47)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
     discount-code.ts        # marketing codes: percent/fixed, window, limits (#45)
@@ -162,6 +165,7 @@ src/
     password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
     mail-message.ts         # dev outbox messages (#39/#44)
     restock-alert.ts        # (sku, e-mail) back-in-stock subscriptions, notify-once (#46)
+    review.ts               # verified-buyer reviews: pending/approved/hidden (#47)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
                           # (guard test: tests/lib-purity.test.ts)
     product-types.ts        # ProductType union (models re-export it)
@@ -190,6 +194,8 @@ src/
                             # pickup payment types (cash/card) (#40/#41)
     store.ts                # pickup store address + opening hours (single source, #41)
     discounts.ts            # pure discount math + validity window (#45)
+    reviews.ts              # pure review rules: statuses, purchase rule, rating
+                            # aggregation + distribution (#47)
     invoices.ts             # pure invoice rules: due date, open amount, overdue, credit
                             # default, ISO-11649 QRR reference + SPC QR payload (#40)
     mail-templates.ts       # German e-mail templates as pure functions (#39/#44),
@@ -233,6 +239,8 @@ src/
     wishlist.ts             # account wishlist: sync (merge/replace), list, remove (#46)
     restock-alerts.ts       # subscribe + notifyRestockedCore (goods receipt / cancel
                             # restock → one mail per waiting address, #46)
+    reviews.ts              # review cores: submit (buyer check), lists, moderation,
+                            # answer, denormalized product rating recompute (#47)
     shipping/provider.ts    # factory (env-driven)
     shipping/ups.ts         # UpsShippingProvider (UPS REST, token cache, §4)
     shipping/mock.ts        # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
@@ -256,8 +264,10 @@ src/
                             # → *Core fns (#40)
       admin/pickup.ts       # markPickupReady, handoverPickup → *Core fns (#41)
       admin/discounts.ts    # createDiscount, setDiscountActive → *Core fns (#45)
+      admin/reviews.ts      # setReviewStatus, replyToReview → *Core fns (#47)
       wishlist.ts           # syncWishlistAction (merge/replace), removeWishlistItemAction (#46)
       restock-alerts.ts     # subscribeRestockAlertAction (#46)
+      reviews.ts            # submitReviewAction (customer session + purchase) (#47)
   stores/
     cart.ts                 # useSyncExternalStore store, localStorage-persisted
     wishlist.ts             # local wishlist (newest-first slugs), synced to the account (#46)
@@ -386,6 +396,19 @@ Dev outbox: `{ to, subject, html, text, sentAt }` — every mail the shop would 
 `{ sku, email, productSlug, variantLabel, createdAt, notifiedAt? }` — `notifiedAt` is
 stamped when the back-in-stock mail goes out, so each address is notified at most once
 per sell-out. Index `{ sku: 1, notifiedAt: 1 }`.
+
+### Review (`reviews`, #47)
+One document per (product, buyer) — the unique `{ productId: 1, userId: 1 }` index is
+the race-safe "one review per purchase" guarantee;
+`{ productId, userId, authorName, rating (1–5), title?, body, status:
+'pending'|'approved'|'hidden', adminReply?, adminRepliedAt?, createdAt, updatedAt }`.
+Only customers with a purchased order for the product may submit (pure rule
+`countsAsPurchase` in `src/lib/reviews.ts`); new reviews are `pending` and only
+`approved` ones are public. Indexes `{ productId: 1, status: 1 }`,
+`{ status: 1, createdAt: -1 }`. The approved aggregate is denormalized onto the
+product as `rating: { average, count }` (recomputed on approve/hide) — cards, the
+`sort=rating` listing order (`{ type: 1, "rating.average": -1 }`) and the JSON-LD
+`AggregateRating` never touch the reviews collection.
 
 ### Supplier (`suppliers`)
 `{ name, email, phone?, leadTimeDays, active }`.

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { COLLECTIONS } from "@/lib/collections";
 
 export const productTypes = ["smartphone", "shoes", "clothing"] as const;
-const sortKeys = ["price-asc", "price-desc", "newest"] as const;
+const sortKeys = ["price-asc", "price-desc", "newest", "rating"] as const;
 
 export type SortKey = (typeof sortKeys)[number];
 

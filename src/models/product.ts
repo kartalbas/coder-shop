@@ -33,6 +33,10 @@ export interface Product {
   collection?: string;
   filter: ProductFilter;
   variants: Variant[];
+  // Denormalized rating over the approved reviews (issue #47) — recomputed whenever
+  // a review is approved or hidden, so cards, sorting and JSON-LD never aggregate
+  // the reviews collection per request.
+  rating: { average: number; count: number };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +93,10 @@ const productSchema = new Schema<Product>(
     collection: { type: String },
     filter: { type: filterSchema, required: true },
     variants: { type: [variantSchema], required: true },
+    rating: {
+      average: { type: Number, required: true, default: 0, min: 0, max: 5 },
+      count: { type: Number, required: true, default: 0, min: 0 },
+    },
   },
   { versionKey: false, timestamps: true, suppressReservedKeysWarning: true },
 );
@@ -102,6 +110,7 @@ productSchema.index({ type: 1, "filter.colors": 1 });
 productSchema.index({ type: 1, "filter.materials": 1 });
 productSchema.index({ type: 1, priceCents: 1 });
 productSchema.index({ type: 1, createdAt: -1 });
+productSchema.index({ type: 1, "rating.average": -1 });
 productSchema.index({ featured: 1, type: 1 });
 
 export const ProductModel =

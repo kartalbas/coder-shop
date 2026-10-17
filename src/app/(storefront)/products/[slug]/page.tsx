@@ -14,8 +14,10 @@ import { JsonLd } from "@/components/storefront/json-ld";
 import { ProductDetail } from "@/components/storefront/product-detail";
 import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefront/recently-viewed";
 import { RelatedProducts } from "@/components/storefront/related-products";
+import { ReviewSection } from "@/components/storefront/review-section";
 import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
+import { getProductReviewsCore } from "@/server/reviews";
 import { VAT_LABEL } from "@/lib/pricing";
 
 interface PagePropsLocal {
@@ -44,7 +46,10 @@ async function ProductView({ params }: PagePropsLocal) {
   // Issue #28: this runs before any Suspense fallback can start the stream, so
   // unknown slugs answer with a real HTTP 404 (see docs: loading.md "Status codes").
   if (!product) notFound();
-  const related = await getRelatedProducts(product);
+  const [related, { aggregate }] = await Promise.all([
+    getRelatedProducts(product),
+    getProductReviewsCore(product.id),
+  ]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -83,10 +88,12 @@ async function ProductView({ params }: PagePropsLocal) {
 
       <div className="mt-12" />
       <RelatedProducts products={related} />
+      {/* Issue #47: reviews from verified buyers, with average and distribution. */}
+      <ReviewSection product={product} />
       {/* Issue #46: remember this product, and show the rest of the history. */}
       <RecentlyViewedTracker slug={product.slug} />
       <RecentlyViewedRail excludeSlug={product.slug} />
-      <JsonLd product={product} />
+      <JsonLd product={product} aggregateRating={aggregate} />
     </div>
   );
 }

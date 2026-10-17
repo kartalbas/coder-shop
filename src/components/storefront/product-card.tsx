@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatChf } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { ProductImage } from "@/components/storefront/product-image";
+import { StarRating } from "@/components/storefront/star-rating";
 import { WishlistHeart } from "@/components/storefront/wishlist-heart";
 import type { ProductDto } from "@/server/search";
 
@@ -36,6 +37,14 @@ export function ProductCard({ product }: { product: ProductDto }) {
         <div className="flex flex-1 flex-col gap-1 p-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">{product.brand}</p>
           <p className="line-clamp-2 text-sm font-medium">{product.name}</p>
+          {/* Issue #47: approved-review rating, only once there are reviews. */}
+          {product.rating.count > 0 && (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <StarRating value={product.rating.average} />
+              {product.rating.average.toLocaleString("de-CH")}
+              <span>({product.rating.count})</span>
+            </p>
+          )}
           <p className="mt-auto pt-1 text-sm font-semibold">
             {product.priceFrom && (
               <span className="font-normal text-muted-foreground">ab </span>

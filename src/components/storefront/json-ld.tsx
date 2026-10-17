@@ -4,7 +4,14 @@ import { absoluteUrl } from "@/lib/site";
 
 // Issue #28: structured data must be complete for crawlers — absolute image URLs,
 // an url per offer and a BreadcrumbList matching the visible breadcrumbs.
-export function JsonLd({ product }: { product: ProductDto }) {
+// Issue #47: approved reviews surface as an AggregateRating on the Product.
+export function JsonLd({
+  product,
+  aggregateRating,
+}: {
+  product: ProductDto;
+  aggregateRating?: { average: number; count: number };
+}) {
   const productUrl = absoluteUrl(`/produkt/${product.slug}`);
   const categoryUrl = absoluteUrl(`/produkte?type=${product.type}`);
   const json = {
@@ -17,6 +24,15 @@ export function JsonLd({ product }: { product: ProductDto }) {
         brand: { "@type": "Brand", name: product.brand },
         image: product.images.map((image) => absoluteUrl(image.src)),
         url: productUrl,
+        ...(aggregateRating && aggregateRating.count > 0
+          ? {
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: aggregateRating.average,
+                reviewCount: aggregateRating.count,
+              },
+            }
+          : {}),
         offers: product.variants.map((variant) => ({
           "@type": "Offer",
           url: productUrl,
