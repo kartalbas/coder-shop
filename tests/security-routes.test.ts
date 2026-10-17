@@ -57,7 +57,7 @@ describe("product slug guard (src/proxy.ts, issue #28)", () => {
       priceCents: 1000,
       images: [],
       variants: [],
-      filter: { colors: [], sizes: [], storage: [], materials: [] },
+      filter: {  color: [], size: [], storage: [""], material: []  },
       createdAt: new Date(),
       updatedAt: new Date(),
     });

@@ -27,6 +27,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The lead's run tooling — not application code.
+    ".agent/**",
   ]),
 ]);
 

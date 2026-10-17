@@ -28,7 +28,7 @@ async function seedProduct(stock: number, tag: string, priceCents = 10000) {
     priceCents,
     images: [{ src: `/products/checkout-test-${tag}-1.svg`, alt: "Test" }],
     featured: false,
-    filter: { colors: ["schwarz"], sizes: [], storage: [128], materials: [] },
+    filter: {  color: ["schwarz"], size: [], storage: ["128"], material: []  },
     variants: [
       {
         sku: `CT-${tag}`,
@@ -161,7 +161,7 @@ describe("createOrderCore", () => {
       priceCents: 10000,
       images: [{ src: "/products/checkout-test-multivariant-1.svg", alt: "Test" }],
       featured: false,
-      filter: { colors: ["schwarz", "weiß"], sizes: [], storage: [128], materials: [] },
+      filter: {  color: ["schwarz", "weiß"], size: [], storage: ["128"], material: []  },
       variants: [
         {
           sku: "CT-empty",

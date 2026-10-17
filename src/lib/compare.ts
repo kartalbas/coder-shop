@@ -1,12 +1,21 @@
+import type { CatalogDimensionConfig } from "@/lib/catalog-types";
+import { formatDimensionValue } from "@/lib/catalog-types";
 import type { ProductDto } from "@/lib/dto";
 
-// Comparison table rules (issue #48) — pure: which smartphones can be compared, the
+// Comparison table rules (issue #48) — pure: which products can be compared, the
 // row values, and which rows differ (those are the ones highlighted on the page).
+// Issue #61: comparability is a flag on the catalog type configuration, and the
+// attribute rows are the type's configured dimensions — not a fixed list.
 
 export const COMPARE_MAX_PRODUCTS = 4;
 
-export function comparableProducts(products: ProductDto[]): ProductDto[] {
-  return products.filter((product) => product.type === "smartphone").slice(0, COMPARE_MAX_PRODUCTS);
+export function comparableProducts(
+  products: ProductDto[],
+  comparableTypeKeys: ReadonlySet<string>,
+): ProductDto[] {
+  return products
+    .filter((product) => comparableTypeKeys.has(product.type))
+    .slice(0, COMPARE_MAX_PRODUCTS);
 }
 
 export interface ComparisonRow {
@@ -31,12 +40,10 @@ function formatWeight(product: ProductDto): string {
   return min === max ? `${min} g` : `${min}–${max} g`;
 }
 
-function formatStorages(product: ProductDto): string {
-  return [...product.filter.storage].sort((a, b) => a - b).map((gb) => `${gb} GB`).join(", ");
-}
-
-function formatColors(product: ProductDto): string {
-  return [...product.filter.colors].sort().join(", ");
+function formatDimension(dimension: CatalogDimensionConfig, product: ProductDto): string {
+  return (product.filter[dimension.key] ?? [])
+    .map((value) => formatDimensionValue(dimension, value))
+    .join(", ");
 }
 
 function formatPrice(product: ProductDto): string {
@@ -52,12 +59,17 @@ function formatStock(product: ProductDto): string {
   return total === 0 ? "Ausverkauft" : `${total} Stück`;
 }
 
-export function buildComparisonRows(products: ProductDto[]): ComparisonRow[] {
+export function buildComparisonRows(
+  products: ProductDto[],
+  dimensions: readonly CatalogDimensionConfig[],
+): ComparisonRow[] {
   const definitions: { label: string; value: (product: ProductDto) => string }[] = [
     { label: "Preis", value: formatPrice },
     { label: "Marke", value: (product) => product.brand },
-    { label: "Speicheroptionen", value: formatStorages },
-    { label: "Farben", value: formatColors },
+    ...dimensions.map((dimension) => ({
+      label: dimension.label,
+      value: (product: ProductDto) => formatDimension(dimension, product),
+    })),
     { label: "Gewicht", value: formatWeight },
     { label: "Varianten", value: (product) => `${product.variants.length}` },
     { label: "Verfügbar", value: formatStock },

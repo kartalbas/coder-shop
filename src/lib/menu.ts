@@ -1,24 +1,18 @@
-import { CATALOG_BRANDS } from "@/lib/brands";
-import type { ProductType } from "@/lib/product-types";
+import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
 
-export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
-  smartphone: "Smartphones",
-  shoes: "Schuhe",
-  clothing: "Kleidung",
-};
-
+// Issue #61: menu categories, type labels and brand columns all come from the catalog
+// type configuration (seeded from `DEFAULT_CATALOG_TYPES`, editable as data) — the
+// mega-menu renders whatever types exist, no hard-coded list (issue #31 sync).
 export interface MenuCategory {
-  type: ProductType;
+  type: string;
   label: string;
   brands: readonly string[];
 }
 
-// Brands come from the single catalog brand set (src/lib/brands.ts) — the same source the
-// seed generator uses; tests/mega-menu.test.ts keeps the seed's model tables in step.
-export const MENU_CATEGORIES: readonly MenuCategory[] = (
-  ["smartphone", "shoes", "clothing"] as const
-).map((type) => ({
-  type,
-  label: PRODUCT_TYPE_LABELS[type],
-  brands: CATALOG_BRANDS[type],
-}));
+export function menuCategories(
+  types: readonly CatalogTypeConfig[] = DEFAULT_CATALOG_TYPES,
+): MenuCategory[] {
+  return [...types]
+    .sort((a, b) => a.position - b.position)
+    .map((type) => ({ type: type.key, label: type.label, brands: type.brands }));
+}

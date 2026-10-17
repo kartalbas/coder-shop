@@ -57,8 +57,8 @@ export function ProductCard({ product }: { product: ProductDto }) {
       {/* Issue #46: the heart sits beside the link (a button inside an <a> is invalid). */}
       <div className="absolute right-2 top-2 z-10 flex flex-col gap-1.5">
         <WishlistHeart slug={product.slug} name={product.name} />
-        {/* Issue #48: smartphones can be put into the side-by-side comparison. */}
-        {product.type === "smartphone" && (
+        {/* Issue #48/#61: comparability is a flag on the product's catalog type. */}
+        {product.comparable && (
           <CompareToggle slug={product.slug} name={product.name} />
         )}
       </div>

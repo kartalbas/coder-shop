@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DEFAULT_CATALOG_TYPES } from "@/lib/catalog-types";
 import { ProductModel } from "@/models/product";
 import { deriveFilter } from "@/lib/facets";
 import {
@@ -7,8 +8,10 @@ import {
   listProducts,
   searchProducts,
 } from "@/server/search";
-import { listingParamsSchema } from "@/lib/validations/listing";
+import { parseListingParams } from "@/lib/validations/listing";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+
+const SHOES = DEFAULT_CATALOG_TYPES.find((type) => type.key === "shoes")!;
 
 async function seedProduct(slug: string, collection?: string) {
   const variants = [
@@ -31,7 +34,7 @@ async function seedProduct(slug: string, collection?: string) {
     priceCents: 10000,
     images: [],
     collection,
-    filter: deriveFilter(variants),
+    filter: deriveFilter(variants, SHOES.dimensions),
     variants,
   });
 }
@@ -52,9 +55,11 @@ describe("collection filter (issue #23)", () => {
     expect(buildListingFilter({ collection: "Sale" }).collection).toBe("Sale");
   });
 
-  it("the listing schema accepts the three collections and rejects junk", () => {
-    expect(listingParamsSchema.safeParse({ collection: "Neuheiten" }).success).toBe(true);
-    expect(listingParamsSchema.safeParse({ collection: "Quatsch" }).success).toBe(false);
+  it("the listing params accept the three collections and drop junk", () => {
+    expect(parseListingParams({ collection: "Neuheiten" }, DEFAULT_CATALOG_TYPES).collection).toBe(
+      "Neuheiten",
+    );
+    expect(parseListingParams({ collection: "Quatsch" }, DEFAULT_CATALOG_TYPES).collection).toBeUndefined();
   });
 
   it("listProducts?collection returns exactly that collection", async () => {
@@ -101,7 +106,10 @@ describe("buyable listing prices (issue #20)", () => {
       brand: "Google",
       priceCents: 48400,
       images: [],
-      filter: deriveFilter(variants),
+      filter: deriveFilter(
+        variants,
+        DEFAULT_CATALOG_TYPES.find((type) => type.key === "smartphone")!.dimensions,
+      ),
       variants,
     });
   });

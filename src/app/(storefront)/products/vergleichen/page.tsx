@@ -8,12 +8,14 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/storefront/product-image";
 import { buildComparisonRows, comparableProducts, COMPARE_MAX_PRODUCTS } from "@/lib/compare";
+import { dimensionsForTypes } from "@/lib/catalog-types";
 import { cn } from "@/lib/utils";
+import { getCatalogTypes } from "@/server/catalog-types";
 import { getProductsBySlugs } from "@/server/search";
 
 export const metadata: Metadata = {
-  title: "Smartphones vergleichen",
-  description: "Bis zu vier Smartphones Seite an Seite — Preise, Speicher, Farben, Gewicht.",
+  title: "Produkte vergleichen",
+  description: "Bis zu vier Produkte Seite an Seite — Preise, Marken und die Attribute des Typs.",
 };
 
 const MAX_SLUGS = 12;
@@ -29,8 +31,9 @@ function parseSlugs(raw: string | undefined): string[] {
   ].slice(0, MAX_SLUGS);
 }
 
-// Side-by-side smartphone comparison (issue #48): the slugs come from the URL, so a
-// selection is shareable; rows where the phones differ are highlighted.
+// Side-by-side comparison (issue #48): the slugs come from the URL, so a selection is
+// shareable; rows where the products differ are highlighted. Issue #61: which types are
+// comparable and which attribute rows appear come from the catalog configuration.
 export default async function ComparePage({
   searchParams,
 }: {
@@ -40,30 +43,46 @@ export default async function ComparePage({
   const params = await searchParams;
   const raw = typeof params.slugs === "string" ? params.slugs : undefined;
   if (!raw) notFound();
-  const products = comparableProducts(await getProductsBySlugs(parseSlugs(raw)));
+  const types = await getCatalogTypes();
+  const comparableTypes = types.filter((type) => type.comparable);
+  const comparableKeys = new Set(comparableTypes.map((type) => type.key));
+  const products = comparableProducts(await getProductsBySlugs(parseSlugs(raw)), comparableKeys);
+
+  // The copy names the comparable type; with none configured there is nothing to
+  // compare at all, which is the same hint.
+  const comparableLabel = comparableTypes[0]?.label ?? "Produkte";
+  const comparableHref = comparableTypes[0]
+    ? `/produkte?type=${encodeURIComponent(comparableTypes[0].key)}`
+    : "/produkte";
 
   if (products.length < 2) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">Smartphones vergleichen</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{comparableLabel} vergleichen</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Für einen Vergleich braucht es mindestens zwei Smartphones. Über das
-          Vergleichs-Symbol auf einem Smartphone-Produkt legen Sie die Liste an.
+          Für einen Vergleich braucht es mindestens zwei {comparableLabel}. Über das
+          Vergleichs-Symbol auf einem Produkt legen Sie die Liste an.
         </p>
         <Button asChild variant="outline" className="mt-6">
-          <Link href="/produkte?type=smartphone">Smartphones entdecken</Link>
+          <Link href={comparableHref}>{comparableLabel} entdecken</Link>
         </Button>
       </div>
     );
   }
 
-  const rows = buildComparisonRows(products);
+  const rows = buildComparisonRows(
+    products,
+    dimensionsForTypes(
+      types,
+      [...new Set(products.map((product) => product.type))],
+    ),
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-2xl font-bold tracking-tight">Smartphones vergleichen</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{comparableLabel} vergleichen</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {products.length} von maximal {COMPARE_MAX_PRODUCTS} Smartphones — Zeilen mit
+        {products.length} von maximal {COMPARE_MAX_PRODUCTS} {comparableLabel} — Zeilen mit
         Unterschieden sind hervorgehoben.
       </p>
 
@@ -126,9 +145,9 @@ export default async function ComparePage({
       </div>
 
       <Button asChild variant="outline" className="mt-6">
-        <Link href="/produkte?type=smartphone">
+        <Link href={comparableHref}>
           <ArrowLeft className="mr-2 size-4" aria-hidden />
-          Zurück zu den Smartphones
+          Zurück zu den {comparableLabel}
         </Link>
       </Button>
     </div>

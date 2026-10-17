@@ -66,7 +66,7 @@ async function seedProduct(stock: number, tag: string, priceCents = 10_000) {
     priceCents,
     images: [{ src: `/products/disc-${tag}-1.webp`, alt: "Test" }],
     featured: false,
-    filter: { colors: ["schwarz"], sizes: [], storage: [128], materials: [] },
+    filter: {  color: ["schwarz"], size: [], storage: ["128"], material: []  },
     variants: [
       {
         sku: `DC-${tag}`,

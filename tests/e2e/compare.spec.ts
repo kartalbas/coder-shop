@@ -7,7 +7,8 @@ interface ApiProduct {
 }
 
 async function findPhones(page: import("@playwright/test").Page, count: number): Promise<ApiProduct[]> {
-  const response = await page.request.get("/api/products?type=smartphone&sort=price-desc");
+  // Same default sort as the listing page, so the picked phones are on the first page.
+  const response = await page.request.get("/api/products?type=smartphone");
   expect(response.ok()).toBeTruthy();
   const body = (await response.json()) as { items: ApiProduct[] };
   // Distinct brands so at least one row is guaranteed to differ.

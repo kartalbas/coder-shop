@@ -2,6 +2,7 @@ import "../load-env"; // issue #38: LLAMA_API_KEY & friends from .env.local
 import fs from "node:fs/promises";
 import path from "node:path";
 import { ProductModel, type ProductType } from "@/models/product";
+import { getCatalogTypes } from "@/server/catalog-types";
 import { connectDB, disconnectDB } from "@/server/db";
 import { env } from "@/server/env";
 import { generatePhoto } from "./api";
@@ -13,7 +14,7 @@ const PHOTO_EXTENSIONS = ["webp", "jpg", "jpeg", "png"] as const;
 interface ImageSlot {
   slug: string;
   name: string;
-  type: ProductType;
+  photoNoun: string;
   index: number;
   basename: string;
   color: string;
@@ -53,7 +54,7 @@ async function findExistingPhoto(basename: string): Promise<string | null> {
   return null;
 }
 
-function buildSlots(products: ProductRow[]): ImageSlot[] {
+function buildSlots(products: ProductRow[], photoNouns: Map<string, string>): ImageSlot[] {
   const slots: ImageSlot[] = [];
   for (const product of products) {
     if (product.variants.length === 0) continue;
@@ -62,7 +63,7 @@ function buildSlots(products: ProductRow[]): ImageSlot[] {
       slots.push({
         slug: product.slug,
         name: product.name,
-        type: product.type,
+        photoNoun: photoNouns.get(product.type) ?? "product",
         index,
         basename: `${product.slug}-${index + 1}`,
         color: variant.attributes.color,
@@ -90,7 +91,7 @@ async function recordPhoto(slot: ImageSlot, file: string): Promise<void> {
 async function generateSlot(slot: ImageSlot, options: { url: string; apiKey: string }) {
   const started = Date.now();
   const prompt = buildImagePrompt({
-    type: slot.type,
+    photoNoun: slot.photoNoun,
     color: slot.color,
     view: slot.view,
     ...(slot.material ? { material: slot.material } : {}),
@@ -114,7 +115,9 @@ async function main(): Promise<void> {
     .sort({ slug: 1 })
     .lean<ProductRow[]>()
     .select("slug name type images variants.attributes");
-  const slots = buildSlots(products);
+  const types = await getCatalogTypes();
+  const photoNouns = new Map(types.map((type) => [type.key, type.photoNoun]));
+  const slots = buildSlots(products, photoNouns);
   const total = slots.length;
 
   let done = 0;

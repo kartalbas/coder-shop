@@ -1,40 +1,42 @@
+import type { CatalogDimensionConfig } from "@/lib/catalog-types";
+import { compareFacetValuesByOrder } from "@/lib/facet-order";
 import type { ProductDto, VariantDto } from "@/lib/dto";
 
-type SelectionKey = "color" | "size" | "storage";
-export type Selection = Record<SelectionKey, string | null>;
+// Issue #61: the variant picker is driven by the product type's configured dimensions —
+// labels, order rule and unit come from `product_type_configs`, never from a fixed set.
+
+export type Selection = Record<string, string | null>;
 
 export interface Dimension {
-  key: SelectionKey;
+  key: string;
   label: string;
+  unit?: string;
   values: string[];
 }
 
-export function dimensionsOf(product: ProductDto): Dimension[] {
-  const dims: Dimension[] = [];
-  const colors = [...new Set(product.variants.map((v) => v.attributes.color))].sort((a, b) =>
-    a.localeCompare(b, "de"),
-  );
-  if (colors.length > 0) dims.push({ key: "color", label: "Farbe", values: colors });
-  const sizes = [
-    ...new Set(product.variants.map((v) => v.attributes.size).filter(Boolean)),
-  ] as string[];
-  if (sizes.length > 0) dims.push({ key: "size", label: "Grösse", values: sizes });
-  const storage = [
-    ...new Set(product.variants.map((v) => v.attributes.storage).filter(Boolean)),
-  ] as number[];
-  if (storage.length > 0) {
-    dims.push({
-      key: "storage",
-      label: "Speicher",
-      values: storage.sort((a, b) => a - b).map(String),
-    });
-  }
-  return dims;
+export function dimensionsOf(
+  product: ProductDto,
+  typeDimensions: readonly CatalogDimensionConfig[],
+): Dimension[] {
+  return typeDimensions
+    .map((dimension) => ({
+      key: dimension.key,
+      label: dimension.label,
+      ...(dimension.unit ? { unit: dimension.unit } : {}),
+      values: [
+        ...new Set(
+          product.variants
+            .map((v) => v.attributes[dimension.key])
+            .filter((value) => value !== undefined && value !== null)
+            .map(String),
+        ),
+      ].sort((a, b) => compareFacetValuesByOrder(dimension.order, a, b)),
+    }))
+    .filter((dimension) => dimension.values.length > 0);
 }
 
 export function matchesSelection(variant: VariantDto, selection: Selection): boolean {
-  return (["color", "size", "storage"] as const).every((key) => {
-    const wanted = selection[key];
+  return Object.entries(selection).every(([key, wanted]) => {
     if (wanted == null) return true;
     return String(variant.attributes[key] ?? "") === wanted;
   });
@@ -42,19 +44,22 @@ export function matchesSelection(variant: VariantDto, selection: Selection): boo
 
 // Every dimension the product has must be chosen before the item can go to the cart
 // (issue #18) — the labels of what is still missing.
-export function missingDimensions(
-  dimensions: Dimension[],
-  selection: Selection,
-): string[] {
+export function missingDimensions(dimensions: Dimension[], selection: Selection): string[] {
   return dimensions.filter((d) => selection[d.key] == null).map((d) => d.label);
+}
+
+export function formatSelectionValue(dimension: Dimension, value: string): string {
+  return dimension.unit ? `${value} ${dimension.unit}` : value;
 }
 
 // Photo slot i shows the colour of variant i % variantCount (the rule the image
 // generator used, scripts/images/generate.ts) — so a chosen colour maps back to the
-// slots that depict it (issue #19).
+// slots that depict it (issue #19). The photo pipeline is keyed on the "color"
+// attribute; types without one always show slot 0.
 export function slotColor(variants: VariantDto[], slot: number): string | undefined {
   if (variants.length === 0) return undefined;
-  return variants[slot % variants.length]?.attributes.color;
+  const color = variants[slot % variants.length]?.attributes.color;
+  return color === undefined || color === null ? undefined : String(color);
 }
 
 export function imageIndexForColor(
@@ -68,3 +73,4 @@ export function imageIndexForColor(
   }
   return 0;
 }
+

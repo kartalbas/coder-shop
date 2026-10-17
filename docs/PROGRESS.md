@@ -1170,3 +1170,38 @@ Done — M1–M6 + QA complete.
   `command-palette.spec.ts` (Ctrl+K → order number → detail; → product → edit page;
   local action hit; `?` overlay + "?" typed in the field stays a character) —
   `npm test` ✅ 438, lint/knip/build ✅, `npm run test:e2e` ✅ 35/35.
+
+## ISSUES — queue session 12 (2026-10-17)
+
+### Gate recovery (before the queue) ✅
+- The gate's `/api/health` 500 and link-less `/produkte` were again an orphaned
+  `next-server` + its mongod holding the `data/mongo` lock; killed, nothing left
+  running. The 64 uncommitted files were the finished #61 work — delivered below.
+
+### #61 — agnostic catalog: types, attributes and filters as data ✅
+- **`product_type_configs`** (`src/models/product-type-config.ts`) is the single source
+  for product types: key/label/position, variant `dimensions` (key/label/facet/order/unit),
+  `stockTracking` (quantity | serial — the #62 hook), `comparable` (replaces the
+  `type === "smartphone"` checks in card/detail compare toggles), `photoNoun` (image
+  prompt subject — the review's last hard-coded type map, `VIEW_NOUNS` deleted) and
+  `brands`. `DEFAULT_CATALOG_TYPES` (`src/lib/catalog-types.ts`) is only its seed
+  content; `getCatalogTypes`/`getCatalogType`/`saveCatalogTypeCore` (validated) in
+  `src/server/catalog-types.ts` are the only access.
+- **Generic catalog code:** `Product.attributes`/`filter` are Mixed keyed by dimension
+  (`deriveFilter(variants, dimensions)` orders values per the dimension's `order` rule);
+  `parseListingParams(searchParams, types)` accepts only the selected type's facet
+  dimensions; listing sidebar, `$facet` counts, menu/tabs/footer chips, home tiles,
+  breadcrumbs, JSON-LD category and the admin type filter all read the configs
+  (`menuCategories(types)`); `lib/brands.ts` retired. Write path: `updateProductCore`
+  refuses unknown types, `updateVariantCore` refuses attributes outside the type's
+  dimensions; the seed upserts configs insert-only (#14) and `repairProductFilters`
+  migrates documents from the old `filter.colors/sizes/…` shape.
+- Verified: `tests/catalog-types.test.ts` — a fourth type ("Zubehör" with
+  compatibility/length dimensions) created at runtime works end to end without a code
+  change: menu, listing params + facet counts, product DTO, checkout order, admin list +
+  variant validation, config edit survives re-seed; new e2e `catalog-types.spec.ts`
+  covers the per-category facet columns (smartphones no longer offer size/material —
+  the #53 part). `npm run build`/lint/knip ✅, `npm test` ✅ 451,
+  `npm run test:e2e` ✅ 47/47.
+- Open: the #56 remainder (VAT/shipping/payment methods as configuration, admin editor
+  for the type configs) is split to **#64**.

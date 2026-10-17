@@ -480,9 +480,9 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   ≤ 4 slugs) only feeds the tray and the link. Unknown/non-smartphone slugs are dropped
   server-side (`comparableProducts`), a selection below two phones shows a German hint
   instead of an empty table.
-- **Only smartphones get the toggle** (rendered for `type === "smartphone"` on cards and
-  the product page) — the issue scopes comparison to phones; shoes/clothing have
-  per-type specs that would need their own row sets.
+- **Only comparable types get the toggle** — since #61 the flag is `comparable` on the
+  type config (seed: smartphones only), not a `type === "smartphone"` check; shoes/clothing
+  have per-type specs that would need their own row sets, and enabling a type is data now.
 - **Difference highlighting is a pure rule** (`buildComparisonRows`): a row differs when
   its formatted values are not all equal; the UI tints the row and adds an sr-only
   "(Unterschied)" so the highlight is not color-only.
@@ -501,3 +501,27 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **The picker content unmounts as soon as `open` goes false** — Radix keeps it
   mounted through the exit animation, which let a quick ⌘K reopen carry the old
   query over (found by the e2e); the conditional mount makes every open fresh.
+
+### #61 — catalog types, dimensions and facets are data
+- **`product_type_configs` is the single source** for product types, their variant
+  dimensions, facet flags/order rules, labels, positions, brands, the comparison flag
+  (`comparable`), the stock model (`stockTracking`) and the image-prompt subject
+  (`photoNoun`). `DEFAULT_CATALOG_TYPES` in `src/lib/catalog-types.ts` is only the
+  **seed content** of that collection; generic code never names a type. Adding a
+  fourth type with its own attributes needs no code change (proven by the runtime
+  fourth-type integration test).
+- **`Product.attributes` and `Product.filter` became Mixed** keyed by dimension key
+  (`filter.color`, not `filter.colors`) — a fixed sub-schema cannot describe dimensions
+  that only exist as rows. The validation the schema lost is enforced in the cores
+  (`updateProductCore` checks `type`, `updateVariantCore` checks the attribute keys
+  against the type's dimensions); the seed repairs documents still in the old shape.
+- **Facet indexes are per seed dimension key** (`filter.color|size|storage|material`);
+  a dimension added at runtime queries unindexed — fine at catalog size (hundreds of
+  documents), documented rather than over-engineered with wildcard indexes.
+- **The seed inserts type configs insert-only** (#14 rule): a re-seed never clobbers
+  admin edits to a type; an empty collection falls back to the seed content so the
+  app works before the first seed.
+- **`lib/brands.ts` retired** — brands live on the type configs; the mega-menu, the seed
+  and the sync test all read the same rows (#31's single-source rule continued).
+- **`photoNoun` on the config replaces the last hard-coded type map** (the image
+  prompt's `VIEW_NOUNS`): a runtime-added type carries its own English photo subject.

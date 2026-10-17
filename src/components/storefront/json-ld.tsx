@@ -1,5 +1,4 @@
 import type { ProductDto } from "@/server/search";
-import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
 import { absoluteUrl } from "@/lib/site";
 
 // Issue #28: structured data must be complete for crawlers — absolute image URLs,
@@ -7,9 +6,12 @@ import { absoluteUrl } from "@/lib/site";
 // Issue #47: approved reviews surface as an AggregateRating on the Product.
 export function JsonLd({
   product,
+  categoryLabel,
   aggregateRating,
 }: {
   product: ProductDto;
+  // The product's category label from the catalog type configuration (issue #61).
+  categoryLabel: string;
   aggregateRating?: { average: number; count: number };
 }) {
   const productUrl = absoluteUrl(`/produkt/${product.slug}`);
@@ -50,7 +52,7 @@ export function JsonLd({
           {
             "@type": "ListItem",
             position: 2,
-            name: PRODUCT_TYPE_LABELS[product.type],
+            name: categoryLabel,
             item: categoryUrl,
           },
           { "@type": "ListItem", position: 3, name: product.name, item: productUrl },

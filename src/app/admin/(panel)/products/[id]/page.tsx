@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { FeaturedToggle, ProductCoreForm } from "@/components/admin/product-core-form";
 import { ImageEditor } from "@/components/admin/image-editor";
 import { VariantEditor } from "@/components/admin/variant-editor";
-import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
+import { getCatalogType } from "@/server/catalog-types";
 import { getProductForAdmin } from "@/server/products-admin";
 
 interface PagePropsLocal {
@@ -25,6 +25,9 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
   const { id } = await params;
   const product = await getProductForAdmin(id);
   if (!product) notFound();
+  // Issue #61: type label and the variant editor's attribute fields come from the
+  // product type's configuration.
+  const typeConfig = await getCatalogType(product.type);
 
   return (
     <div className="max-w-5xl">
@@ -40,7 +43,7 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{product.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {product.brand} · {PRODUCT_TYPE_LABELS[product.type]} ·{" "}
+            {product.brand} · {typeConfig?.label ?? product.type} ·{" "}
             <span className="font-mono">{product.slug}</span>
           </p>
         </div>
@@ -56,7 +59,7 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
         <h2 className="mb-3 text-sm font-semibold">
           Varianten ({product.variants.length}) — Preisdifferenz, Lager, Gewicht, Attribute
         </h2>
-        <VariantEditor product={product} />
+        <VariantEditor product={product} dimensions={typeConfig?.dimensions ?? []} />
       </section>
 
       <section className="mt-6" aria-label="Bilder">

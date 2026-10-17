@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
-// Smartphone comparison (issue #48): up to four product slugs the shopper wants to
+// Product comparison (issue #48/#61: the comparable types come from the catalog
+// configuration): up to four product slugs the shopper wants to
 // compare, local to this browser; the comparison page reads them from the URL, so a
 // comparison is also shareable. Only smartphones can be compared — the toggles that
 // write this list are rendered for that type only.

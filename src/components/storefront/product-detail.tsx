@@ -8,8 +8,10 @@ import { formatChf, formatWeight } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { addToCart, openCartDrawer } from "@/stores/cart";
 import type { ProductDto } from "@/server/search";
+import type { CatalogDimensionConfig } from "@/lib/catalog-types";
 import {
   dimensionsOf,
+  formatSelectionValue,
   imageIndexForColor,
   matchesSelection,
   missingDimensions,
@@ -23,13 +25,22 @@ import { StockIndicator } from "./stock-indicator";
 import { WishlistHeart } from "./wishlist-heart";
 import { VAT_LABEL } from "@/lib/pricing";
 
-export function ProductDetail({ product }: { product: ProductDto }) {
-  const dimensions = useMemo(() => dimensionsOf(product), [product]);
-  const [selection, setSelection] = useState<Selection>({
-    color: null,
-    size: null,
-    storage: null,
-  });
+// Issue #61: the variant picker renders the dimensions of the product's catalog type
+// configuration (labels, order, units) — never a fixed colour/size/storage triple.
+export function ProductDetail({
+  product,
+  typeDimensions,
+}: {
+  product: ProductDto;
+  typeDimensions: readonly CatalogDimensionConfig[];
+}) {
+  const dimensions = useMemo(
+    () => dimensionsOf(product, typeDimensions),
+    [product, typeDimensions],
+  );
+  const [selection, setSelection] = useState<Selection>(
+    () => Object.fromEntries(typeDimensions.map((dimension) => [dimension.key, null])),
+  );
   const [qty, setQty] = useState(1);
   const [imageIndex, setImageIndex] = useState(0);
   const [imageTouched, setImageTouched] = useState(false);
@@ -47,9 +58,15 @@ export function ProductDetail({ product }: { product: ProductDto }) {
   const stock = variant?.stock ?? 0;
   // The gallery follows the chosen colour (the slot a photo was generated for carries
   // that colour), not the variant index (issue #19).
+  // The photo pipeline is keyed on the "color" attribute (scripts/images) — types
+  // without a colour dimension always show slot 0.
   const shownImage = imageTouched
     ? imageIndex
-    : imageIndexForColor(product.images.length, product.variants, selection.color);
+    : imageIndexForColor(
+        product.images.length,
+        product.variants,
+        selection.color ?? null,
+      );
 
   const select = (key: keyof Selection, value: string) => {
     setSelection((prev) => ({ ...prev, [key]: prev[key] === value ? null : value }));
@@ -98,8 +115,8 @@ export function ProductDetail({ product }: { product: ProductDto }) {
           {/* Issue #46: the wishlist heart on the product page. */}
           <div className="mt-1 flex shrink-0 gap-2">
             <WishlistHeart slug={product.slug} name={product.name} />
-            {/* Issue #48: smartphones join the side-by-side comparison. */}
-            {product.type === "smartphone" && (
+            {/* Issue #48/#61: comparability is a flag on the product's catalog type. */}
+            {product.comparable && (
               <CompareToggle slug={product.slug} name={product.name} />
             )}
           </div>
@@ -125,7 +142,7 @@ export function ProductDetail({ product }: { product: ProductDto }) {
               {dimension.label}
               {selection[dimension.key] && (
                 <span className="ml-2 font-normal text-muted-foreground">
-                  {dimension.key === "storage" ? `${selection[dimension.key]} GB` : selection[dimension.key]}
+                  {formatSelectionValue(dimension, selection[dimension.key] as string)}
                 </span>
               )}
             </legend>
@@ -150,7 +167,7 @@ export function ProductDetail({ product }: { product: ProductDto }) {
                       !available && "cursor-not-allowed text-muted-foreground/50 line-through",
                     )}
                   >
-                    {dimension.key === "storage" ? `${value} GB` : value}
+                    {formatSelectionValue(dimension, value)}
                   </button>
                 );
               })}

@@ -22,7 +22,7 @@ async function seedVariantProduct(
     priceCents: 10000,
     images: [{ src: `/products/${slug}-1.svg`, alt: "Test" }],
     featured: false,
-    filter: { colors: ["schwarz"], sizes: [], storage: [128], materials: [] },
+    filter: {  color: ["schwarz"], size: [], storage: ["128"], material: []  },
     variants: variants.map((v) => ({
       sku: v.sku,
       label: `128 GB / ${v.sku}`,

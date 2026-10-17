@@ -1,10 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DEFAULT_CATALOG_TYPES } from "@/lib/catalog-types";
 import { ProductModel } from "@/models/product";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 import { escapeRegex } from "@/lib/regex";
 import { listProducts, searchProducts } from "@/server/search";
 import { deriveFilter } from "@/lib/facets";
-import { listingParamsSchema } from "@/lib/validations/listing";
+import { parseListingParams } from "@/lib/validations/listing";
+
+const TYPES = DEFAULT_CATALOG_TYPES;
+const dimensionsOf = (key: string) => TYPES.find((type) => type.key === key)!.dimensions;
 
 function phoneData(index: number) {
   const priceCents = 10000 + index * 100;
@@ -12,16 +16,16 @@ function phoneData(index: number) {
     slug: `test-phone-${String(index).padStart(3, "0")}`,
     name: `iPhone Test ${index}`,
     description: "Test-Smartphone.",
-    type: "smartphone" as const,
+    type: "smartphone",
     brand: "Apple",
     priceCents,
-    images: [{ src: `/products/test-phone-${index}-1.svg`, alt: "Test" }],
+    images: [{ src: `/products/test-phone-${index}-1.webp`, alt: "Test" }],
     featured: false,
-    filter: deriveFilter([{ attributes: { color: "schwarz", storage: 128 } }]),
+    filter: deriveFilter([{ attributes: { color: "schwarz", storage: 128 } }], dimensionsOf("smartphone")),
     variants: [
       {
         sku: `TP-${index}`,
-        label: "128 GB / schwarz",
+        label: "schwarz / 128 GB",
         priceDeltaCents: 0,
         stock: 10,
         restockThreshold: 3,
@@ -37,12 +41,12 @@ function shoeData(index: number, size: string) {
     slug: `test-shoe-${size}-${index}`,
     name: `Test Schuh ${size} ${index}`,
     description: "Test-Schuh.",
-    type: "shoes" as const,
+    type: "shoes",
     brand: "Nike",
     priceCents: 8000 + index * 100,
-    images: [{ src: `/products/test-shoe-${index}-1.svg`, alt: "Test" }],
+    images: [{ src: `/products/test-shoe-${index}-1.webp`, alt: "Test" }],
     featured: false,
-    filter: deriveFilter([{ attributes: { color: "blau", size } }]),
+    filter: deriveFilter([{ attributes: { color: "blau", size } }], dimensionsOf("shoes")),
     variants: [
       {
         sku: `TS-${size}-${index}`,
@@ -71,11 +75,11 @@ describe("storefront queries", () => {
   afterAll(disconnectTestDB);
 
   it("filters by type and size", async () => {
-    const result = await listProducts({ type: "shoes", size: ["42"] });
+    const result = await listProducts({ type: "shoes", facets: { size: ["42"] } });
     expect(result.total).toBe(5);
     for (const item of result.items) {
       expect(item.type).toBe("shoes");
-      expect(item.filter.sizes).toContain("42");
+      expect(item.filter.size).toContain("42");
     }
   });
 
@@ -99,34 +103,53 @@ describe("storefront queries", () => {
 
   it("returns facet counts for the type-filtered set", async () => {
     const result = await listProducts({ type: "shoes" });
-    const size42 = result.facets.sizes.find((f) => f.value === "42");
+    const size42 = result.facets.dimensions.size?.find((f) => f.value === "42");
     expect(size42?.count).toBe(5);
   });
 
+  it("offers only the facet dimensions of the selected type (issue #53/#61)", async () => {
+    const phones = await listProducts({ type: "smartphone" });
+    expect(Object.keys(phones.facets.dimensions).sort()).toEqual(["color", "storage"]);
+    const shoes = await listProducts({ type: "shoes" });
+    expect(Object.keys(shoes.facets.dimensions).sort()).toEqual(["color", "size"]);
+  });
+
   it("filters several values per facet (issue #24)", async () => {
-    const result = await listProducts({ type: "shoes", size: ["42", "43"] });
+    const result = await listProducts({ type: "shoes", facets: { size: ["42", "43"] } });
     expect(result.total).toBe(8);
     const brands = await listProducts({ type: "shoes", brand: ["Nike", "Adidas"] });
     expect(brands.total).toBe(8);
   });
 
   it("counts each facet over the other active filters, excluding its own (issue #24)", async () => {
-    const result = await listProducts({ type: "shoes", size: ["42"] });
+    const result = await listProducts({ type: "shoes", facets: { size: ["42"] } });
     // own facet keeps all values with their counts (43 stays selectable)…
-    expect(result.facets.sizes.find((f) => f.value === "42")?.count).toBe(5);
-    expect(result.facets.sizes.find((f) => f.value === "43")?.count).toBe(3);
+    expect(result.facets.dimensions.size?.find((f) => f.value === "42")?.count).toBe(5);
+    expect(result.facets.dimensions.size?.find((f) => f.value === "43")?.count).toBe(3);
     // …while other facets reflect the active size filter.
     expect(result.facets.brand.find((f) => f.value === "Nike")?.count).toBe(5);
   });
 
-  it("parses comma-separated facet params into lists (issue #24)", () => {
+  it("parses comma-separated facet params into lists (issue #24/#61)", () => {
     expect(
-      listingParamsSchema.parse({ brand: "Apple,Samsung", size: ["42", "43,44"], storage: "128,256" }),
-    ).toEqual({ brand: ["Apple", "Samsung"], size: ["42", "43", "44"], storage: [128, 256] });
-    expect(listingParamsSchema.parse({ brand: "Apple, Apple, " })).toEqual({
+      parseListingParams({ brand: "Apple,Samsung", size: ["42", "43,44"], storage: "128,256" }, TYPES),
+    ).toEqual({ facets: { size: ["42", "43", "44"], storage: ["128", "256"] }, brand: ["Apple", "Samsung"] });
+    expect(parseListingParams({ brand: "Apple, Apple, " }, TYPES)).toEqual({
+      facets: {},
       brand: ["Apple"],
     });
-    expect(listingParamsSchema.parse({})).toEqual({});
+    expect(parseListingParams({}, TYPES)).toEqual({ facets: {} });
+  });
+
+  it("accepts only facet params the configuration declares (issue #61)", () => {
+    // `material` exists on clothing, `storage` on smartphones — both are known params
+    // when browsing "Alle"; a type selection only accepts its own dimensions.
+    expect(parseListingParams({ material: "Wolle" }, TYPES).facets).toEqual({ material: ["Wolle"] });
+    expect(parseListingParams({ type: "smartphone", material: "Wolle" }, TYPES).facets).toEqual({});
+    expect(parseListingParams({ type: "smartphone", storage: "256" }, TYPES).facets).toEqual({
+      storage: ["256"],
+    });
+    expect(parseListingParams({ type: "gibt-es-nicht" }, TYPES).type).toBeUndefined();
   });
 
   it("maps documents to plain DTOs", async () => {

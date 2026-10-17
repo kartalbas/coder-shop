@@ -26,7 +26,7 @@ async function seedProduct(tag: string, skus: string[], stock: number) {
     priceCents: 50000,
     images: [{ src: `/products/purchasing-${tag}-1.svg`, alt: "Test" }],
     featured: false,
-    filter: { colors: ["schwarz"], sizes: [], storage: [128], materials: [] },
+    filter: {  color: ["schwarz"], size: [], storage: ["128"], material: []  },
     variants: skus.map((sku) => ({
       sku,
       label: `128 GB / ${sku}`,

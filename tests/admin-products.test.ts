@@ -22,7 +22,7 @@ async function seedProduct(slug: string, brand: string, featured = false) {
     priceCents: 50000,
     images: [{ src: `/products/${slug}-1.svg`, alt: "Test" }],
     featured,
-    filter: { colors: ["schwarz", "weiß"], sizes: [], storage: [128, 256], materials: [] },
+    filter: { color: ["schwarz", "weiß"], storage: ["128", "256"] },
     variants: [
       {
         sku: `AP-${slug}`,
@@ -110,17 +110,39 @@ describe("admin product management", () => {
     expect(result.ok).toBe(true);
 
     const fresh = await ProductModel.findById(product!._id).lean<Product>().exec();
-    expect(fresh?.filter.colors).toEqual(["blau", "weiß"]);
+    expect(fresh?.filter.color).toEqual(["blau", "weiß"]);
     expect(fresh?.variants.find((v) => v.sku === "AP-alpha")?.stock).toBe(9);
-    expect(fresh?.variants.find((v) => v.sku === "AP-alpha")?.label).toBe("128 GB / blau");
+    // Issue #61: the label is built from the type's configured dimensions, in order.
+    expect(fresh?.variants.find((v) => v.sku === "AP-alpha")?.label).toBe("blau / 128 GB");
 
     const dto = await getProductBySlug("alpha");
-    expect(dto?.filter.colors).toEqual(["blau", "weiß"]);
+    expect(dto?.filter.color).toEqual(["blau", "weiß"]);
 
-    const listing = await listProducts({ type: "smartphone", color: ["blau"] });
+    const listing = await listProducts({ type: "smartphone", facets: { color: ["blau"] } });
     expect(listing.items.map((i) => i.slug)).toContain("alpha");
     const facets = await listProducts({ type: "smartphone" });
-    expect(facets.facets.colors.map((f) => f.value)).toContain("blau");
+    expect(facets.facets.dimensions.color.map((f) => f.value)).toContain("blau");
+  });
+
+  it("refuses variant attributes outside the type's dimensions (issue #61)", async () => {
+    const product = await ProductModel.findOne({ slug: "alpha" }).exec();
+    const missing = await updateVariantCore(product!._id.toString(), "AP-alpha", {
+      priceDeltaCents: 0,
+      stock: 9,
+      expectedStock: 9,
+      weightGrams: 200,
+      attributes: { color: "blau" }, // storage is a configured dimension of smartphones
+    });
+    expect(missing.ok).toBe(false);
+
+    const unknown = await updateVariantCore(product!._id.toString(), "AP-alpha", {
+      priceDeltaCents: 0,
+      stock: 9,
+      expectedStock: 9,
+      weightGrams: 200,
+      attributes: { color: "blau", storage: 128, farbe: "blau" },
+    });
+    expect(unknown.ok).toBe(false);
   });
 
   it("rejects an unknown sku and negative stock", async () => {
@@ -294,7 +316,11 @@ describe("adminProductsQuerySchema (issue #32)", () => {
   });
 
   it("falls back to unset instead of breaking on junk", () => {
-    expect(adminProductsQuerySchema.parse({ q: "", type: "quatsch", page: "abc" })).toEqual({});
+    // Issue #61: the type filter is free-form — an unknown key simply matches no
+    // product instead of breaking the page.
+    expect(adminProductsQuerySchema.parse({ q: "", type: "quatsch", page: "abc" })).toEqual({
+      type: "quatsch",
+    });
     expect(adminProductsQuerySchema.parse({ page: "0" })).toEqual({});
     expect(adminProductsQuerySchema.parse({})).toEqual({});
   });

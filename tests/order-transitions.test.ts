@@ -15,7 +15,7 @@ async function seedProduct(sku: string, stock: number) {
     priceCents: 50000,
     images: [{ src: `/products/transition-${sku}-1.svg`, alt: "Test" }],
     featured: false,
-    filter: { colors: ["schwarz"], sizes: [], storage: [128], materials: [] },
+    filter: {  color: ["schwarz"], size: [], storage: ["128"], material: []  },
     variants: [
       {
         sku,

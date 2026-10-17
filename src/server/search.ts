@@ -1,10 +1,16 @@
-import { Types, type HydratedDocument } from "mongoose";
+import { Types, type HydratedDocument, type PipelineStage } from "mongoose";
 import { connectDB } from "./db";
+import { getCatalogTypes } from "./catalog-types";
 import { ProductModel, type Product, type ProductType } from "@/models/product";
 import type {
   ProductDto,
   VariantDto,
 } from "@/lib/dto";
+import {
+  facetDimensionsFor,
+  type CatalogDimensionConfig,
+  type CatalogTypeConfig,
+} from "@/lib/catalog-types";
 import { compareFacetValues } from "@/lib/facet-order";
 import { buyablePriceCents } from "@/lib/pricing";
 import { escapeRegex } from "@/lib/regex";
@@ -20,7 +26,14 @@ type LeanProduct = Omit<Product, "_id" | "collection" | "createdAt"> & {
   createdAt: Date;
 };
 
-export function toProductDto(product: LeanProduct | HydratedDocument<Product>): ProductDto {
+function isComparableType(types: readonly CatalogTypeConfig[], type: string): boolean {
+  return types.some((candidate) => candidate.key === type && candidate.comparable);
+}
+
+export function toProductDto(
+  product: LeanProduct | HydratedDocument<Product>,
+  comparable = false,
+): ProductDto {
   const p = ("toObject" in product ? product.toObject() : product) as unknown as LeanProduct;
   return {
     id: String(p._id),
@@ -28,6 +41,7 @@ export function toProductDto(product: LeanProduct | HydratedDocument<Product>): 
     name: p.name,
     description: p.description,
     type: p.type,
+    comparable,
     brand: p.brand,
     priceCents: p.priceCents,
     ...(() => {
@@ -37,12 +51,9 @@ export function toProductDto(product: LeanProduct | HydratedDocument<Product>): 
     images: p.images.map((image) => ({ src: image.src, alt: image.alt })),
     featured: p.featured,
     collection: p.collection ?? null,
-    filter: {
-      colors: [...p.filter.colors],
-      sizes: [...p.filter.sizes],
-      storage: [...p.filter.storage],
-      materials: [...p.filter.materials],
-    },
+    filter: Object.fromEntries(
+      Object.entries(p.filter ?? {}).map(([key, values]) => [key, [...values]]),
+    ),
     variants: p.variants.map((v) => ({
       sku: v.sku,
       label: v.label,
@@ -60,10 +71,9 @@ export function toProductDto(product: LeanProduct | HydratedDocument<Product>): 
 export interface ListingQuery {
   type?: ProductType;
   brand?: string[];
-  size?: string[];
-  color?: string[];
-  storage?: number[];
-  material?: string[];
+  // Issue #61: facet selections keyed by the catalog type's dimension keys — the
+  // query shape is the same for every attribute, seeded or newly configured.
+  facets?: Record<string, string[]>;
   sort?: SortKey;
   page?: number;
   pageSize?: number;
@@ -84,10 +94,9 @@ export function buildListingFilter(query: ListingQuery): Record<string, unknown>
   const filter: Record<string, unknown> = {};
   if (query.type) filter.type = query.type;
   if (query.brand?.length) filter.brand = { $in: query.brand };
-  if (query.size?.length) filter["filter.sizes"] = { $in: query.size };
-  if (query.color?.length) filter["filter.colors"] = { $in: query.color };
-  if (query.storage?.length) filter["filter.storage"] = { $in: query.storage };
-  if (query.material?.length) filter["filter.materials"] = { $in: query.material };
+  for (const [key, values] of Object.entries(query.facets ?? {})) {
+    if (values.length > 0) filter[`filter.${key}`] = { $in: values };
+  }
   if (query.collection) filter.collection = query.collection;
   return filter;
 }
@@ -97,12 +106,11 @@ export interface FacetValue {
   count: number;
 }
 
+// Issue #61: facet counts are computed for the dimensions the catalog configuration
+// declares — brand plus every facet dimension of the types in scope.
 export interface FacetCounts {
   brand: FacetValue[];
-  sizes: FacetValue[];
-  colors: FacetValue[];
-  storage: FacetValue[];
-  materials: FacetValue[];
+  dimensions: Record<string, FacetValue[]>;
 }
 
 export interface ListingResult {
@@ -111,6 +119,9 @@ export interface ListingResult {
   page: number;
   pageSize: number;
   facets: FacetCounts;
+  // The facet dimensions the counts were computed for (from the catalog
+  // configuration) — the sidebar renders exactly these.
+  dimensions: CatalogDimensionConfig[];
 }
 
 interface GroupedCount {
@@ -127,66 +138,49 @@ function toFacetValues(groups: GroupedCount[]): FacetValue[] {
 
 // Issue #24: each facet is counted over the active filter *without its own* condition
 // (standard faceted search), so counts match what a click would produce and already
-// selected values stay visible with their count.
-async function facetCounts(filter: Record<string, unknown>): Promise<FacetCounts> {
+// selected values stay visible with their count. Issue #61: the dimensions come from
+// the catalog configuration — `$facet` field names cannot contain dots, so each
+// dimension is counted under an alias and mapped back.
+async function facetCounts(
+  filter: Record<string, unknown>,
+  dimensions: readonly CatalogDimensionConfig[],
+): Promise<FacetCounts> {
   const without = (key: string): Record<string, unknown> =>
     Object.fromEntries(Object.entries(filter).filter(([name]) => name !== key));
 
-  const [agg] = await ProductModel.aggregate<{
-    brand: GroupedCount[];
-    sizes: GroupedCount[];
-    colors: GroupedCount[];
-    storage: GroupedCount[];
-    materials: GroupedCount[];
-  }>([
-    {
-      $facet: {
-        brand: [
-          { $match: without("brand") },
-          { $group: { _id: "$brand", count: { $sum: 1 } } },
-        ],
-        sizes: [
-          { $match: without("filter.sizes") },
-          { $unwind: "$filter.sizes" },
-          { $group: { _id: "$filter.sizes", count: { $sum: 1 } } },
-        ],
-        colors: [
-          { $match: without("filter.colors") },
-          { $unwind: "$filter.colors" },
-          { $group: { _id: "$filter.colors", count: { $sum: 1 } } },
-        ],
-        storage: [
-          { $match: without("filter.storage") },
-          { $unwind: "$filter.storage" },
-          { $group: { _id: "$filter.storage", count: { $sum: 1 } } },
-        ],
-        materials: [
-          { $match: without("filter.materials") },
-          { $unwind: "$filter.materials" },
-          { $group: { _id: "$filter.materials", count: { $sum: 1 } } },
-        ],
-      },
-    },
+  const facet: Record<string, PipelineStage.FacetPipelineStage[]> = {
+    brand: [{ $match: without("brand") }, { $group: { _id: "$brand", count: { $sum: 1 } } }],
+  };
+  dimensions.forEach((dimension, index) => {
+    facet[`d${index}`] = [
+      { $match: without(`filter.${dimension.key}`) },
+      { $unwind: `$filter.${dimension.key}` },
+      { $group: { _id: `$filter.${dimension.key}`, count: { $sum: 1 } } },
+    ];
+  });
+
+  const [agg] = await ProductModel.aggregate<Record<string, GroupedCount[]>>([
+    { $facet: facet },
   ]);
   const empty: GroupedCount[] = [];
-  return {
-    brand: toFacetValues(agg?.brand ?? empty),
-    sizes: toFacetValues(agg?.sizes ?? empty),
-    colors: toFacetValues(agg?.colors ?? empty),
-    storage: toFacetValues(agg?.storage ?? empty),
-    materials: toFacetValues(agg?.materials ?? empty),
-  };
+  const counts: FacetCounts = { brand: toFacetValues(agg?.brand ?? empty), dimensions: {} };
+  dimensions.forEach((dimension, index) => {
+    counts.dimensions[dimension.key] = toFacetValues(agg?.[`d${index}`] ?? empty);
+  });
+  return counts;
 }
 
 export async function listProducts(query: ListingQuery): Promise<ListingResult> {
   await connectDB();
+  const types = await getCatalogTypes();
+  const dimensions = facetDimensionsFor(types, query.type);
   const pageSize = query.pageSize ?? PAGE_SIZE;
   const sort = SORTS[query.sort ?? "newest"];
   const filter = buildListingFilter(query);
 
   const [total, facetResult] = await Promise.all([
     ProductModel.countDocuments(filter),
-    facetCounts(filter),
+    facetCounts(filter, dimensions),
   ]);
 
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -198,13 +192,23 @@ export async function listProducts(query: ListingQuery): Promise<ListingResult> 
     .lean<LeanProduct[]>()
     .exec();
 
-  return { items: docs.map(toProductDto), total, page, pageSize, facets: facetResult };
+  return {
+    items: docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type))),
+    total,
+    page,
+    pageSize,
+    facets: facetResult,
+    dimensions,
+  };
 }
 
 export async function getProductBySlug(slug: string): Promise<ProductDto | null> {
   await connectDB();
-  const product = await ProductModel.findOne({ slug }).lean<LeanProduct>().exec();
-  return product ? toProductDto(product) : null;
+  const [product, types] = await Promise.all([
+    ProductModel.findOne({ slug }).lean<LeanProduct>().exec(),
+    getCatalogTypes(),
+  ]);
+  return product ? toProductDto(product, isComparableType(types, product.type)) : null;
 }
 
 // Products behind remembered slugs (issue #46 "Zuletzt angesehen"), in the requested
@@ -212,48 +216,62 @@ export async function getProductBySlug(slug: string): Promise<ProductDto | null>
 export async function getProductsBySlugs(slugs: string[]): Promise<ProductDto[]> {
   if (slugs.length === 0) return [];
   await connectDB();
-  const docs = await ProductModel.find({ slug: { $in: slugs } }).lean<LeanProduct[]>().exec();
+  const [docs, types] = await Promise.all([
+    ProductModel.find({ slug: { $in: slugs } }).lean<LeanProduct[]>().exec(),
+    getCatalogTypes(),
+  ]);
   const bySlug = new Map(docs.map((doc) => [doc.slug, doc]));
   return slugs
     .map((slug) => bySlug.get(slug))
     .filter((doc): doc is LeanProduct => doc !== undefined)
-    .map(toProductDto);
+    .map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
 }
 
 export async function getRelatedProducts(product: ProductDto, limit = 4): Promise<ProductDto[]> {
   await connectDB();
-  const docs = await ProductModel.find({
-    type: product.type,
-    slug: { $ne: product.slug },
-  })
-    .sort({ createdAt: -1, _id: 1 })
-    .limit(limit * 4)
-    .lean<LeanProduct[]>()
-    .exec();
+  const [docs, types] = await Promise.all([
+    ProductModel.find({
+      type: product.type,
+      slug: { $ne: product.slug },
+    })
+      .sort({ createdAt: -1, _id: 1 })
+      .limit(limit * 4)
+      .lean<LeanProduct[]>()
+      .exec(),
+    getCatalogTypes(),
+  ]);
   const sameBrand = docs.filter((d) => d.brand === product.brand);
   const others = docs.filter((d) => d.brand !== product.brand);
-  return [...sameBrand, ...others].slice(0, limit).map(toProductDto);
+  return [...sameBrand, ...others]
+    .slice(0, limit)
+    .map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
 }
 
 export async function getFeaturedProducts(limit = 12): Promise<ProductDto[]> {
   await connectDB();
-  const docs = await ProductModel.find({ featured: true })
-    .sort({ createdAt: -1, _id: 1 })
-    .limit(limit)
-    .lean<LeanProduct[]>()
-    .exec();
-  return docs.map(toProductDto);
+  const [docs, types] = await Promise.all([
+    ProductModel.find({ featured: true })
+      .sort({ createdAt: -1, _id: 1 })
+      .limit(limit)
+      .lean<LeanProduct[]>()
+      .exec(),
+    getCatalogTypes(),
+  ]);
+  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
 }
 
 // Products of one featured collection (issue #23), newest first.
 export async function getCollectionProducts(collection: string, limit = 4): Promise<ProductDto[]> {
   await connectDB();
-  const docs = await ProductModel.find({ collection })
-    .sort({ createdAt: -1, _id: 1 })
-    .limit(limit)
-    .lean<LeanProduct[]>()
-    .exec();
-  return docs.map(toProductDto);
+  const [docs, types] = await Promise.all([
+    ProductModel.find({ collection })
+      .sort({ createdAt: -1, _id: 1 })
+      .limit(limit)
+      .lean<LeanProduct[]>()
+      .exec(),
+    getCatalogTypes(),
+  ]);
+  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
 }
 
 export interface SearchHit {
@@ -284,7 +302,6 @@ export async function searchProducts(query: string, limit = 8): Promise<SearchHi
       return { priceCents: price.priceCents, priceFrom: price.from };
     })(),
     image: doc.images[0]?.src ?? null,
-    variantHint:
-      doc.variants.length > 0 ? doc.variants[0].label : `${doc.filter.colors.length} Farben`,
+    variantHint: doc.variants[0]?.label ?? "",
   }));
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
+import type { MenuCategory } from "@/lib/menu";
 import { VAT_LABEL } from "@/lib/pricing";
 
 const noSubscribe = () => () => {};
@@ -16,7 +16,8 @@ function CurrentYear() {
   return <>{year}</>;
 }
 
-export function Footer() {
+// Issue #61: the assortment links follow the catalog type configuration.
+export function Footer({ categories }: { categories: readonly MenuCategory[] }) {
   return (
     <footer className="border-t bg-muted/40">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-3">
@@ -29,9 +30,16 @@ export function Footer() {
         <nav aria-label="Footer Navigation">
           <p className="text-sm font-semibold">Sortiment</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=smartphone">{PRODUCT_TYPE_LABELS.smartphone}</Link></li>
-            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=shoes">{PRODUCT_TYPE_LABELS.shoes}</Link></li>
-            <li><Link className="hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/produkte?type=clothing">{PRODUCT_TYPE_LABELS.clothing}</Link></li>
+            {categories.map((category) => (
+              <li key={category.type}>
+                <Link
+                  className="hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                  href={`/produkte?type=${encodeURIComponent(category.type)}`}
+                >
+                  {category.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
         <div>

@@ -47,15 +47,9 @@ const imageSchema = new Schema<ProductImage>(
   { _id: false },
 );
 
-const attributesSchema = new Schema<ProductAttributes>(
-  {
-    color: { type: String, required: true },
-    size: { type: String },
-    storage: { type: Number },
-    material: { type: String },
-  },
-  { _id: false },
-);
+// Issue #61: attributes are a generic record keyed by the type's dimension keys —
+// the shape is validated against `product_type_configs` in the write paths.
+const attributesType = Schema.Types.Mixed;
 
 const variantSchema = new Schema<Variant>(
   {
@@ -65,33 +59,28 @@ const variantSchema = new Schema<Variant>(
     stock: { type: Number, required: true, min: 0 },
     restockThreshold: { type: Number, required: true, min: 0 },
     weightGrams: { type: Number, required: true, min: 1 },
-    attributes: { type: attributesSchema, required: true },
+    attributes: { type: attributesType, required: true },
   },
   { _id: false },
 );
 
-const filterSchema = new Schema<ProductFilter>(
-  {
-    colors: { type: [String], default: [] },
-    sizes: { type: [String], default: [] },
-    storage: { type: [Number], default: [] },
-    materials: { type: [String], default: [] },
-  },
-  { _id: false },
-);
+// dimension key → ordered values (issue #61) — dynamic keys, so a Mixed object.
+const filterType = Schema.Types.Mixed;
 
 const productSchema = new Schema<Product>(
   {
     slug: { type: String, required: true },
     name: { type: String, required: true },
     description: { type: String, required: true },
-    type: { type: String, enum: ["smartphone", "shoes", "clothing"], required: true },
+    // Issue #61: the type key is validated against `product_type_configs` in the
+    // write paths (seed, admin) — not against a code-level enum.
+    type: { type: String, required: true },
     brand: { type: String, required: true },
     priceCents: { type: Number, required: true, min: 0 },
     images: { type: [imageSchema], required: true },
     featured: { type: Boolean, required: true, default: false },
     collection: { type: String },
-    filter: { type: filterSchema, required: true },
+    filter: { type: filterType, required: true },
     variants: { type: [variantSchema], required: true },
     rating: {
       average: { type: Number, required: true, default: 0, min: 0, max: 5 },
@@ -104,10 +93,13 @@ const productSchema = new Schema<Product>(
 productSchema.index({ slug: 1 }, { unique: true });
 productSchema.index({ "variants.sku": 1 }, { unique: true });
 productSchema.index({ type: 1, brand: 1 });
-productSchema.index({ type: 1, "filter.sizes": 1 });
+// Facet indexes for the seeded dimensions (issue #61); a newly configured dimension is
+// queried through the same `filter.<key>` shape and simply runs without its own index
+// until one is added — the data volume (hundreds) makes that cheap.
+productSchema.index({ type: 1, "filter.size": 1 });
 productSchema.index({ type: 1, "filter.storage": 1 });
-productSchema.index({ type: 1, "filter.colors": 1 });
-productSchema.index({ type: 1, "filter.materials": 1 });
+productSchema.index({ type: 1, "filter.color": 1 });
+productSchema.index({ type: 1, "filter.material": 1 });
 productSchema.index({ type: 1, priceCents: 1 });
 productSchema.index({ type: 1, createdAt: -1 });
 productSchema.index({ type: 1, "rating.average": -1 });

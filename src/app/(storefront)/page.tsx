@@ -8,16 +8,57 @@ import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront/product-card";
 import { RecentlyViewedRail } from "@/components/storefront/recently-viewed";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
-import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
+import { menuCategories } from "@/lib/menu";
+import { getCatalogTypes } from "@/server/catalog-types";
 import { getCollectionProducts, getFeaturedProducts } from "@/server/search";
 import { COLLECTIONS } from "@/lib/collections";
 import { VAT_LABEL } from "@/lib/pricing";
 
-const CATEGORIES = [
-  { type: "smartphone", description: "Neueste Modelle führender Marken" },
-  { type: "shoes", description: "Running, Lifestyle und mehr" },
-  { type: "clothing", description: "Funktionsbekleidung für jeden Tag" },
-] as const;
+// Issue #61: the category tiles are the catalog type configuration — a new type
+// appears here without a code change.
+async function Categories() {
+  await connection();
+  const categories = menuCategories(await getCatalogTypes());
+  if (categories.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="kategorien-heading">
+      <h2 id="kategorien-heading" className="mb-6 text-2xl font-semibold tracking-tight">
+        Kategorien
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+        {categories.map((category) => (
+          <Link
+            key={category.type}
+            href={`/produkte?type=${encodeURIComponent(category.type)}`}
+            className="group rounded-xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <p className="text-lg font-semibold group-hover:text-primary">{category.label}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Das komplette Sortiment — frisch für Sie ausgewählt.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
+              Ansehen{" "}
+              <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CategoriesSkeleton() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-12" aria-hidden>
+      <div className="mb-6 h-8 w-40 rounded bg-muted" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="h-40 rounded-xl border bg-card" />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 async function FeaturedRail() {
   await connection();
@@ -131,8 +172,7 @@ export default function HomePage() {
             Technik, Style und Komfort — in der Schweiz zuhause.
           </h1>
           <p className="max-w-xl text-lg text-muted-foreground">
-            Smartphones, Schuhe und Kleidung zu fairen Preisen in CHF, inklusive {VAT_LABEL} und
-            schnellem Versand.
+            Faire Preise in CHF, inklusive {VAT_LABEL} und schnellem Versand aus der Schweiz.
           </p>
           <div className="flex gap-3">
             <Button asChild size="lg">
@@ -147,29 +187,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="kategorien-heading">
-        <h2 id="kategorien-heading" className="mb-6 text-2xl font-semibold tracking-tight">
-          Kategorien
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {CATEGORIES.map((category) => (
-            <Link
-              key={category.type}
-              href={`/produkte?type=${category.type}`}
-              className="group rounded-xl border bg-card p-6 transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              <p className="text-lg font-semibold group-hover:text-primary">
-                {PRODUCT_TYPE_LABELS[category.type]}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                Ansehen{" "}
-                <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <Suspense fallback={<CategoriesSkeleton />}>
+        <Categories />
+      </Suspense>
 
       <Suspense fallback={<CollectionsSkeleton />}>
         <Collections />

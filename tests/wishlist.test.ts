@@ -19,7 +19,7 @@ async function seedProduct(slug: string) {
     priceCents: 12_000,
     images: [{ src: `/products/${slug}-1.webp`, alt: "Test" }],
     featured: false,
-    filter: { colors: ["schwarz"], sizes: ["42"], storage: [], materials: [] },
+    filter: {  color: ["schwarz"], size: ["42"], storage: [""], material: []  },
     variants: [
       {
         sku: `WL-${slug}`,

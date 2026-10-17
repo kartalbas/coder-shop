@@ -1,13 +1,5 @@
-import type { ProductType } from "@/models/product";
-
 export const IMAGE_VIEWS = ["front", "side", "back", "detail", "lifestyle"] as const;
 export type ImageView = (typeof IMAGE_VIEWS)[number];
-
-const VIEW_NOUNS: Record<ProductType, string> = {
-  smartphone: "smartphone",
-  shoes: "athletic sneaker",
-  clothing: "outdoor garment",
-};
 
 const GERMAN_VIEW_NAMES: Record<ImageView, string> = {
   front: "Frontansicht",
@@ -54,16 +46,17 @@ export function imageSeed(slug: string, imageNumber: number): number {
 }
 
 export interface PromptInput {
-  type: ProductType;
+  /** The product type's photoNoun from its catalog-type config (issue #61) — data, not a type map. */
+  photoNoun: string;
   color: string;
   material?: string;
   view: ImageView;
 }
 
-export function buildImagePrompt({ type, color, material, view }: PromptInput): string {
+export function buildImagePrompt({ photoNoun, color, material, view }: PromptInput): string {
   const colorEn = COLOR_TRANSLATIONS[color.toLowerCase()] ?? color;
   const materialEn = material ? MATERIAL_TRANSLATIONS[material.toLowerCase()] ?? material : null;
-  const subject = `${VIEW_NOUNS[type]} in ${colorEn}${materialEn ? `, ${materialEn}` : ""}`;
+  const subject = `${photoNoun} in ${colorEn}${materialEn ? `, ${materialEn}` : ""}`;
   return (
     `Professional studio product photography of a ${subject}, ${view} view, ` +
     `soft studio lighting, clean neutral background, photorealistic, high detail, ` +

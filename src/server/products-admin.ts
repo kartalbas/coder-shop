@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
-import { deriveFilter } from "@/lib/facets";
+import { deriveFilter, dimensionsFromAttributes, type VariantForFacets } from "@/lib/facets";
+import { formatDimensionValue, type CatalogDimensionConfig } from "@/lib/catalog-types";
 import { escapeRegex } from "@/lib/regex";
 import type { ProductType } from "@/models/product";
 import { ProductModel, type Product, type Variant } from "@/models/product";
@@ -10,6 +11,18 @@ import {
 } from "@/lib/validations/product";
 import { toProductDto, type ProductDto } from "./search";
 import { connectDB } from "./db";
+import { getCatalogType, getCatalogTypes } from "./catalog-types";
+
+// Issue #61: the dimensions a product's `filter` block and its variant attributes are
+// validated against come from the product type's configuration; products whose type
+// configuration is gone fall back to the keys their variants actually carry.
+async function dimensionsForProductType(
+  type: ProductType,
+  variants: readonly VariantForFacets[],
+): Promise<CatalogDimensionConfig[]> {
+  const config = await getCatalogType(type);
+  return config ? config.dimensions : dimensionsFromAttributes(variants);
+}
 
 export type ProductAdminResult = { ok: true } | { ok: false; error: string };
 
@@ -83,8 +96,13 @@ export async function listProductsAdmin(
 export async function getProductForAdmin(id: string): Promise<ProductDto | null> {
   await connectDB();
   if (!mongoose.isValidObjectId(id)) return null;
-  const product = await ProductModel.findById(id).lean().exec();
-  return product ? toProductDto(product) : null;
+  const [product, types] = await Promise.all([
+    ProductModel.findById(id).lean().exec(),
+    getCatalogTypes(),
+  ]);
+  if (!product) return null;
+  const comparable = types.some((type) => type.key === product.type && type.comparable);
+  return toProductDto(product, comparable);
 }
 
 export async function updateProductCore(id: string, input: unknown): Promise<ProductAdminResult> {
@@ -98,6 +116,8 @@ export async function updateProductCore(id: string, input: unknown): Promise<Pro
   const product = await ProductModel.findById(id).exec();
   if (!product) return { ok: false, error: "Produkt nicht gefunden." };
 
+  const dimensions = await dimensionsForProductType(product.type, product.variants);
+
   // Atomic $set of the core fields only — a whole-document save would clobber stock
   // that changed between this read and the write (issue #13).
   const result = await ProductModel.updateOne(
@@ -109,7 +129,7 @@ export async function updateProductCore(id: string, input: unknown): Promise<Pro
         brand: parsed.data.brand,
         priceCents: parsed.data.priceCents,
         // ARCHITECTURE §3: every write touching the variant/filter block recomputes `filter`.
-        filter: deriveFilter(product.variants),
+        filter: deriveFilter(product.variants, dimensions),
       },
     },
   );
@@ -134,7 +154,28 @@ export async function updateVariantCore(
   const variant = product.variants.find((candidate: Variant) => candidate.sku === sku);
   if (!variant) return { ok: false, error: `Variante ${sku} nicht gefunden.` };
 
+  // Issue #61: the submitted attributes are validated against the type's configured
+  // dimensions — every dimension needs a value, nothing outside them is accepted.
+  const dimensions = await dimensionsForProductType(product.type, product.variants);
   const { attributes, stock, expectedStock } = parsed.data;
+  for (const dimension of dimensions) {
+    const value = attributes[dimension.key];
+    if (value === undefined || String(value).trim() === "") {
+      return { ok: false, error: `Wert für ${dimension.label} fehlt.` };
+    }
+  }
+  const unknownKeys = Object.keys(attributes).filter(
+    (key) => !dimensions.some((dimension) => dimension.key === key),
+  );
+  if (unknownKeys.length > 0) {
+    return { ok: false, error: `Unbekannte Variante-Attribute: ${unknownKeys.join(", ")}` };
+  }
+  const normalizedAttributes = Object.fromEntries(
+    Object.entries(attributes).map(([key, value]) => [
+      key,
+      typeof value === "string" ? value.trim() : value,
+    ]),
+  );
   const stockEdited = stock !== expectedStock;
 
   const updatedVariant: Variant = {
@@ -142,17 +183,9 @@ export async function updateVariantCore(
     priceDeltaCents: parsed.data.priceDeltaCents,
     stock,
     weightGrams: parsed.data.weightGrams,
-    attributes: {
-      color: attributes.color,
-      ...(attributes.size !== undefined && { size: attributes.size }),
-      ...(attributes.storage !== undefined && { storage: attributes.storage }),
-      ...(attributes.material !== undefined && { material: attributes.material }),
-    },
-    label: [
-      attributes.size ?? (attributes.storage !== undefined ? `${attributes.storage} GB` : null),
-      attributes.color,
-    ]
-      .filter(Boolean)
+    attributes: normalizedAttributes,
+    label: dimensions
+      .map((dimension) => formatDimensionValue(dimension, String(normalizedAttributes[dimension.key])))
       .join(" / "),
   };
 
@@ -162,7 +195,10 @@ export async function updateVariantCore(
     "variants.$.attributes": updatedVariant.attributes,
     "variants.$.label": updatedVariant.label,
     // ARCHITECTURE §3: variant edits recompute the denormalized `filter` block.
-    filter: deriveFilter(product.variants.map((v) => (v.sku === sku ? updatedVariant : v))),
+    filter: deriveFilter(
+      product.variants.map((v) => (v.sku === sku ? updatedVariant : v)),
+      dimensions,
+    ),
   };
 
   // Issue #13: never overwrite stock that changed since the editor loaded it. Saving

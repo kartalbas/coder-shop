@@ -38,7 +38,7 @@ async function seedProduct(sku: string, priceCents = 10_000) {
     priceCents,
     images: [{ src: `/products/cust-${sku}-1.webp`, alt: "Test" }],
     featured: false,
-    filter: { colors: ["schwarz"], sizes: [], storage: [128], materials: [] },
+    filter: {  color: ["schwarz"], size: [], storage: ["128"], material: []  },
     variants: [
       {
         sku,

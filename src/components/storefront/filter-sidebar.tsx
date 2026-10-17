@@ -2,47 +2,50 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import type { CatalogDimensionConfig } from "@/lib/catalog-types";
 import { isNumericFacetValue } from "@/lib/facet-order";
 import type { FacetCounts, FacetValue } from "@/server/search";
 
-export type FacetKey = "brand" | "size" | "color" | "storage" | "material";
-
 interface Group {
-  key: FacetKey;
+  key: string;
   label: string;
+  unit?: string;
   values: FacetValue[];
 }
 
-// Issue #24: under "Alle" the size facet must not mix EU sizes with XS–XXL — they become
-// two groups. Values are disjoint, so both still write the `size` param.
-function buildGroups(facets: FacetCounts): Group[] {
-  const euSizes = facets.sizes.filter((v) => isNumericFacetValue(v.value));
-  const letterSizes = facets.sizes.filter((v) => !isNumericFacetValue(v.value));
-  const bothSizeKinds = euSizes.length > 0 && letterSizes.length > 0;
-
-  const groups: Group[] = [
-    { key: "brand", label: "Marke", values: facets.brand },
-    bothSizeKinds
-      ? { key: "size", label: "Grösse (EU)", values: euSizes }
-      : { key: "size", label: "Grösse", values: facets.sizes },
-  ];
-  if (bothSizeKinds) groups.push({ key: "size", label: "Grösse (Kleider)", values: letterSizes });
-  groups.push(
-    { key: "color", label: "Farbe", values: facets.colors },
-    { key: "storage", label: "Speicher", values: facets.storage },
-    { key: "material", label: "Material", values: facets.materials },
-  );
+// Issue #61: the groups are the catalog configuration's facet dimensions for the types
+// in scope — a category only ever offers the attributes its products really have
+// (issue #53). Issue #24 kept: when one dimension mixes numeric and letter values
+// (browsing "Alle" over EU and garment sizes), it splits into two groups; the values
+// are disjoint, so both still write the same param.
+function buildGroups(facets: FacetCounts, dimensions: readonly CatalogDimensionConfig[]): Group[] {
+  const groups: Group[] = [{ key: "brand", label: "Marke", values: facets.brand }];
+  for (const dimension of dimensions) {
+    const values = facets.dimensions[dimension.key] ?? [];
+    if (values.length === 0) continue;
+    const numeric = values.filter((v) => isNumericFacetValue(v.value));
+    const letters = values.filter((v) => !isNumericFacetValue(v.value));
+    if (numeric.length > 0 && letters.length > 0) {
+      groups.push(
+        { key: dimension.key, label: `${dimension.label} (EU)`, unit: dimension.unit, values: numeric },
+        { key: dimension.key, label: `${dimension.label} (Kleider)`, unit: dimension.unit, values: letters },
+      );
+    } else {
+      groups.push({ key: dimension.key, label: dimension.label, unit: dimension.unit, values });
+    }
+  }
   return groups.filter((group) => group.values.length > 0);
 }
 
 interface Props {
   facets: FacetCounts;
-  selected: Partial<Record<FacetKey, string[]>>;
-  onToggle: (key: FacetKey, value: string) => void;
+  dimensions: readonly CatalogDimensionConfig[];
+  selected: Record<string, string[]>;
+  onToggle: (key: string, value: string) => void;
 }
 
-export function FilterSidebar({ facets, selected, onToggle }: Props) {
-  const groups = buildGroups(facets);
+export function FilterSidebar({ facets, dimensions, selected, onToggle }: Props) {
+  const groups = buildGroups(facets, dimensions);
   if (groups.length === 0) return null;
 
   return (
@@ -52,7 +55,7 @@ export function FilterSidebar({ facets, selected, onToggle }: Props) {
           <legend className="mb-2 text-sm font-semibold">{group.label}</legend>
           <ul className="space-y-1.5">
             {group.values.map((facet) => {
-              const id = `facet-${group.key}-${facet.value}`;
+              const id = `facet-${group.key}-${group.label}-${facet.value}`;
               const checked = (selected[group.key] ?? []).includes(facet.value);
               return (
                 <li key={facet.value} className="flex items-center gap-2">
@@ -62,7 +65,7 @@ export function FilterSidebar({ facets, selected, onToggle }: Props) {
                     onCheckedChange={() => onToggle(group.key, facet.value)}
                   />
                   <Label htmlFor={id} className="flex-1 cursor-pointer font-normal">
-                    {group.key === "storage" ? `${facet.value} GB` : facet.value}
+                    {group.unit ? `${facet.value} ${group.unit}` : facet.value}
                   </Label>
                   <span className="text-xs text-muted-foreground">{facet.count}</span>
                 </li>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_CATALOG_TYPES } from "@/lib/catalog-types";
 import { isPhotoSrc } from "@/lib/images";
 import { generateCatalog } from "../scripts/seed/catalog";
 import {
@@ -43,8 +44,8 @@ describe("imageSeed", () => {
 });
 
 describe("buildImagePrompt", () => {
-  it("names type, translated colour, view and the no-logo/no-text constraints", () => {
-    const prompt = buildImagePrompt({ type: "smartphone", color: "titan", view: "front" });
+  it("names the photo noun, translated colour, view and the no-logo/no-text constraints", () => {
+    const prompt = buildImagePrompt({ photoNoun: "smartphone", color: "titan", view: "front" });
     expect(prompt).toContain("smartphone");
     expect(prompt).toContain("titanium");
     expect(prompt).toContain("front view");
@@ -55,7 +56,7 @@ describe("buildImagePrompt", () => {
 
   it("includes the translated material for clothing", () => {
     const prompt = buildImagePrompt({
-      type: "clothing",
+      photoNoun: "outdoor garment",
       color: "oliv",
       material: "Daune",
       view: "detail",
@@ -65,17 +66,30 @@ describe("buildImagePrompt", () => {
     expect(prompt).toContain("detail view");
   });
 
-  it("uses a shoe subject for shoes and keeps unknown colours verbatim", () => {
-    const prompt = buildImagePrompt({ type: "shoes", color: "coral", view: "lifestyle" });
+  it("uses whatever photo noun the type config carries and keeps unknown colours verbatim", () => {
+    const prompt = buildImagePrompt({ photoNoun: "athletic sneaker", color: "coral", view: "lifestyle" });
     expect(prompt).toContain("sneaker");
     expect(prompt).toContain("coral");
     expect(prompt).toContain("lifestyle view");
   });
 
+  it("works for a runtime-added type through its config noun — no code type map (issue #61)", () => {
+    const prompt = buildImagePrompt({ photoNoun: "cable organiser", color: "schwarz", view: "front" });
+    expect(prompt).toContain("cable organiser in black");
+  });
+
   it("never contains brand names (prompts carry no brand input)", () => {
     const brands = ["Apple", "Nike", "Adidas", "Samsung", "Puma", "Patagonia", "Mammut"];
-    const prompt = buildImagePrompt({ type: "shoes", color: "schwarz", view: "side" });
+    const prompt = buildImagePrompt({ photoNoun: "athletic sneaker", color: "schwarz", view: "side" });
     for (const brand of brands) expect(prompt.toLowerCase()).not.toContain(brand.toLowerCase());
+  });
+});
+
+describe("catalog type photo nouns (issue #61 review)", () => {
+  it("every seed config carries a non-empty photoNoun", () => {
+    for (const type of DEFAULT_CATALOG_TYPES) {
+      expect(type.photoNoun.trim().length).toBeGreaterThan(0);
+    }
   });
 });
 

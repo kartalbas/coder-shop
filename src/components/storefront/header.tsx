@@ -6,9 +6,10 @@ import { MegaMenu } from "./mega-menu";
 import { SearchInstant } from "./search-instant";
 import { ThemeToggle } from "./theme-toggle";
 import { CartButton } from "./cart-button";
-import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
+import type { MenuCategory } from "@/lib/menu";
 
-export function Header() {
+// Issue #61: the category navigation is rendered from the catalog type configuration.
+export function Header({ categories }: { categories: readonly MenuCategory[] }) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:gap-4">
@@ -19,7 +20,7 @@ export function Header() {
           coder-shop
         </Link>
         <nav aria-label="Hauptnavigation" className="hidden md:block">
-          <MegaMenu />
+          <MegaMenu categories={categories} />
         </nav>
         <div className="ml-auto flex flex-1 items-center justify-end gap-1 sm:gap-2">
           <SearchInstant />
@@ -37,11 +38,17 @@ export function Header() {
       </div>
       <nav
         aria-label="Kategorien (mobil)"
-        className="flex gap-1 overflow-x-auto border-t px-4 py-2 md:hidden"
+        className={categories.length > 0 ? "flex gap-1 overflow-x-auto border-t px-4 py-2 md:hidden" : "hidden"}
       >
-        <Link href="/produkte?type=smartphone" className="chip">{PRODUCT_TYPE_LABELS.smartphone}</Link>
-        <Link href="/produkte?type=shoes" className="chip">{PRODUCT_TYPE_LABELS.shoes}</Link>
-        <Link href="/produkte?type=clothing" className="chip">{PRODUCT_TYPE_LABELS.clothing}</Link>
+        {categories.map((category) => (
+          <Link
+            key={category.type}
+            href={`/produkte?type=${encodeURIComponent(category.type)}`}
+            className="chip"
+          >
+            {category.label}
+          </Link>
+        ))}
       </nav>
     </header>
   );

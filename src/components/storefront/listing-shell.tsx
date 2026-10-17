@@ -8,22 +8,24 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { ListingResult } from "@/server/search";
 import type { SortKey } from "@/lib/validations/listing";
+import type { MenuCategory } from "@/lib/menu";
 import { ProductCard } from "./product-card";
-import { FilterSidebar, type FacetKey } from "./filter-sidebar";
+import { FilterSidebar } from "./filter-sidebar";
 import { SortSelect } from "./sort-select";
 import { Pagination } from "./pagination";
 import { ProductGridSkeleton } from "./skeletons";
 import { EmptyState } from "./empty-state";
-import { MENU_CATEGORIES, PRODUCT_TYPE_LABELS } from "@/lib/menu";
 
-const TYPE_TABS: { value: string; label: string }[] = [
-  { value: "", label: "Alle" },
-  ...MENU_CATEGORIES.map((category) => ({ value: category.type, label: category.label })),
-];
+interface Props {
+  initial: ListingResult;
+  // Issue #61: tabs, facet params and headings all come from the catalog type
+  // configuration — the shell itself knows no product types or attributes.
+  categories: MenuCategory[];
+  // Every facet dimension key over all types — switching the category drops them all.
+  facetKeys: string[];
+}
 
-const FACET_KEYS: FacetKey[] = ["brand", "size", "color", "storage", "material"];
-
-export function ListingShell({ initial }: { initial: ListingResult }) {
+export function ListingShell({ initial, categories, facetKeys }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Issue #25: the router re-render triggered by `router.replace` already carries the new
@@ -36,13 +38,15 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
   const collection = searchParams.get("collection");
   const sort = (searchParams.get("sort") as SortKey | null) ?? "newest";
   // Issue #24: facets are multi-value — `brand=Apple,Samsung`.
-  const selected = Object.fromEntries(
-    FACET_KEYS.map((key) => {
-      const raw = searchParams.get(key);
-      const values = raw ? raw.split(",").filter(Boolean) : [];
-      return [key, values.length > 0 ? values : undefined];
-    }).filter(([, values]) => values !== undefined),
-  ) as Partial<Record<FacetKey, string[]>>;
+  const selected: Record<string, string[]> = Object.fromEntries(
+    ["brand", ...facetKeys]
+      .map((key) => {
+        const raw = searchParams.get(key);
+        const values = raw ? raw.split(",").filter(Boolean) : [];
+        return [key, values] as const;
+      })
+      .filter(([, values]) => values.length > 0),
+  );
 
   const applyParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -71,7 +75,7 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);
 
-  const toggleFacet = (key: FacetKey, value: string) => {
+  const toggleFacet = (key: string, value: string) => {
     const current = selected[key] ?? [];
     const next = current.includes(value)
       ? current.filter((entry) => entry !== value)
@@ -82,14 +86,13 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
   // Issue #24: switching the category drops every facet — values like a shoe size are
   // meaningless for smartphones and used to leave the listing at 0 products.
   const switchType = (nextType: string) => {
-    applyParams({
-      type: nextType || null,
-      brand: null,
-      size: null,
-      color: null,
-      storage: null,
-      material: null,
-    });
+    applyParams(
+      Object.fromEntries([
+        ["type", nextType || null],
+        ["brand", null],
+        ...facetKeys.map((key) => [key, null] as const),
+      ]),
+    );
   };
 
   const resetFilters = () => {
@@ -102,13 +105,18 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
   };
 
   const sidebar = (
-    <FilterSidebar facets={data.facets} selected={selected} onToggle={toggleFacet} />
+    <FilterSidebar
+      facets={data.facets}
+      dimensions={data.dimensions}
+      selected={selected}
+      onToggle={toggleFacet}
+    />
   );
 
   // Issue #26: the listing had no <h1> at all (axe page-has-heading-one).
   const heading =
     collection ??
-    (type ? PRODUCT_TYPE_LABELS[type as keyof typeof PRODUCT_TYPE_LABELS] : "Alle Produkte");
+    (categories.find((category) => category.type === type)?.label ?? "Alle Produkte");
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -130,7 +138,7 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
       )}
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        {TYPE_TABS.map((tab) => (
+        {[{ value: "", label: "Alle" }, ...categories.map((category) => ({ value: category.type, label: category.label }))].map((tab) => (
           <Button
             key={tab.value}
             variant={tab.value === type ? "default" : "outline"}

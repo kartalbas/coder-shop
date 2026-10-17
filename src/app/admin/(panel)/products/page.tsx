@@ -8,21 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProductSearch } from "@/components/admin/product-search";
 import { formatChf } from "@/lib/format";
-import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
-import type { ProductType } from "@/models/product";
-import { adminProductsQuerySchema, productTypes } from "@/lib/validations/listing";
+import { adminProductsQuerySchema } from "@/lib/validations/listing";
 import { cn } from "@/lib/utils";
+import { getCatalogTypes } from "@/server/catalog-types";
 import { listProductsAdmin } from "@/server/products-admin";
 
 export const metadata: Metadata = {
   title: "Produkte — Admin",
   description: "Produkte durchsuchen und bearbeiten.",
 };
-
-const TYPE_FILTERS: { value: ProductType | undefined; label: string }[] = [
-  { value: undefined, label: "Alle" },
-  ...productTypes.map((type) => ({ value: type as ProductType, label: PRODUCT_TYPE_LABELS[type] })),
-];
 
 async function ProductsView({
   searchParams,
@@ -33,10 +27,18 @@ async function ProductsView({
   const params = await searchParams;
   const { q, type, page = 1 } = adminProductsQuerySchema.parse(params);
 
+  // Issue #61: the type filter and the type column follow the catalog configuration.
+  const types = await getCatalogTypes();
+  const typeFilters: { value: string | undefined; label: string }[] = [
+    { value: undefined, label: "Alle" },
+    ...types.map((typeConfig) => ({ value: typeConfig.key, label: typeConfig.label })),
+  ];
+  const labelOfType = (key: string) => types.find((t) => t.key === key)?.label ?? key;
+
   const result = await listProductsAdmin({ q, type, page });
   const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
-  const linkFor = (targetPage: number, nextType?: ProductType) => {
+  const linkFor = (targetPage: number, nextType?: string) => {
     const search = new URLSearchParams();
     if (q) search.set("q", q);
     if (nextType) search.set("type", nextType);
@@ -54,7 +56,7 @@ async function ProductsView({
           <ProductSearch />
         </Suspense>
         <nav className="flex gap-1" aria-label="Typfilter">
-          {TYPE_FILTERS.map(({ value, label }) => (
+          {typeFilters.map(({ value, label }) => (
             <Link
               key={label}
               href={linkFor(1, value)}
@@ -115,7 +117,7 @@ async function ProductsView({
                     )}
                   </td>
                   <td className="py-2.5 pr-4 text-muted-foreground">{item.brand}</td>
-                  <td className="py-2.5 pr-4 text-muted-foreground">{PRODUCT_TYPE_LABELS[item.type]}</td>
+                  <td className="py-2.5 pr-4 text-muted-foreground">{labelOfType(item.type)}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">
                     {formatChf(item.priceCents)}
                   </td>

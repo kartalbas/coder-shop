@@ -165,6 +165,7 @@ src/
          review-actions.tsx           # approve / hide / answer a review (#47)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
+    product-type-config.ts  # product types, variant dimensions, facets as data (#61, §3)
     discount-code.ts        # marketing codes: percent/fixed, window, limits (#45)
     discount-usage.ts       # (code, customer) redemptions — unique _id enforces once-each (#45)
     password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
@@ -173,7 +174,9 @@ src/
     review.ts               # verified-buyer reviews: pending/approved/hidden (#47)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
                           # (guard test: tests/lib-purity.test.ts)
-    product-types.ts        # ProductType union (models re-export it)
+    product-types.ts        # ProductType = string — types are data now (#61), the alias only names it
+    catalog-types.ts        # CatalogTypeConfig/CatalogDimensionConfig shapes + DEFAULT_CATALOG_TYPES
+                            # (seed content only) + pure dimension/facet helpers (#61)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # CHF de-CH, dates, weights
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
@@ -182,11 +185,11 @@ src/
                             # for server validation and the live checklist (#60)
     pricing.ts              # gross VAT 8.1 %, totals, VAT rounding + copy, buyable price (§8 note)
     stock.ts                # pure stock rules: isLowStock, stockLevel, stockLabel
-    facets.ts               # deriveFilter(variants) + ProductFilter (pure facet derivation, §3/§4)
-    facet-order.ts          # natural facet value ordering (EU sizes, clothing sizes, storage)
+    facets.ts               # deriveFilter(variants, dimensions) + ProductFilter keyed by dimension
+                            # key — generic over the configured dimensions (#61, §3/§4)
+    facet-order.ts          # natural facet value ordering per a dimension's order rule
     regex.ts                # escapeRegex (shared by search + SKU search)
-    menu.ts                 # mega-menu categories/brands + PRODUCT_TYPE_LABELS (synced, tested)
-    brands.ts               # CATALOG_BRANDS — single brand set (seed + mega-menu)
+    menu.ts                 # menuCategories(types) — mega-menu from the type configs (#31 → #61)
     collections.ts          # Neuheiten | Bestseller | Sale (seed, listing, home, menu)
     product-selection.ts    # variant dimensions/selection + color→photo-slot rule (#18/#19)
     site.ts                 # SITE_URL + absoluteUrl (metadata, JSON-LD)
@@ -212,6 +215,8 @@ src/
                             # product, purchasing, account (#39), common: objectIdSchema)
   server/                   # ALL I/O: db, session, queries, providers, actions
     db.ts                   # single connection helper (see §6)
+    catalog-types.ts        # getCatalogTypes/getCatalogType/saveCatalogTypeCore — the type-config
+                            # source read by all generic catalog code (#61)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET optional)
     numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
     session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
@@ -308,18 +313,15 @@ All models: `{ versionKey: false }`, timestamps where useful. Money is **integer
   slug: string            // unique
   name: string
   description: string
-  type: 'smartphone' | 'shoes' | 'clothing'
+  type: string            // key into product_type_configs (#61) — validated in the cores
   brand: string
   priceCents: number      // base gross price
   images: [{ src: string, alt: string }]        // 1–5 slots, /products/<slug>-<n>.webp
   featured: boolean
   collection?: string     // e.g. "Neuheiten", "Bestseller"
-  filter: {               // denormalized facet source, derived from variants — see rule below
-    colors: string[]
-    sizes: string[]       // EU sizes "36".."47" or XS..XXL
-    storage: number[]     // GB, smartphones only
-    materials: string[]   // clothing only
-  }
+  filter: Record<string, string[]>
+                          // denormalized facet source keyed by dimension key ("color", "size",
+                          // "storage", …) — derived from variants, see rule below (#61)
   variants: [{
     sku: string                     // unique across all products
     label: string                   // e.g. "42 / schwarz", "256 GB / titan"
@@ -327,23 +329,32 @@ All models: `{ versionKey: false }`, timestamps where useful. Money is **integer
     stock: number
     restockThreshold: number        // low-stock alert level
     weightGrams: number
-    attributes: { color: string, size?: string, storage?: number, material?: string }
-  }]
+    attributes: Record<string, string | number>   // keys are the type's configured dimensions
+  }]                                              // (#61) — validated against the config in cores
   createdAt, updatedAt
 }
 ```
-**`filter` maintenance rule:** `filter` is recomputed with the pure `deriveFilter(variants)`
-(`src/lib/facets.ts`) and written **inside every operation that creates or touches variants**
-(seed, `updateVariant`, `updateProduct`). Document middleware is never relied on — Mongoose
-hooks do not run on `findOneAndUpdate`/`updateOne`, which is exactly how the block would go
-stale. Unit-tested; an integration test asserts "edit a variant's colour → listing facet
-reflects it".
+**`filter` maintenance rule:** `filter` is recomputed with the pure
+`deriveFilter(variants, dimensions)` (`src/lib/facets.ts`, values ordered per each
+dimension's configured `order` rule) and written **inside every operation that creates or
+touches variants** (seed, `updateVariant`, `updateProduct`). Document middleware is never
+relied on — Mongoose hooks do not run on `findOneAndUpdate`/`updateOne`, which is exactly
+how the block would go stale. Unit-tested; an integration test asserts "edit a variant's
+colour → listing facet reflects it".
+
+**Agnostic write path (#61):** `attributes` and `filter` are Mixed in the schema (any
+dimension key a type config may define); validation happens in the cores — `updateProductCore`
+refuses a `type` without a config, `updateVariantCore` refuses attribute keys that are not
+the type's dimensions. A re-seed repairs documents still holding the pre-#61
+`filter.colors/sizes/…` shape to the new dimension-keyed shape.
 
 Indexes:
 - `{ slug: 1 }` unique
 - `{ 'variants.sku': 1 }` unique
-- `{ type: 1, brand: 1 }`, `{ type: 1, 'filter.sizes': 1 }`, `{ type: 1, 'filter.storage': 1 }`,
-  `{ type: 1, 'filter.colors': 1 }`, `{ type: 1, 'filter.materials': 1 }` — faceted filters
+- `{ type: 1, brand: 1 }`, `{ type: 1, 'filter.size': 1 }`, `{ type: 1, 'filter.storage': 1 }`,
+  `{ type: 1, 'filter.color': 1 }`, `{ type: 1, 'filter.material': 1 }` — faceted filters
+  (one index per seed dimension key; dimensions added at runtime query unindexed, fine at
+  catalog size and recorded in DECISIONS)
 - `{ type: 1, priceCents: 1 }`, `{ type: 1, createdAt: -1 }` — sorting
 - `{ featured: 1, type: 1 }` — home page
 - No text index: search is a regex-escaped literal prefix on `name`/`brand` (§4) — enough at
@@ -351,6 +362,31 @@ Indexes:
 - Listing queries hit compound filters + sort with `{ type: 1, ...facet..., <sort>: 1 }` shapes;
   **every sort appends `_id: 1` as tiebreaker** (stable pagination) and `page` is clamped to
   `[1, ceil(total/pageSize)]`. The aggregate for facets uses `$facet` over the type-filtered set.
+
+### ProductTypeConfig (`product_type_configs`, #61)
+```ts
+{
+  key: string             // unique — the Product.type value ("smartphone", …)
+  label: string           // German UI label ("Smartphones")
+  position: number        // order in menus/tabs
+  stockTracking: 'quantity' | 'serial'   // stock model hook for #62
+  comparable: boolean     // may enter the side-by-side comparison (replaces type checks)
+  photoNoun: string       // English subject for the image-prompt generator (#61 review)
+  brands: string[]        // demo brands (seed + mega-menu columns)
+  dimensions: [{
+    key: string           // variant attribute key ("color", "storage", …)
+    label: string         // "Farbe", "Speicher", …
+    facet: boolean        // offered in the listing facet column
+    order: 'alpha' | 'numeric' | 'clothing-size'
+    unit?: string         // display suffix ("GB")
+  }]
+}
+```
+The single source for every catalog question; `DEFAULT_CATALOG_TYPES`
+(`src/lib/catalog-types.ts`) is only its seed content. Read through
+`getCatalogTypes()`/`getCatalogType()`, written through `saveCatalogTypeCore` (validated);
+the seed inserts it **insert-only** (#14 rule — admin edits survive re-seeds). An empty
+collection falls back to the seed content so a fresh build works before seeding.
 
 ### Order (`orders`)
 ```ts
@@ -735,7 +771,9 @@ from CHF 100 subtotal.
 `scripts/seed/catalog.ts` uses a seeded PRNG (mulberry32, fixed seed) — same 200 products every
 run: 70 smartphones (brands Apple/Samsung/Xiaomi/Google/OnePlus; storage 64–512 GB; colors),
 70 shoes (Nike/Adidas/Puma/On/Running…; EU 36–47; colors), 60 clothing (Northface…; XS–XXL;
-materials). Realistic German descriptions from template pools, CHF price ranges per type,
+materials) — the types, their brands and variant dimensions come from the type configs
+(`DEFAULT_CATALOG_TYPES` upserted into `product_type_configs`, insert-only, #61).
+Realistic German descriptions from template pools, CHF price ranges per type,
 variant stock 0–80 (a few at 0 and a few below threshold for alerts), weights per type range.
 The seed records 1–5 image slots per product with their final photo paths
 (`/products/<slug>-<n>.webp`) but writes no image files itself — the photo pipeline (§11)

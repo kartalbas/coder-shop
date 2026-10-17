@@ -20,6 +20,9 @@ export interface ProductDto {
   name: string;
   description: string;
   type: ProductType;
+  // Whether the product's catalog type is configured as comparable (issue #48/#61) —
+  // the UI never checks a type key itself.
+  comparable: boolean;
   brand: string;
   priceCents: number;
   minPriceCents: number;

@@ -3,10 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import { MENU_CATEGORIES } from "@/lib/menu";
+import type { MenuCategory } from "@/lib/menu";
 import { cn } from "@/lib/utils";
 
-export function MegaMenu() {
+// Issue #61: the categories and their brand columns come from the catalog type
+// configuration (rendered by the server layout) — a new type appears here without a
+// code change.
+export function MegaMenu({ categories }: { categories: readonly MenuCategory[] }) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
 
   return (
@@ -17,7 +20,7 @@ export function MegaMenu() {
         if (event.key === "Escape") setOpenCategory(null);
       }}
     >
-      {MENU_CATEGORIES.map((category) => {
+      {categories.map((category) => {
         const open = openCategory === category.type;
         return (
           <div key={category.type} className="relative" onMouseEnter={() => setOpenCategory(category.type)}>

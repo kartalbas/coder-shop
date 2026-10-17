@@ -1,7 +1,17 @@
 import { COLLECTIONS } from "@/lib/collections";
-import { CATALOG_BRANDS } from "@/lib/brands";
+import {
+  DEFAULT_CATALOG_TYPES,
+  formatDimensionValue,
+  type CatalogDimensionConfig,
+  type CatalogTypeConfig,
+} from "@/lib/catalog-types";
 import { deriveFilter, type ProductAttributes } from "@/lib/facets";
-import type { ProductType } from "@/models/product";
+
+// Demo catalog generator (the seed's content). Issue #61: the product types, their
+// dimensions and brands come from the catalog type configuration
+// (`DEFAULT_CATALOG_TYPES` — the seed content of `product_type_configs`); what lives
+// here is the per-dimension value pools and demo copy, i.e. seed content, not
+// app logic. A type without seed content simply gets no generated products.
 
 interface SeedVariant {
   sku: string;
@@ -17,7 +27,7 @@ export interface SeedProduct {
   slug: string;
   name: string;
   description: string;
-  type: ProductType;
+  type: string;
   brand: string;
   priceCents: number;
   images: { src: string; alt: string }[];
@@ -50,64 +60,103 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-// Brands come from the single catalog brand set (src/lib/brands.ts) that the mega-menu
-// also renders (issue #31). Weighted so Apple (the flagship brand) has enough products to
-// fill more than one listing page (M2 acceptance: `?type=smartphone&brand=Apple`).
-const PHONE_BRAND_WEIGHTS: Record<string, number> = {
-  Apple: 4,
-  Samsung: 2,
-  Xiaomi: 2,
-  Google: 1,
-  OnePlus: 1,
-};
-const PHONE_BRAND_WEIGHTS_LIST = CATALOG_BRANDS.smartphone.flatMap((brand) =>
-  Array<string>(PHONE_BRAND_WEIGHTS[brand] ?? 1).fill(brand),
-);
-
-const PHONE_MODELS: Record<string, string[]> = {
-  Apple: ["iPhone 16", "iPhone 16 Pro", "iPhone 16 Pro Max", "iPhone SE"],
-  Samsung: ["Galaxy S25", "Galaxy S25 Ultra", "Galaxy A56", "Galaxy Z Flip6"],
-  Xiaomi: ["Xiaomi 15", "Xiaomi 15 Pro", "Redmi Note 14", "Poco F7"],
-  Google: ["Pixel 10", "Pixel 10 Pro", "Pixel 9a", "Pixel Fold"],
-  OnePlus: ["OnePlus 13", "OnePlus 13T", "Nord 5", "Nord CE5"],
-};
-
-const SHOE_MODELS: Record<string, string[]> = {
-  Nike: ["Air Zoom Pegasus", "Revolution", "Air Max DN", "Vomero"],
-  Adidas: ["Ultraboost", "Supernova", "Samba", "Gazelle"],
-  Puma: ["Velocity Nitro", "RS-X", "Smash", "Deviate"],
-  On: ["Cloudmonster", "Cloudsurfer", "Cloud 5", "Cloudstratus"],
-  "New Balance": ["Fresh Foam X", "880", "574", "FuelCell"],
-};
-
-const CLOTHING_MODELS: Record<string, string[]> = {
-  "The North Face": ["Fleece Jacke", "Daunenweste", "Softshell Jacke", "Softshell Hoodie"],
-  "Jack Wolfskin": ["Bergjacke", "Trekking Hose", "Fleece Pullover", "Regenjacke"],
-  Mammut: ["Hardshell Jacke", "Wander Hose", "Merino Shirt", "Isolation Weste"],
-  Vaude: ["Alpenföhn Jacke", "Rad Trikot", "Wander Socken Set", "Softshell Hose"],
-  Patagonia: ["Synthetische Daunenjacke", "Fleece Retro", "T-Shirt Organic", "Flanell Hemd"],
-};
-
-// The model tables must cover exactly the shared brand set — a brand without models would
-// silently produce no products (issue #31).
-for (const [type, models] of [
-  ["smartphone", PHONE_MODELS],
-  ["shoes", SHOE_MODELS],
-  ["clothing", CLOTHING_MODELS],
-] as const) {
-  const missing = CATALOG_BRANDS[type].filter((brand) => !(brand in models));
-  if (missing.length > 0) {
-    throw new Error(`catalog.ts: no models for brand(s) ${missing.join(", ")} (${type})`);
-  }
+// Seed content per type key: demo models per brand, price/weight ranges, the value
+// pools for each dimension and the German description grammar.
+interface SeedTypeContent {
+  count: number;
+  skuPrefix: string;
+  priceCents: [number, number];
+  weightGrams: [number, number];
+  models: Record<string, readonly string[]>;
+  brandWeights?: Record<string, number>;
+  pools: Record<string, readonly string[]>;
+  // Cents added per pool position of a dimension (e.g. more storage → pricier).
+  priceSteps?: Record<string, number>;
+  describe: (name: string, adjective: string) => string;
 }
 
 // Swiss spelling: „weiss“, not „weiß“ (issue #28).
-const PHONE_COLORS = ["schwarz", "weiss", "blau", "grün", "titan", "grau"] as const;
-const SHOE_COLORS = ["schwarz", "weiss", "grau", "blau", "rot", "grün"] as const;
-const CLOTHING_COLORS = ["schwarz", "anthrazit", "blau", "oliv", "rot", "beige"] as const;
-const MATERIALS = ["Baumwolle", "Polyester", "Wolle", "Daune", "Fleece", "Softshell"] as const;
-const CLOTHING_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
-const STORAGE_DELTA: Record<number, number> = { 64: 0, 128: 2000, 256: 4500, 512: 9000 };
+const SHOE_SIZES = Array.from({ length: 12 }, (_, i) => String(36 + i));
+const CLOTHING_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+
+const SEED_TYPE_CONTENT: Record<string, SeedTypeContent> = {
+  smartphone: {
+    count: 70,
+    skuPrefix: "SP",
+    priceCents: [30000, 150000],
+    weightGrams: [170, 240],
+    // Weighted so Apple (the flagship brand) fills more than one listing page
+    // (M2 acceptance: `?type=smartphone&brand=Apple`).
+    brandWeights: { Apple: 4, Samsung: 2, Xiaomi: 2, Google: 1, OnePlus: 1 },
+    models: {
+      Apple: ["iPhone 16", "iPhone 16 Pro", "iPhone 16 Pro Max", "iPhone SE"],
+      Samsung: ["Galaxy S25", "Galaxy S25 Ultra", "Galaxy A56", "Galaxy Z Flip6"],
+      Xiaomi: ["Xiaomi 15", "Xiaomi 15 Pro", "Redmi Note 14", "Poco F7"],
+      Google: ["Pixel 10", "Pixel 10 Pro", "Pixel 9a", "Pixel Fold"],
+      OnePlus: ["OnePlus 13", "OnePlus 13T", "Nord 5", "Nord CE5"],
+    },
+    pools: {
+      color: ["schwarz", "weiss", "blau", "grün", "titan", "grau"],
+      storage: ["64", "128", "256", "512"],
+    },
+    priceSteps: { storage: 2250 },
+    // Issue #28: adjective stems, declined per gender — the old predicative forms
+    // („hochwertige“) plus the appended ending produced „hochwertigeer“, „leichtees“.
+    describe: (name, adj) =>
+      `Das ${name} ist ein ${adj}es Smartphone mit brillantem Display, starker Kamera und zuverlässiger Akkulaufzeit für den Alltag.`,
+  },
+  shoes: {
+    count: 70,
+    skuPrefix: "SH",
+    priceCents: [8000, 26000],
+    weightGrams: [600, 1100],
+    models: {
+      Nike: ["Air Zoom Pegasus", "Revolution", "Air Max DN", "Vomero"],
+      Adidas: ["Ultraboost", "Supernova", "Samba", "Gazelle"],
+      Puma: ["Velocity Nitro", "RS-X", "Smash", "Deviate"],
+      On: ["Cloudmonster", "Cloudsurfer", "Cloud 5", "Cloudstratus"],
+      "New Balance": ["Fresh Foam X", "880", "574", "FuelCell"],
+    },
+    pools: {
+      color: ["schwarz", "weiss", "grau", "blau", "rot", "grün"],
+      size: SHOE_SIZES,
+    },
+    describe: (name, adj) =>
+      `Der ${name} ist ein ${adj}er Schuh mit angenehmer Dämpfung und gutem Halt – ideal für Training und Freizeit.`,
+  },
+  clothing: {
+    count: 60,
+    skuPrefix: "CL",
+    priceCents: [2500, 19000],
+    weightGrams: [200, 800],
+    models: {
+      "The North Face": ["Fleece Jacke", "Daunenweste", "Softshell Jacke", "Softshell Hoodie"],
+      "Jack Wolfskin": ["Bergjacke", "Trekking Hose", "Fleece Pullover", "Regenjacke"],
+      Mammut: ["Hardshell Jacke", "Wander Hose", "Merino Shirt", "Isolation Weste"],
+      Vaude: ["Alpenföhn Jacke", "Rad Trikot", "Wander Socken Set", "Softshell Hose"],
+      Patagonia: ["Synthetische Daunenjacke", "Fleece Retro", "T-Shirt Organic", "Flanell Hemd"],
+    },
+    pools: {
+      color: ["schwarz", "anthrazit", "blau", "oliv", "rot", "beige"],
+      size: CLOTHING_SIZES,
+      material: ["Baumwolle", "Polyester", "Wolle", "Daune", "Fleece", "Softshell"],
+    },
+    priceSteps: { size: 40 },
+    describe: (name, adj) =>
+      `Die ${name} ist eine ${adj}e Kleidung mit angenehmem Tragekomfort und durchdachter Ausstattung für jedes Wetter.`,
+  },
+};
+
+// The model tables must cover exactly the configured brands — a brand without models
+// would silently produce no products (issue #31).
+for (const type of DEFAULT_CATALOG_TYPES) {
+  const content = SEED_TYPE_CONTENT[type.key];
+  if (!content) continue;
+  const missing = type.brands.filter((brand) => !(brand in content.models));
+  if (missing.length > 0) {
+    throw new Error(`catalog.ts: no models for brand(s) ${missing.join(", ")} (${type.key})`);
+  }
+}
 
 function stockFor(rng: Rng, threshold: number): number {
   const roll = rng();
@@ -116,112 +165,92 @@ function stockFor(rng: Rng, threshold: number): number {
   return int(rng, threshold + 2, 80);
 }
 
-function phoneVariants(rng: Rng, index: number): SeedVariant[] {
-  const colors = [pick(rng, PHONE_COLORS), pick(rng, PHONE_COLORS)].filter(
-    (c, i, all) => all.indexOf(c) === i,
-  );
-  const storages = [64, 128, 256, 512].slice(int(rng, 0, 1), int(rng, 2, 4));
-  const variants: SeedVariant[] = [];
-  for (const color of colors) {
-    for (const storage of storages) {
-      const threshold = int(rng, 3, 8);
-      variants.push({
-        sku: `SP-${String(index).padStart(4, "0")}-${storage}-${slugify(color).toUpperCase()}`,
-        label: `${storage} GB / ${color}`,
-        priceDeltaCents: STORAGE_DELTA[storage] ?? 0,
-        stock: stockFor(rng, threshold),
-        restockThreshold: threshold,
-        weightGrams: int(rng, 170, 240),
-        attributes: { color, storage },
-      });
-    }
+// The values one dimension takes on a product: a small colour selection, a contiguous
+// range for ordered dimensions (EU sizes, garment sizes, storage), one or two values
+// for other free-text dimensions.
+function dimensionValues(
+  rng: Rng,
+  dimension: CatalogDimensionConfig,
+  pool: readonly string[] | undefined,
+): string[] {
+  if (!pool || pool.length === 0) return [];
+  if (dimension.order === "numeric" || dimension.order === "clothing-size") {
+    const start = int(rng, 0, Math.min(4, Math.max(0, pool.length - 2)));
+    const maxSpan = Math.min(8, Math.max(2, pool.length - start));
+    return pool.slice(start, Math.min(pool.length, start + int(rng, 2, maxSpan)));
   }
-  return variants;
+  const count = Math.min(pool.length, int(rng, 1, 2));
+  const chosen = new Set<string>();
+  while (chosen.size < count) chosen.add(pick(rng, pool));
+  return [...chosen];
 }
 
-function shoeVariants(rng: Rng, index: number): SeedVariant[] {
-  const colors = [pick(rng, SHOE_COLORS), pick(rng, SHOE_COLORS)].filter(
-    (c, i, all) => all.indexOf(c) === i,
+function buildVariants(
+  rng: Rng,
+  index: number,
+  type: CatalogTypeConfig,
+  content: SeedTypeContent,
+): SeedVariant[] {
+  const valueSets = type.dimensions.map((dimension) =>
+    dimensionValues(rng, dimension, content.pools[dimension.key]),
   );
-  const start = int(rng, 36, 40);
-  const sizes: string[] = [];
-  for (let s = start; s <= Math.min(47, start + int(rng, 3, 7)); s++) sizes.push(String(s));
-  const variants: SeedVariant[] = [];
-  for (const color of colors) {
-    for (const size of sizes) {
-      const threshold = int(rng, 3, 6);
-      variants.push({
-        sku: `SH-${String(index).padStart(4, "0")}-${size}-${slugify(color).toUpperCase()}`,
-        label: `${size} / ${color}`,
-        priceDeltaCents: 0,
-        stock: stockFor(rng, threshold),
-        restockThreshold: threshold,
-        weightGrams: int(rng, 600, 1100),
-        attributes: { color, size },
-      });
-    }
+  if (valueSets.some((values) => values.length === 0)) return [];
+
+  let combinations: string[][] = [[]];
+  for (const values of valueSets) {
+    combinations = combinations.flatMap((prefix) => values.map((value) => [...prefix, value]));
   }
-  return variants;
+
+  return combinations.map((values) => {
+    const attributes: ProductAttributes = {};
+    let priceDeltaCents = 0;
+    type.dimensions.forEach((dimension, position) => {
+      const value = values[position];
+      attributes[dimension.key] = value;
+      const step = content.priceSteps?.[dimension.key];
+      if (step) priceDeltaCents += (content.pools[dimension.key]?.indexOf(value) ?? 0) * step;
+    });
+    const threshold = int(rng, 3, 8);
+    return {
+      sku: [
+        content.skuPrefix,
+        String(index).padStart(4, "0"),
+        ...values.map((value) => slugify(value).toUpperCase()),
+      ].join("-"),
+      label: type.dimensions
+        .map((dimension, position) => formatDimensionValue(dimension, values[position]))
+        .join(" / "),
+      priceDeltaCents,
+      stock: stockFor(rng, threshold),
+      restockThreshold: threshold,
+      weightGrams: int(rng, content.weightGrams[0], content.weightGrams[1]),
+      attributes,
+    };
+  });
 }
 
-function clothingVariants(rng: Rng, index: number): SeedVariant[] {
-  const colors = [pick(rng, CLOTHING_COLORS), pick(rng, CLOTHING_COLORS)].filter(
-    (c, i, all) => all.indexOf(c) === i,
-  );
-  const material = pick(rng, MATERIALS);
-  const start = int(rng, 0, 1);
-  const sizes = CLOTHING_SIZES.slice(start, start + int(rng, 4, 6));
-  const variants: SeedVariant[] = [];
-  for (const color of colors) {
-    for (const size of sizes) {
-      const threshold = int(rng, 3, 6);
-      variants.push({
-        sku: `CL-${String(index).padStart(4, "0")}-${size}-${slugify(color).toUpperCase()}`,
-        label: `${size} / ${color}`,
-        priceDeltaCents: size === "XL" || size === "XXL" ? 200 : 0,
-        stock: stockFor(rng, threshold),
-        restockThreshold: threshold,
-        weightGrams: int(rng, 200, 800),
-        attributes: { color, size, material },
-      });
-    }
-  }
-  return variants;
-}
-
-// Issue #28: adjective stems, declined per gender — the old predicative forms
-// („hochwertige“) plus the appended ending produced „hochwertigeer“, „leichtees“.
-export function describe(rng: Rng, name: string, type: ProductType): string {
+export function describe(rng: Rng, name: string, type: string): string {
   const adjectives = ["hochwertig", "vielseitig", "modern", "robust", "leicht"];
-  const adj = pick(rng, adjectives);
-  if (type === "smartphone") {
-    return `Das ${name} ist ein ${adj}es Smartphone mit brillantem Display, starker Kamera und zuverlässiger Akkulaufzeit für den Alltag.`;
-  }
-  if (type === "shoes") {
-    return `Der ${name} ist ein ${adj}er Schuh mit angenehmer Dämpfung und gutem Halt – ideal für Training und Freizeit.`;
-  }
-  return `Die ${name} ist eine ${adj}e Kleidung mit angenehmem Tragekomfort und durchdachter Ausstattung für jedes Wetter.`;
+  return (SEED_TYPE_CONTENT[type]?.describe ?? ((n, adj) => `${n} — ${adj}.`))(name, pick(rng, adjectives));
 }
 
-function buildProduct(rng: Rng, index: number, type: ProductType): SeedProduct {
-  const models =
-    type === "smartphone" ? PHONE_MODELS : type === "shoes" ? SHOE_MODELS : CLOTHING_MODELS;
-  const brand =
-    type === "smartphone" ? pick(rng, PHONE_BRAND_WEIGHTS_LIST) : pick(rng, Object.keys(models));
-  const model = pick(rng, models[brand]);
+function pickBrand(rng: Rng, type: CatalogTypeConfig, content: SeedTypeContent): string {
+  const weights = content.brandWeights;
+  const list = weights
+    ? type.brands.flatMap((brand) => Array<string>(weights[brand] ?? 1).fill(brand))
+    : [...type.brands];
+  return pick(rng, list);
+}
+
+function buildProduct(rng: Rng, index: number, type: CatalogTypeConfig): SeedProduct | null {
+  const content = SEED_TYPE_CONTENT[type.key];
+  if (!content) return null;
+  const brand = pickBrand(rng, type, content);
+  const model = pick(rng, content.models[brand]);
   const name = `${brand} ${model}`;
-  const priceCents =
-    type === "smartphone"
-      ? int(rng, 300, 1500) * 100
-      : type === "shoes"
-        ? int(rng, 80, 260) * 100
-        : int(rng, 25, 190) * 100;
-  const variants =
-    type === "smartphone"
-      ? phoneVariants(rng, index)
-      : type === "shoes"
-        ? shoeVariants(rng, index)
-        : clothingVariants(rng, index);
+  const priceCents = int(rng, content.priceCents[0], content.priceCents[1]);
+  const variants = buildVariants(rng, index, type, content);
+  if (variants.length === 0) return null;
   const slug = `${slugify(name)}-${String(index).padStart(3, "0")}`;
   const imageCount = int(rng, 1, 5);
   const images = Array.from({ length: imageCount }, (_, n) => ({
@@ -232,14 +261,14 @@ function buildProduct(rng: Rng, index: number, type: ProductType): SeedProduct {
   return {
     slug,
     name,
-    description: describe(rng, name, type),
-    type,
+    description: describe(rng, name, type.key),
+    type: type.key,
     brand,
     priceCents,
     images,
     featured: roll < 0.15,
     collection: roll > 0.6 ? pick(rng, COLLECTIONS) : undefined,
-    filter: deriveFilter(variants),
+    filter: deriveFilter(variants, type.dimensions),
     variants,
   };
 }
@@ -248,8 +277,13 @@ export function generateCatalog(seed = 20261017): SeedProduct[] {
   const rng = mulberry32(seed);
   const products: SeedProduct[] = [];
   let index = 1;
-  for (let i = 0; i < 70; i++) products.push(buildProduct(rng, index++, "smartphone"));
-  for (let i = 0; i < 70; i++) products.push(buildProduct(rng, index++, "shoes"));
-  for (let i = 0; i < 60; i++) products.push(buildProduct(rng, index++, "clothing"));
+  for (const type of [...DEFAULT_CATALOG_TYPES].sort((a, b) => a.position - b.position)) {
+    const content = SEED_TYPE_CONTENT[type.key];
+    if (!content) continue;
+    for (let i = 0; i < content.count; i++) {
+      const product = buildProduct(rng, index++, type);
+      if (product) products.push(product);
+    }
+  }
   return products;
 }

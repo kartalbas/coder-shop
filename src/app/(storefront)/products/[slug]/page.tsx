@@ -15,7 +15,7 @@ import { ProductDetail } from "@/components/storefront/product-detail";
 import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefront/recently-viewed";
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { ReviewSection } from "@/components/storefront/review-section";
-import { PRODUCT_TYPE_LABELS } from "@/lib/menu";
+import { getCatalogType } from "@/server/catalog-types";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
 import { getProductReviewsCore } from "@/server/reviews";
 import { VAT_LABEL } from "@/lib/pricing";
@@ -46,22 +46,26 @@ async function ProductView({ params }: PagePropsLocal) {
   // Issue #28: this runs before any Suspense fallback can start the stream, so
   // unknown slugs answer with a real HTTP 404 (see docs: loading.md "Status codes").
   if (!product) notFound();
-  const [related, { aggregate }] = await Promise.all([
+  // Issue #61: the category label and the variant dimensions come from the product
+  // type's configuration.
+  const [related, { aggregate }, typeConfig] = await Promise.all([
     getRelatedProducts(product),
     getProductReviewsCore(product.id),
+    getCatalogType(product.type),
   ]);
+  const categoryLabel = typeConfig?.label ?? product.type;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <Breadcrumbs
         items={[
           { label: "Start", href: "/" },
-          { label: PRODUCT_TYPE_LABELS[product.type], href: `/produkte?type=${product.type}` },
+          { label: categoryLabel, href: `/produkte?type=${encodeURIComponent(product.type)}` },
           { label: product.name },
         ]}
       />
       <div className="mt-6">
-        <ProductDetail product={product} />
+        <ProductDetail product={product} typeDimensions={typeConfig?.dimensions ?? []} />
       </div>
 
       <Accordion type="single" collapsible className="mt-10 border-t">
@@ -93,7 +97,7 @@ async function ProductView({ params }: PagePropsLocal) {
       {/* Issue #46: remember this product, and show the rest of the history. */}
       <RecentlyViewedTracker slug={product.slug} />
       <RecentlyViewedRail excludeSlug={product.slug} />
-      <JsonLd product={product} aggregateRating={aggregate} />
+      <JsonLd product={product} categoryLabel={categoryLabel} aggregateRating={aggregate} />
     </div>
   );
 }

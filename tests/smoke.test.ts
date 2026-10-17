@@ -46,7 +46,7 @@ describe("database smoke (throw-away replica set)", () => {
       priceCents: 99900,
       images: [{ src: "/products/test-telefon-1.svg", alt: "Test Telefon" }],
       featured: false,
-      filter: { colors: ["schwarz"], sizes: [], storage: [256], materials: [] },
+      filter: { color: ["schwarz"], storage: ["256"] },
       variants: [
         {
           sku: "T-001",
@@ -61,7 +61,7 @@ describe("database smoke (throw-away replica set)", () => {
     });
     const found = await ProductModel.findOne({ slug: "test-telefon" }).lean();
     expect(found?.variants[0].sku).toBe("T-001");
-    expect(found?.filter.storage).toEqual([256]);
+    expect(found?.filter.storage).toEqual(["256"]);
     await ProductModel.deleteOne({ _id: created._id });
   });
 

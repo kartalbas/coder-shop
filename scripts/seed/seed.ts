@@ -6,9 +6,12 @@ import { formatOrderNumber, formatPaymentReference, formatPoNumber } from "@/lib
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { computeTotals, type ShippingMethodName } from "@/lib/pricing";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
+import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
+import { deriveFilter } from "@/lib/facets";
 import { CounterModel } from "@/models/counter";
 import { OrderModel, type OrderStatus, type StatusLogEntry } from "@/models/order";
 import { ProductModel } from "@/models/product";
+import { ProductTypeConfigModel } from "@/models/product-type-config";
 import { PurchaseOrderModel } from "@/models/purchase-order";
 import { SupplierModel } from "@/models/supplier";
 import { UserModel } from "@/models/user";
@@ -64,6 +67,44 @@ const STATUS_PLAN: OrderStatus[] = [
   "delivered",
   "cancelled",
 ];
+
+// Issue #61: the catalog type configuration is seeded from `DEFAULT_CATALOG_TYPES`,
+// insert-only (#14 rule) — an edited configuration survives a re-seed.
+export async function seedCatalogTypes(): Promise<CatalogTypeConfig[]> {
+  for (const config of DEFAULT_CATALOG_TYPES) {
+    await ProductTypeConfigModel.updateOne(
+      { key: config.key },
+      { $setOnInsert: { ...config } },
+      { upsert: true },
+    );
+  }
+  return [...DEFAULT_CATALOG_TYPES];
+}
+
+// The denormalized `filter` block is derived data (ARCHITECTURE §3): recompute it from
+// the variants and the current type configuration — this repairs documents written
+// before the dynamic facet keys (issue #61) and stays idempotent.
+export async function repairProductFilters(types: CatalogTypeConfig[]): Promise<number> {
+  let repaired = 0;
+  for (const product of await ProductModel.find().lean().exec()) {
+    const dimensions = types.find((type) => type.key === product.type)?.dimensions ?? [];
+    const expected = deriveFilter(product.variants, dimensions);
+    const stored = (product.filter ?? {}) as Record<string, string[]>;
+    const same =
+      Object.keys(expected).length === Object.keys(stored).length &&
+      Object.entries(expected).every(
+        ([key, values]) =>
+          Array.isArray(stored[key]) &&
+          stored[key].length === values.length &&
+          stored[key].every((value, index) => value === values[index]),
+      );
+    if (!same) {
+      await ProductModel.updateOne({ _id: product._id }, { $set: { filter: expected } });
+      repaired += 1;
+    }
+  }
+  return repaired;
+}
 
 // Re-running the seed never touches existing shop data (issue #14): every field is
 // `$setOnInsert`, so an admin edit or a sold-out stock value survives; only products that
@@ -261,7 +302,10 @@ async function main(): Promise<void> {
   }
   const now = new Date();
   const rng = mulberry32(987654321);
+  const types = await seedCatalogTypes();
   const productCount = await seedProducts();
+  const repairedFilters = await repairProductFilters(types);
+  if (repairedFilters > 0) console.log(`filter blocks recomputed for ${repairedFilters} products`);
   const user = await seedUser();
   if (user.created && user.generatedPassword) {
     console.log(

@@ -9,7 +9,13 @@ export const productCoreSchema = z.object({
 });
 
 
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
+// Issue #61: variant attributes are a generic record keyed by the catalog type's
+// dimension keys — which keys must be present (and what they mean) is validated
+// against the type configuration in `updateVariantCore`, not here.
+const variantAttributeValueSchema = z.union([
+  z.string().trim().min(1, "Wert ist erforderlich.").max(60),
+  z.number(),
+]);
 
 export const variantCoreSchema = z.object({
   priceDeltaCents: z.coerce.number().int("Ganze Rappen erforderlich.").min(-100000).max(100000),
@@ -17,12 +23,7 @@ export const variantCoreSchema = z.object({
   // Stock the editor loaded; a stock edit is only applied while the DB still has it (issue #13).
   expectedStock: z.coerce.number().int().min(0),
   weightGrams: z.coerce.number().int("Ganze Gramm erforderlich.").min(1).max(100000),
-  attributes: z.object({
-    color: z.string().trim().min(1, "Farbe ist erforderlich.").max(40),
-    size: z.preprocess(emptyToUndefined, z.string().trim().max(10).optional()),
-    storage: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().max(8192).optional()),
-    material: z.preprocess(emptyToUndefined, z.string().trim().max(40).optional()),
-  }),
+  attributes: z.record(z.string().min(1).max(60), variantAttributeValueSchema),
 });
 
 

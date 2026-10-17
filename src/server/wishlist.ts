@@ -2,6 +2,7 @@ import { ProductModel, type Product } from "@/models/product";
 import { UserModel, type User } from "@/models/user";
 import { toProductDto, type ProductDto } from "./search";
 import { connectDB } from "./db";
+import { getCatalogTypes } from "./catalog-types";
 
 // Server side of the wishlist (issue #46). The browser store is the working copy; this
 // is the account copy it syncs into — slugs, newest first, capped, only products that
@@ -38,12 +39,15 @@ export async function getWishlistProductsCore(userId: string): Promise<ProductDt
   const user = await UserModel.findById(userId).select("wishlist").lean<User>().exec();
   const slugs = user?.wishlist ?? [];
   if (slugs.length === 0) return [];
-  const docs = await ProductModel.find({ slug: { $in: slugs } }).lean<Product[]>().exec();
+  const [docs, types] = await Promise.all([
+    ProductModel.find({ slug: { $in: slugs } }).lean<Product[]>().exec(),
+    getCatalogTypes(),
+  ]);
   const bySlug = new Map(docs.map((doc) => [doc.slug, doc]));
   return slugs
     .map((slug) => bySlug.get(slug))
     .filter((doc): doc is NonNullable<typeof doc> => doc !== undefined)
-    .map(toProductDto);
+    .map((doc) => toProductDto(doc, types.some((t) => t.key === doc.type && t.comparable)));
 }
 
 export async function removeFromWishlistCore(userId: string, slug: string): Promise<boolean> {
