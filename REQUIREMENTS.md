@@ -61,6 +61,19 @@ QUALITY: domain logic (pricing incl. VAT, stock reservation, order state machine
 weight) in src/lib with Vitest unit tests. `npm run build`, `npm run lint` and `npm test` must
 pass at the end of every milestone.
 
+CODE QUALITY AND STRUCTURE — clean code is a requirement, not polish:
+- A clear, conventional folder structure: src/app (routes only, thin), src/components (ui/ for
+  shadcn primitives, shop/ and admin/ for feature components), src/server (data access, server
+  actions, providers), src/lib (pure domain logic, no I/O), src/models (Mongoose), scripts/
+  (seed, image generation), tests next to what they test or under tests/. Documentation lives
+  in docs/ (REQUIREMENTS, ARCHITECTURE, PLAN, REVIEW, DECISIONS, PROGRESS); the root holds only
+  README.md and tool configuration.
+- Small, single-purpose modules and functions; names that say what things are; no dead code,
+  commented-out code, TODO leftovers, debug output, unused files, dependencies or exports;
+  no copy-paste duplication; types instead of `any`; errors handled where they can be handled.
+- Generated or runtime files (data/, .next/, coverage, logs) never committed; .agent/ belongs
+  to the lead (prompts and logs of this run) — leave it untouched.
+
 DELIVERY: milestones M1–M5 (scaffold + data + seed; storefront; cart + checkout; admin orders +
 packing + UPS label; purchasing + dashboard + polish). After each one `npm run build`,
 `npm run lint` and `npm test` pass, PROGRESS.md is updated (done / open / known issues), and a
