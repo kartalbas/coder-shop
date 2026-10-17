@@ -68,6 +68,14 @@ QUALITY: domain logic (pricing incl. VAT, stock reservation, order state machine
 weight) in src/lib with Vitest unit tests. `npm run build`, `npm run lint` and `npm test` must
 pass at the end of every milestone.
 
+AGNOSTIC AND DYNAMIC — the user's rule for all code: no hard-coded values or special cases,
+no workarounds. Product types, their attributes and variant dimensions, the filters of a
+category, how stock is tracked (by quantity or by serial number), payment and shipping methods,
+VAT rates, statuses and their labels, texts and limits are data or configuration (with
+validation and an admin UI where it makes sense), read by generic code. Adding a new product
+type, attribute or payment method must not need a code change. Fix root causes, never paper
+over a symptom.
+
 CODE QUALITY AND STRUCTURE — clean code is a requirement, not polish:
 - A clear, conventional folder structure: src/app (routes only, thin), src/components (ui/ for
   shadcn primitives, shop/ and admin/ for feature components), src/server (data access, server
