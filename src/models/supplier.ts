@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
 
 export interface Supplier {
   _id: Types.ObjectId;
@@ -24,4 +24,5 @@ const supplierSchema = new Schema<Supplier>(
 
 supplierSchema.index({ name: 1 }, { unique: true });
 
-export const SupplierModel = model<Supplier>("Supplier", supplierSchema);
+export const SupplierModel =
+  mongoose.models.Supplier ?? mongoose.model<Supplier>("Supplier", supplierSchema);

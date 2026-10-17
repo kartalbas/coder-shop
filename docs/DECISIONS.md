@@ -37,3 +37,18 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   requires `MONGODB_URI`.
 - English code / German public URLs via `next.config.ts` rewrites; no German stemming in the
   text index.
+
+## Storefront (M2)
+
+- Seed smartphone brand list is weighted toward Apple (4/10 picks) so `brand=Apple`
+  yields > 24 products and the M2 pagination acceptance check (`page=2` returns the next
+  page) is exercisable; the 70/70/60 type split, determinism and idempotency are unchanged.
+- Instant search matches the regex-escaped literal query at any **word boundary**
+  (`(?:^|\b)query`), not only at string start — "iphone" must find "Apple iPhone 16".
+- Product images are local SVGs: rendered with `<img>` (`next/image` cannot optimize SVGs
+  without a custom loader); `@next/next/no-img-element` is disabled for
+  `src/components/storefront/**` only.
+- `<RouteTransition>` animates via `useAnimationControls` on pathname change instead of
+  `key={pathname}`: re-keying the wrapper that contains the PPR suspense holes breaks
+  React's resume ("Couldn't find all resumable slots … during replaying") and the dynamic
+  content never reaches the HTML.

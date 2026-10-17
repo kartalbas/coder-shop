@@ -1,0 +1,92 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const CATEGORIES = [
+  {
+    type: "smartphone",
+    label: "Smartphones",
+    brands: ["Apple", "Samsung", "Xiaomi", "Google", "OnePlus"],
+  },
+  {
+    type: "shoes",
+    label: "Schuhe",
+    brands: ["Nike", "Adidas", "Puma", "On"],
+  },
+  {
+    type: "clothing",
+    label: "Kleidung",
+    brands: ["The North Face", "Columbia", "Jack Wolfskin", "Patagonia"],
+  },
+] as const;
+
+export function MegaMenu() {
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
+
+  return (
+    <div className="flex items-center" onMouseLeave={() => setOpenCategory(null)}>
+      {CATEGORIES.map((category) => {
+        const open = openCategory === category.type;
+        return (
+          <div key={category.type} className="relative" onMouseEnter={() => setOpenCategory(category.type)}>
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-haspopup="true"
+              onClick={() => setOpenCategory(open ? null : category.type)}
+              className="flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {category.label}
+              <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
+            </button>
+            {open && (
+              <div className="absolute left-0 top-full w-[480px] rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Marken</p>
+                    <ul className="space-y-1">
+                      {category.brands.map((brand) => (
+                        <li key={brand}>
+                          <Link
+                            href={`/produkte?type=${category.type}&brand=${encodeURIComponent(brand)}`}
+                            className="block rounded-md px-2 py-1 text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                            onClick={() => setOpenCategory(null)}
+                          >
+                            {brand}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      href={`/produkte?type=${category.type}`}
+                      className="mt-2 block rounded-md px-2 py-1 text-sm font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring"
+                      onClick={() => setOpenCategory(null)}
+                    >
+                      Alle {category.label}
+                    </Link>
+                  </div>
+                  <div className="flex flex-col justify-between rounded-lg bg-muted p-4">
+                    <p className="text-sm font-semibold">Neuheiten</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Die neuesten Modelle, frisch eingetroffen.
+                    </p>
+                    <Link
+                      href="/produkte?sort=newest"
+                      className="mt-3 text-sm font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring"
+                      onClick={() => setOpenCategory(null)}
+                    >
+                      Jetzt entdecken
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

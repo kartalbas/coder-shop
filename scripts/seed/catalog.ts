@@ -48,6 +48,21 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+// Weighted so Apple (the flagship brand) has enough products to fill more than one
+// listing page (M2 acceptance: `?type=smartphone&brand=Apple` pagination).
+const PHONE_BRAND_WEIGHTS = [
+  "Apple",
+  "Apple",
+  "Apple",
+  "Apple",
+  "Samsung",
+  "Samsung",
+  "Xiaomi",
+  "Xiaomi",
+  "Google",
+  "OnePlus",
+] as const;
+
 const PHONE_MODELS: Record<string, string[]> = {
   Apple: ["iPhone 16", "iPhone 16 Pro", "iPhone 16 Pro Max", "iPhone SE"],
   Samsung: ["Galaxy S25", "Galaxy S25 Ultra", "Galaxy A56", "Galaxy Z Flip6"],
@@ -175,7 +190,8 @@ function describe(rng: Rng, name: string, type: ProductType): string {
 function buildProduct(rng: Rng, index: number, type: ProductType): SeedProduct {
   const models =
     type === "smartphone" ? PHONE_MODELS : type === "shoes" ? SHOE_MODELS : CLOTHING_MODELS;
-  const brand = pick(rng, Object.keys(models));
+  const brand =
+    type === "smartphone" ? pick(rng, PHONE_BRAND_WEIGHTS) : pick(rng, Object.keys(models));
   const model = pick(rng, models[brand]);
   const name = `${brand} ${model}`;
   const priceCents =

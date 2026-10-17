@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
 import { deriveFilter, type ProductAttributes } from "@/lib/facets";
 
 export type ProductType = "smartphone" | "shoes" | "clothing";
@@ -111,6 +111,7 @@ productSchema.index({ type: 1, createdAt: -1 });
 productSchema.index({ featured: 1, type: 1 });
 productSchema.index({ name: "text", description: "text", brand: "text" });
 
-export const ProductModel = model<Product>("Product", productSchema);
+export const ProductModel =
+  mongoose.models.Product ?? mongoose.model<Product>("Product", productSchema);
 
 export { deriveFilter };

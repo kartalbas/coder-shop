@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
 
 export type OrderStatus =
   | "new"
@@ -169,4 +169,5 @@ orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ "customer.email": 1 });
 
-export const OrderModel = model<Order>("Order", orderSchema);
+export const OrderModel =
+  mongoose.models.Order ?? mongoose.model<Order>("Order", orderSchema);

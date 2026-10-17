@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
 
 export type PurchaseOrderStatus = "draft" | "ordered" | "received";
 
@@ -52,4 +52,5 @@ const purchaseOrderSchema = new Schema<PurchaseOrder>(
 purchaseOrderSchema.index({ poNumber: 1 }, { unique: true });
 purchaseOrderSchema.index({ status: 1, createdAt: -1 });
 
-export const PurchaseOrderModel = model<PurchaseOrder>("PurchaseOrder", purchaseOrderSchema);
+export const PurchaseOrderModel =
+  mongoose.models.PurchaseOrder ?? mongoose.model<PurchaseOrder>("PurchaseOrder", purchaseOrderSchema);

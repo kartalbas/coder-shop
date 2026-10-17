@@ -1,0 +1,108 @@
+"use client";
+
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { ProductDto } from "@/server/search";
+
+interface GalleryProps {
+  product: ProductDto;
+  imageIndex: number;
+  onImageChange: (index: number) => void;
+}
+
+export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
+  const images = product.images;
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const current = images[Math.min(imageIndex, images.length - 1)];
+
+  const step = (delta: number) => {
+    if (images.length === 0) return;
+    onImageChange((imageIndex + delta + images.length) % images.length);
+  };
+
+  if (images.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="group relative overflow-hidden rounded-xl border bg-muted">
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={current.src}
+            src={current.src}
+            alt={current.alt}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              if (info.offset.x < -60) step(1);
+              else if (info.offset.x > 60) step(-1);
+            }}
+            onClick={() => setOpenIndex(imageIndex)}
+            className="aspect-square w-full cursor-zoom-in object-contain"
+          />
+        </AnimatePresence>
+        {images.length > 1 && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="Vorheriges Bild"
+              onClick={() => step(-1)}
+            >
+              <ChevronLeft className="size-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+              aria-label="Nächstes Bild"
+              onClick={() => step(1)}
+            >
+              <ChevronRight className="size-5" />
+            </Button>
+          </>
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto">
+          {images.map((image, index) => (
+            <button
+              key={image.src}
+              type="button"
+              aria-label={`Bild ${index + 1} von ${images.length}: ${image.alt}`}
+              aria-current={index === imageIndex}
+              onClick={() => onImageChange(index)}
+              className={cn(
+                "size-16 shrink-0 overflow-hidden rounded-lg border bg-muted transition-all focus-visible:outline-2 focus-visible:outline-ring",
+                index === imageIndex ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100",
+              )}
+            >
+              <img src={image.src} alt="" className="size-full object-contain" />
+            </button>
+          ))}
+        </div>
+      )}
+      <Dialog open={openIndex !== null} onOpenChange={(open) => !open && setOpenIndex(null)}>
+        <DialogContent className="max-w-3xl" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">{product.name}</DialogTitle>
+          {openIndex !== null && images[openIndex] && (
+            <img
+              src={images[openIndex].src}
+              alt={images[openIndex].alt}
+              className="max-h-[80vh] w-full object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

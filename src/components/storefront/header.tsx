@@ -1,0 +1,38 @@
+"use client";
+
+import Link from "next/link";
+import { MegaMenu } from "./mega-menu";
+import { SearchInstant } from "./search-instant";
+import { ThemeToggle } from "./theme-toggle";
+import { CartButton } from "./cart-button";
+
+export function Header() {
+  return (
+    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:gap-4">
+        <Link
+          href="/"
+          className="shrink-0 text-lg font-semibold tracking-tight rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          coder-shop
+        </Link>
+        <nav aria-label="Hauptnavigation" className="hidden md:block">
+          <MegaMenu />
+        </nav>
+        <div className="ml-auto flex flex-1 items-center justify-end gap-1 sm:gap-2">
+          <SearchInstant />
+          <ThemeToggle />
+          <CartButton />
+        </div>
+      </div>
+      <nav
+        aria-label="Kategorien (mobil)"
+        className="flex gap-1 overflow-x-auto border-t px-4 py-2 md:hidden"
+      >
+        <Link href="/produkte?type=smartphone" className="chip">Smartphones</Link>
+        <Link href="/produkte?type=shoes" className="chip">Schuhe</Link>
+        <Link href="/produkte?type=clothing" className="chip">Kleidung</Link>
+      </nav>
+    </header>
+  );
+}

@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
 
 export interface User {
   _id: Types.ObjectId;
@@ -22,4 +22,5 @@ const userSchema = new Schema<User>(
 
 userSchema.index({ email: 1 }, { unique: true });
 
-export const UserModel = model<User>("User", userSchema);
+export const UserModel =
+  mongoose.models.User ?? mongoose.model<User>("User", userSchema);

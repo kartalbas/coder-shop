@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument } from "mongoose";
+import mongoose, { Schema, type HydratedDocument } from "mongoose";
 
 export type CounterId = "order" | "po";
 
@@ -17,4 +17,5 @@ const counterSchema = new Schema<Counter>(
   { versionKey: false },
 );
 
-export const CounterModel = model<Counter>("Counter", counterSchema);
+export const CounterModel =
+  mongoose.models.Counter ?? mongoose.model<Counter>("Counter", counterSchema);
