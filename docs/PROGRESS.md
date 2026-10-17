@@ -195,6 +195,73 @@ Open / known issues
   M2 product page.
 - Mock payment fields are a UI stub only (never validated or persisted) by design.
 
+## M4 — Admin: auth, orders, packing, shipping ✅ (2026-10-17)
+
+Done
+- Auth: `server/session-token.ts` (pure HMAC-SHA256 cookie `<base64url(payload)>.<base64url(mac)>`,
+  payload `{ userId, exp }` 12 h, `timingSafeEqual`) + `server/session.ts` (scrypt verify via
+  `server/password.ts`, in-memory login throttle 5/15 min per IP+account, cookie helpers,
+  `requireAdminSession`); `/admin/login` card with demo-credentials hint; logout in sidebar.
+  `src/proxy.ts` (Next 16 Proxy, Node runtime) guards every `/admin/*` request **before
+  rendering** with a real 307 → `/admin/login` (with `cacheComponents`/PPR a `redirect()`
+  thrown during render only streams a client-side `NEXT_REDIRECT` under HTTP 200 — the layout
+  guard stays as defense in depth, the proxy makes the redirect a real HTTP redirect).
+- Orders: `/admin/orders` status tabs with counts + table; detail with status timeline,
+  allowed-transition buttons (server-validated) → `transitionOrderCore`
+  (`server/orders-admin.ts`: state-machine transition + logged timestamps in one transaction;
+  cancel from `new`/`paid`/`picking` restocks the variant lines in the **same transaction**;
+  illegal edges throw `IllegalTransitionError`, mapped to a German toast in the action).
+- Packing: queue of `picking`/`packed` orders; per order pick list sorted by sku with
+  per-line weight and parcel weight (Σ qty×weight + 150 g), printable slip (`print-slip` +
+  `@media print` rules in `globals.css` hide sidebar/header/footer), Drucken button.
+- Shipping: `lib/shipping/types.ts` (`ShippingProvider`, `LabelRequest/Result`,
+  `MOCK_TRACKING_PATTERN`); factory `server/shipping/provider.ts` (UPS only when
+  `UPS_CLIENT_ID/SECRET/ACCOUNT` all set); `UpsShippingProvider` (OAuth client-credentials
+  token cached until `expiresIn − 60 s` with single-flight refresh, Shipping API 2
+  `v2409/ship`, PDF label decode, typed error mapping — endpoints pinned in DECISIONS,
+  verified against the Karrio UPS connector because `developer.ups.com` is unreachable from
+  this network); `MockUpsProvider` (`1Z…` tracking, pdf-lib label → `data/labels/`);
+  `createLabelCore` (only from `packed`, idempotent, provider must succeed before the
+  conditional `packed → shipped` move, writes `data/labels/<orderNumber>.pdf` outside the web
+  root); behind `createLabelAction` **and** `POST /api/shipping/label/[orderId]`
+  (same-Origin check → 403, session → 401); label served only by session-guarded
+  `GET /admin/labels/[orderId]` (path-traversal-checked, invalid id → 404).
+- Label button on packing + order detail; tracking + parcel weight + label link shown on the
+  customer confirmation once shipped.
+
+Verified (acceptance)
+- Background `npm run start`: `/admin` and `/admin/orders` without cookie → **307 →
+  /admin/login**; forged cookie → 307; expired cookie (signed, `exp` past) → 307; login page
+  200. `loginCore` with the seeded credentials (run against the live dev mongod) returned a
+  token that fetched `/admin`, `/admin/orders`, `/admin/packing` → 200.
+- `POST /api/shipping/label/…` with forged `Origin` (and with no `Origin`) → 403; same
+  `Origin` without session → 401. `GET /admin/labels/…` without cookie → 307; with cookie →
+  200 `application/pdf` starting `%PDF-`; invalid order id → 404.
+- Live mock flow on seeded order `B-2026-000009` (`packed`): tracking `1ZTBCFX4D62UTHA6ZN`
+  (`^1Z[0-9A-Z]{15,16}$`), PDF `%PDF-` at `data/labels/B-2026-000009.pdf`, order `shipped`,
+  `shipping.parcelWeightGrams` = Σ qty×weight + 150; second call returned the identical
+  tracking + label path; `/bestellung/B-2026-000009` shows the tracking number.
+- Packing slip HTML contains every line's sku/name/variant/qty/weight + parcel weight incl.
+  150 g; served CSS contains the `@media print` block.
+- `npm test` ✅ 139 tests / 15 files — new: `tests/session.test.ts` (token round-trip, forged
+  signature/payload/secret, expiry, `loginCore` seeded credentials, wrong password, throttle
+  after 5 failures), `tests/order-transitions.test.ts` (`paid → picking → packed` one logged
+  entry per step, `IllegalTransitionError` for `packed → paid` and same-state with nothing
+  written, cancel-restock from `new`/`paid`/`picking`, no cancel from `packed`/`shipped`),
+  `tests/shipping.test.ts` (mock tracking pattern + `%PDF-`, UPS provider with mocked fetch:
+  token caching/refresh/single-flight, success mapping, API + auth error mapping, factory
+  selection by env, `createLabelCore` from packed / idempotent / rejected from `paid` /
+  provider failure keeps `packed`).
+- `npm run build` ✅ (no mongod, no env); `npm run lint` ✅; server + mongod stopped again.
+
+Open / known issues
+- `SESSION_SECRET` unset falls back to a fixed dev secret (documented in DECISIONS; the app
+  is a single-process demo with public credentials — production must set it).
+- UPS endpoints could not be verified against `developer.ups.com` (network-blocked); pinned
+  from the maintained Karrio connector instead (DECISIONS) — the real provider is only
+  exercised once credentials are provided.
+- `/admin` dashboard is a section launcher; KPI cards/low-stock table are M5 scope.
+
 ## Next
 
-M4 — Admin: auth, orders, packing, shipping.
+M5 — Purchasing, dashboard, polish.

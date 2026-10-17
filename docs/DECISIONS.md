@@ -53,6 +53,44 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   React's resume ("Couldn't find all resumable slots … during replaying") and the dynamic
   content never reaches the HTML.
 
+## Admin auth & shipping (M4)
+
+- **UPS API endpoints (pinned, looked up — never guessed):** OAuth token
+  `POST https://www.ups.com/security/v1/oauth/token` (sandbox `https://wwwcie.ups.com`),
+  `Authorization: Basic base64(clientId:clientSecret)`, form body `grant_type=client_credentials`,
+  response `{ access_token, expires_in }`; Shipping API 2.0 ship resource
+  `POST https://onlinetools.ups.com/api/shipments/v2409/ship` (sandbox host `wwwcie.ups.com`),
+  `Authorization: Bearer <token>`, request root `ShipmentRequest`, label requested via
+  `Shipment.LabelImageFormat.Code = "PDF"`, response
+  `ShipmentResponse.ShipmentResults.PackageResults[].TrackingNumber` +
+  `ShippingLabel.GraphicImage` (base64 PDF). `developer.ups.com` is not reachable from the build
+  network (Akamai blocks it), so the endpoints and payload shapes were verified against the
+  actively maintained Karrio UPS connector (`karrioapi/karrio` main branch,
+  `modules/connectors/ups`) and public code matches for the token endpoint — not guessed.
+  Service codes: standard → `11` (UPS Standard), express → `14`; weights in KGS.
+- **Admin guard lives in `src/proxy.ts` (Next 16 Proxy, Node.js runtime), not only in the
+  layout:** with `cacheComponents` the route shell is prerendered, so a `redirect()` thrown
+  while rendering the dynamic part streams a client-side `NEXT_REDIRECT` under HTTP 200 —
+  `curl` never sees a redirect. The proxy runs before rendering and returns a real `307` to
+  `/admin/login` for every `/admin/*` path except the login page; the layout's
+  `requireAdminSession()` stays as defense in depth. Token verification is split into the pure
+  `src/server/session-token.ts` so the proxy can verify the cookie without pulling in
+  Mongoose/the DB layer.
+- **Session cookie:** name `admin_session`, value `<base64url(payload)>.<base64url(hmac)>` with
+  payload `{ userId, exp }` (12 h), HMAC-SHA256; signature verified with `crypto.timingSafeEqual`
+  before `exp` is trusted. Secret: `SESSION_SECRET` env var; when unset a fixed development
+  fallback secret is used (documented — dev/demo app with public credentials; production must set
+  `SESSION_SECRET`).
+- **Login throttle:** in-memory Map keyed `ip|email`, 5 failures per 15 min window, then locked
+  until the window ends (ARCHITECTURE §4.4 — acceptable for the single-process deployment).
+- **`transitionOrderCore` throws `IllegalTransitionError`** for illegal edges (the state machine
+  is the single source of truth; actions map it to a German error message) and restocks
+  `new`/`paid`/`picking` cancels inside the same transaction.
+- **`createLabelCore`** takes the provider as an optional parameter (defaults to the env-driven
+  factory) so integration tests can inject mocks/failures without env juggling; the final
+  `packed → shipped` move is a conditional `findOneAndUpdate` on `status: "packed"`, making
+  double-clicks converge on the first label.
+
 ## Product photos (M6)
 
 - Generated photos are normalized to **WebP** via `sharp` (already present in

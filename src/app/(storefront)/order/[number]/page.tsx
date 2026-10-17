@@ -8,19 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatChf, formatDateTime, formatWeight } from "@/lib/format";
+import { STATUS_LABELS } from "@/lib/orders/labels";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 import { cn } from "@/lib/utils";
 import { getOrderByNumber, type OrderDto } from "@/server/orders";
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  new: "Neu",
-  paid: "Bezahlt",
-  picking: "In Kommission",
-  packed: "Verpackt",
-  shipped: "Versandt",
-  delivered: "Zugestellt",
-  cancelled: "Storniert",
-};
 
 const SHIPPING_LABELS: Record<OrderDto["shipping"]["method"], string> = {
   standard: "Standardversand",

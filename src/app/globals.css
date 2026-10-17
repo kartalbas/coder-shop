@@ -128,3 +128,22 @@
     @apply font-sans;
   }
 }
+@media print {
+  .no-print,
+  aside,
+  header,
+  footer {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .print-slip {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}
