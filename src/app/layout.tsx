@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
 import "./globals.css";
 import { VAT_LABEL } from "@/lib/pricing";
+import { SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -16,10 +17,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "coder-shop — Smartphones, Schuhe & Kleidung",
     template: "%s | coder-shop",
@@ -29,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "de_CH",
-    url: siteUrl,
+    url: SITE_URL,
     siteName: "coder-shop",
     title: "coder-shop — Smartphones, Schuhe & Kleidung",
     description:

@@ -729,3 +729,32 @@ Done — M1–M6 + QA complete.
   ARCHITECTURE §11 wording corrected.
 - Verified: regression test (edit price/name/stock → re-seed → unchanged);
   `npm test` ✅ 256, lint/build ✅, e2e ✅ 7/7.
+
+## ISSUES — queue session 3 (2026-10-17)
+
+### Gate recovery (before the queue) ✅
+- The gate's `/api/health` 500 and link-less `/produkte` were an orphaned mongod
+  (leftover from an earlier session) holding the `data/mongo` lock while the
+  `next start` under test could not start its embedded instance. Killed the
+  orphan; health → 200, listing HTML → 24 `/produkt/…` links again.
+
+### #28 — German copy and SEO ✅
+- Seed adjectives are stems now (`hochwertig`, `leicht`, …) declined per gender —
+  no more „hochwertigeer Schuh" / „leichtees Smartphone"; colors use Swiss
+  „weiss"; stock copy is „Nur noch N Stück" (Swiss plural, `stockLabel` in
+  `src/lib/stock.ts`).
+- Product `<title>`/metadata use the real product name (DB lookup), not the
+  de-slugged URL with index suffix; `src/lib/site.ts` is the single site-origin
+  source (`SITE_URL`/`absoluteUrl`).
+- JSON-LD: `@graph` with Product (absolute image URLs, `url`, offer `url`s) +
+  `BreadcrumbList`; breadcrumbs render separator as a sibling `<li>` (no `<li>`
+  nested in `<li>`).
+- Unknown `/produkt/<slug>` answers a real HTTP 404 from the proxy (DECISIONS);
+  page dropped its Suspense wrapper so `notFound()` still works.
+- Verified: `tests/catalog-copy.test.ts` (5), proxy 404/passthrough tests in
+  `tests/security-routes.test.ts`, e2e `tests/e2e/seo.spec.ts` (3: 404 status,
+  real-name title, JSON-LD completeness) — fail on the pre-fix build; live check
+  after `npm run seed -- --fresh`: health 200, listing 24 links,
+  `/produkt/gibts-nicht` → 404, title „OnePlus OnePlus 13T | coder-shop",
+  „leichtes Smartphone", absolute JSON-LD images + BreadcrumbList, 0× „weiß".
+  `npm test` ✅ 280, lint/build ✅, e2e ✅ 21/21.

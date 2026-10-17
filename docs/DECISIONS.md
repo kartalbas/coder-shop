@@ -283,3 +283,12 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   price differs and returns the current prices. The form shows a warning and updates the
   cart (`syncPrices`), so the customer always pays exactly what the last displayed total
   showed — or is told prices changed and confirms the new total.
+
+### #28 — real 404 for unknown product slugs via the proxy
+- With PPR the page's shell (status 200) is flushed before the page code runs, so
+  `notFound()` inside a Suspense-wrapped page can only ever answer 200 (soft 404).
+  The slug existence check (indexed field, one `exists` query) therefore runs in
+  `src/proxy.ts` — before any bytes are sent — and unknown slugs get a real HTTP
+  404 (rewrite to `/_not-found` with `status: 404`). The product page dropped its
+  `Suspense` wrapper so `notFound()` in the page itself still works as defense in
+  depth. Proxy is Node.js runtime (Next 16 default), so the DB call is allowed.

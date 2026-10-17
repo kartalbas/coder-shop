@@ -1,6 +1,5 @@
 export const instant = false;
 
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -10,7 +9,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Breadcrumbs } from "@/components/storefront/breadcrumbs";
 import { JsonLd } from "@/components/storefront/json-ld";
 import { ProductDetail } from "@/components/storefront/product-detail";
@@ -25,34 +23,21 @@ interface PagePropsLocal {
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
   const { slug } = await params;
-  const name = slug.replace(/-/g, " ");
+  // Issue #28: the real product name, not the de-slugged URL ("oneplus oneplus 13t 067").
+  const product = await getProductBySlug(slug);
+  const name = product?.name ?? slug.replace(/-/g, " ");
   return {
     title: name,
     description: `${name} — coder-shop. Preise in CHF inklusive ${VAT_LABEL}.`,
   };
 }
 
-function ProductSkeleton() {
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <Skeleton className="h-4 w-64" />
-      <div className="mt-6 grid gap-8 lg:grid-cols-2">
-        <Skeleton className="aspect-square rounded-xl" />
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-2/3" />
-          <Skeleton className="h-8 w-1/3" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 async function ProductView({ params }: PagePropsLocal) {
   await connection();
   const { slug } = await params;
   const product = await getProductBySlug(slug);
+  // Issue #28: this runs before any Suspense fallback can start the stream, so
+  // unknown slugs answer with a real HTTP 404 (see docs: loading.md "Status codes").
   if (!product) notFound();
   const related = await getRelatedProducts(product);
 
@@ -98,10 +83,8 @@ async function ProductView({ params }: PagePropsLocal) {
   );
 }
 
+// No Suspense wrapper here on purpose (issue #28): a fallback would flush the
+// response early and pin the status at 200 for unknown slugs.
 export default function ProductPage({ params }: PagePropsLocal) {
-  return (
-    <Suspense fallback={<ProductSkeleton />}>
-      <ProductView params={params} />
-    </Suspense>
-  );
+  return <ProductView params={params} />;
 }

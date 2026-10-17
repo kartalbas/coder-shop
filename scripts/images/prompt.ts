@@ -19,7 +19,7 @@ const GERMAN_VIEW_NAMES: Record<ImageView, string> = {
 
 const COLOR_TRANSLATIONS: Record<string, string> = {
   schwarz: "black",
-  weiß: "white",
+  weiss: "white",
   blau: "blue",
   grün: "green",
   titan: "titanium",

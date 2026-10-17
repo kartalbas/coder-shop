@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { Types } from "mongoose";
 import { NextRequest } from "next/server";
 import { proxy } from "@/proxy";
+import { ProductModel } from "@/models/product";
 import { UserModel } from "@/models/user";
 import { SESSION_COOKIE, createSessionToken } from "@/server/session-token";
 import { isSameOrigin } from "@/server/same-origin";
@@ -15,30 +17,64 @@ describe("admin proxy guard (src/proxy.ts)", () => {
     return new NextRequest(`http://localhost:3000${pathname}`, { headers });
   }
 
-  it("lets the login page through without a session", () => {
-    const response = proxy(requestFor("/admin/login"));
+  it("lets the login page through without a session", async () => {
+    const response = await proxy(requestFor("/admin/login"));
     expect(response.status).toBe(200);
   });
 
-  it("redirects every other admin path to the login when there is no cookie", () => {
+  it("redirects every other admin path to the login when there is no cookie", async () => {
     for (const pathname of ["/admin", "/admin/orders", "/admin/products/123"]) {
-      const response = proxy(requestFor(pathname));
+      const response = await proxy(requestFor(pathname));
       expect(response.status).toBe(307);
       expect(new URL(response.headers.get("location")!).pathname).toBe("/admin/login");
     }
   });
 
-  it("redirects on a forged or malformed cookie", () => {
+  it("redirects on a forged or malformed cookie", async () => {
     const forged = `${Buffer.from(JSON.stringify({ userId: "admin", exp: Date.now() + 60_000 })).toString("base64url")}.${"A".repeat(43)}`;
     for (const token of [forged, "not-a-token", ""]) {
-      const response = proxy(requestFor("/admin/orders", `${SESSION_COOKIE}=${token}`));
+      const response = await proxy(requestFor("/admin/orders", `${SESSION_COOKIE}=${token}`));
       expect(response.status).toBe(307);
     }
   });
 
-  it("lets a validly signed session through", () => {
+  it("lets a validly signed session through", async () => {
     const token = createSessionToken("user-1");
-    const response = proxy(requestFor("/admin/orders", `${SESSION_COOKIE}=${token}`));
+    const response = await proxy(requestFor("/admin/orders", `${SESSION_COOKIE}=${token}`));
+    expect(response.status).toBe(200);
+  });
+});
+
+describe("product slug guard (src/proxy.ts, issue #28)", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+    await ProductModel.create({
+      _id: new Types.ObjectId(),
+      slug: "bekanntes-produkt",
+      name: "Bekanntes Produkt",
+      brand: "Acme",
+      type: "shoes",
+      description: "d",
+      priceCents: 1000,
+      images: [],
+      variants: [],
+      filter: { colors: [], sizes: [], storage: [], materials: [] },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
+
+  function productRequest(slug: string): NextRequest {
+    return new NextRequest(`http://localhost:3000/produkt/${slug}`);
+  }
+
+  it("answers a real 404 for an unknown slug", async () => {
+    const response = await proxy(productRequest("gibts-nicht"));
+    expect(response.status).toBe(404);
+  });
+
+  it("lets a known slug through", async () => {
+    const response = await proxy(productRequest("bekanntes-produkt"));
     expect(response.status).toBe(200);
   });
 });

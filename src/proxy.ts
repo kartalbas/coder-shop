@@ -1,8 +1,24 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/server/session-token";
+import { connectDB } from "@/server/db";
+import { ProductModel } from "@/models/product";
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Issue #28: a PPR page streams its shell before the page code runs, so notFound()
+  // there can only ever answer 200. The one indexed slug check happens here instead —
+  // before any bytes are sent — and unknown products get a real HTTP 404.
+  if (pathname.startsWith("/produkt/")) {
+    const slug = decodeURIComponent(pathname.slice("/produkt/".length));
+    await connectDB();
+    const exists = Boolean(slug) && (await ProductModel.exists({ slug }));
+    if (!exists) {
+      return NextResponse.rewrite(new URL("/_not-found", request.url), { status: 404 });
+    }
+    return NextResponse.next();
+  }
+
   if (pathname === "/admin/login") return NextResponse.next();
 
   // Fast pre-render gate: signature + expiry only (no DB in the proxy). Revoked sessions
@@ -18,5 +34,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: "/admin/:path*",
+  matcher: ["/admin/:path*", "/produkt/:path*"],
 };

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,17 +19,21 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
     <Breadcrumb aria-label="Brotkrumen-Navigation">
       <BreadcrumbList>
         {items.map((item, index) => (
-          // Issue #26: only <li> (BreadcrumbItem) may be a direct child of the list.
-          <BreadcrumbItem key={item.label} className="flex items-center gap-1.5">
+          // Issue #26: only <li> may be a direct child of the list, and an <li> may
+          // not nest another <li> (the parser would break the tree apart) — so the
+          // separator is its own sibling <li>, both wrapped in a keyless fragment.
+          <Fragment key={item.label}>
             {index > 0 && <BreadcrumbSeparator />}
-            {item.href ? (
-              <BreadcrumbLink asChild>
-                <Link href={item.href}>{item.label}</Link>
-              </BreadcrumbLink>
-            ) : (
-              <BreadcrumbPage>{item.label}</BreadcrumbPage>
-            )}
-          </BreadcrumbItem>
+            <BreadcrumbItem>
+              {item.href ? (
+                <BreadcrumbLink asChild>
+                  <Link href={item.href}>{item.label}</Link>
+                </BreadcrumbLink>
+              ) : (
+                <BreadcrumbPage>{item.label}</BreadcrumbPage>
+              )}
+            </BreadcrumbItem>
+          </Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>

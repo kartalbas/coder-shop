@@ -101,8 +101,9 @@ for (const [type, models] of [
   }
 }
 
-const PHONE_COLORS = ["schwarz", "weiß", "blau", "grün", "titan", "grau"] as const;
-const SHOE_COLORS = ["schwarz", "weiß", "grau", "blau", "rot", "grün"] as const;
+// Swiss spelling: „weiss“, not „weiß“ (issue #28).
+const PHONE_COLORS = ["schwarz", "weiss", "blau", "grün", "titan", "grau"] as const;
+const SHOE_COLORS = ["schwarz", "weiss", "grau", "blau", "rot", "grün"] as const;
 const CLOTHING_COLORS = ["schwarz", "anthrazit", "blau", "oliv", "rot", "beige"] as const;
 const MATERIALS = ["Baumwolle", "Polyester", "Wolle", "Daune", "Fleece", "Softshell"] as const;
 const CLOTHING_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
@@ -188,8 +189,10 @@ function clothingVariants(rng: Rng, index: number): SeedVariant[] {
   return variants;
 }
 
-function describe(rng: Rng, name: string, type: ProductType): string {
-  const adjectives = ["hochwertige", "vielseitige", "moderne", "robuste", "leichte"];
+// Issue #28: adjective stems, declined per gender — the old predicative forms
+// („hochwertige“) plus the appended ending produced „hochwertigeer“, „leichtees“.
+export function describe(rng: Rng, name: string, type: ProductType): string {
+  const adjectives = ["hochwertig", "vielseitig", "modern", "robust", "leicht"];
   const adj = pick(rng, adjectives);
   if (type === "smartphone") {
     return `Das ${name} ist ein ${adj}es Smartphone mit brillantem Display, starker Kamera und zuverlässiger Akkulaufzeit für den Alltag.`;
