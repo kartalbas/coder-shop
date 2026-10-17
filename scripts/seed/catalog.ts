@@ -222,7 +222,7 @@ function buildProduct(rng: Rng, index: number, type: ProductType): SeedProduct {
   const slug = `${slugify(name)}-${String(index).padStart(3, "0")}`;
   const imageCount = int(rng, 1, 5);
   const images = Array.from({ length: imageCount }, (_, n) => ({
-    src: `/products/${slug}-${n + 1}.svg`,
+    src: `/products/${slug}-${n + 1}.webp`,
     alt: `${name} – Ansicht ${n + 1}`,
   }));
   const roll = rng();

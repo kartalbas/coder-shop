@@ -560,3 +560,15 @@ Done — M1–M6 + QA complete.
   became the shared `FreeShippingProgress` component over the lib rule.
 - Verified: 2 new rule tests in `src/lib/pricing.test.ts`; `npm test` ✅ 238,
   lint/build ✅, e2e ✅ 7/7.
+
+### #29 — dead SVG generator removed ✅
+- `scripts/seed/svg.ts` deleted; the seed writes no image files anymore. Catalog slots
+  are recorded with their final photo paths (`/products/<slug>-<n>.webp`) — the photo
+  pipeline owns `public/products/`.
+- `ProductImage` (now client) and the gallery main image fall back to the neutral
+  placeholder via `onError` while a slot's file does not exist yet — the visible
+  behaviour for un-photographed products is unchanged.
+- README + ARCHITECTURE §2/§3/§10/§11 corrected (no SVG mentions left); new test asserts
+  every catalog slot is a photo path; e2e gallery assertion works with loaded photos and
+  placeholders alike.
+- Verified: `npm test` ✅ 239, `npm run seed` ✅, lint/build ✅, e2e ✅ 7/7.

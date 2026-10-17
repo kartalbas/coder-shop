@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isPhotoSrc } from "@/lib/images";
+import { generateCatalog } from "../scripts/seed/catalog";
 import {
   IMAGE_VIEWS,
   buildImagePrompt,
@@ -94,5 +95,19 @@ describe("isPhotoSrc", () => {
     expect(isPhotoSrc("/products/a-1.avif")).toBe(true);
     expect(isPhotoSrc("/products/a-1.svg")).toBe(false);
     expect(isPhotoSrc("")).toBe(false);
+  });
+});
+
+describe("seed image slots (issue #29)", () => {
+  it("records the final photo paths — the seed writes no SVGs anymore", () => {
+    const catalog = generateCatalog();
+    expect(catalog.length).toBeGreaterThan(0);
+    for (const product of catalog) {
+      expect(product.images.length).toBeGreaterThanOrEqual(1);
+      product.images.forEach((image, n) => {
+        expect(image.src).toBe(`/products/${product.slug}-${n + 1}.webp`);
+        expect(isPhotoSrc(image.src)).toBe(true);
+      });
+    }
   });
 });

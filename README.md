@@ -32,8 +32,9 @@ npm run seed -- --fresh  # drop the database first, then seed
 
 `--fresh` refuses to run while another process (e.g. the dev server) holds the `data/mongo`
 lock. The seed is deterministic (fixed PRNG seed): same 200 products (70 smartphones /
-70 shoes / 60 clothing), 1–5 placeholder SVGs per product in `public/products/`,
-clock-relative order dates, same order numbers on every run. The seed never resets recorded
+70 shoes / 60 clothing), 1–5 image slots per product recorded with their final photo
+paths (`/products/<slug>-<n>.webp`), clock-relative order dates, same order numbers on
+every run. The seed never resets recorded
 photo paths on existing products (`$setOnInsert`) — see the image pipeline below.
 
 ## Product photos
@@ -48,8 +49,7 @@ server (`POST $IMAGE_API_URL`, default `http://192.168.10.210:8080/v1/images/gen
 `Authorization: Bearer $LLAMA_API_KEY`), writes WebP files to `public/products/` (gitignored)
 and records the paths + German alts on the product documents. Idempotent: slots already on
 disk are skipped, drifted document paths are repaired (a pure skip/repair run needs no API
-key). Until a photo exists, the storefront shows a neutral placeholder — seed SVGs are never
-rendered.
+key). Until a photo exists, the storefront shows a neutral placeholder.
 
 ## Test
 

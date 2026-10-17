@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
 import { formatOrderNumber, formatPaymentReference, formatPoNumber } from "@/lib/numbers";
@@ -17,7 +15,6 @@ import { env } from "@/server/env";
 import { hashPassword } from "@/server/password";
 import { mockTrackingNumber } from "@/server/shipping/mock";
 import { generateCatalog, mulberry32 } from "./catalog";
-import { productSvg } from "./svg";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -68,18 +65,9 @@ const STATUS_PLAN: OrderStatus[] = [
 
 async function seedProducts(): Promise<number> {
   const catalog = generateCatalog();
-  const imagesDir = path.resolve("public/products");
-  await fs.mkdir(imagesDir, { recursive: true });
+  // Image slots are recorded with their final photo paths (public/products/<slug>-<n>.webp,
+  // gitignored); `npm run images` fills them. The seed writes no image files (issue #29).
   for (const product of catalog) {
-    for (let n = 0; n < product.images.length; n++) {
-      const variant = product.variants[n % product.variants.length];
-      const svg = productSvg(
-        { name: product.name, type: product.type, color: variant.attributes.color },
-        n + 1,
-      );
-      const file = path.join(imagesDir, path.basename(product.images[n].src));
-      await fs.writeFile(file, svg, "utf8");
-    }
     const { images, ...rest } = product;
     await ProductModel.updateOne(
       { slug: product.slug },

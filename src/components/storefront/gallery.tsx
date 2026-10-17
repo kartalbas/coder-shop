@@ -19,7 +19,12 @@ interface GalleryProps {
 export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
   const images = product.images;
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [failedSrcs, setFailedSrcs] = useState<ReadonlySet<string>>(new Set());
   const current = images[Math.min(imageIndex, images.length - 1)];
+  // Photo slots exist before the files do (issue #29) — a failed load falls back to the
+  // placeholder, exactly like ProductImage does for thumbnails and cards.
+  const markFailed = (src: string) =>
+    setFailedSrcs((prev) => (prev.has(src) ? prev : new Set([...prev, src])));
 
   const step = (delta: number) => {
     if (images.length === 0) return;
@@ -32,11 +37,12 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
     <div className="flex flex-col gap-3">
       <div className="group relative overflow-hidden rounded-xl border bg-muted">
         <AnimatePresence mode="wait">
-          {isPhotoSrc(current.src) ? (
+          {isPhotoSrc(current.src) && !failedSrcs.has(current.src) ? (
             <motion.img
               key={current.src}
               src={current.src}
               alt={current.alt}
+              onError={() => markFailed(current.src)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

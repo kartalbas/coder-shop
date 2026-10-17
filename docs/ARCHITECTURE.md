@@ -62,7 +62,7 @@ Everything with I/O lives in `src/server`: db connection, session, search querie
 providers, server actions. The seed and image generator live in `scripts/`.
 
 ```
-public/products/            # product images: seed SVG placeholders + generated photos (content gitignored, .gitkeep kept)
+public/products/            # generated product photos (content gitignored, .gitkeep kept)
 data/mongo/                 # persistent mongod dbPath (gitignored)
 data/labels/                # generated shipping label PDFs (gitignored; NOT under public/ — PII, §4)
 .cache/mongod/              # mongodb-memory-server binary download cache (gitignored)
@@ -70,7 +70,6 @@ scripts/
   seed/
     seed.ts                 # deterministic seed entry (npm run seed → tsx scripts/seed/seed.ts)
     catalog.ts              # deterministic product data generation (mulberry32 PRNG)
-    svg.ts                  # SVG image generator (silhouettes, colors, angles)
   images/
     generate.ts             # image pipeline entry (npm run images → tsx scripts/images/generate.ts)
     prompt.ts               # pure prompt/seed/view logic (unit-tested)
@@ -189,7 +188,7 @@ All models: `{ versionKey: false }`, timestamps where useful. Money is **integer
   type: 'smartphone' | 'shoes' | 'clothing'
   brand: string
   priceCents: number      // base gross price
-  images: [{ src: string, alt: string }]        // 1–5, /products/<slug>-<n>.svg
+  images: [{ src: string, alt: string }]        // 1–5 slots, /products/<slug>-<n>.webp
   featured: boolean
   collection?: string     // e.g. "Neuheiten", "Bestseller"
   filter: {               // denormalized facet source, derived from variants — see rule below
@@ -496,9 +495,9 @@ run: 70 smartphones (brands Apple/Samsung/Xiaomi/Google/OnePlus; storage 64–51
 70 shoes (Nike/Adidas/Puma/On/Running…; EU 36–47; colors), 60 clothing (Northface…; XS–XXL;
 materials). Realistic German descriptions from template pools, CHF price ranges per type,
 variant stock 0–80 (a few at 0 and a few below threshold for alerts), weights per type range.
-`scripts/seed/svg.ts` writes 1–5 distinct SVGs per product to `public/products/`: type
-silhouette (phone/shoe/shirt path), variant color fill, angle/detail variation (rotation, zoom
-crop, shadow), product-name caption. Also seeds admin user, 3 suppliers, sample POs and ~15
+The seed records 1–5 image slots per product with their final photo paths
+(`/products/<slug>-<n>.webp`) but writes no image files itself — the photo pipeline (§11)
+owns `public/products/` (issue #29). Also seeds admin user, 3 suppliers, sample POs and ~15
 orders across all statuses so admin screens are alive.
 
 - **Clock-relative timestamps:** seeded order/PO dates are generated **relative to seed time**
@@ -526,8 +525,8 @@ prices (4.90/12.90, free ≥ 100) and VAT rounding rule, MMS binary pinning + do
 
 ## 11. Image pipeline (M6 — product photos)
 
-Photorealistic studio product photos replace the seed SVG placeholders (which are never shown
-in the storefront). Generator: `scripts/images/generate.ts` (`npm run images`, `--limit N`
+Photorealistic studio product photos fill the seed's image slots; until a slot's file
+exists, the storefront shows the neutral placeholder. Generator: `scripts/images/generate.ts` (`npm run images`, `--limit N`
 caps generations per run; resumable, stop/restart anytime).
 
 - **API:** `POST http://192.168.10.210:8080/v1/images/generations` (OpenAI images API shape:
@@ -554,13 +553,13 @@ caps generations per run; resumable, stop/restart anytime).
   generation failed, 1 otherwise.
 - **Storefront rule:** `components/storefront/product-image.tsx` renders `<img>` when
   `images[].src` is a photo extension (`.webp/.jpg/.jpeg/.png/.avif`), otherwise a neutral
-  placeholder (muted panel + icon). Used by product cards, gallery (main/thumbs/zoom),
-  instant search and the cart drawer — photos appear everywhere product images show, and no
-  cartoon SVG is ever rendered.
+  placeholder (muted panel + icon); a photo path whose file does not load yet (the normal
+  state until `npm run images` fills the slot) falls back to the same placeholder via
+  `onError`. Used by product cards, gallery (main/thumbs/zoom), instant search and the cart
+  drawer.
 - **Seed invariant (gate fix):** `npm run seed` sets `images` only on insert
   (`$setOnInsert`) — re-seeding after a generation run must never reset recorded photo
-  paths back to the `.svg` placeholders; a drifted document is repaired by the next
-  `npm run images` (skip pass).
+  paths; a drifted document is repaired by the next `npm run images` (skip pass).
 
 ## 12. End-to-end tests (Playwright, `npm run test:e2e`)
 

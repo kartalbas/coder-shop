@@ -49,11 +49,14 @@ test("browse → filter → product page → cart → checkout → confirmation"
   await page.goto(`/produkt/${target.slug}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(target.name);
 
-  // Gallery: main image plus working thumbnail navigation.
-  const mainImage = page.locator('[role="img"]').first();
-  const initialLabel = await mainImage.getAttribute("aria-label");
+  // Gallery: main image plus working thumbnail navigation. Whether the slot's photo
+  // file exists (loaded <img>) or not (placeholder) it carries the slot's German alt
+  // as accessible name.
+  // The gallery renders before the related-products rail, so the first match is the
+  // main image (related cards only ever show their slot 1, never "Ansicht 2").
+  await expect(page.getByRole("img", { name: /Ansicht 1/ }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Bild 2 von/ }).click();
-  await expect(mainImage).not.toHaveAttribute("aria-label", initialLabel ?? "");
+  await expect(page.getByRole("img", { name: `${target.name} – Ansicht 2` })).toBeVisible();
 
   // Variant picker: a different storage updates the price.
   const priceBefore = await page.locator("main p.text-2xl").first().innerText();
