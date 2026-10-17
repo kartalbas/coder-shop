@@ -602,6 +602,14 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #16 — an order ships only with a stored label ✅
+- `createLabelCore` writes the label PDF **before** the conditional `packed → shipped`
+  move: a failed write returns `reason: "storage_error"` and leaves the order `packed`
+  (retryable); a lost race removes the just-written file again.
+- Verified: new test in `tests/shipping.test.ts` (unwritable `data/labels` → order stays
+  `packed`, no tracking; after chmod, retry ships with a `%PDF-` on disk);
+  `npm test` ✅ 262, lint/build ✅, e2e ✅ 8/8.
+
 ### #15 — one checkout creates at most one order ✅
 - Idempotent checkout: `checkoutFingerprint` (SHA-256 over customer, shipping method and
   merged `sku:qty` lines) keys a `checkout_claims` document (unique `_id`, 1 h TTL) claimed

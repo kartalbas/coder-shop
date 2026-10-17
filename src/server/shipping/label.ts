@@ -11,7 +11,12 @@ import { getShippingProvider } from "./provider";
 
 export const LABELS_DIR = path.join("data", "labels");
 
-export type CreateLabelFailureReason = "not_found" | "not_packed" | "provider_error" | "conflict";
+export type CreateLabelFailureReason =
+  | "not_found"
+  | "not_packed"
+  | "provider_error"
+  | "storage_error"
+  | "conflict";
 
 export type CreateLabelResult =
   | { ok: true; trackingNumber: string; labelPath: string }
@@ -68,7 +73,21 @@ export async function createLabelCore(
     viaLabel: true,
   });
 
+  // Issue #16: the PDF must exist on disk before the order moves to shipped — an order is
+  // never shipped with a label path that 404s. A failed write keeps the order `packed` and
+  // is retryable; a lost race cleans the file up again.
   const labelPath = path.join(LABELS_DIR, `${order.orderNumber}.pdf`);
+  try {
+    await fs.mkdir(path.resolve(LABELS_DIR), { recursive: true });
+    await fs.writeFile(path.resolve(labelPath), label.labelPdf);
+  } catch {
+    return {
+      ok: false,
+      reason: "storage_error",
+      error: "Das Etikett konnte nicht gespeichert werden. Die Bestellung bleibt «gepackt» — bitte erneut versuchen.",
+    };
+  }
+
   const moved = await OrderModel.findOneAndUpdate(
     { _id: order._id, status: "packed" },
     {
@@ -91,6 +110,7 @@ export async function createLabelCore(
     .exec();
 
   if (!moved) {
+    await fs.rm(path.resolve(labelPath), { force: true }).catch(() => {});
     const concurrent = await OrderModel.findById(order._id).lean().exec();
     if (concurrent?.shipping.trackingNumber && concurrent.shipping.labelPath) {
       return {
@@ -105,11 +125,6 @@ export async function createLabelCore(
       error: "Etikett konnte nicht gespeichert werden. Bitte erneut versuchen.",
     };
   }
-
-  // Write the PDF only after the conditional packed → shipped move won, so losing races
-  // never orphan a file.
-  await fs.mkdir(path.resolve(LABELS_DIR), { recursive: true });
-  await fs.writeFile(path.resolve(labelPath), label.labelPdf);
 
   return { ok: true, trackingNumber: label.trackingNumber, labelPath };
 }

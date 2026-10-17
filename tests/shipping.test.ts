@@ -327,6 +327,33 @@ describe("createLabelCore", () => {
     const result = await createLabelCore("000000000000000000000000", new MockUpsProvider());
     expect(result.ok).toBe(false);
   });
+
+  it("keeps the order packed when the label PDF cannot be written, and a retry succeeds (issue #16)", async () => {
+    const order = await seedOrder("packed", "0005");
+    const dir = path.resolve(LABELS_DIR);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.chmod(dir, 0o500);
+    try {
+      const result = await createLabelCore(order._id.toString(), new MockUpsProvider());
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.reason).toBe("storage_error");
+      const blocked = await OrderModel.findById(order._id).lean<Order>().exec();
+      expect(blocked?.status).toBe("packed");
+      expect(blocked?.shipping.trackingNumber).toBeUndefined();
+    } finally {
+      await fs.chmod(dir, 0o755);
+    }
+
+    const retry = await createLabelCore(order._id.toString(), new MockUpsProvider());
+    expect(retry.ok).toBe(true);
+    if (!retry.ok) return;
+    writtenFiles.push(path.resolve(retry.labelPath));
+    const pdf = await fs.readFile(path.resolve(retry.labelPath));
+    expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    const fresh = await OrderModel.findById(order._id).lean<Order>().exec();
+    expect(fresh?.status).toBe("shipped");
+  });
 });
 
 describe("getLabelFileCore (issue #32)", () => {
