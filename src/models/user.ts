@@ -26,6 +26,10 @@ export interface User {
   // Payment-on-invoice credit for this customer (issue #40); unset means the
   // shop-wide default (lib/invoices DEFAULT_CREDIT_LIMIT_CENTS).
   creditLimitCents?: number;
+  // Admin management (issue #43): a blocked customer cannot log in again; notes are
+  // internal remarks the admin keeps on the account.
+  blocked?: boolean;
+  notes?: string;
 }
 
 const addressSchema = new Schema<CustomerAddress>(
@@ -50,6 +54,8 @@ const userSchema = new Schema<User>(
     sessionsInvalidBefore: { type: Date },
     addresses: { type: [addressSchema], default: [] },
     creditLimitCents: { type: Number, min: 0 },
+    blocked: { type: Boolean, default: false },
+    notes: { type: String, trim: true, maxlength: 2000 },
   },
   { versionKey: false },
 );

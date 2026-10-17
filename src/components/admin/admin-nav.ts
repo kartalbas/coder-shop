@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   Store,
   Truck,
+  UserRound,
   Users,
 } from "lucide-react";
 
@@ -14,6 +15,7 @@ export const ADMIN_NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Produkte", icon: Boxes },
   { href: "/admin/orders", label: "Bestellungen", icon: ShoppingCart },
+  { href: "/admin/customers", label: "Kunden", icon: UserRound },
   { href: "/admin/invoices", label: "Rechnungen", icon: ReceiptText },
   { href: "/admin/packing", label: "Kommissionierung", icon: PackageOpen },
   { href: "/admin/pickup", label: "Abholung", icon: Store },

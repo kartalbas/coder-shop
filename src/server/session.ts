@@ -148,6 +148,14 @@ async function authenticate(
     for (const key of keys) throttleRecordFailure(key);
     return { ok: false, error: "E-Mail oder Passwort ist falsch." };
   }
+  // Issue #43: only the correct password reveals the block — unknown or wrong-credential
+  // accounts keep answering the generic message.
+  if (user.blocked) {
+    return {
+      ok: false,
+      error: "Ihr Konto wurde gesperrt. Bitte kontaktieren Sie den Support.",
+    };
+  }
 
   for (const key of keys) throttle.delete(key);
   const scope = scopeOfRole(role);

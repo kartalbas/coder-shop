@@ -966,3 +966,26 @@ Done — M1–M6 + QA complete.
   confirmation to the outbox, Rechnung writes both, label writes exactly one tracking
   mail even on retry, pickup-ready writes the code). README env table + ARCHITECTURE
   updated; `npm test` ✅ 378, lint/knip/build ✅.
+  (Follow-up: the outbox test sorts by insertion `_id`, not millisecond `sentAt` —
+  two mails in the same millisecond sorted nondeterministically.)
+
+### #43 — customer accounts in the admin ✅
+- `src/server/customers-admin.ts`: `listCustomersCore` (search by name/e-mail, orders
+  per account summed over linked **and** guest-by-e-mail orders, open invoice amount),
+  `getCustomerDetailCore` (orders newest-first with ids, open invoices + total, credit
+  limit, addresses, notes), `setCustomerBlockedCore` (block also revokes all sessions
+  via #6's `sessionsInvalidBefore`), `setCustomerNotesCore`, `adminResetPasswordCore`
+  (same hashed single-use token as self-service, mailed — the admin never sees a
+  password). All customer-scoped writes refuse admin ids and junk.
+- User model: `blocked` (login refuses with „gesperrt" **only after** the correct
+  password — no enumeration oracle) and `notes` (≤ 2000 chars).
+- UI: `/admin/customers` (search + table with blocked badge, order count, open amount),
+  `/admin/customers/[id]` (orders, open invoices, credit + link to the invoice admin,
+  address book, block/unblock, password reset, internal notes), nav entry „Kunden",
+  and „Kundenkonto öffnen" on the order detail whenever the order is linked (#43's
+  done-when).
+- Verified: `tests/admin-customers.test.ts` (5: search + summed counts + open amount;
+  detail order/open invoices/overdue + unknown/admin refused; block→login refused +
+  sessions revoked + wrong-password stays generic→unblock works + admins untouchable;
+  notes trim/limits; reset mail → token works once, then refused, new password logs
+  in); `npm test` ✅ 383, lint/knip/build ✅.

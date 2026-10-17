@@ -79,11 +79,11 @@ export async function registerCustomerCore(
   return { ok: true, userId: user._id.toString(), email, name: user.name };
 }
 
-function hashResetToken(token: string): string {
+export function hashResetToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export const RESET_SENT = "Falls die Adresse registriert ist, senden wir ihr einen Link zum Passwort-Zurücksetzen.";
 

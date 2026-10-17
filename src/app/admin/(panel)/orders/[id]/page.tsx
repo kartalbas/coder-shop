@@ -126,6 +126,15 @@ async function OrderDetail({ params }: PagePropsLocal) {
           <p className="mt-2 text-muted-foreground">
             {order.customer.email} · {order.customer.phone}
           </p>
+          {/* Issue #43: from an order straight to the customer account. */}
+          {order.userId && (
+            <Link
+              href={`/admin/customers/${order.userId}`}
+              className="mt-2 inline-block text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Kundenkonto öffnen
+            </Link>
+          )}
           <dl className="mt-4 space-y-1 border-t pt-4">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Zwischensumme</dt>

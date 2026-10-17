@@ -114,6 +114,7 @@ src/
         invoices/page.tsx   # invoice list + filters (offen/überfällig/bezahlt), payment +
                             # reminder + credit-limit actions (#40)
         pickup/page.tsx     # pickup queue: bereitstellen, Code-Übergabe + Zahlung (#41)
+        customers/page.tsx, customers/[id]/page.tsx  # customer list + detail (#43)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
       invoices/[orderId]/route.ts  # GET invoice PDF (session-guarded, §4, #40)
     api/
@@ -143,6 +144,7 @@ src/
       po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
        revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx,
        invoice-actions.tsx,         # payment / reminder / credit-limit forms (#40)
+       customer-actions.tsx,        # block / notes / password-reset forms (#43)
        pickup-actions.tsx           # mark-ready + handover (code, cash/card) forms (#41)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
@@ -188,6 +190,7 @@ src/
     session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
     session.ts              # admin + customer login/session (scrypt, throttle, scoped cookies)
     customers.ts            # register, password reset, address book, claim order (#39)
+    customers-admin.ts      # customer list/detail, block, notes, admin password reset (#43)
     account.ts              # portal queries: order list, reorder lines (#39)
     mail.ts                 # sendMail behind a MailTransport interface: dev outbox
                             # collection (/admin/mails) or nodemailer SMTP (#39/#44)
@@ -229,6 +232,7 @@ src/
       admin/account.ts      # changePassword → changePasswordCore
       admin/shipping.ts     # createLabel → createLabelCore
       admin/invoices.ts     # recordInvoicePayment, sendInvoiceReminder, setCreditLimit
+      admin/customers.ts    # setBlocked, setNotes, adminResetPassword → *Core fns (#43)
                             # → *Core fns (#40)
       admin/pickup.ts       # markPickupReady, handoverPickup → *Core fns (#41)
   stores/
@@ -332,8 +336,10 @@ Indexes: `{ orderNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`, `{ 'custom
 ### User (`users`) — admin login and customer accounts (#39)
 `{ email (unique, lowercase), name, passwordHash, role: 'admin' | 'customer',
 sessionsInvalidBefore?, addresses: [{ label, street, postalCode, city, country,
-kind: 'shipping'|'billing', isDefault }], creditLimitCents? }` — `creditLimitCents`
-(personal invoice credit, #40; unset = shop default `DEFAULT_CREDIT_LIMIT_CENTS`);
+kind: 'shipping'|'billing', isDefault }], creditLimitCents?, blocked?, notes? }` —
+`creditLimitCents` (personal invoice credit, #40; unset = shop default
+`DEFAULT_CREDIT_LIMIT_CENTS`); `blocked` refuses customer login (issue #43, revealed
+only with the correct password) and `notes` is the admin's internal remark;
 `passwordHash` format
 `scrypt$N$r$p$salt$hash` with explicit params (§4). Customers carry the address book
 (one default per kind); admins never have addresses.
