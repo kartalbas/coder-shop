@@ -1,5 +1,12 @@
 # coder-shop
 
+> **About this project.** coder-shop is written by a **local LLM** — Qwen3.8-Flash-Next
+> (Unsloth UD-Q5_K_XL) on the [Strata](https://github.com/Niko1221/Strata) engine, one RTX 5080
+> 16 GB + 128 GB RAM — working through [OpenCode](https://opencode.ai) in a spec-driven run:
+> plan, critical review, revision, gated milestones. It is a test of that coder. The full setup,
+> method, timeline and an honest evaluation (what it did alone, where it was helped) are in
+> [docs/EXPERIMENT.md](docs/EXPERIMENT.md), written by the lead, not by the coder.
+
 Production-grade e-commerce shop — Next.js App Router, TypeScript, MongoDB via Mongoose.
 UI German, currency CHF (de-CH), Swiss VAT 8.1 % included in prices. No installed database
 required: [mongodb-memory-server](https://github.com/typegoose/mongodb-memory-server) runs a
