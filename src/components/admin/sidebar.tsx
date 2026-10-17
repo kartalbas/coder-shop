@@ -1,25 +1,8 @@
 import Link from "next/link";
-import {
-  Boxes,
-  LayoutDashboard,
-  LogOut,
-  Package,
-  PackageOpen,
-  ShoppingCart,
-  Truck,
-  Users,
-} from "lucide-react";
+import { LogOut, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ADMIN_NAV } from "@/components/admin/admin-nav";
 import { logoutAction } from "@/server/actions/admin/auth";
-
-const NAV = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/products", label: "Produkte", icon: Boxes },
-  { href: "/admin/orders", label: "Bestellungen", icon: ShoppingCart },
-  { href: "/admin/packing", label: "Kommissionierung", icon: PackageOpen },
-  { href: "/admin/purchasing", label: "Einkauf", icon: Truck },
-  { href: "/admin/suppliers", label: "Lieferanten", icon: Users },
-] as const;
 
 export function AdminSidebar() {
   return (
@@ -31,7 +14,7 @@ export function AdminSidebar() {
         </Link>
       </div>
       <nav className="flex-1 space-y-1 p-3" aria-label="Admin-Navigation">
-        {NAV.map(({ href, label, icon: Icon }) => (
+        {ADMIN_NAV.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

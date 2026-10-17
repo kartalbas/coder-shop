@@ -602,6 +602,14 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #21 — admin is usable on tablets and phones ✅
+- Shared `ADMIN_NAV` source; below `lg` the panel layout renders a sticky top bar with a
+  Sheet menu (hamburger) containing all six sections (current page marked) and logout —
+  the sidebar stays as the ≥ `lg` navigation.
+- Verified: new e2e `admin-mobile-nav.spec.ts` (820 px: sidebar hidden, sheet opens,
+  every section navigates, logout works — fails without the fix); `npm test` ✅ 258,
+  lint/build ✅, e2e ✅ 8/8.
+
 ### #13 — saving a variant no longer overwrites concurrent stock ✅
 - `updateVariantCore`/`updateProductCore` now write with atomic conditional `$set`s instead of
   a whole-document save: a variant save that leaves `stock` at the loaded `expectedStock`
