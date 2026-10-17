@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "llm": {
+      "models": {
+        "llm-qwen3.8-flash-next-unsloth-ud-q5_k_xl": {
+          "options": { "reasoningEffort": "medium" }
+        }
+      }
+    }
+  }
+}
