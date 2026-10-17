@@ -281,7 +281,7 @@ export async function receivePurchaseOrderCore(
   }
 }
 
-// ---------- sku search for the PO editor ----------
+// ---------- variant search for the PO picker (issue #42) ----------
 
 export interface SkuSearchHit {
   sku: string;
@@ -289,38 +289,113 @@ export interface SkuSearchHit {
   variantLabel: string;
   stock: number;
   priceCents: number;
+  imageSrc?: string;
+  lastPurchasePriceCents?: number;
 }
 
+// The picker searches what the buyer actually knows: SKU, product name or brand.
 export async function searchVariantsBySku(query: string): Promise<SkuSearchHit[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
   await connectDB();
+  const regex = { $regex: escapeRegex(trimmed), $options: "i" };
   type LeanProduct = {
     _id: mongoose.Types.ObjectId;
     name: string;
+    brand: string;
     priceCents: number;
+    images: { src: string }[];
     variants: { sku: string; label: string; stock: number; priceDeltaCents: number }[];
   };
-  const products = await ProductModel.find({
-    "variants.sku": { $regex: escapeRegex(trimmed), $options: "i" },
+  const bySkuOrName = await ProductModel.find({
+    $or: [{ "variants.sku": regex }, { name: regex }, { brand: regex }],
   })
-    .select("name priceCents variants.sku variants.label variants.stock variants.priceDeltaCents")
+    .select(
+      "name brand priceCents images.src variants.sku variants.label variants.stock variants.priceDeltaCents",
+    )
     .limit(20)
     .lean<LeanProduct[]>()
     .exec();
-  const hits: SkuSearchHit[] = [];
-  for (const product of products) {
-    for (const variant of product.variants) {
-      if (variant.sku.toLowerCase().includes(trimmed.toLowerCase())) {
-        hits.push({
-          sku: variant.sku,
-          productName: product.name,
-          variantLabel: variant.label,
-          stock: variant.stock,
-          priceCents: product.priceCents + variant.priceDeltaCents,
-        });
+
+  // A pure name/brand match brings the whole product — but when some variant's SKU
+  // matches the query too, those are what the buyer typed for and only they are shown.
+  const lower = trimmed.toLowerCase();
+  const all = bySkuOrName.flatMap((product) =>
+    product.variants.map((variant) => ({
+      sku: variant.sku,
+      productName: product.name,
+      variantLabel: variant.label,
+      stock: variant.stock,
+      priceCents: product.priceCents + variant.priceDeltaCents,
+      imageSrc: product.images[0]?.src,
+      skuMatch: variant.sku.toLowerCase().includes(lower),
+    })),
+  );
+  const skuMatches = all.filter((hit) => hit.skuMatch);
+  const ranked = (skuMatches.length > 0 ? skuMatches : all).slice(0, 10);
+  const matched: SkuSearchHit[] = ranked.map((hit) => ({
+    sku: hit.sku,
+    productName: hit.productName,
+    variantLabel: hit.variantLabel,
+    stock: hit.stock,
+    priceCents: hit.priceCents,
+    ...(hit.imageSrc !== undefined && { imageSrc: hit.imageSrc }),
+  }));
+
+  // Last purchase price per SKU (issue #42): the newest PO line that mentions it.
+  const skus = matched.map((hit) => hit.sku);
+  if (skus.length > 0) {
+    const pos = await PurchaseOrderModel.find({ "lines.sku": { $in: skus } })
+      .select("lines.sku lines.unitPriceCents")
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean()
+      .exec();
+    const lastPrice = new Map<string, number>();
+    for (const po of pos) {
+      for (const line of po.lines) {
+        if (!lastPrice.has(line.sku)) lastPrice.set(line.sku, line.unitPriceCents);
       }
     }
+    for (const hit of matched) {
+      const price = lastPrice.get(hit.sku);
+      if (price !== undefined) hit.lastPurchasePriceCents = price;
+    }
   }
-  return hits.slice(0, 8);
+  return matched;
+}
+
+// ---------- supplier search for the PO picker (issue #42) ----------
+
+export interface SupplierSearchHit {
+  id: string;
+  name: string;
+  leadTimeDays: number;
+  openPos: number;
+}
+
+export async function searchSuppliers(query: string): Promise<SupplierSearchHit[]> {
+  await connectDB();
+  const trimmed = query.trim();
+  const filter: Record<string, unknown> = { active: true };
+  if (trimmed) filter.name = { $regex: escapeRegex(trimmed), $options: "i" };
+  const suppliers = await SupplierModel.find(filter)
+    .select("name leadTimeDays")
+    .sort({ name: 1 })
+    .limit(10)
+    .lean()
+    .exec();
+  if (suppliers.length === 0) return [];
+  const open = await PurchaseOrderModel.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>(
+    [
+      { $match: { supplierId: { $in: suppliers.map((s) => s._id) }, status: "ordered" } },
+      { $group: { _id: "$supplierId", count: { $sum: 1 } } },
+    ],
+  ).then((rows) => new Map(rows.map((row) => [row._id.toString(), row.count])));
+  return suppliers.map((supplier) => ({
+    id: supplier._id.toString(),
+    name: supplier.name,
+    leadTimeDays: supplier.leadTimeDays,
+    openPos: open.get(supplier._id.toString()) ?? 0,
+  }));
 }

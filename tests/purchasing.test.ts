@@ -9,6 +9,7 @@ import {
   createSupplierCore,
   markPurchaseOrderOrderedCore,
   receivePurchaseOrderCore,
+  searchSuppliers,
   searchVariantsBySku,
   updateSupplierCore,
 } from "@/server/purchasing";
@@ -279,5 +280,68 @@ describe("searchVariantsBySku", () => {
   it("returns nothing for short queries and non-matches", async () => {
     expect(await searchVariantsBySku("s")).toEqual([]);
     expect(await searchVariantsBySku("gibt-es-nicht")).toEqual([]);
+  });
+});
+
+describe("picker search (issue #42)", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+    await clearCollections();
+  });
+
+  afterAll(disconnectTestDB);
+
+  it("finds variants by SKU, product name and brand, with image and last purchase price", async () => {
+    await seedProduct("picker", ["PICK-A", "PICK-B"], 4);
+    await seedSupplier("Picker Lieferant");
+    const supplier = await SupplierModel.findOne({ name: "Picker Lieferant" }).lean().exec();
+
+    const byName = await searchVariantsBySku("Purchasing Produkt picker");
+    expect(byName.map((hit) => hit.sku).sort()).toEqual(["PICK-A", "PICK-B"]);
+    expect(byName[0]?.imageSrc).toBe("/products/purchasing-picker-1.svg");
+
+    const byBrand = await searchVariantsBySku("testm");
+    expect(byBrand.length).toBeGreaterThanOrEqual(2);
+
+    const bySku = await searchVariantsBySku("PICK-A");
+    expect(bySku.map((hit) => hit.sku)).toEqual(["PICK-A"]);
+
+    // A PO over that SKU puts the last purchase price on the hit.
+    const po = await createPurchaseOrderCore({
+      supplierId: supplier!._id.toString(),
+      lines: [{ sku: "PICK-A", qty: 5, unitPriceCents: 22_200 }],
+    });
+    expect(po.ok).toBe(true);
+    const withPrice = await searchVariantsBySku("PICK-A");
+    expect(withPrice[0]?.lastPurchasePriceCents).toBe(22_200);
+    const withoutPrice = await searchVariantsBySku("PICK-B");
+    expect(withoutPrice[0]?.lastPurchasePriceCents).toBeUndefined();
+  });
+
+  it("suppliers come with lead time and open PO count; inactive are hidden", async () => {
+    // "Picker Lieferant" and its draft PO come from the previous test (same suite).
+    await SupplierModel.create({
+      name: "Inaktiver Lieferant",
+      email: "inaktiv@example.ch",
+      leadTimeDays: 3,
+      active: false,
+    });
+
+    const open = await searchSuppliers("Picker");
+    expect(open).toHaveLength(1);
+    expect(open[0]?.leadTimeDays).toBe(7);
+    expect(open[0]?.openPos).toBe(0); // the PO from the previous test is still a draft
+
+    const ordered = await PurchaseOrderModel.findOne().lean().exec();
+    const marked = await markPurchaseOrderOrderedCore(ordered!._id.toString());
+    expect(marked.ok).toBe(true);
+    const after = await searchSuppliers("Picker");
+    expect(after[0]?.openPos).toBe(1);
+
+    const all = await searchSuppliers("");
+    expect(all.map((s) => s.name)).toEqual(["Picker Lieferant"]);
+
+    const none = await searchSuppliers("Unbekannt");
+    expect(none).toEqual([]);
   });
 });

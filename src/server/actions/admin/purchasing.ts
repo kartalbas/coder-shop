@@ -9,10 +9,12 @@ import {
   createSupplierCore,
   markPurchaseOrderOrderedCore,
   receivePurchaseOrderCore,
+  searchSuppliers,
   searchVariantsBySku,
   toSupplierInput,
   updateSupplierCore,
   type SkuSearchHit,
+  type SupplierSearchHit,
 } from "@/server/purchasing";
 import { requireAdminSession } from "@/server/session";
 
@@ -115,4 +117,17 @@ export async function searchSkuAction(query: unknown): Promise<SkuSearchHit[]> {
   const parsed = skuQuerySchema.safeParse(query);
   if (!parsed.success) return [];
   return searchVariantsBySku(parsed.data);
+}
+
+const supplierQuerySchema = z.string().trim().max(100);
+
+// Supplier search for the PO picker dialog (issue #42) — same boundary rules as the
+// variant search: junk input means "no search", never a 500.
+export async function searchSupplierAction(
+  query: unknown,
+): Promise<SupplierSearchHit[]> {
+  await requireAdminSession();
+  const parsed = supplierQuerySchema.safeParse(query);
+  if (!parsed.success) return [];
+  return searchSuppliers(parsed.data);
 }

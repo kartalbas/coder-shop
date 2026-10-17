@@ -915,3 +915,34 @@ Done — M1–M6 + QA complete.
   `pickup.spec.ts` (Gast-Checkout → Code/QR → Bereitstellen → falscher Code →
   Übergabe mit Karte → „Abgeholt“ + bezahlt). `npm test` ✅ 368, lint/knip/build ✅,
   `npm run test:e2e` ✅ 26/26.
+
+## ISSUES — queue session 7 (2026-10-17)
+
+### Gate recovery (before the queue) ✅
+- The #11 concurrency test flaked in the gate (`checkout 1: expected false to be true`):
+  10 parallel transactions contend on the one Counter document and WiredTiger aborts all
+  but one per conflict round — a single checkout can therefore lose up to n−1 rounds,
+  more than the old 6-attempt budget covered. `runClaimedCheckout` now allows 16 attempts
+  with backoff capped at 200 ms + wider jitter.
+- The gate's e2e EADDRINUSE (and the 9 failures behind it) was a stale `next start` on
+  port 3100 answering the health check — specs silently ran against the wrong server.
+  The e2e global setup now refuses to start while the port is taken, with the kill hint.
+
+### #42 — purchasing: keyboard-driven picker dialog ✅
+- `src/components/admin/picker-dialog.tsx`: command-palette style Radix Dialog —
+  type-to-search (200 ms debounce, stale results never flash), ↑/↓/Home/End through the
+  listbox, Enter selects, Esc cancels, focus trapped inside and returned to the opener
+  on close; combobox/listbox roles with `aria-activedescendant`, match highlighting,
+  image + secondary + meta per row, „Suche…“/„Keine Treffer“/„mindestens 2 Zeichen“
+  states. One implementation for every admin pick.
+- PO form: supplier `Select` and the SKU dropdown replaced by two picker dialogs
+  („Lieferant wählen“, „Artikel hinzufügen“) — a whole PO is creatable with the keyboard.
+- Server (`src/server/purchasing.ts`): variant search now matches SKU **or name or
+  brand** (SKU matches win when present), carries `imageSrc` and the **last purchase
+  price** per SKU (newest PO line); new `searchSuppliers` (active only, lead time +
+  open-PO count). Both behind zod-guarded actions (`searchSupplierAction` added).
+- Verified: `tests/purchasing.test.ts` +2 (name/brand/SKU ranking, image, last price;
+  supplier lead time/open POs/inactive hidden); new e2e `purchasing-picker.spec.ts` —
+  Esc cancels + focus returns, Enter/↑/↓ select, qty typed, supplier swapped through
+  the dialog, submit navigates to the PO detail — keyboard only; `npm test` ✅ 370,
+  lint/knip/build ✅, `npm run test:e2e` ✅ 27/27.

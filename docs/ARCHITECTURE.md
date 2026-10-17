@@ -139,7 +139,8 @@ src/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
       product-search.tsx, product-core-form.tsx, variant-editor.tsx, image-editor.tsx,
-      po-create-form.tsx, po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
+      po-create-form.tsx, picker-dialog.tsx, # PO form + keyboard picker dialog (#42)
+      po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
        revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx,
        invoice-actions.tsx,         # payment / reminder / credit-limit forms (#40)
        pickup-actions.tsx           # mark-ready + handover (code, cash/card) forms (#41)
@@ -205,7 +206,8 @@ src/
     orders.ts               # customer confirmation lookup (getOrderByNumber)
     orders-admin.ts         # listOrders, transitionOrderCore (conditional write + restock)
     products-admin.ts       # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
-    purchasing.ts           # supplier + PO cores (create/markOrdered/receive, transaction)
+    purchasing.ts           # supplier + PO cores (create/markOrdered/receive, transaction),
+                            # picker searches: variants by sku/name/brand + suppliers (#42)
     dashboard.ts            # revenue series, open counts, low stock, recent orders
     search.ts               # Mongo query/aggregate builders + toProductDto() shared DTO mapper
     shipping/provider.ts    # factory (env-driven)
@@ -220,7 +222,8 @@ src/
       admin/products.ts     # updateProduct, updateVariant, toggleFeatured → *Core fns
       admin/orders.ts       # transitionOrder → transitionOrderCore
       admin/purchasing.ts   # createSupplier, createPurchaseOrder, markOrdered,
-                            # receivePurchaseOrder → *Core fns (transaction)
+                            # receivePurchaseOrder → *Core fns (transaction);
+                            # searchSku/searchSupplier actions for the picker (#42)
       admin/auth.ts         # login/logout → loginCore (testable without cookies())
       admin/account.ts      # changePassword → changePasswordCore
       admin/shipping.ts     # createLabel → createLabelCore

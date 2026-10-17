@@ -1,26 +1,19 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
-import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState, useActionState } from "react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { PickerDialog, type PickerItem } from "@/components/admin/picker-dialog";
 import { formatChf } from "@/lib/format";
-import { useDebounce } from "@/hooks/use-debounce";
 import {
   createPurchaseOrderAction,
   searchSkuAction,
+  searchSupplierAction,
   type PurchasingActionState,
 } from "@/server/actions/admin/purchasing";
-import type { SkuSearchHit } from "@/server/purchasing";
 
 interface DraftLine {
   sku: string;
@@ -46,48 +39,69 @@ export function PoCreateForm({
     null,
   );
   const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? "");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ query: string; hits: SkuSearchHit[] } | null>(null);
+  const [supplierName, setSupplierName] = useState(suppliers[0]?.name ?? "");
+  const [supplierPickerOpen, setSupplierPickerOpen] = useState(false);
+  const [articlePickerOpen, setArticlePickerOpen] = useState(false);
   const [lines, setLines] = useState<DraftLine[]>([]);
-  const debouncedQuery = useDebounce(query, 200);
-  const queryLongEnough = debouncedQuery.trim().length >= 2;
-  const hits = results?.query === debouncedQuery ? results.hits : [];
-  const searching = queryLongEnough && results?.query !== debouncedQuery;
 
   useEffect(() => {
     if (state?.error) toast.error(state.error);
   }, [state]);
 
-  useEffect(() => {
-    if (!queryLongEnough) return;
-    let cancelled = false;
-    searchSkuAction(debouncedQuery)
-      .then((found) => {
-        if (!cancelled) setResults({ query: debouncedQuery, hits: found });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setResults({ query: debouncedQuery, hits: [] });
-        toast.error("SKU-Suche fehlgeschlagen.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedQuery, queryLongEnough]);
+  // The picker rows are display data; the numbers needed to seed a line (sale price,
+  // last purchase price) are kept per SKU from the same search result.
+  const articleData = useRef(new Map<string, { priceCents: number; lastPurchasePriceCents?: number }>());
 
-  function addLine(hit: SkuSearchHit): void {
-    if (lines.some((line) => line.sku === hit.sku)) return;
+  // The picker dialogs fetch through these stable callbacks (issue #42).
+  const searchArticles = useCallback(async (query: string): Promise<PickerItem[]> => {
+    const hits = await searchSkuAction(query);
+    for (const hit of hits) {
+      articleData.current.set(hit.sku, {
+        priceCents: hit.priceCents,
+        ...(hit.lastPurchasePriceCents !== undefined && {
+          lastPurchasePriceCents: hit.lastPurchasePriceCents,
+        }),
+      });
+    }
+    return hits.map((hit) => ({
+      id: hit.sku,
+      primary: hit.productName,
+      secondary: `${hit.sku} · ${hit.variantLabel}`,
+      meta: `Lager ${hit.stock}${
+        hit.lastPurchasePriceCents !== undefined
+          ? ` · zuletzt ${formatChf(hit.lastPurchasePriceCents)}`
+          : ""
+      }`,
+      imageSrc: hit.imageSrc,
+    }));
+  }, []);
+
+  const searchSupplierItems = useCallback(async (query: string): Promise<PickerItem[]> => {
+    const found = await searchSupplierAction(query);
+    return found.map((supplier) => ({
+      id: supplier.id,
+      primary: supplier.name,
+      secondary: `Lieferzeit ${supplier.leadTimeDays} Tage`,
+      meta: supplier.openPos > 0 ? `${supplier.openPos} offene Bestellungen` : "keine offenen Bestellungen",
+    }));
+  }, []);
+
+  function addLine(item: PickerItem): void {
+    if (lines.some((line) => line.sku === item.id)) return;
+    // The line starts at the last purchase price when there is one, otherwise at the
+    // 60 % purchase heuristic (as before).
+    const data = articleData.current.get(item.id);
     setLines((current) => [
       ...current,
       {
-        sku: hit.sku,
-        productName: hit.productName,
-        variantLabel: hit.variantLabel,
+        sku: item.id,
+        productName: item.primary,
+        variantLabel: item.secondary?.split(" · ").slice(1).join(" · ") ?? "",
         qty: 10,
-        unitPriceCents: Math.round(hit.priceCents * 0.6),
+        unitPriceCents:
+          data?.lastPurchasePriceCents ?? Math.round((data?.priceCents ?? 0) * 0.6),
       },
     ]);
-    setQuery("");
   }
 
   function updateLine(sku: string, patch: Partial<DraftLine>): void {
@@ -115,73 +129,56 @@ export function PoCreateForm({
       <input type="hidden" name="payload" value={payload} />
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor={`${formId}-supplier`}>Lieferant</Label>
-          <Select
-            value={supplierId}
-            onValueChange={setSupplierId}
-            disabled={suppliers.length === 0}
+          <Label>Lieferant</Label>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between font-normal"
+            aria-haspopup="dialog"
+            onClick={() => setSupplierPickerOpen(true)}
           >
-            <SelectTrigger id={`${formId}-supplier`} className="w-full">
-              <SelectValue placeholder="Lieferant wählen" />
-            </SelectTrigger>
-            <SelectContent>
-              {suppliers.map((supplier) => (
-                <SelectItem key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <span className="truncate">{supplierName || "Lieferant wählen"}</span>
+            <span className="text-xs text-muted-foreground">Suchen…</span>
+          </Button>
         </div>
         <div className="space-y-2">
-          <Label htmlFor={`${formId}-sku`}>SKU suchen</Label>
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              id={`${formId}-sku`}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="SKU-Teilbegriff, z. B. APF-"
-              className="pl-8"
-              autoComplete="off"
-            />
-          </div>
-          {(hits.length > 0 || searching) && (
-            <ul
-              className="max-h-48 overflow-y-auto rounded-md border bg-popover text-popover-foreground"
-              aria-label="SKU-Suchergebnisse"
-            >
-              {searching && hits.length === 0 && (
-                <li className="px-3 py-2 text-sm text-muted-foreground">Suche…</li>
-              )}
-              {hits.map((hit) => (
-                <li key={hit.sku}>
-                  <button
-                    type="button"
-                    onClick={() => addLine(hit)}
-                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-                  >
-                    <span className="min-w-0">
-                      <span className="font-mono text-xs">{hit.sku}</span>{" "}
-                      <span className="block truncate">{hit.productName}</span>
-                    </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      Lager {hit.stock}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <Label>Artikel</Label>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between font-normal"
+            aria-haspopup="dialog"
+            onClick={() => setArticlePickerOpen(true)}
+          >
+            <span>Artikel hinzufügen</span>
+            <Plus className="size-4" aria-hidden />
+          </Button>
         </div>
       </div>
 
+      <PickerDialog
+        open={supplierPickerOpen}
+        onOpenChange={setSupplierPickerOpen}
+        title="Lieferant wählen"
+        placeholder="Lieferantensuche, z. B. Tech"
+        search={searchSupplierItems}
+        onSelect={(item) => {
+          setSupplierId(item.id);
+          setSupplierName(item.primary);
+        }}
+      />
+      <PickerDialog
+        open={articlePickerOpen}
+        onOpenChange={setArticlePickerOpen}
+        title="Artikel wählen"
+        placeholder="Name, SKU oder Marke, z. B. iPhone"
+        search={searchArticles}
+        onSelect={addLine}
+      />
+
       {lines.length === 0 ? (
         <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-          Noch keine Positionen — SKU oben suchen und hinzufügen.
+          Noch keine Positionen — über „Artikel hinzufügen“ wählen.
         </p>
       ) : (
         <ul className="space-y-2">
