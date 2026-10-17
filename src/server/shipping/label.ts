@@ -4,8 +4,11 @@ import mongoose from "mongoose";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
 import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
 import { transition } from "@/lib/orders/state-machine";
+import { shippedMail } from "@/lib/mail-templates";
+import { absoluteUrl } from "@/lib/site";
 import { OrderModel } from "@/models/order";
 import { connectDB } from "../db";
+import { sendMail } from "../mail";
 import { resolveInsideDir } from "../secure-path";
 import { getShippingProvider } from "./provider";
 
@@ -124,6 +127,22 @@ export async function createLabelCore(
       reason: "conflict",
       error: "Etikett konnte nicht gespeichert werden. Bitte erneut versuchen.",
     };
+  }
+
+  // Issue #44: the tracking mail only after the order actually moved to shipped (not on
+  // the idempotent early return) — and never fails the label flow.
+  try {
+    await sendMail({
+      to: order.customer.email,
+      ...shippedMail({
+        name: order.customer.name,
+        orderNumber: order.orderNumber,
+        trackingNumber: label.trackingNumber,
+        link: absoluteUrl(`/bestellung/${order.orderNumber}`),
+      }),
+    });
+  } catch (error) {
+    console.error(`Bestellung ${order.orderNumber}: Versand-Mail fehlgeschlagen`, error);
   }
 
   return { ok: true, trackingNumber: label.trackingNumber, labelPath };

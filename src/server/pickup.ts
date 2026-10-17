@@ -3,8 +3,11 @@ import mongoose from "mongoose";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 import { transition } from "@/lib/orders/state-machine";
 import type { PickupPaymentType } from "@/lib/payments";
+import { pickupReadyMail } from "@/lib/mail-templates";
+import { STORE } from "@/lib/store";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "./db";
+import { sendMail } from "./mail";
 
 // Handover code the customer shows at the counter (issue #41). 6 characters from an
 // unambiguous alphabet (no O/0, I/1) so it survives phone calls and bad handwriting.
@@ -120,6 +123,21 @@ export async function markPickupReadyCore(
       };
     }
     await session.commitTransaction();
+    // Issue #44: "lies bereit" mail with the handover code — after the commit, never
+    // failing the admin action.
+    try {
+      await sendMail({
+        to: order.customer.email,
+        ...pickupReadyMail({
+          name: order.customer.name,
+          orderNumber: order.orderNumber,
+          code: order.shipping.pickup?.code ?? "",
+          store: STORE,
+        }),
+      });
+    } catch (error) {
+      console.error(`Bestellung ${order.orderNumber}: Abhol-Mail fehlgeschlagen`, error);
+    }
     return { ok: true };
   } catch (error) {
     if (session.inTransaction()) await session.abortTransaction();

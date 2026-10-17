@@ -20,6 +20,11 @@ const envSchema = z.object({
   UPS_ACCOUNT: optionalNonEmpty,
   LLAMA_API_KEY: optionalNonEmpty,
   IMAGE_API_URL: optionalNonEmpty,
+  SMTP_HOST: optionalNonEmpty,
+  SMTP_PORT: optionalNonEmpty,
+  SMTP_USER: optionalNonEmpty,
+  SMTP_PASSWORD: optionalNonEmpty,
+  SMTP_FROM: optionalNonEmpty,
 });
 
 const parsed = envSchema.parse(process.env);
@@ -44,5 +49,15 @@ export const env = {
   IMAGE_API_URL: parsed.IMAGE_API_URL ?? IMAGE_API_DEFAULT_URL,
   get upsEnabled(): boolean {
     return Boolean(parsed.UPS_CLIENT_ID && parsed.UPS_CLIENT_SECRET && parsed.UPS_ACCOUNT);
+  },
+  SMTP_HOST: parsed.SMTP_HOST,
+  SMTP_PORT: parsed.SMTP_PORT,
+  SMTP_USER: parsed.SMTP_USER,
+  SMTP_PASSWORD: parsed.SMTP_PASSWORD,
+  SMTP_FROM: parsed.SMTP_FROM,
+  // Issue #44: real delivery only when host and sender are configured;
+  // otherwise every mail stays in the dev outbox.
+  get smtpEnabled(): boolean {
+    return Boolean(parsed.SMTP_HOST && parsed.SMTP_FROM);
   },
 };

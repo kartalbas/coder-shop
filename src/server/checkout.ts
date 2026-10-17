@@ -16,8 +16,11 @@ import {
 } from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
 import { UserModel } from "@/models/user";
+import { absoluteUrl } from "@/lib/site";
+import { invoiceMail, orderConfirmationMail } from "@/lib/mail-templates";
 import { connectDB } from "./db";
 import { getInvoiceCreditUsageCents } from "./invoices";
+import { sendMail } from "./mail";
 import { mintNumber } from "./numbers";
 import { generatePickupCode } from "./pickup";
 
@@ -166,7 +169,7 @@ async function runCheckout(
   paymentMethod: PaymentMethodName,
   userId: string | undefined,
   session: ClientSession,
-): Promise<{ orderNumber: string; totals: Totals }> {
+): Promise<{ orderNumber: string; totals: Totals; invoiceDueAt?: Date }> {
   const lines = await resolveLines(bySku, session);
 
   const changed = lines
@@ -197,13 +200,15 @@ async function runCheckout(
   let status: OrderStatus = "new";
   let log = statusLog;
   let payment: Order["payment"];
+  let dueAt: Date | undefined;
   if (paymentMethod === "invoice") {
     await assertInvoiceEligible(userId, totals.totalCents, session);
+    dueAt = invoiceDueAt(now);
     payment = {
       method: "invoice" as const,
       reference: formatPaymentReference(minted.seq),
       invoice: {
-        dueAt: invoiceDueAt(now),
+        dueAt,
         paidCents: 0,
         qrReference: qrReferenceForOrder(minted.year, minted.seq),
       },
@@ -249,10 +254,48 @@ async function runCheckout(
     { session },
   );
 
-  return { orderNumber, totals };
+  return { orderNumber, totals, ...(dueAt !== undefined && { invoiceDueAt: dueAt }) };
 }
 
 type MergedLines = Map<string, { qty: number; expectedUnitPriceCents: number }>;
+
+// Issue #44: the confirmation (and the invoice for Rechnung orders) is sent after the
+// commit — a mail must never announce an order that was not written. Failures are logged
+// only: the order exists, the customer sees it in the portal, and a failed mail must not
+// turn a successful checkout into an error.
+async function sendCheckoutMails(
+  customer: OrderCustomer,
+  paymentMethod: PaymentMethodName,
+  result: { orderNumber: string; totals: Totals; invoiceDueAt?: Date },
+): Promise<void> {
+  const { orderNumber, totals } = result;
+  const link = absoluteUrl(`/bestellung/${orderNumber}`);
+  try {
+    await sendMail({
+      to: customer.email,
+      ...orderConfirmationMail({
+        name: customer.name,
+        orderNumber,
+        totalCents: totals.totalCents,
+        link,
+      }),
+    });
+    if (paymentMethod === "invoice" && result.invoiceDueAt) {
+      await sendMail({
+        to: customer.email,
+        ...invoiceMail({
+          name: customer.name,
+          orderNumber,
+          totalCents: totals.totalCents,
+          dueDate: result.invoiceDueAt.toLocaleDateString("de-CH"),
+          pdfLink: absoluteUrl(`/bestellung/${orderNumber}/rechnung`),
+        }),
+      });
+    }
+  } catch (error) {
+    console.error(`Bestellung ${orderNumber}: Bestätigungs-Mail fehlgeschlagen`, error);
+  }
+}
 
 // Issue #15: identical checkout submissions (double click, second tab, retry after a lost
 // response) share a fingerprint; the unique claim on it makes "at most one order" hold
@@ -334,6 +377,7 @@ async function runClaimedCheckout(
       );
       await session.commitTransaction();
       await CheckoutClaimModel.updateOne({ _id: key }, { $set: { orderNumber: result.orderNumber } });
+      await sendCheckoutMails(customer, paymentMethod, result);
       return { ok: true, ...result };
     } catch (error) {
       if (session.inTransaction()) await session.abortTransaction();

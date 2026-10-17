@@ -49,6 +49,70 @@ export function invoiceReminderMail(
   );
 }
 
+// Order confirmation (issue #44) — sent right after checkout; the link leads to the
+// confirmation page, which shows the full details behind the access rule (#3).
+export function orderConfirmationMail(input: {
+  name: string;
+  orderNumber: string;
+  totalCents: number;
+  link: string;
+}): MailContent {
+  const amount = formatChf(input.totalCents);
+  return layout(
+    "Vielen Dank für Ihre Bestellung",
+    `<p>Hallo ${input.name},</p><p>Ihre Bestellung <strong>${input.orderNumber}</strong> ist bei uns eingegangen. Der Betrag von <strong>${amount}</strong> wurde${""} vorbereitet; sobald das Paket unterwegs ist, senden wir Ihnen die Sendungsnummer.</p>`,
+    `Hallo ${input.name},\n\nIhre Bestellung ${input.orderNumber} ist bei uns eingegangen. Der Betrag von ${amount} wurde vorbereitet; sobald das Paket unterwegs ist, senden wir Ihnen die Sendungsnummer.`,
+    { label: "Bestellung ansehen", url: input.link },
+  );
+}
+
+// Invoice order (issue #40/#44) — the PDF is downloadable behind the order visibility rule.
+export function invoiceMail(input: {
+  name: string;
+  orderNumber: string;
+  totalCents: number;
+  dueDate: string;
+  pdfLink: string;
+}): MailContent {
+  const amount = formatChf(input.totalCents);
+  return layout(
+    "Ihre Rechnung",
+    `<p>Hallo ${input.name},</p><p>vielen Dank für Bestellung <strong>${input.orderNumber}</strong>. Anbei finden Sie die Rechnung über <strong>${amount}</strong>, zahlbar bis <strong>${input.dueDate}</strong>. Der Einzahlungsschein ist QR-rechtskonform.</p>`,
+    `Hallo ${input.name},\n\nvielen Dank für Bestellung ${input.orderNumber}. Die Rechnung über ${amount} ist zahlbar bis ${input.dueDate}. Der Einzahlungsschein ist QR-rechtskonform.`,
+    { label: "Rechnung als PDF", url: input.pdfLink },
+  );
+}
+
+// Shipment (issue #44) — tracking number as soon as the label exists (#16).
+export function shippedMail(input: {
+  name: string;
+  orderNumber: string;
+  trackingNumber: string;
+  link: string;
+}): MailContent {
+  return layout(
+    "Ihre Sendung ist unterwegs",
+    `<p>Hallo ${input.name},</p><p>Bestellung <strong>${input.orderNumber}</strong> haben wir an UPS übergeben. Sendungsnummer: <strong>${input.trackingNumber}</strong>. Damit können Sie den Lauf der Sendung verfolgen.</p>`,
+    `Hallo ${input.name},\n\nBestellung ${input.orderNumber} haben wir an UPS übergeben. Sendungsnummer: ${input.trackingNumber}.`,
+    { label: "Bestellung verfolgen", url: input.link },
+  );
+}
+
+// Pickup ready (issue #41/#44) — the code is the ticket at the counter.
+export function pickupReadyMail(input: {
+  name: string;
+  orderNumber: string;
+  code: string;
+  store: { name: string; street: string; postalCode: string; city: string; hours: readonly string[] };
+}): MailContent {
+  const address = `${input.store.name}, ${input.store.street}, ${input.store.postalCode} ${input.store.city}`;
+  return layout(
+    "Ihre Bestellung liegt bereit",
+    `<p>Hallo ${input.name},</p><p>Bestellung <strong>${input.orderNumber}</strong> liegt ab sofort zur Abholung bereit: <strong>${address}</strong>. Zeigen Sie an der Kasse diesen Abholcode:</p><p style="margin:16px 0;font-size:28px;font-weight:700;letter-spacing:4px">${input.code}</p><p>${input.store.hours.join("<br>")}<br>Bezahlung bar oder mit Karte bei der Übergabe.</p>`,
+    `Hallo ${input.name},\n\nBestellung ${input.orderNumber} liegt zur Abholung bereit: ${address}.\n\nAbholcode: ${input.code}\n\n${input.store.hours.join("\n")}\nBezahlung bar oder mit Karte bei der Übergabe.`,
+  );
+}
+
 export function passwordResetMail(name: string, link: string): MailContent {
   return layout(
     "Passwort zurücksetzen",

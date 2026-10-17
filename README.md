@@ -112,6 +112,8 @@ All optional for local development (sensible defaults / embedded database):
 | `MONGOMS_SYSTEM_BINARY` | Path to a local mongod if the mongodb-memory-server binary download/detection fails. |
 | `LLAMA_API_KEY` | Bearer key for the image API used by `npm run images` (only needed when a photo is actually generated). |
 | `IMAGE_API_URL` | Image generation endpoint for `npm run images` (defaults to `http://192.168.10.210:8080/v1/images/generations`). |
+| `SMTP_HOST` / `SMTP_FROM` | Set **both** to deliver workflow mails for real via SMTP (nodemailer); otherwise every mail stays in the dev outbox, readable under `/admin/mails`. |
+| `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Optional SMTP details: port (default 587, `465` ⇒ implicit TLS) and login credentials. |
 | `E2E_PORT` | Port for the Playwright e2e run (default `3100`). |
 
 ## Database lock recovery

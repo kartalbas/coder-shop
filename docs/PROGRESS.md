@@ -946,3 +946,23 @@ Done — M1–M6 + QA complete.
   Esc cancels + focus returns, Enter/↑/↓ select, qty typed, supplier swapped through
   the dialog, submit navigates to the PO detail — keyboard only; `npm test` ✅ 370,
   lint/knip/build ✅, `npm run test:e2e` ✅ 27/27.
+
+### #44 — e-mails for every step, with a dev outbox ✅
+- Transport behind an interface (`src/server/mail.ts`): `MailTransport` with the dev
+  outbox (stored in `mail_messages`, readable under `/admin/mails` — unchanged default)
+  and a nodemailer SMTP transport that takes over as soon as `SMTP_HOST` + `SMTP_FROM`
+  are set (`SMTP_PORT` default 587, 465 ⇒ implicit TLS, optional user/password);
+  pure `selectTransportName` covers the decision.
+- New German templates (pure, `src/lib/mail-templates.ts`): order confirmation (number,
+  amount, confirmation link), invoice (amount, due date, QR-PDF link), shipped
+  (tracking number), pickup ready (store address, hours, handover code).
+- Hooks, all after the successful commit and never failing the workflow (log only):
+  checkout → confirmation (+ invoice mail for Rechnung orders), `createLabelCore` →
+  tracking mail only on the fresh `packed → shipped` move (not on the idempotent
+  repeat), `markPickupReadyCore` → ready mail with the code. Registration, password
+  reset and reminders already sent mails (#39/#40).
+- Verified: `tests/mails.test.ts` (8: template content incl. amounts via `formatChf`,
+  tracking, code, store hours; transport selection; integration — checkout writes the
+  confirmation to the outbox, Rechnung writes both, label writes exactly one tracking
+  mail even on retry, pickup-ready writes the code). README env table + ARCHITECTURE
+  updated; `npm test` ✅ 378, lint/knip/build ✅.

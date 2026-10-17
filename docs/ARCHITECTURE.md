@@ -183,13 +183,14 @@ src/
                             # product, purchasing, account (#39), common: objectIdSchema)
   server/                   # ALL I/O: db, session, queries, providers, actions
     db.ts                   # single connection helper (see §6)
-    env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SESSION_SECRET optional)
+    env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET optional)
     numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
     session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
     session.ts              # admin + customer login/session (scrypt, throttle, scoped cookies)
     customers.ts            # register, password reset, address book, claim order (#39)
     account.ts              # portal queries: order list, reorder lines (#39)
-    mail.ts                 # sendMail → dev outbox collection (/admin/mails, #39/#44)
+    mail.ts                 # sendMail behind a MailTransport interface: dev outbox
+                            # collection (/admin/mails) or nodemailer SMTP (#39/#44)
     password.ts             # scrypt hash/verify (self-describing format)
     limiter.ts              # token bucket (scrypt login concurrency guard)
     rate-limit.ts           # checkout rate limit (per client)
