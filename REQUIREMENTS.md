@@ -1,12 +1,16 @@
-You are building a production-grade e-commerce system from scratch in this git repository
-(it holds only this file, opencode.json and .gitignore). Work fully autonomously: never ask
-questions; when something is unspecified, choose the professional default and record the
-decision in DECISIONS.md.
+# coder-shop — requirements
 
-STACK — one full-stack TypeScript app, frontend and backend together, on the most modern
-stable versions (check with `npm view <pkg> version`, do not guess): Next.js (App Router,
-Server Components, Server Actions, route handlers for APIs), TypeScript strict, Tailwind CSS +
-shadcn/ui, Framer Motion, Zod, Vitest.
+A production-grade e-commerce system, built from scratch in this repository. Whoever works on
+it works fully autonomously: never ask questions; when something is unspecified, choose the
+professional default and record the decision in DECISIONS.md.
+
+STACK — one full-stack TypeScript app on Node.js, frontend and backend together, everything on
+the newest stable release (look each one up with `npm view <pkg> version`; never guess or use
+an older major): Next.js (App Router, Server Components, Server Actions, route handlers),
+React (newest), TypeScript strict, Tailwind CSS (newest major) + shadcn/ui, Framer Motion
+(motion), Zod, Vitest, ESLint flat config. The storefront must feel like a single-page app:
+client-side navigation, filters/sort/pagination update instantly without full reloads (URL
+state), cart drawer and quick actions without page changes, prefetching, transitions.
 
 DATABASE — NoSQL, starting as easily as SQLite: MongoDB with Mongoose (typed schemas, indexes
 for the filters and search). Locally the app needs no installed database: mongodb-memory-server
@@ -57,15 +61,8 @@ QUALITY: domain logic (pricing incl. VAT, stock reservation, order state machine
 weight) in src/lib with Vitest unit tests. `npm run build`, `npm run lint` and `npm test` must
 pass at the end of every milestone.
 
-WORK PLAN — you have about 60 minutes; deliver in this order and keep the app working after
-each step:
- M1 project scaffold, MongoDB connection + Mongoose models, seed (200 products + SVG images),
-    README (how to start, seed, admin login)
- M2 storefront: home, listing with filters, product page with gallery and variants
- M3 cart + checkout + order creation
- M4 admin login, order intake with status workflow, packing, UPS label (mock)
- M5 purchasing + goods receipt, dashboard, polish (dark mode, animations, a11y)
-Write PLAN.md first. After each milestone: run build/lint/tests, fix failures, update
-PROGRESS.md (done / open / known issues) and make a git commit "M<n>: …".
-Never start a long-running dev server in the foreground; to check pages, start it in the
-background, curl it, and stop it again.
+DELIVERY: milestones M1–M5 (scaffold + data + seed; storefront; cart + checkout; admin orders +
+packing + UPS label; purchasing + dashboard + polish). After each one `npm run build`,
+`npm run lint` and `npm test` pass, PROGRESS.md is updated (done / open / known issues), and a
+git commit "M<n>: …" is made. Never start a long-running server in the foreground; to check
+pages, start it in the background, curl it, and stop it again.
