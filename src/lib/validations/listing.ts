@@ -11,13 +11,33 @@ const first = z.preprocess(
   z.string().min(1),
 );
 
+// Issue #24: facets accept several values (`brand=Apple,Samsung`), so every facet param
+// normalises to a de-duplicated list of non-empty strings.
+const toList = (value: unknown): string[] => {
+  const values = Array.isArray(value) ? value : [value];
+  return [
+    ...new Set(
+      values
+        .flatMap((entry) => String(entry).split(","))
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 20);
+};
+
+const facetList = z.preprocess(toList, z.array(z.string().min(1).max(60)));
+const storageList = z.preprocess(
+  (value) => toList(value).map(Number),
+  z.array(z.number().int().positive().max(8192)),
+);
+
 export const listingParamsSchema = z.object({
   type: first.pipe(z.enum(productTypes)).optional(),
-  brand: first.optional(),
-  size: first.optional(),
-  color: first.optional(),
-  storage: first.transform(Number).pipe(z.number().int().positive()).optional(),
-  material: first.optional(),
+  brand: facetList.optional(),
+  size: facetList.optional(),
+  color: facetList.optional(),
+  storage: storageList.optional(),
+  material: facetList.optional(),
   sort: first.pipe(z.enum(sortKeys)).optional(),
   page: first.transform(Number).pipe(z.number().int().min(1)).optional(),
   collection: first.pipe(z.enum(COLLECTIONS)).optional(),

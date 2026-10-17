@@ -4,6 +4,7 @@ import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 import { escapeRegex } from "@/lib/regex";
 import { listProducts, searchProducts } from "@/server/search";
 import { deriveFilter } from "@/lib/facets";
+import { listingParamsSchema } from "@/lib/validations/listing";
 
 function phoneData(index: number) {
   const priceCents = 10000 + index * 100;
@@ -70,7 +71,7 @@ describe("storefront queries", () => {
   afterAll(disconnectTestDB);
 
   it("filters by type and size", async () => {
-    const result = await listProducts({ type: "shoes", size: "42" });
+    const result = await listProducts({ type: "shoes", size: ["42"] });
     expect(result.total).toBe(5);
     for (const item of result.items) {
       expect(item.type).toBe("shoes");
@@ -79,13 +80,13 @@ describe("storefront queries", () => {
   });
 
   it("filters by brand and sorts price-asc with stable pages", async () => {
-    const page1 = await listProducts({ type: "smartphone", brand: "Apple", sort: "price-asc" });
+    const page1 = await listProducts({ type: "smartphone", brand: ["Apple"], sort: "price-asc" });
     expect(page1.total).toBe(30);
     expect(page1.items).toHaveLength(24);
     const prices = page1.items.map((p) => p.priceCents);
     expect([...prices].sort((a, b) => a - b)).toEqual(prices);
 
-    const page2 = await listProducts({ type: "smartphone", brand: "Apple", sort: "price-asc", page: 2 });
+    const page2 = await listProducts({ type: "smartphone", brand: ["Apple"], sort: "price-asc", page: 2 });
     expect(page2.items).toHaveLength(6);
     expect(page2.items[0].priceCents).toBe(prices[23] + 100);
   });
@@ -100,6 +101,32 @@ describe("storefront queries", () => {
     const result = await listProducts({ type: "shoes" });
     const size42 = result.facets.sizes.find((f) => f.value === "42");
     expect(size42?.count).toBe(5);
+  });
+
+  it("filters several values per facet (issue #24)", async () => {
+    const result = await listProducts({ type: "shoes", size: ["42", "43"] });
+    expect(result.total).toBe(8);
+    const brands = await listProducts({ type: "shoes", brand: ["Nike", "Adidas"] });
+    expect(brands.total).toBe(8);
+  });
+
+  it("counts each facet over the other active filters, excluding its own (issue #24)", async () => {
+    const result = await listProducts({ type: "shoes", size: ["42"] });
+    // own facet keeps all values with their counts (43 stays selectable)…
+    expect(result.facets.sizes.find((f) => f.value === "42")?.count).toBe(5);
+    expect(result.facets.sizes.find((f) => f.value === "43")?.count).toBe(3);
+    // …while other facets reflect the active size filter.
+    expect(result.facets.brand.find((f) => f.value === "Nike")?.count).toBe(5);
+  });
+
+  it("parses comma-separated facet params into lists (issue #24)", () => {
+    expect(
+      listingParamsSchema.parse({ brand: "Apple,Samsung", size: ["42", "43,44"], storage: "128,256" }),
+    ).toEqual({ brand: ["Apple", "Samsung"], size: ["42", "43", "44"], storage: [128, 256] });
+    expect(listingParamsSchema.parse({ brand: "Apple, Apple, " })).toEqual({
+      brand: ["Apple"],
+    });
+    expect(listingParamsSchema.parse({})).toEqual({});
   });
 
   it("maps documents to plain DTOs", async () => {

@@ -602,6 +602,18 @@ Done — M1–M6 + QA complete.
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
 
+### #24 — filters behave like in a good shop ✅
+- Multi-value facets: `brand=Apple,Samsung` (comma lists parsed by `listingParamsSchema`,
+  `$in` in `buildListingFilter`), checkboxes now really toggle list members.
+- Facet counts respect the other active filters (each facet is counted over the filter
+  without its own condition), so counts match the result a click would produce.
+- Natural order via pure `src/lib/facet-order.ts`: EU sizes/storage numeric, clothing
+  sizes XS→XXL (not alphabetical), numbers before tokens before strings; under "Alle" the
+  size facet splits into „Grösse (EU)" and „Grösse (Kleider)" instead of one mixed group.
+- Switching the category tab drops all facets — no more 0-product dead ends.
+- Verified: `src/lib/facet-order.test.ts` (4), multi-value + count tests + schema parsing
+  in `tests/storefront.test.ts`; `npm test` ✅ 274, lint/build ✅, e2e ✅ 8/8.
+
 ### #17 — revenue and number years follow Swiss calendar days ✅
 - New pure `src/lib/dates.ts`: `swissDayKey`/`swissYear` (Intl, Europe/Zurich),
   `addDaysToDayKey`, `swissDayStartUtc` (DST-safe). The dashboard window is now exactly 30

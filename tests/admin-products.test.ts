@@ -117,7 +117,7 @@ describe("admin product management", () => {
     const dto = await getProductBySlug("alpha");
     expect(dto?.filter.colors).toEqual(["blau", "weiß"]);
 
-    const listing = await listProducts({ type: "smartphone", color: "blau" });
+    const listing = await listProducts({ type: "smartphone", color: ["blau"] });
     expect(listing.items.map((i) => i.slug)).toContain("alpha");
     const facets = await listProducts({ type: "smartphone" });
     expect(facets.facets.colors.map((f) => f.value)).toContain("blau");

@@ -2,6 +2,7 @@ import { Types, type HydratedDocument } from "mongoose";
 import { connectDB } from "./db";
 import { ProductModel, type Product, type ProductFilter, type ProductType } from "@/models/product";
 import type { ProductAttributes } from "@/lib/facets";
+import { compareFacetValues } from "@/lib/facet-order";
 import { buyablePriceCents } from "@/lib/pricing";
 import { escapeRegex } from "@/lib/regex";
 import type { SortKey } from "@/lib/validations/listing";
@@ -78,11 +79,11 @@ export function toProductDto(product: LeanProduct | HydratedDocument<Product>): 
 
 export interface ListingQuery {
   type?: ProductType;
-  brand?: string;
-  size?: string;
-  color?: string;
-  storage?: number;
-  material?: string;
+  brand?: string[];
+  size?: string[];
+  color?: string[];
+  storage?: number[];
+  material?: string[];
   sort?: SortKey;
   page?: number;
   pageSize?: number;
@@ -100,11 +101,11 @@ const SORTS: Record<SortKey, Record<string, 1 | -1>> = {
 export function buildListingFilter(query: ListingQuery): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
   if (query.type) filter.type = query.type;
-  if (query.brand) filter.brand = query.brand;
-  if (query.size) filter["filter.sizes"] = query.size;
-  if (query.color) filter["filter.colors"] = query.color;
-  if (query.storage) filter["filter.storage"] = query.storage;
-  if (query.material) filter["filter.materials"] = query.material;
+  if (query.brand?.length) filter.brand = { $in: query.brand };
+  if (query.size?.length) filter["filter.sizes"] = { $in: query.size };
+  if (query.color?.length) filter["filter.colors"] = { $in: query.color };
+  if (query.storage?.length) filter["filter.storage"] = { $in: query.storage };
+  if (query.material?.length) filter["filter.materials"] = { $in: query.material };
   if (query.collection) filter.collection = query.collection;
   return filter;
 }
@@ -136,18 +137,19 @@ interface GroupedCount {
 }
 
 function toFacetValues(groups: GroupedCount[]): FacetValue[] {
-  const values = groups
+  return groups
     .filter((g): g is { _id: string | number; count: number } => g._id != null)
-    .map((g) => ({ value: String(g._id), count: g.count }));
-  if (values.every((v) => /^\d+$/.test(v.value))) {
-    values.sort((a, b) => Number(a.value) - Number(b.value));
-  } else {
-    values.sort((a, b) => a.value.localeCompare(b.value, "de"));
-  }
-  return values;
+    .map((g) => ({ value: String(g._id), count: g.count }))
+    .sort((a, b) => compareFacetValues(a.value, b.value));
 }
 
-async function facetCounts(typeFilter: Record<string, unknown>): Promise<FacetCounts> {
+// Issue #24: each facet is counted over the active filter *without its own* condition
+// (standard faceted search), so counts match what a click would produce and already
+// selected values stay visible with their count.
+async function facetCounts(filter: Record<string, unknown>): Promise<FacetCounts> {
+  const without = (key: string): Record<string, unknown> =>
+    Object.fromEntries(Object.entries(filter).filter(([name]) => name !== key));
+
   const [agg] = await ProductModel.aggregate<{
     brand: GroupedCount[];
     sizes: GroupedCount[];
@@ -155,23 +157,29 @@ async function facetCounts(typeFilter: Record<string, unknown>): Promise<FacetCo
     storage: GroupedCount[];
     materials: GroupedCount[];
   }>([
-    { $match: typeFilter },
     {
       $facet: {
-        brand: [{ $group: { _id: "$brand", count: { $sum: 1 } } }],
+        brand: [
+          { $match: without("brand") },
+          { $group: { _id: "$brand", count: { $sum: 1 } } },
+        ],
         sizes: [
+          { $match: without("filter.sizes") },
           { $unwind: "$filter.sizes" },
           { $group: { _id: "$filter.sizes", count: { $sum: 1 } } },
         ],
         colors: [
+          { $match: without("filter.colors") },
           { $unwind: "$filter.colors" },
           { $group: { _id: "$filter.colors", count: { $sum: 1 } } },
         ],
         storage: [
+          { $match: without("filter.storage") },
           { $unwind: "$filter.storage" },
           { $group: { _id: "$filter.storage", count: { $sum: 1 } } },
         ],
         materials: [
+          { $match: without("filter.materials") },
           { $unwind: "$filter.materials" },
           { $group: { _id: "$filter.materials", count: { $sum: 1 } } },
         ],
@@ -193,11 +201,10 @@ export async function listProducts(query: ListingQuery): Promise<ListingResult> 
   const pageSize = query.pageSize ?? PAGE_SIZE;
   const sort = SORTS[query.sort ?? "newest"];
   const filter = buildListingFilter(query);
-  const typeFilter = query.type ? { type: query.type } : {};
 
   const [total, facetResult] = await Promise.all([
     ProductModel.countDocuments(filter),
-    facetCounts(typeFilter),
+    facetCounts(filter),
   ]);
 
   const pages = Math.max(1, Math.ceil(total / pageSize));

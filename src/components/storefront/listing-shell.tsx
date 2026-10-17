@@ -34,9 +34,14 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
   const type = searchParams.get("type") ?? "";
   const collection = searchParams.get("collection");
   const sort = (searchParams.get("sort") as SortKey | null) ?? "newest";
+  // Issue #24: facets are multi-value — `brand=Apple,Samsung`.
   const selected = Object.fromEntries(
-    FACET_KEYS.map((key) => [key, searchParams.get(key)]).filter(([, v]) => v != null),
-  ) as Partial<Record<FacetKey, string>>;
+    FACET_KEYS.map((key) => {
+      const raw = searchParams.get(key);
+      const values = raw ? raw.split(",").filter(Boolean) : [];
+      return [key, values.length > 0 ? values : undefined];
+    }).filter(([, values]) => values !== undefined),
+  ) as Partial<Record<FacetKey, string[]>>;
 
   const applyParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -71,7 +76,24 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
   }, [searchParams]);
 
   const toggleFacet = (key: FacetKey, value: string) => {
-    applyParams({ [key]: selected[key] === value ? null : value });
+    const current = selected[key] ?? [];
+    const next = current.includes(value)
+      ? current.filter((entry) => entry !== value)
+      : [...current, value];
+    applyParams({ [key]: next.length > 0 ? next.join(",") : null });
+  };
+
+  // Issue #24: switching the category drops every facet — values like a shoe size are
+  // meaningless for smartphones and used to leave the listing at 0 products.
+  const switchType = (nextType: string) => {
+    applyParams({
+      type: nextType || null,
+      brand: null,
+      size: null,
+      color: null,
+      storage: null,
+      material: null,
+    });
   };
 
   const resetFilters = () => {
@@ -108,7 +130,7 @@ export function ListingShell({ initial }: { initial: ListingResult }) {
             key={tab.value}
             variant={tab.value === type ? "default" : "outline"}
             size="sm"
-            onClick={() => applyParams({ type: tab.value || null })}
+            onClick={() => switchType(tab.value)}
           >
             {tab.label}
           </Button>
