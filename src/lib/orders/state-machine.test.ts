@@ -72,6 +72,39 @@ describe("canTransition — full graph", () => {
     expect(allowedTransitions("cancelled")).toEqual([]);
     expect(allowedTransitions("delivered")).toEqual([]);
   });
+
+  it("new → picking is invoice-only (issue #40)", () => {
+    expect(canTransition("new", "picking")).toBe(false);
+    expect(canTransition("new", "picking", { paymentMethod: "mock" })).toBe(false);
+    expect(canTransition("new", "picking", { paymentMethod: "invoice" })).toBe(true);
+    expect(() => transition({ status: "new", statusLog: [] }, "picking")).toThrow(
+      IllegalTransitionError,
+    );
+    const next = transition(
+      { status: "new", statusLog: [], paymentMethod: "invoice" },
+      "picking",
+      { paymentMethod: "invoice" },
+    );
+    expect(next.status).toBe("picking");
+  });
+
+  it("an invoice order reaches paid only through the invoice payment (issue #40)", () => {
+    expect(canTransition("new", "paid", { paymentMethod: "invoice" })).toBe(false);
+    expect(
+      canTransition("new", "paid", { paymentMethod: "invoice", viaInvoicePayment: true }),
+    ).toBe(true);
+    // A card order's plain new → paid stays untouched.
+    expect(canTransition("new", "paid", { paymentMethod: "mock" })).toBe(true);
+  });
+
+  it("the admin buttons follow the payment method (issue #40)", () => {
+    expect(allowedTransitions("new")).toEqual(["paid", "cancelled"]);
+    expect(allowedTransitions("new", { paymentMethod: "mock" })).toEqual(["paid", "cancelled"]);
+    expect(allowedTransitions("new", { paymentMethod: "invoice" })).toEqual([
+      "picking",
+      "cancelled",
+    ]);
+  });
 });
 
 describe("transitionsWithRestock", () => {

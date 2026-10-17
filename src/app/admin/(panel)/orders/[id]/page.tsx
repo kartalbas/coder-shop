@@ -9,7 +9,8 @@ import { LabelButton } from "@/components/admin/label-actions";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { StatusTimeline } from "@/components/admin/status-timeline";
 import { TransitionButtons } from "@/components/admin/transition-buttons";
-import { formatChf, formatWeight } from "@/lib/format";
+import { formatChf, formatDate, formatWeight } from "@/lib/format";
+import { PAYMENT_LABELS } from "@/lib/payments";
 import { allowedTransitions } from "@/lib/orders/state-machine";
 import { getOrderById } from "@/server/orders-admin";
 
@@ -28,7 +29,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
   const order = await getOrderById(id);
   if (!order) notFound();
 
-  const targets = allowedTransitions(order.status);
+  const targets = allowedTransitions(order.status, { paymentMethod: order.payment.method });
   const canCreateLabel = order.status === "packed";
   const shipped = order.status === "shipped" || order.status === "delivered";
 
@@ -119,6 +120,24 @@ async function OrderDetail({ params }: PagePropsLocal) {
               <dt>Total</dt>
               <dd className="tabular-nums">{formatChf(order.totals.totalCents)}</dd>
             </div>
+            <div className="flex justify-between border-t pt-2">
+              <dt className="text-muted-foreground">Zahlung</dt>
+              <dd>{PAYMENT_LABELS[order.payment.method]}</dd>
+            </div>
+            {order.payment.invoice && (
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">
+                  {order.payment.invoice.paidCents >= order.totals.totalCents
+                    ? "Rechnung"
+                    : "Offen (fällig " + formatDate(order.payment.invoice.dueAt) + ")"}
+                </dt>
+                <dd className="tabular-nums">
+                  {order.totals.totalCents - order.payment.invoice.paidCents > 0
+                    ? formatChf(order.totals.totalCents - order.payment.invoice.paidCents)
+                    : "bezahlt"}
+                </dd>
+              </div>
+            )}
           </dl>
         </section>
       </div>

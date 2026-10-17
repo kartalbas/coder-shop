@@ -119,7 +119,13 @@ export async function transitionOrderCore(
     }
 
     const from = order.status;
-    const updated = transition(order.toObject(), to, opts);
+    // The order's payment method is part of the transition context (issue #40):
+    // invoice orders may go new → picking unpaid, and their new → paid belongs to
+    // the invoice payment, not to these buttons.
+    const updated = transition({ ...order.toObject(), paymentMethod: order.payment.method }, to, {
+      ...opts,
+      paymentMethod: order.payment.method,
+    });
 
     const moved = await OrderModel.updateOne(
       { _id: order._id, status: from },

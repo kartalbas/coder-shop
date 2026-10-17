@@ -39,6 +39,8 @@ const nextConfig: NextConfig = {
       { source: "/warenkorb", destination: "/cart" },
       { source: "/kasse", destination: "/checkout" },
       { source: "/bestellung/:number", destination: "/order/:number" },
+      // Invoice PDF behind the confirmation page (issue #40).
+      { source: "/bestellung/:number/rechnung", destination: "/order/:number/rechnung" },
     ];
   },
 };

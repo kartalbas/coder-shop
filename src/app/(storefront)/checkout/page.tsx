@@ -7,6 +7,7 @@ import { UserRound } from "lucide-react";
 import { CheckoutForm } from "@/components/storefront/checkout-form";
 import { VAT_LABEL } from "@/lib/pricing";
 import { getCustomerProfile } from "@/server/customers";
+import { getCreditLimitCents, getInvoiceCreditUsageCents } from "@/server/invoices";
 import { getCustomerSessionUserId } from "@/server/session";
 
 export const metadata: Metadata = {
@@ -19,6 +20,11 @@ export default async function CheckoutPage() {
   // Issue #39: logged in? the form starts from the profile and default address.
   const userId = await getCustomerSessionUserId();
   const profile = userId ? await getCustomerProfile(userId) : null;
+  // Issue #40: „Rechnung“ is offered when the account exists and its credit is not yet
+  // exhausted; createOrderCore re-checks the exact amount inside the transaction.
+  const invoiceAvailable = userId
+    ? (await getInvoiceCreditUsageCents(userId)) < (await getCreditLimitCents(userId))
+    : false;
   const defaultAddress = profile?.addresses.find(
     (address) => address.kind === "shipping" && address.isDefault,
   );
@@ -57,7 +63,7 @@ export default async function CheckoutPage() {
           <span className="text-muted-foreground">— oder als Gast bestellen.</span>
         </div>
       )}
-      <CheckoutForm prefill={prefill} />
+      <CheckoutForm prefill={prefill} invoiceAvailable={invoiceAvailable} />
     </div>
   );
 }

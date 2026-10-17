@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatChf } from "@/lib/format";
+import { INVOICE_DUE_DAYS } from "@/lib/invoices";
+import { PAYMENT_LABELS, type PaymentMethodName } from "@/lib/payments";
 import { computeTotals, shippingCents, VAT_INCLUSIVE_NOTE } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import {
@@ -64,11 +66,20 @@ export interface CheckoutPrefill {
   city: string;
 }
 
-export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
+// Issue #40: „Rechnung“ is offered only to logged-in customers whose credit still has
+// room — the server decides and re-checks; the form just renders the choice.
+export function CheckoutForm({
+  prefill,
+  invoiceAvailable = false,
+}: {
+  prefill?: CheckoutPrefill;
+  invoiceAvailable?: boolean;
+}) {
   const router = useRouter();
   const cart = useCart();
   const hydrated = useCartHydrated();
   const [shippingMethod, setShippingMethod] = useState<ShippingMethodParam>("standard");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodName>("mock");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [state, formAction, pending] = useActionState<CheckoutActionState | null, FormData>(
     createOrderAction,
@@ -148,6 +159,7 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
       })),
       customer,
       shippingMethod,
+      paymentMethod,
     };
     const parsed = checkoutSchema.safeParse(payload);
     if (!parsed.success) {
@@ -236,45 +248,92 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
             <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">3</span>
             Zahlung
           </legend>
-          <Card>
-            <CardContent className="space-y-4 p-5">
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Lock className="size-4" aria-hidden />
-                Demo-Zahlung — es wird keine echte Karte belastet.
-              </p>
-              {/* Issue #27: deliberately no name attributes — the mock card data is a
-                  UI stub and must never be part of the submitted form data. */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="cardName">Karteninhaber</Label>
-                  <Input id="cardName" placeholder="Max Muster" autoComplete="cc-name" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(["mock", ...(invoiceAvailable ? (["invoice"] as const) : [])] as PaymentMethodName[]).map(
+              (method) => (
+                <label
+                  key={method}
+                  className={cn(
+                    "flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-colors focus-within:outline-2 focus-within:outline-ring",
+                    paymentMethod === method && "border-primary bg-primary/5",
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value={method}
+                      checked={paymentMethod === method}
+                      onChange={() => setPaymentMethod(method)}
+                      className="size-4 accent-primary"
+                    />
+                    <span>
+                      <span className="block font-medium">{PAYMENT_LABELS[method]}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {method === "invoice"
+                          ? `Zahlbar innert ${INVOICE_DUE_DAYS} Tagen`
+                          : "Sofort, Demo"}
+                      </span>
+                    </span>
+                  </span>
+                </label>
+              ),
+            )}
+          </div>
+          {paymentMethod === "invoice" ? (
+            <Card className="mt-3">
+              <CardContent className="space-y-1 p-5 text-sm text-muted-foreground">
+                <p>
+                  Sie erhalten eine Swiss QR-Rechnung mit Referenz und Zahlungsfrist von{" "}
+                  {INVOICE_DUE_DAYS} Tagen — offen sichtbar unter{" "}
+                  <Link href="/konto/rechnungen" className="underline underline-offset-2">
+                    Mein Konto → Rechnungen
+                  </Link>
+                  .
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="mt-3">
+              <CardContent className="space-y-4 p-5">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Lock className="size-4" aria-hidden />
+                  Demo-Zahlung — es wird keine echte Karte belastet.
+                </p>
+                {/* Issue #27: deliberately no name attributes — the mock card data is a
+                    UI stub and must never be part of the submitted form data. */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="cardName">Karteninhaber</Label>
+                    <Input id="cardName" placeholder="Max Muster" autoComplete="cc-name" />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="cardNumber">Kartennummer</Label>
+                    <Input
+                      id="cardNumber"
+                      inputMode="numeric"
+                      autoComplete="cc-number"
+                      placeholder="4242 4242 4242 4242"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cardExpiry">Gültig bis</Label>
+                    <Input id="cardExpiry" autoComplete="cc-exp" placeholder="12/28" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cardCvc">CVC</Label>
+                    <Input
+                      id="cardCvc"
+                      inputMode="numeric"
+                      autoComplete="cc-csc"
+                      placeholder="123"
+                      maxLength={4}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="cardNumber">Kartennummer</Label>
-                  <Input
-                    id="cardNumber"
-                    inputMode="numeric"
-                    autoComplete="cc-number"
-                    placeholder="4242 4242 4242 4242"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="cardExpiry">Gültig bis</Label>
-                  <Input id="cardExpiry" autoComplete="cc-exp" placeholder="12/28" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="cardCvc">CVC</Label>
-                  <Input
-                    id="cardCvc"
-                    inputMode="numeric"
-                    autoComplete="cc-csc"
-                    placeholder="123"
-                    maxLength={4}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </fieldset>
       </div>
 
@@ -316,7 +375,8 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
               ) : (
                 <Check className="size-4" aria-hidden />
               )}
-              Jetzt kaufen — {formatChf(totals.totalCents)}
+              {paymentMethod === "invoice" ? "Bestellen" : "Jetzt kaufen"} —{" "}
+              {formatChf(totals.totalCents)}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
               Mit der Bestellung akzeptieren Sie unsere AGB (Demo).

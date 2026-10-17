@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const ACCOUNT_LINKS = [
   { href: "/konto", label: "Übersicht" },
   { href: "/konto/bestellungen", label: "Bestellungen" },
+  { href: "/konto/rechnungen", label: "Rechnungen" },
   { href: "/konto/adressen", label: "Adressen" },
   { href: "/konto/profil", label: "Profil" },
 ];

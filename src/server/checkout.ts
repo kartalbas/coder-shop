@@ -1,13 +1,23 @@
 import { createHash } from "node:crypto";
 import mongoose, { type ClientSession } from "mongoose";
+import { DEFAULT_CREDIT_LIMIT_CENTS, invoiceDueAt, qrReferenceForOrder } from "@/lib/invoices";
 import { formatOrderNumber, formatPaymentReference } from "@/lib/numbers";
+import type { PaymentMethodName } from "@/lib/payments";
 import { transition, type OrderStatus } from "@/lib/orders/state-machine";
 import { computeTotals, type ShippingMethodName, type Totals } from "@/lib/pricing";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
 import { CheckoutClaimModel } from "@/models/checkout-claim";
-import { OrderModel, type OrderCustomer, type OrderLine, type StatusLogEntry } from "@/models/order";
+import {
+  OrderModel,
+  type Order,
+  type OrderCustomer,
+  type OrderLine,
+  type StatusLogEntry,
+} from "@/models/order";
 import { ProductModel, type Product } from "@/models/product";
+import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
+import { getInvoiceCreditUsageCents } from "./invoices";
 import { mintNumber } from "./numbers";
 
 export type CreateOrderResult =
@@ -31,6 +41,15 @@ class PriceChangedError extends Error {
   constructor(readonly changed: { sku: string; unitPriceCents: number }[]) {
     super(`Prices changed for: ${changed.map((c) => c.sku).join(", ")}`);
     this.name = "PriceChangedError";
+  }
+}
+
+// Invoice orders need a registered account and must stay inside its credit limit
+// (issue #40) — checked inside the transaction against the real totals.
+class InvoiceNotEligibleError extends Error {
+  constructor(readonly reason: "no_account" | "credit_exceeded") {
+    super(`Invoice not eligible: ${reason}`);
+    this.name = "InvoiceNotEligibleError";
   }
 }
 
@@ -124,10 +143,26 @@ async function decrementStock(lines: ResolvedLine[], session: ClientSession): Pr
   }
 }
 
+// Invoice orders need a registered account whose credit still covers the order
+// (issue #40) — evaluated inside the transaction against the real totals.
+async function assertInvoiceEligible(
+  userId: string | undefined,
+  totalCents: number,
+  session: ClientSession,
+): Promise<void> {
+  if (!userId) throw new InvoiceNotEligibleError("no_account");
+  const user = await UserModel.findById(userId).select("creditLimitCents").session(session).lean().exec();
+  if (!user) throw new InvoiceNotEligibleError("no_account");
+  const limit = user.creditLimitCents ?? DEFAULT_CREDIT_LIMIT_CENTS;
+  const used = await getInvoiceCreditUsageCents(userId, session);
+  if (used + totalCents > limit) throw new InvoiceNotEligibleError("credit_exceeded");
+}
+
 async function runCheckout(
   bySku: Map<string, { qty: number; expectedUnitPriceCents: number }>,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
+  paymentMethod: PaymentMethodName,
   userId: string | undefined,
   session: ClientSession,
 ): Promise<{ orderNumber: string; totals: Totals }> {
@@ -157,27 +192,47 @@ async function runCheckout(
 
   const now = new Date();
   const statusLog: StatusLogEntry[] = [{ status: "new", at: now }];
-  const paid = transition({ status: "new" as OrderStatus, statusLog }, "paid", {
-    note: "Mock-Zahlung bestätigt",
-    at: now,
-  });
+
+  let status: OrderStatus = "new";
+  let log = statusLog;
+  let payment: Order["payment"];
+  if (paymentMethod === "invoice") {
+    await assertInvoiceEligible(userId, totals.totalCents, session);
+    payment = {
+      method: "invoice" as const,
+      reference: formatPaymentReference(minted.seq),
+      invoice: {
+        dueAt: invoiceDueAt(now),
+        paidCents: 0,
+        qrReference: qrReferenceForOrder(minted.year, minted.seq),
+      },
+    };
+  } else {
+    const paid = transition({ status: "new" as OrderStatus, statusLog }, "paid", {
+      note: "Mock-Zahlung bestätigt",
+      at: now,
+    });
+    status = paid.status;
+    log = paid.statusLog;
+    payment = {
+      method: "mock" as const,
+      reference: formatPaymentReference(minted.seq),
+      paidAt: now,
+    };
+  }
 
   await OrderModel.create(
     [
       {
         orderNumber,
-        status: paid.status,
-        statusLog: paid.statusLog,
+        status,
+        statusLog: log,
         ...(userId !== undefined && { userId }),
         customer,
         lines: orderLines,
         totals,
         shipping: { method: shippingMethod },
-        payment: {
-          method: "mock" as const,
-          reference: formatPaymentReference(minted.seq),
-          paidAt: now,
-        },
+        payment,
       },
     ],
     { session },
@@ -195,11 +250,13 @@ function checkoutFingerprint(
   bySku: MergedLines,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
+  paymentMethod: PaymentMethodName,
   userId: string | undefined,
 ): string {
   const canonical = JSON.stringify({
     customer,
     shippingMethod,
+    paymentMethod,
     // Issue #39: the same cart from a guest and from a logged-in customer are different
     // submissions — they must not share an idempotency claim.
     ...(userId !== undefined && { userId }),
@@ -242,6 +299,7 @@ async function runClaimedCheckout(
   bySku: MergedLines,
   customer: OrderCustomer,
   shippingMethod: ShippingMethodName,
+  paymentMethod: PaymentMethodName,
   userId: string | undefined,
 ): Promise<CreateOrderResult> {
   const release = () => CheckoutClaimModel.deleteOne({ _id: key }).catch(() => {});
@@ -253,7 +311,14 @@ async function runClaimedCheckout(
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
-      const result = await runCheckout(bySku, customer, shippingMethod, userId, session);
+      const result = await runCheckout(
+        bySku,
+        customer,
+        shippingMethod,
+        paymentMethod,
+        userId,
+        session,
+      );
       await session.commitTransaction();
       await CheckoutClaimModel.updateOne({ _id: key }, { $set: { orderNumber: result.orderNumber } });
       return { ok: true, ...result };
@@ -272,6 +337,15 @@ async function runClaimedCheckout(
           reason: "price_changed",
           changed: error.changed,
           error: "Ein Preis hat sich geändert. Bitte prüfen Sie die neue Summe und bestätigen Sie erneut.",
+        };
+      }
+      if (error instanceof InvoiceNotEligibleError) {
+        return {
+          ok: false,
+          error:
+            error.reason === "no_account"
+              ? "Rechnung ist nur für registrierte Kunden möglich. Bitte anmelden oder eine andere Zahlungsart wählen."
+              : "Das Kreditlimit für Rechnungszahlung ist erreicht. Bitte eine andere Zahlungsart wählen.",
         };
       }
       if (isTransientError(error) && attempt < maxAttempts) {
@@ -296,11 +370,11 @@ export async function createOrderCore(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben" };
   }
-  const { lines, customer, shippingMethod } = parsed.data;
+  const { lines, customer, shippingMethod, paymentMethod } = parsed.data;
 
   await connectDB();
   const bySku = mergeLines(lines);
-  const key = checkoutFingerprint(bySku, customer, shippingMethod, opts.userId);
+  const key = checkoutFingerprint(bySku, customer, shippingMethod, paymentMethod, opts.userId);
 
   // Two rounds: if a duplicate claim vanishes while we wait (its owner failed), we claim
   // once more ourselves instead of erroring out.
@@ -315,7 +389,7 @@ export async function createOrderCore(
       if (existing) return existing;
       continue;
     }
-    return runClaimedCheckout(key, bySku, customer, shippingMethod, opts.userId);
+    return runClaimedCheckout(key, bySku, customer, shippingMethod, paymentMethod, opts.userId);
   }
   return {
     ok: false,

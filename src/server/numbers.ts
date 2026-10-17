@@ -5,6 +5,7 @@ import { CounterModel } from "@/models/counter";
 export interface MintedNumber {
   value: string;
   seq: number;
+  year: number;
 }
 
 export async function mintNumber(
@@ -19,5 +20,6 @@ export async function mintNumber(
   );
   if (!counter) throw new Error(`Could not mint a number from the "${counterId}" counter`);
   // Issue #17: the number year is the Swiss calendar year, not the UTC one.
-  return { value: format(swissYear(new Date()), counter.seq), seq: counter.seq };
+  const year = swissYear(new Date());
+  return { value: format(year, counter.seq), seq: counter.seq, year };
 }

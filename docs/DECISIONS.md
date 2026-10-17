@@ -364,3 +364,32 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **Checkout keeps the guest path.** Logged-in customers order with a prefilled form and
   their orders carry `userId`; guests check out exactly as before (plus the claim option
   afterwards). No forced registration.
+
+### #40 — invoice payment: state machine context, credit inside the transaction, demo QR-bill
+- **The payment method is part of the transition context.** Invoice orders must be
+  packable/shipable before the money arrives, so the state machine gained `new → picking`
+  — legal **only** with `paymentMethod: "invoice"` (a card order skipping `paid` would ship
+  unpaid). Conversely `new → paid` of an invoice order only passes with
+  `viaInvoicePayment: true`, so the plain admin button cannot mark an invoice "paid"
+  without an amount; `allowedTransitions(from, { paymentMethod })` hides exactly those
+  edges from the buttons. The alternative (a separate `unpaid` status) was rejected — it
+  would fork every downstream status check.
+- **Credit is checked inside the checkout transaction.** `createOrderCore` sums the
+  account's open invoice amounts (`getInvoiceCreditUsageCents`, same session) and refuses
+  over the limit (`user.creditLimitCents`, default CHF 1'000.00) — a pre-transaction check
+  would race two parallel checkouts into double the credit. Guest invoice checkout is
+  refused with a German error, not silently downgraded.
+- **Partial payments settle explicitly.** `paidCents` accumulates; only the full amount
+  sets `payment.paidAt` and (for a still-unpaid order) moves it to `paid` through the
+  state machine. An overpayment is refused rather than booked as credit.
+- **Reminders are dated fields, not a job.** `reminder1At`/`reminder2At` on the order;
+  the admin clicks "1./2. Mahnung", the core enforces overdue-only, 2-after-1, once each
+  (conditional write on the empty field), and the mail goes to the dev outbox. A cron
+  would be untestable overkill for this demo.
+- **QR-bill is a faithful demo, not a working payment.** The PDF embeds a real Swiss QR
+  Code (SPC payload, ISO 11649 QRR reference with ISO-7064 mod 97 check digits — pure and
+  unit-tested in `src/lib/invoices.ts`) but with the shop's own IBAN placeholder; no
+  postal account exists, so "bezahlt" stays the admin's manual mark.
+- **Invoice PDFs live in `data/invoices/`** (outside the web root, like labels) and are
+  generated on demand; served only by the two guarded routes (admin session, or the
+  order-visibility rule behind `/bestellung/…/rechnung`).

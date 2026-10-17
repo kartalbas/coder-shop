@@ -1,6 +1,7 @@
 export const instant = false;
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { PackageCheck } from "lucide-react";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrderStatusChain } from "@/components/storefront/order-status-chain";
-import { formatChf, formatDateTime, formatWeight } from "@/lib/format";
+import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";
 import { mayViewOrderDetails } from "@/server/order-access";
 import { getOrderByNumber, type OrderDto } from "@/server/orders";
 import { OrderAccessForm } from "@/components/storefront/order-access-form";
@@ -85,6 +86,29 @@ async function OrderView({ params }: PagePropsLocal) {
                     ` · Paketgewicht ${formatWeight(order.shipping.parcelWeightGrams)}`}
                 </p>
               </div>
+            </div>
+          )}
+
+          {order.payment.method === "invoice" && order.payment.invoice && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/40 p-4">
+              <div>
+                <p className="text-sm font-medium">Zahlung per Rechnung</p>
+                <p className="text-xs text-muted-foreground">
+                  Zahlbar bis {formatDate(new Date(order.payment.invoice.dueAt))} · Referenz{" "}
+                  <span className="font-mono">{order.payment.invoice.qrReference}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {order.payment.invoice.openCents > 0
+                    ? `Offen: ${formatChf(order.payment.invoice.openCents)}`
+                    : "Rechnung bezahlt — vielen Dank."}
+                </p>
+              </div>
+              <Link
+                href={`/bestellung/${order.orderNumber}/rechnung`}
+                className="text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                Rechnung als PDF
+              </Link>
             </div>
           )}
 

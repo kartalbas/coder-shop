@@ -35,7 +35,8 @@ UI copy and in the public URL paths `/produkte`, `/produkt/…`, `/warenkorb`, `
 | class-variance-authority | 0.7.1 | shadcn variants |
 | lucide-react | 1.58.0 | icons |
 | tw-animate-css | 1.4.0 | animation utilities for shadcn on Tailwind v4 |
-| pdf-lib | 1.17.1 | generated PDF labels (mock provider) + packing slip |
+| pdf-lib | 1.17.1 | generated PDF labels (mock provider) + packing slip + invoice PDFs (#40) |
+| qrcode | 1.5.4 | Swiss QR-bill QR code in the invoice PDF (#40) |
 
 Dev types: `@types/node` **24.19.2** (pinned to the installed Node 24 runtime, not `latest`),
 `@types/react` 19.3.0, `@types/react-dom` 19.3.0.
@@ -65,6 +66,7 @@ providers, server actions. The seed and image generator live in `scripts/`.
 public/products/            # generated product photos (content gitignored, .gitkeep kept)
 data/mongo/                 # persistent mongod dbPath (gitignored)
 data/labels/                # generated shipping label PDFs (gitignored; NOT under public/ — PII, §4)
+data/invoices/              # generated invoice PDFs (gitignored; NOT under public/ — PII, §4, #40)
 .cache/mongod/              # mongodb-memory-server binary download cache (gitignored)
 scripts/
   seed/
@@ -90,11 +92,15 @@ src/
       cart/page.tsx         # full cart page — public URL /warenkorb (drawer is global)
       checkout/page.tsx     # public URL /kasse (prefill + login/guest choice, #39)
       order/[number]/page.tsx      # confirmation + status — public URL /bestellung/[nummer]
+      order/[number]/rechnung/route.ts  # GET invoice PDF behind the confirmation URL
+                            # /bestellung/[nummer]/rechnung — same visibility rule as the
+                            # order details (#40, §4)
       konto/                # customer portal (#39), guarded by the proxy + portal layout
         (auth)/             # public: anmelden, registrieren, passwort-vergessen,
                             # passwort-zuruecksetzen
         (portal)/           # session-guarded: layout (nav), page (overview),
-                            # bestellungen (list+search+claim+reorder), adressen, profil
+                            # bestellungen (list+search+claim+reorder), adressen, profil,
+                            # rechnungen (offene Rechnungen mit Fälligkeit/Überfällig, #40)
     admin/                  # admin URLs stay English (internal)
       (auth)/login/page.tsx
       (panel)/              # session-guarded group (layout requires the admin session)
@@ -105,7 +111,10 @@ src/
         packing/page.tsx, packing/[id]/page.tsx (+ print view)
         purchasing/page.tsx, purchasing/[id]/page.tsx, suppliers/page.tsx
         mails/page.tsx      # dev outbox: every mail the shop would have sent (#39/#44)
+        invoices/page.tsx   # invoice list + filters (offen/überfällig/bezahlt), payment +
+                            # reminder + credit-limit actions (#40)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
+      invoices/[orderId]/route.ts  # GET invoice PDF (session-guarded, §4, #40)
     api/
       search/route.ts       # GET instant search JSON
       products/route.ts     # GET faceted listing JSON (documented JSON API, §4)
@@ -130,7 +139,8 @@ src/
       order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
       product-search.tsx, product-core-form.tsx, variant-editor.tsx, image-editor.tsx,
       po-create-form.tsx, po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
-      revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx
+       revenue-sparkline.tsx, pack-list.tsx, label-actions.tsx,
+       invoice-actions.tsx          # payment / reminder / credit-limit forms (#40)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
     password-reset.ts       # hashed one-hour reset tokens (TTL index, #39)
@@ -159,7 +169,11 @@ src/
     shipping/types.ts       # ShippingProvider interface, label result types
     shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
     order-visibility.ts     # who may see full order PII (cookie/admin/owning account, #39)
-    mail-templates.ts       # German e-mail templates as pure functions (#39/#44)
+    payments.ts             # PaymentMethodName ('mock' | 'invoice') + German labels (#40)
+    invoices.ts             # pure invoice rules: due date, open amount, overdue, credit
+                            # default, ISO-11649 QRR reference + SPC QR payload (#40)
+    mail-templates.ts       # German e-mail templates as pure functions (#39/#44),
+                            # incl. invoice reminders (#40)
     validations/            # zod schemas shared by actions + forms (checkout, listing,
                             # product, purchasing, account (#39), common: objectIdSchema)
   server/                   # ALL I/O: db, session, queries, providers, actions
@@ -176,7 +190,12 @@ src/
     rate-limit.ts           # checkout rate limit (per client)
     secure-path.ts          # resolveInsideDir — path containment (label download)
     order-access.ts         # per-order HMAC access cookie + e-mail verification (#3)
-    checkout.ts             # createOrderCore (transaction, idempotency claim, price check)
+    checkout.ts             # createOrderCore (transaction, idempotency claim, price check,
+                            # invoice eligibility + credit check, #40)
+    invoices.ts             # invoice cores: lists (admin/portal), credit usage/limits,
+                            # recordInvoicePaymentCore, sendInvoiceReminderCore,
+                            # getInvoiceFileCore (transaction + conditional writes, #40)
+    invoices-pdf.ts         # invoice PDF with Swiss QR-bill section (pdf-lib + qrcode, #40)
     orders.ts               # customer confirmation lookup (getOrderByNumber)
     orders-admin.ts         # listOrders, transitionOrderCore (conditional write + restock)
     products-admin.ts       # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
@@ -199,6 +218,8 @@ src/
       admin/auth.ts         # login/logout → loginCore (testable without cookies())
       admin/account.ts      # changePassword → changePasswordCore
       admin/shipping.ts     # createLabel → createLabelCore
+      admin/invoices.ts     # recordInvoicePayment, sendInvoiceReminder, setCreditLimit
+                            # → *Core fns (#40)
   stores/
     cart.ts                 # useSyncExternalStore store, localStorage-persisted
   hooks/
@@ -283,17 +304,23 @@ Indexes:
   totals: { subtotalCents, shippingCents, totalCents, vatCents }
   shipping: { method: 'standard'|'express', carrier?: 'ups',
               trackingNumber?, labelPath?, parcelWeightGrams? }
-  payment: { method: 'mock', reference: string, paidAt?: Date }
+  payment: { method: 'mock' | 'invoice', reference: string, paidAt?: Date,
+             invoice?: { dueAt, paidCents, qrReference, reminder1At?, reminder2At? } }
   createdAt, updatedAt
 }
 ```
+`payment.invoice` (issue #40) carries the invoice bookkeeping: open amount is
+`totals.totalCents − invoice.paidCents`, overdue once `dueAt` passed, reminder levels dated
+so the 2nd cannot precede the 1st.
 Indexes: `{ orderNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`, `{ 'customer.email': 1 }`,
-`{ userId: 1, createdAt: -1 }`.
+`{ userId: 1, createdAt: -1 }`, `{ 'payment.method': 1, 'payment.invoice.dueAt': 1 }`.
 
 ### User (`users`) — admin login and customer accounts (#39)
 `{ email (unique, lowercase), name, passwordHash, role: 'admin' | 'customer',
 sessionsInvalidBefore?, addresses: [{ label, street, postalCode, city, country,
-kind: 'shipping'|'billing', isDefault }] }` — `passwordHash` format
+kind: 'shipping'|'billing', isDefault }], creditLimitCents? }` — `creditLimitCents`
+(personal invoice credit, #40; unset = shop default `DEFAULT_CREDIT_LIMIT_CENTS`);
+`passwordHash` format
 `scrypt$N$r$p$salt$hash` with explicit params (§4). Customers carry the address book
 (one default per kind); admins never have addresses.
 Seeded: `admin@codershop.ch` (password via `ADMIN_PASSWORD`, issue #4).
@@ -345,7 +372,17 @@ results and are covered by Vitest integration tests against the real replica set
   cancel — **no reservations**; `lib/stock.ts` stays pure (predicates only), the DB loop lives
   here.
 - `transitionOrderCore(orderId, to, note, by)` — delegates to the state machine; cancel from
-  `new`/`paid`/`picking` restocks **in the same transaction** (§5).
+  `new`/`paid`/`picking` restocks **in the same transaction** (§5). The order's
+  `payment.method` is part of the transition context (§5, #40).
+- Invoice cores (issue #40, `src/server/invoices.ts`): `recordInvoicePaymentCore(orderId,
+  amountCents, by)` — partial payments up to the open balance, conditional on the loaded
+  state; settling a still-`new` order moves it to `paid` through the state machine
+  (`viaInvoicePayment`). `sendInvoiceReminderCore(orderId, level)` — only overdue open
+  invoices, level 2 only after level 1, each once (conditional `$set` on the empty field),
+  mail to the dev outbox. `getInvoiceCreditUsageCents` / `getCreditLimitCents` — the credit
+  check `createOrderCore` re-evaluates **inside the transaction**; `setCreditLimitCore` is
+  the admin knob. `getInvoiceFileCore(orderNumber)` — renders the QR-bill PDF on demand into
+  `data/invoices/` (outside the web root, path containment via `resolveInsideDir`).
 - `receivePurchaseOrderCore(poId)` — increments `variant.stock` per line and sets `received`
   in one transaction.
 - `updateProductCore` / `updateVariantCore` / `toggleFeaturedCore` — every update touching
@@ -373,6 +410,10 @@ Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
   `router.replace`, `scroll:false`). Sort values: `price-asc | price-desc | newest`.
 - `GET /admin/labels/[orderId]` → serves the label PDF (`Content-Type: application/pdf`)
   **behind the admin session guard** — the only way to read a label.
+- `GET /admin/invoices/[orderId]` → invoice PDF behind the admin session guard (#40).
+- `GET /bestellung/[nummer]/rechnung` → the same invoice PDF behind the **order visibility
+  rule** (`mayViewOrderDetails`: access cookie, verified e-mail, owning account or admin,
+  #3/#40) — strangers are redirected back to the confirmation.
 - `GET /api/health` → `{ ok: true, db: 'memory-server' | 'external' }`.
 
 **Admin security (recorded in docs/DECISIONS.md):**
@@ -408,9 +449,14 @@ and the mock.
 
 ```
 new → paid → picking → packed → shipped → delivered
+new → picking                                   (invoice orders only, #40 — process before payment)
 cancelled reachable from: new, paid, picking   (not from packed/shipped/delivered)
 ```
-- `canTransition(from, to): boolean` from an explicit adjacency map.
+- `canTransition(from, to, ctx)` from an explicit adjacency map; the context carries
+  `viaLabel`, `viaInvoicePayment` and the order's `paymentMethod`. `new → picking` is legal
+  **only for invoice orders**; `new → paid` of an invoice order is legal **only** via
+  `viaInvoicePayment` (the money is recorded on the invoice, not by the status buttons).
+  `allowedTransitions(from, { paymentMethod })` hides exactly those from the admin buttons.
 - `transition(order, to, { note, by })`: validates, sets `status`, appends
   `{ status, at: new Date(), note, by }` to `statusLog`; throws `IllegalTransitionError`
   otherwise. Same-state transition rejected (double-clicks on transition buttons are guarded

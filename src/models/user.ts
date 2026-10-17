@@ -23,6 +23,9 @@ export interface User {
   // Tokens issued before this instant are revoked (logout / password change).
   sessionsInvalidBefore?: Date;
   addresses: CustomerAddress[];
+  // Payment-on-invoice credit for this customer (issue #40); unset means the
+  // shop-wide default (lib/invoices DEFAULT_CREDIT_LIMIT_CENTS).
+  creditLimitCents?: number;
 }
 
 const addressSchema = new Schema<CustomerAddress>(
@@ -46,6 +49,7 @@ const userSchema = new Schema<User>(
     role: { type: String, enum: ["admin", "customer"], required: true, default: "admin" },
     sessionsInvalidBefore: { type: Date },
     addresses: { type: [addressSchema], default: [] },
+    creditLimitCents: { type: Number, min: 0 },
   },
   { versionKey: false },
 );

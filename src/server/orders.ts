@@ -1,3 +1,4 @@
+import { openAmountCents } from "@/lib/invoices";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "./db";
 
@@ -20,7 +21,12 @@ export interface OrderDto {
     trackingNumber?: string;
     parcelWeightGrams?: number;
   };
-  payment: { reference: string; paidAt?: string };
+  payment: {
+    method: Order["payment"]["method"];
+    reference: string;
+    paidAt?: string;
+    invoice?: { dueAt: string; paidCents: number; openCents: number; qrReference: string };
+  };
   createdAt: string;
 }
 
@@ -57,9 +63,18 @@ export async function getOrderByNumber(orderNumber: string): Promise<OrderDto | 
       }),
     },
     payment: {
+      method: order.payment.method,
       reference: order.payment.reference,
       ...(order.payment.paidAt !== undefined && {
         paidAt: order.payment.paidAt.toISOString(),
+      }),
+      ...(order.payment.invoice !== undefined && {
+        invoice: {
+          dueAt: order.payment.invoice.dueAt.toISOString(),
+          paidCents: order.payment.invoice.paidCents,
+          openCents: openAmountCents(order.totals.totalCents, order.payment.invoice.paidCents),
+          qrReference: order.payment.invoice.qrReference,
+        },
       }),
     },
     createdAt: order.createdAt.toISOString(),

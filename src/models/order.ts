@@ -1,4 +1,5 @@
 import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
+import { PAYMENT_METHODS, type PaymentMethodName } from "@/lib/payments";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/state-machine";
 
 export type { OrderStatus };
@@ -48,10 +49,22 @@ interface OrderShipping {
   parcelWeightGrams?: number;
 }
 
+// Invoice bookkeeping for payment.method "invoice" (issue #40): the open amount is
+// totalCents − paidCents, overdue once `dueAt` has passed; reminders are dated so the
+// 2nd one cannot be sent before the 1st.
+interface OrderInvoice {
+  dueAt: Date;
+  paidCents: number;
+  qrReference: string;
+  reminder1At?: Date;
+  reminder2At?: Date;
+}
+
 interface OrderPayment {
-  method: "mock";
+  method: PaymentMethodName;
   reference: string;
   paidAt?: Date;
+  invoice?: OrderInvoice;
 }
 
 export interface Order {
@@ -130,11 +143,23 @@ const shippingSchema = new Schema<OrderShipping>(
   { _id: false },
 );
 
+const invoiceSchema = new Schema<OrderInvoice>(
+  {
+    dueAt: { type: Date, required: true },
+    paidCents: { type: Number, required: true, min: 0 },
+    qrReference: { type: String, required: true },
+    reminder1At: { type: Date },
+    reminder2At: { type: Date },
+  },
+  { _id: false },
+);
+
 const paymentSchema = new Schema<OrderPayment>(
   {
-    method: { type: String, enum: ["mock"], required: true },
+    method: { type: String, enum: PAYMENT_METHODS, required: true },
     reference: { type: String, required: true },
     paidAt: { type: Date },
+    invoice: { type: invoiceSchema },
   },
   { _id: false },
 );
@@ -158,6 +183,8 @@ orderSchema.index({ orderNumber: 1 }, { unique: true });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ "customer.email": 1 });
 orderSchema.index({ userId: 1, createdAt: -1 });
+// Invoice lists (admin filters, customer portal, credit usage) — issue #40.
+orderSchema.index({ "payment.method": 1, "payment.invoice.dueAt": 1 });
 
 export const OrderModel =
   mongoose.models.Order ?? mongoose.model<Order>("Order", orderSchema);

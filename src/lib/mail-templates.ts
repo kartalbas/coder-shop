@@ -1,5 +1,7 @@
 // German e-mail templates (issue #39/#44) — pure functions so tests can assert the
 // content; the shop's look is inlined because e-mail clients strip stylesheets.
+import { formatChf } from "@/lib/format";
+
 export interface MailContent {
   subject: string;
   html: string;
@@ -28,6 +30,22 @@ export function welcomeMail(name: string): MailContent {
     "Willkommen bei coder-shop",
     `<p>Hallo ${name},</p><p>Ihr Konto ist eingerichtet. Unter <em>Mein Konto</em> finden Sie Ihre Bestellungen, Rechnungen und Adressen.</p>`,
     `Hallo ${name},\n\nIhr Konto ist eingerichtet. Unter "Mein Konto" finden Sie Ihre Bestellungen, Rechnungen und Adressen.`,
+  );
+}
+
+// Reminder levels of an overdue invoice (issue #40) — German UI copy.
+export function invoiceReminderMail(
+  name: string,
+  orderNumber: string,
+  openCents: number,
+  level: 1 | 2,
+): MailContent {
+  const amount = formatChf(openCents);
+  const title = level === 1 ? "1. Mahnung" : "2. Mahnung";
+  return layout(
+    title,
+    `<p>Hallo ${name},</p><p>die Rechnung zur Bestellung <strong>${orderNumber}</strong> ist überfällig. Bitte begleichen Sie den offenen Betrag von <strong>${amount}</strong> in den nächsten Tagen${level === 2 ? " — es ist bereits die zweite Mahnung" : ""}. Bei bereits beglichener Rechnung ignorieren Sie diese E-Mail einfach.</p>`,
+    `Hallo ${name},\n\ndie Rechnung zur Bestellung ${orderNumber} ist überfällig. Bitte begleichen Sie den offenen Betrag von ${amount} in den nächsten Tagen${level === 2 ? " (2. Mahnung)" : ""}. Bei bereits beglichener Rechnung ignorieren Sie diese E-Mail.`,
   );
 }
 

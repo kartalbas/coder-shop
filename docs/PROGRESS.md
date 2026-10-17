@@ -855,3 +855,33 @@ Done — M1–M6 + QA complete.
   search); new e2e `customer-portal.spec.ts` (register → prefilled checkout → order →
   logout → login → order with status; reset link read from `/admin/mails` → new password
   logs in) — `npm test` ✅ 327, lint/knip/build ✅, `npm run test:e2e` ✅ 24/24.
+
+## ISSUES — queue session 6 (2026-10-17)
+
+### #40 — payment on invoice (Rechnung) with open invoices ✅
+- Checkout: „Rechnung“ payment method for **registered customers** only — offered on
+  `/kasse` when the account's credit is not exhausted, re-checked **inside the checkout
+  transaction** (`assertInvoiceEligible`: account exists, open invoices + this total ≤
+  `user.creditLimitCents`, default CHF 1'000.00); guest/over-limit orders fail with a
+  German error and nothing is written. Invoice orders are created `new` (unpaid) with
+  `payment.invoice` = due date (+30 d), `paidCents`, ISO-11649 QRR reference.
+- State machine: payment-method-aware context — invoice-only `new → picking` (process
+  before payment), `new → paid` only via `viaInvoicePayment`; `allowedTransitions` hides
+  exactly those from the admin buttons (DECISIONS).
+- Invoice PDF (`src/server/invoices-pdf.ts`): A4 with line items, totals, VAT note and a
+  Swiss QR-bill section — real SPC payload + QR code (`qrcode@1.5.4`, exact-pinned),
+  demo creditor (DECISIONS). Generated on demand into `data/invoices/`, served by
+  `GET /admin/invoices/[orderId]` (admin session) and
+  `/bestellung/[nummer]/rechnung` (order-visibility rule, #3).
+- Portal `/konto/rechnungen`: open invoices with amount, due date, overdue marker, PDF
+  link, settled history below. Admin `/admin/invoices`: filters offen/überfällig/bezahlt,
+  partial payments (over-amount refused), reminder levels 1/2 (overdue-only, 2 after 1,
+  once each, mail to the dev outbox), per-customer credit limits with usage.
+- Verified: `src/lib/invoices.test.ts` (9: due date, open amount, overdue, mod-97/QRR
+  validity + tamper rejection, 31-line SPC payload), `tests/invoices.test.ts` (11: guest
+  refusal, unpaid order shape, process-unpaid-but-no-button-paid, credit limit across
+  orders + after payment, partial→settle, admin/portal lists + overdue flag, reminder
+  rules + outbox mail, PDF contains the reference, limit 0 blocks); new e2e
+  `invoice-payment.spec.ts` (register → invoice checkout → confirmation + PDF → portal
+  open → admin marks paid → both sides settled). `npm test` ✅ 350, lint/knip/build ✅,
+  `npm run test:e2e` ✅ 25/25.

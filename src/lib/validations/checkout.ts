@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PAYMENT_METHODS } from "@/lib/payments";
 
 const shippingMethods = ["standard", "express"] as const;
 export type ShippingMethodParam = (typeof shippingMethods)[number];
@@ -39,6 +40,9 @@ export const checkoutSchema = z
     lines: z.array(checkoutLineSchema).min(1, "Der Warenkorb ist leer").max(MAX_CHECKOUT_LINES),
     customer: checkoutCustomerSchema,
     shippingMethod: z.enum(shippingMethods),
+    // Issue #40: "invoice" is only honored for a logged-in customer within their credit
+    // limit — that is a server decision; the schema only bounds the choice itself.
+    paymentMethod: z.enum(PAYMENT_METHODS).default("mock"),
   })
   .refine(
     (data) => {
