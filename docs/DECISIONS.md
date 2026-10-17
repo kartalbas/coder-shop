@@ -217,3 +217,13 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   builds (`NODE_ENV !== "production"`), and the dashboard has a „Passwort ändern" form
   (`changePasswordCore` — verifies the current password, ≥ 10 chars) so there is a way to
   change it. e2e seeds pass `ADMIN_PASSWORD` explicitly.
+
+### #5 — login throttle cannot be bypassed with X-Forwarded-For
+- The throttle always keys on the **account** (`acct|email`) in addition to IP+account, so
+  rotating spoofed headers cannot buy more guesses. `X-Forwarded-For`/`x-real-ip` are only
+  consulted when `TRUST_PROXY_HEADERS=true` (deployment behind our own proxy), and then the
+  **last** XFF entry is used — the address our proxy appended; earlier entries are
+  client-controlled. Without that env every request shares one IP bucket and only the
+  account limit applies.
+- scrypt (32 MiB/verification) runs through a limiter (`src/server/limiter.ts`, 2 parallel,
+  queue 8, then a German busy error), so parallel scripted logins cannot exhaust the server.

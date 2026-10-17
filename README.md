@@ -84,6 +84,7 @@ All optional for local development (sensible defaults / embedded database):
 | `SESSION_SECRET` | Secret for the admin session cookie HMAC. **Required in production** (≥ 32 characters, e.g. `openssl rand -base64 48`); outside production a random per-process secret is generated. |
 | `SESSION_COOKIE_SECURE` | `true`/`false` to pin the admin session cookie's `Secure` flag. Unset (default) sets it per request from the request protocol (https → `Secure`, plain http → not), so the admin also works from other machines on the LAN over http. See DECISIONS. |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Used by `npm run seed` only, for the initial admin user. Without `ADMIN_PASSWORD` a random password is generated and printed once; an existing admin's password is never changed by the seed. |
+| `TRUST_PROXY_HEADERS` | `true` only when the app always sits behind your own reverse proxy: then the login throttle uses the **last** `X-Forwarded-For` entry (the address your proxy saw). Unset (default), the header is ignored — the per-account throttle limits guesses regardless of spoofed headers. |
 | `UPS_CLIENT_ID` / `UPS_CLIENT_SECRET` / `UPS_ACCOUNT` | Set **all three** to create real UPS labels via `UpsShippingProvider`; otherwise the `MockUpsProvider` generates `1Z…` tracking numbers and PDF labels in `data/labels/`. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL for metadata/Open Graph (defaults to `http://localhost:3000`). |
 | `MONGOMS_SYSTEM_BINARY` | Path to a local mongod if the mongodb-memory-server binary download/detection fails. |

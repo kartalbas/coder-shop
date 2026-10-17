@@ -14,6 +14,7 @@ const envSchema = z.object({
   MONGODB_URI: optionalNonEmpty,
   SESSION_SECRET: optionalNonEmpty,
   SESSION_COOKIE_SECURE: optionalBoolean,
+  TRUST_PROXY_HEADERS: optionalBoolean,
   UPS_CLIENT_ID: optionalNonEmpty,
   UPS_CLIENT_SECRET: optionalNonEmpty,
   UPS_ACCOUNT: optionalNonEmpty,
@@ -32,6 +33,9 @@ export const env = {
     return parsed.SESSION_COOKIE_SECURE === undefined
       ? undefined
       : parsed.SESSION_COOKIE_SECURE === "true";
+  },
+  get trustProxyHeaders(): boolean {
+    return parsed.TRUST_PROXY_HEADERS === "true";
   },
   UPS_CLIENT_ID: parsed.UPS_CLIENT_ID,
   UPS_CLIENT_SECRET: parsed.UPS_CLIENT_SECRET,

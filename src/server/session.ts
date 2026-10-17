@@ -2,6 +2,7 @@ import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
 import { env } from "./env";
 import { verifyPassword, hashPassword } from "./password";
+import { createLimiter, LimiterBusyError } from "./limiter";
 import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -34,6 +35,32 @@ const THROTTLE_WINDOW_MS = 15 * 60 * 1000;
 const THROTTLE_SWEEP_SIZE = 1000;
 
 const throttle = new Map<string, ThrottleEntry>();
+
+// scrypt costs ~32 MiB per verification — bound the parallelism and shed load instead of
+// letting a scripted parallel login exhaust the machine.
+const scryptLimiter = createLimiter(2, 8);
+
+// `X-Forwarded-For` is client-controlled unless the request really came through our own
+// reverse proxy (TRUST_PROXY_HEADERS=true). Without that, every header value would be a
+// fresh "IP" and the throttle meaningless — so the IP is then a single shared bucket and
+// the per-account throttle (which headers cannot influence) does the work.
+export function resolveClientIp(
+  header: (name: string) => string | null,
+  trustProxy: boolean,
+): string {
+  if (!trustProxy) return "unknown";
+  const forwarded = header("x-forwarded-for");
+  if (forwarded) {
+    const entries = forwarded
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    // Our own proxy appends the real peer address last; earlier entries may be spoofed.
+    const last = entries[entries.length - 1];
+    if (last) return last;
+  }
+  return header("x-real-ip") || "unknown";
+}
 
 export function resetLoginThrottle(): void {
   throttle.clear();
@@ -82,25 +109,42 @@ export async function loginCore(
   opts: { ip?: string } = {},
 ): Promise<LoginResult> {
   const normalizedEmail = email.trim().toLowerCase();
-  const key = `${opts.ip ?? "local"}|${normalizedEmail}`;
-  const blocked = throttleCheck(key);
-  if (blocked.blocked) {
-    return {
-      ok: false,
-      error: `Zu viele Fehlversuche. Bitte in ${blocked.retryInSeconds} Sekunden erneut versuchen.`,
-    };
+  // The account bucket cannot be rotated with request headers; the IP bucket additionally
+  // limits one client hammering several accounts.
+  const keys = [`acct|${normalizedEmail}`, `${opts.ip ?? "local"}|${normalizedEmail}`];
+  for (const key of keys) {
+    const blocked = throttleCheck(key);
+    if (blocked.blocked) {
+      return {
+        ok: false,
+        error: `Zu viele Fehlversuche. Bitte in ${blocked.retryInSeconds} Sekunden erneut versuchen.`,
+      };
+    }
   }
 
   await connectDB();
   const user = await UserModel.findOne({ email: normalizedEmail }).exec();
   // Unknown accounts still pay the scrypt cost (constant-time against user enumeration).
-  const passwordValid = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  let passwordValid: boolean;
+  try {
+    passwordValid = await scryptLimiter.run(() =>
+      verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH),
+    );
+  } catch (error) {
+    if (error instanceof LimiterBusyError) {
+      return {
+        ok: false,
+        error: "Zu viele gleichzeitige Anmeldeversuche. Bitte gleich erneut versuchen.",
+      };
+    }
+    throw error;
+  }
   if (!user || !passwordValid) {
-    throttleRecordFailure(key);
+    for (const key of keys) throttleRecordFailure(key);
     return { ok: false, error: "E-Mail oder Passwort ist falsch." };
   }
 
-  throttle.delete(key);
+  for (const key of keys) throttle.delete(key);
   return {
     ok: true,
     token: createSessionToken(user._id.toString()),

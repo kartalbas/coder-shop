@@ -456,3 +456,9 @@ Done — M1–M6 + QA complete.
 - Verified: `tests/seed-user.test.ts` (3), `changePasswordCore` tests (3), e2e asserts the
   production login page contains no password; full e2e ✅ 5/5, `npm test` ✅ 181,
   lint/build ✅.
+
+### #5 — login throttle bypassed via X-Forwarded-For ✅
+- Account-keyed throttle + untrusted XFF by default (`TRUST_PROXY_HEADERS` opt-in, last
+  entry), scrypt limiter (2 parallel / queue 8, busy error beyond).
+- Verified: `tests/limiter.test.ts` (3), `resolveClientIp` + cross-IP account-throttle
+  tests; `npm test` ✅ 188, lint/build/e2e ✅ 5/5.

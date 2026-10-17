@@ -6,6 +6,7 @@ import {
   createSessionToken,
   loginCore,
   resetLoginThrottle,
+  resolveClientIp,
   resolveSessionUserId,
   signSessionToken,
   verifySessionToken,
@@ -158,9 +159,37 @@ describe("loginCore", () => {
     expect(blocked.ok).toBe(false);
     if (blocked.ok) return;
     expect(blocked.error).toContain("Zu viele Fehlversuche");
+  });
 
-    const otherIp = await loginCore("admin@codershop.ch", "Admin!2026", { ip: "10.0.0.5" });
-    expect(otherIp.ok).toBe(true);
+  it("throttles the account even when every attempt claims a different IP (issue #5)", async () => {
+    for (let i = 0; i < 5; i++) {
+      const attempt = await loginCore("admin@codershop.ch", "falsch", { ip: `10.1.${i}.${i}` });
+      expect(attempt.ok).toBe(false);
+    }
+    const freshIp = await loginCore("admin@codershop.ch", "Admin!2026", { ip: "10.2.55.1" });
+    expect(freshIp.ok).toBe(false);
+    if (!freshIp.ok) expect(freshIp.error).toContain("Zu viele Fehlversuche");
+  });
+});
+
+describe("resolveClientIp", () => {
+  const headersOf = (values: Record<string, string>) => (name: string) => values[name] ?? null;
+
+  it("ignores X-Forwarded-For unless a proxy is trusted", () => {
+    expect(
+      resolveClientIp(headersOf({ "x-forwarded-for": "1.2.3.4" }), false),
+    ).toBe("unknown");
+  });
+
+  it("uses the last X-Forwarded-For entry behind a trusted proxy (own proxy appends the peer)", () => {
+    expect(
+      resolveClientIp(headersOf({ "x-forwarded-for": "9.9.9.9, 203.0.113.7, 10.0.0.1" }), true),
+    ).toBe("10.0.0.1");
+  });
+
+  it("falls back to x-real-ip, then to a shared bucket", () => {
+    expect(resolveClientIp(headersOf({ "x-real-ip": "203.0.113.9" }), true)).toBe("203.0.113.9");
+    expect(resolveClientIp(headersOf({}), true)).toBe("unknown");
   });
 });
 

@@ -3,7 +3,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { clearSessionCookie, loginCore, setSessionCookie } from "@/server/session";
+import { clearSessionCookie, loginCore, resolveClientIp, setSessionCookie } from "@/server/session";
+import { env } from "@/server/env";
 
 export interface LoginActionState {
   error?: string;
@@ -16,8 +17,7 @@ const loginFormSchema = z.object({
 
 async function clientIp(): Promise<string> {
   const all = await headers();
-  const forwarded = all.get("x-forwarded-for");
-  return forwarded?.split(",")[0]?.trim() || all.get("x-real-ip") || "local";
+  return resolveClientIp((name) => all.get(name), env.trustProxyHeaders);
 }
 
 export async function loginAction(

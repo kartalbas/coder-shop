@@ -328,8 +328,12 @@ Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
    signature check).
 3. **scrypt params:** N=2^15, r=8, p=1, 16-byte random salt, 32-byte key; stored as
    `scrypt$N$r$p$salt$hash` so params are self-describing.
-4. **Login throttle:** in-memory failed-attempt counter per IP+account (e.g. 5 attempts /
-   15 min lockout) — acceptable for this single-process app; credentials are public in README.
+4. **Login throttle:** in-memory failed-attempt counters per **account** (cannot be rotated
+   with headers) and per IP+account; `X-Forwarded-For` is only used when
+   `TRUST_PROXY_HEADERS=true` (then the last entry — the address the own proxy saw),
+   otherwise all requests share one IP bucket. scrypt verifications run through a
+   limiter (2 parallel, queue 8, then a busy error) so parallel logins cannot exhaust
+   the server — acceptable for this single-process app.
 
 **UPS provider details:** OAuth client-credentials token cached in-process until
 `expiresIn − 60 s` with single-flight refresh and the Basic auth header per UPS spec; the
