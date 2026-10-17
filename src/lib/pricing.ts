@@ -34,6 +34,17 @@ export function netFromGross(grossCents: number): number {
   return grossCents - vatFromGross(grossCents);
 }
 
+// The price a listing may advertise: the cheapest variant price that actually exists
+// (issue #20). `from` is true when other variants cost more, so the UI says „ab CHF …".
+export function buyablePriceCents(
+  baseCents: number,
+  priceDeltas: number[],
+): { priceCents: number; from: boolean } {
+  if (priceDeltas.length === 0) return { priceCents: baseCents, from: false };
+  const min = Math.min(...priceDeltas);
+  return { priceCents: baseCents + min, from: priceDeltas.some((d) => d !== min) };
+}
+
 export function subtotalCents(items: CartItem[]): number {
   return items.reduce((sum, item) => sum + item.unitPriceCents * item.qty, 0);
 }

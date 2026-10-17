@@ -13,6 +13,7 @@ interface SearchHit {
   name: string;
   type: string;
   priceCents: number;
+  priceFrom: boolean;
   image: string | null;
   variantHint: string;
 }
@@ -155,7 +156,12 @@ export function SearchInstant() {
                   <span className="block truncate font-medium">{hit.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{hit.variantHint}</span>
                 </span>
-                <span className="shrink-0 text-sm font-semibold">{formatChf(hit.priceCents)}</span>
+                <span className="shrink-0 text-sm font-semibold">
+                  {hit.priceFrom && (
+                    <span className="font-normal text-muted-foreground">ab </span>
+                  )}
+                  {formatChf(hit.priceCents)}
+                </span>
               </button>
             </li>
           ))}

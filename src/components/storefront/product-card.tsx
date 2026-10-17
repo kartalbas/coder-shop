@@ -33,7 +33,12 @@ export function ProductCard({ product }: { product: ProductDto }) {
       <div className="flex flex-1 flex-col gap-1 p-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{product.brand}</p>
         <p className="line-clamp-2 text-sm font-medium">{product.name}</p>
-        <p className="mt-auto pt-1 text-sm font-semibold">{formatChf(product.priceCents)}</p>
+        <p className="mt-auto pt-1 text-sm font-semibold">
+          {product.priceFrom && (
+            <span className="font-normal text-muted-foreground">ab </span>
+          )}
+          {formatChf(product.minPriceCents)}
+        </p>
       </div>
     </Link>
   );

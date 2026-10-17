@@ -581,3 +581,11 @@ Done — M1–M6 + QA complete.
   mega-menu/hero „Neuheiten" links. The listing shows an active-collection chip that can
   be removed.
 - Verified: `tests/collections.test.ts` (4); `npm test` ✅ 243, lint/build ✅, e2e ✅ 7/7.
+
+### #20 — listing prices are prices you can actually pay ✅
+- `buyablePriceCents(base, deltas)` in `src/lib/pricing.ts`: the cheapest real variant
+  price, plus a `from` flag when other variants cost more. `toProductDto` exposes
+  `minPriceCents`/`priceFrom`, search hits carry the same — product cards and instant
+  search show „ab CHF 504.00" instead of the unreachable base price.
+- Verified: 3 pure tests (incl. the Pixel 9a repro) + 2 integration tests;
+  `npm test` ✅ 248, lint/build ✅, e2e ✅ 7/7.

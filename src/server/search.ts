@@ -2,6 +2,7 @@ import { Types, type HydratedDocument } from "mongoose";
 import { connectDB } from "./db";
 import { ProductModel, type Product, type ProductFilter, type ProductType } from "@/models/product";
 import type { ProductAttributes } from "@/lib/facets";
+import { buyablePriceCents } from "@/lib/pricing";
 import { escapeRegex } from "@/lib/regex";
 import type { SortKey } from "@/lib/validations/listing";
 
@@ -23,6 +24,8 @@ export interface ProductDto {
   type: ProductType;
   brand: string;
   priceCents: number;
+  minPriceCents: number;
+  priceFrom: boolean;
   images: { src: string; alt: string }[];
   featured: boolean;
   collection: string | null;
@@ -47,6 +50,10 @@ export function toProductDto(product: LeanProduct | HydratedDocument<Product>): 
     type: p.type,
     brand: p.brand,
     priceCents: p.priceCents,
+    ...(() => {
+      const price = buyablePriceCents(p.priceCents, p.variants.map((v) => v.priceDeltaCents));
+      return { minPriceCents: price.priceCents, priceFrom: price.from };
+    })(),
     images: p.images.map((image) => ({ src: image.src, alt: image.alt })),
     featured: p.featured,
     collection: p.collection ?? null,
@@ -252,6 +259,7 @@ export interface SearchHit {
   name: string;
   type: ProductType;
   priceCents: number;
+  priceFrom: boolean;
   image: string | null;
   variantHint: string;
 }
@@ -269,7 +277,10 @@ export async function searchProducts(query: string, limit = 8): Promise<SearchHi
     slug: doc.slug,
     name: doc.name,
     type: doc.type,
-    priceCents: doc.priceCents,
+    ...(() => {
+      const price = buyablePriceCents(doc.priceCents, doc.variants.map((v) => v.priceDeltaCents));
+      return { priceCents: price.priceCents, priceFrom: price.from };
+    })(),
     image: doc.images[0]?.src ?? null,
     variantHint:
       doc.variants.length > 0 ? doc.variants[0].label : `${doc.filter.colors.length} Farben`,

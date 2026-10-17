@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   VAT_INCLUSIVE_NOTE,
   VAT_LABEL,
+  buyablePriceCents,
   freeShippingProgress,
   FREE_SHIPPING_FROM_CENTS,
   SHIPPING_CENTS,
@@ -104,5 +105,21 @@ describe("VAT and free-shipping copy come from the rules (issue #30)", () => {
       percent: 100,
       reached: true,
     });
+  });
+});
+
+describe("buyablePriceCents (issue #20)", () => {
+  it("uses the base price when no variant adds anything", () => {
+    expect(buyablePriceCents(10000, [0, 0])).toEqual({ priceCents: 10000, from: false });
+    expect(buyablePriceCents(10000, [])).toEqual({ priceCents: 10000, from: false });
+  });
+
+  it("advertises the cheapest variant price and says „ab“ when others cost more", () => {
+    expect(buyablePriceCents(48400, [2000, 4500])).toEqual({ priceCents: 50400, from: true });
+    expect(buyablePriceCents(10000, [0, 2000])).toEqual({ priceCents: 10000, from: true });
+  });
+
+  it("no „ab“ when every variant costs the same", () => {
+    expect(buyablePriceCents(10000, [500, 500])).toEqual({ priceCents: 10500, from: false });
   });
 });

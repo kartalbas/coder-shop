@@ -1,7 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ProductModel } from "@/models/product";
 import { deriveFilter } from "@/lib/facets";
-import { buildListingFilter, getCollectionProducts, listProducts } from "@/server/search";
+import {
+  buildListingFilter,
+  getCollectionProducts,
+  listProducts,
+  searchProducts,
+} from "@/server/search";
 import { listingParamsSchema } from "@/lib/validations/listing";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
@@ -61,5 +66,58 @@ describe("collection filter (issue #23)", () => {
     const sale = await getCollectionProducts("Sale", 4);
     expect(sale.map((p) => p.name)).toEqual(["Kollektion sale"]);
     expect(await getCollectionProducts("Leere Sammlung", 4)).toEqual([]);
+  });
+});
+
+describe("buyable listing prices (issue #20)", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+    await clearCollections();
+    const variants = [
+      {
+        sku: "PRICE-64",
+        label: "64 GB",
+        priceDeltaCents: 2000,
+        stock: 5,
+        weightGrams: 200,
+        restockThreshold: 5,
+        attributes: { color: "schwarz", storage: 64 },
+      },
+      {
+        sku: "PRICE-256",
+        label: "256 GB",
+        priceDeltaCents: 4500,
+        stock: 5,
+        weightGrams: 200,
+        restockThreshold: 5,
+        attributes: { color: "schwarz", storage: 256 },
+      },
+    ];
+    await ProductModel.create({
+      slug: "pixel-9a",
+      name: "Google Pixel 9a",
+      description: "Test",
+      type: "smartphone",
+      brand: "Google",
+      priceCents: 48400,
+      images: [],
+      filter: deriveFilter(variants),
+      variants,
+    });
+  });
+
+  afterAll(disconnectTestDB);
+
+  it("the listing DTO carries the cheapest real price, flagged as „ab“", async () => {
+    const result = await listProducts({});
+    const item = result.items.find((i) => i.slug === "pixel-9a");
+    expect(item?.minPriceCents).toBe(50400);
+    expect(item?.priceFrom).toBe(true);
+  });
+
+  it("instant search never advertises the unreachable base price", async () => {
+    const hits = await searchProducts("Pixel");
+    expect(hits[0].priceCents).toBe(50400);
+    expect(hits[0].priceFrom).toBe(true);
   });
 });
