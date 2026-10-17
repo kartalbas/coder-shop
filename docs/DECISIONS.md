@@ -292,3 +292,12 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   404 (rewrite to `/_not-found` with `status: 404`). The product page dropped its
   `Suspense` wrapper so `notFound()` in the page itself still works as defense in
   depth. Proxy is Node.js runtime (Next 16 default), so the DB call is allowed.
+
+### #34 — dead code policy and knip
+- `knip` (exact-pinned devDependency, `knip.json`, `npm run knip`) enforces "no dead code":
+  exports used only inside their own file lost the `export` keyword, test-only helpers moved
+  into the tests (`MOCK_TRACKING_PATTERN`), the unused session re-export barrel, the uncalled
+  `POST /api/shipping/label/[orderId]` (with its `isSameOrigin` helper — label creation is the
+  Server Action, whose same-origin check Next enforces) and the create-next-app SVGs are gone.
+- **Vendored shadcn components (`src/components/ui/**`) are knip-ignored:** they are kept in
+  canonical upstream shape on purpose; trimming unused variants would make updates hostile.

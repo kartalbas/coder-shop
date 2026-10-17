@@ -10,16 +10,6 @@ import {
   verifySessionToken,
 } from "./session-token";
 
-export {
-  SESSION_COOKIE,
-  SESSION_TTL_SECONDS,
-  createSessionToken,
-  sessionSecret,
-  signSessionToken,
-  verifySessionToken,
-  type SessionPayload,
-} from "./session-token";
-
 interface ThrottleEntry {
   failures: number;
   windowStart: number;

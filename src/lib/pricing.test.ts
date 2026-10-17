@@ -7,7 +7,6 @@ import {
   FREE_SHIPPING_FROM_CENTS,
   SHIPPING_CENTS,
   computeTotals,
-  netFromGross,
   shippingCents,
   subtotalCents,
   vatFromGross,
@@ -25,12 +24,6 @@ describe("vatFromGross (VAT rounding rule: gross − round(gross × 100 / 108.1)
     [1, 0],
   ])("gross %i cents → vat %i cents", (gross, vat) => {
     expect(vatFromGross(gross)).toBe(vat);
-  });
-
-  it("net + vat always re-sums to the gross", () => {
-    for (const gross of [1, 99, 490, 1290, 5490, 10000, 123456]) {
-      expect(netFromGross(gross) + vatFromGross(gross)).toBe(gross);
-    }
   });
 });
 

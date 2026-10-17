@@ -1,7 +1,7 @@
 // Fixed-window rate limiting for abuse-sensitive endpoints (checkout). In-memory like the
 // login throttle — fine for the documented single-process deployment.
 
-export interface RateDecision {
+interface RateDecision {
   allowed: boolean;
   retryInSeconds: number;
 }

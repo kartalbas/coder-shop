@@ -8,7 +8,6 @@ export const productCoreSchema = z.object({
   priceCents: z.coerce.number().int("Ganze Rappen erforderlich.").min(0),
 });
 
-export type ProductCoreInput = z.infer<typeof productCoreSchema>;
 
 const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 
@@ -26,7 +25,6 @@ export const variantCoreSchema = z.object({
   }),
 });
 
-export type VariantCoreInput = z.infer<typeof variantCoreSchema>;
 
 export const MIN_PRODUCT_IMAGES = 1;
 export const MAX_PRODUCT_IMAGES = 5;
@@ -55,4 +53,3 @@ export const productImagesSchema = z.object({
     ),
 });
 
-export type ProductImagesInput = z.infer<typeof productImagesSchema>;

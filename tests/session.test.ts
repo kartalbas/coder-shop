@@ -3,20 +3,20 @@ import { UserModel } from "@/models/user";
 import { hashPassword } from "@/server/password";
 import {
   changePasswordCore,
-  createSessionToken,
   decideSessionCookieSecure,
   loginCore,
   resetLoginThrottle,
   resolveClientIp,
   resolveSessionUserId,
   revokeSessionsCore,
-  signSessionToken,
-  verifySessionToken,
 } from "@/server/session";
 import {
   MIN_PRODUCTION_SECRET_LENGTH,
+  createSessionToken,
   resolveSessionSecret,
   sessionSecret,
+  signSessionToken,
+  verifySessionToken,
 } from "@/server/session-token";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 

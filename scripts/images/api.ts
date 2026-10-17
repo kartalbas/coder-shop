@@ -1,10 +1,10 @@
 import sharp from "sharp";
 
-export const IMAGE_SIZE = "768x768";
+const IMAGE_SIZE = "768x768";
 const MAX_ATTEMPTS = 4;
 const BASE_DELAY_MS = 1000;
 
-export class ImageApiError extends Error {}
+class ImageApiError extends Error {}
 
 export interface ImageApiOptions {
   url: string;

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { COLLECTIONS } from "@/lib/collections";
 
 export const productTypes = ["smartphone", "shoes", "clothing"] as const;
-export const sortKeys = ["price-asc", "price-desc", "newest"] as const;
+const sortKeys = ["price-asc", "price-desc", "newest"] as const;
 
 export type SortKey = (typeof sortKeys)[number];
 
@@ -43,7 +43,6 @@ export const listingParamsSchema = z.object({
   collection: first.pipe(z.enum(COLLECTIONS)).optional(),
 });
 
-export type ListingParams = z.infer<typeof listingParamsSchema>;
 
 export const searchQuerySchema = z.object({
   q: first.pipe(z.string().max(100)).optional(),

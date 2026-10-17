@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-export const shippingMethods = ["standard", "express"] as const;
+const shippingMethods = ["standard", "express"] as const;
 export type ShippingMethodParam = (typeof shippingMethods)[number];
 
-export const checkoutCustomerSchema = z.object({
+const checkoutCustomerSchema = z.object({
   name: z.string().trim().min(2, "Bitte Namen angeben").max(100),
   email: z.email("Bitte gültige E-Mail angeben"),
   phone: z
@@ -25,7 +25,7 @@ export const MAX_CHECKOUT_LINES = 20;
 export const MAX_QTY_PER_LINE = 10;
 export const MAX_QTY_PER_SKU = 10;
 
-export const checkoutLineSchema = z.object({
+const checkoutLineSchema = z.object({
   sku: z.string().min(1).max(64),
   qty: z.number().int().min(1).max(MAX_QTY_PER_LINE),
   // The unit price the checkout page showed the customer (issue #12). The server books

@@ -1,8 +1,8 @@
-import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type Types } from "mongoose";
 
 export type PurchaseOrderStatus = "draft" | "ordered" | "received";
 
-export interface PurchaseOrderLine {
+interface PurchaseOrderLine {
   productId: Types.ObjectId;
   sku: string;
   qty: number;
@@ -23,7 +23,6 @@ export interface PurchaseOrder {
   updatedAt: Date;
 }
 
-export type PurchaseOrderDocument = HydratedDocument<PurchaseOrder>;
 
 const lineSchema = new Schema<PurchaseOrderLine>(
   {

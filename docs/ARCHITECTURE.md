@@ -100,7 +100,6 @@ src/
       search/route.ts       # GET instant search JSON
       products/route.ts     # GET faceted listing JSON (client navigation data source)
       health/route.ts       # GET { ok } — also warms DB connection
-      shipping/label/[orderId]/route.ts  # POST create label (admin, Origin-checked, §4)
   components/
     ui/                     # shadcn components (button, dialog, drawer, sheet, …)
     storefront/
@@ -318,15 +317,15 @@ Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
   (ObjectId→string, Date→ISO, `filter` shape) so client and server never hydrate different
   shapes. Consumed by the client listing shell (URL stays the source of truth via
   `router.replace`, `scroll:false`). Sort values: `price-asc | price-desc | newest`.
-- `POST /api/shipping/label/[orderId]` → label creation (same core function as the action).
 - `GET /admin/labels/[orderId]` → serves the label PDF (`Content-Type: application/pdf`)
   **behind the admin session guard** — the only way to read a label.
 - `GET /api/health` → `{ ok: true, db: 'memory-server' | 'external' }`.
 
 **Admin security (recorded in docs/DECISIONS.md):**
-1. **Origin check:** every state-changing route handler validates the request `Origin` against
-   the host and rejects mismatches with 403 (Next does this for Server Actions in App Router;
-   the custom route handler must do it explicitly). Test: forged `Origin` → rejected.
+1. **Origin check:** every state-changing operation goes through a Server Action, for which
+   Next enforces the same-origin check itself (forged `Origin` → 400). There are deliberately
+   no custom state-changing route handlers (the former `POST /api/shipping/label/[orderId]`
+   had no caller and was removed, issue #34 — label creation is the action only).
 2. **Session cookie:** payload `{ userId, exp }` (12 h), signature covers `exp`, verified with
    `crypto.timingSafeEqual`; a leaked cookie expires. `SESSION_SECRET` is required (and ≥ 32
    chars) in production — no source-code fallback; outside production the secret is random

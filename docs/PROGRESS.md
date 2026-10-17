@@ -758,3 +758,16 @@ Done — M1–M6 + QA complete.
   `/produkt/gibts-nicht` → 404, title „OnePlus OnePlus 13T | coder-shop",
   „leichtes Smartphone", absolute JSON-LD images + BreadcrumbList, 0× „weiß".
   `npm test` ✅ 280, lint/build ✅, e2e ✅ 21/21.
+
+### #34 — dead code, unused route and create-next-app leftovers removed ✅
+- `knip@6.41.0` exact-pinned as devDependency with `knip.json` (`npm run knip`) — reports
+  nothing now. Removed: `netFromGross` (test-only VAT helper), `MOCK_TRACKING_PATTERN`
+  (moved into `tests/shipping.test.ts`), the session.ts re-export barrel (tests import
+  from `session-token` directly), the uncalled `POST /api/shipping/label/[orderId]`
+  together with `src/server/same-origin.ts` (label creation is the Server Action only —
+  Next enforces its same-origin check; ARCHITECTURE §4/§8 corrected), the 5 unused
+  create-next-app SVGs in `public/`, and 11 fully unused types.
+- ~40 exports used only inside their own file lost the `export` keyword (DECISIONS).
+  Vendored `src/components/ui/**` is knip-ignored on purpose (canonical shadcn shape).
+- Verified: `npx knip` exit 0; `npm test` ✅ 275 (removed the tautological
+  net+vat test and the same-origin block with their code), lint/build ✅, e2e ✅ 21/21.

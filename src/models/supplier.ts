@@ -1,4 +1,4 @@
-import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type Types } from "mongoose";
 
 export interface Supplier {
   _id: Types.ObjectId;
@@ -9,7 +9,6 @@ export interface Supplier {
   active: boolean;
 }
 
-export type SupplierDocument = HydratedDocument<Supplier>;
 
 const supplierSchema = new Schema<Supplier>(
   {

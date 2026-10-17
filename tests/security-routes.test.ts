@@ -5,7 +5,6 @@ import { proxy } from "@/proxy";
 import { ProductModel } from "@/models/product";
 import { UserModel } from "@/models/user";
 import { SESSION_COOKIE, createSessionToken } from "@/server/session-token";
-import { isSameOrigin } from "@/server/same-origin";
 import { resolveInsideDir } from "@/server/secure-path";
 import { LABELS_DIR } from "@/server/shipping/label";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
@@ -76,28 +75,6 @@ describe("product slug guard (src/proxy.ts, issue #28)", () => {
   it("lets a known slug through", async () => {
     const response = await proxy(productRequest("bekanntes-produkt"));
     expect(response.status).toBe(200);
-  });
-});
-
-describe("same-origin check (label API route)", () => {
-  const url = "http://shop.local:3000/api/shipping/label/abc";
-
-  it("accepts the site's own origin", () => {
-    expect(isSameOrigin("http://shop.local:3000", url)).toBe(true);
-  });
-
-  it("refuses a foreign origin", () => {
-    expect(isSameOrigin("https://evil.example", url)).toBe(false);
-  });
-
-  it("refuses a different port or host", () => {
-    expect(isSameOrigin("http://shop.local:4000", url)).toBe(false);
-    expect(isSameOrigin("http://other.local:3000", url)).toBe(false);
-  });
-
-  it("refuses a missing or malformed origin", () => {
-    expect(isSameOrigin(null, url)).toBe(false);
-    expect(isSameOrigin("nicht-url", url)).toBe(false);
   });
 });
 

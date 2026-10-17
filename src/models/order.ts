@@ -3,7 +3,7 @@ import { ORDER_STATUSES, type OrderStatus } from "@/lib/orders/state-machine";
 
 export type { OrderStatus };
 
-export type ShippingMethod = "standard" | "express";
+type ShippingMethod = "standard" | "express";
 
 export interface StatusLogEntry {
   status: OrderStatus;
@@ -33,14 +33,14 @@ export interface OrderLine {
   weightGrams: number;
 }
 
-export interface OrderTotals {
+interface OrderTotals {
   subtotalCents: number;
   shippingCents: number;
   totalCents: number;
   vatCents: number;
 }
 
-export interface OrderShipping {
+interface OrderShipping {
   method: ShippingMethod;
   carrier?: "ups";
   trackingNumber?: string;
@@ -48,7 +48,7 @@ export interface OrderShipping {
   parcelWeightGrams?: number;
 }
 
-export interface OrderPayment {
+interface OrderPayment {
   method: "mock";
   reference: string;
   paidAt?: Date;

@@ -2,7 +2,7 @@
 // clothing sizes by garment order (not alphabetically: L, M, S, XL, XS was the bug),
 // everything else locale-sorted.
 
-export const CLOTHING_SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"] as const;
+const CLOTHING_SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"] as const;
 
 export function isNumericFacetValue(value: string): boolean {
   return /^\d+$/.test(value.trim());

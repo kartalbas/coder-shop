@@ -6,7 +6,7 @@ import { ProductModel, type Product } from "@/models/product";
 import { connectDB } from "./db";
 import type { OrderListItem } from "./orders-admin";
 
-export const REVENUE_STATUSES: OrderStatus[] = [
+const REVENUE_STATUSES: OrderStatus[] = [
   "paid",
   "picking",
   "packed",
@@ -14,7 +14,7 @@ export const REVENUE_STATUSES: OrderStatus[] = [
   "delivered",
 ];
 
-export const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "paid", "picking", "packed"];
+const OPEN_ORDER_STATUSES: OrderStatus[] = ["new", "paid", "picking", "packed"];
 
 export const REVENUE_WINDOW_DAYS = 30;
 

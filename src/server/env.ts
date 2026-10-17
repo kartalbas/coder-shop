@@ -24,7 +24,7 @@ const envSchema = z.object({
 
 const parsed = envSchema.parse(process.env);
 
-export const IMAGE_API_DEFAULT_URL = "http://192.168.10.210:8080/v1/images/generations";
+const IMAGE_API_DEFAULT_URL = "http://192.168.10.210:8080/v1/images/generations";
 
 export const env = {
   MONGODB_URI: parsed.MONGODB_URI,

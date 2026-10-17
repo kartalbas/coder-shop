@@ -1,13 +1,12 @@
-import mongoose, { Schema, type HydratedDocument } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-export type CounterId = "order" | "po";
+type CounterId = "order" | "po";
 
 export interface Counter {
   _id: CounterId;
   seq: number;
 }
 
-export type CounterDocument = HydratedDocument<Counter>;
 
 const counterSchema = new Schema<Counter>(
   {

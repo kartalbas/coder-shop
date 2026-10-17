@@ -8,8 +8,8 @@ import { sessionSecret } from "./session-token";
 // fully rendered for a browser holding a per-order access cookie (granted at checkout) or
 // for a signed-in admin. Everyone else must confirm the order's e-mail address first.
 
-export const ORDER_ACCESS_COOKIE_PREFIX = "order_access_";
-export const ORDER_ACCESS_TTL_SECONDS = 30 * 24 * 60 * 60;
+const ORDER_ACCESS_COOKIE_PREFIX = "order_access_";
+const ORDER_ACCESS_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export function orderAccessCookieName(orderNumber: string): string {
   return `${ORDER_ACCESS_COOKIE_PREFIX}${orderNumber}`;

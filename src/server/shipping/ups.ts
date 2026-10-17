@@ -1,8 +1,8 @@
 import type { LabelRequest, LabelResult, ShippingProvider } from "@/lib/shipping/types";
 
-export const UPS_TOKEN_URL = "https://www.ups.com/security/v1/oauth/token";
-export const UPS_BASE_URL = "https://onlinetools.ups.com";
-export const UPS_SHIP_RESOURCE = "api/shipments/v2409/ship";
+const UPS_TOKEN_URL = "https://www.ups.com/security/v1/oauth/token";
+const UPS_BASE_URL = "https://onlinetools.ups.com";
+const UPS_SHIP_RESOURCE = "api/shipments/v2409/ship";
 
 const TOKEN_EXPIRY_MARGIN_SECONDS = 60;
 

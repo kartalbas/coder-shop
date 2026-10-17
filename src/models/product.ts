@@ -1,9 +1,9 @@
-import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type Types } from "mongoose";
 import type { ProductAttributes } from "@/lib/facets";
 
 export type ProductType = "smartphone" | "shoes" | "clothing";
 
-export interface ProductImage {
+interface ProductImage {
   src: string;
   alt: string;
 }
@@ -42,7 +42,6 @@ export interface Product {
   updatedAt: Date;
 }
 
-export type ProductDocument = HydratedDocument<Product>;
 
 const imageSchema = new Schema<ProductImage>(
   { src: { type: String, required: true }, alt: { type: String, required: true } },

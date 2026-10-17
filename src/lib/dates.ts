@@ -1,7 +1,7 @@
 // Swiss calendar dates (issue #17): revenue days and number years follow
 // Europe/Zurich, not UTC. Pure Intl helpers — no I/O.
 
-export const SWISS_TIME_ZONE = "Europe/Zurich";
+const SWISS_TIME_ZONE = "Europe/Zurich";
 
 const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: SWISS_TIME_ZONE,

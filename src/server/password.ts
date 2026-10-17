@@ -8,7 +8,7 @@ const scryptAsync = promisify(scrypt) as (
   options?: ScryptOptions,
 ) => Promise<Buffer>;
 
-export const SCRYPT_PARAMS = {
+const SCRYPT_PARAMS = {
   N: 32768,
   r: 8,
   p: 1,

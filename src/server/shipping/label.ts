@@ -11,7 +11,7 @@ import { getShippingProvider } from "./provider";
 
 export const LABELS_DIR = path.join("data", "labels");
 
-export type CreateLabelFailureReason =
+type CreateLabelFailureReason =
   | "not_found"
   | "not_packed"
   | "provider_error"

@@ -1,4 +1,4 @@
-import mongoose, { Schema, type HydratedDocument, type Types } from "mongoose";
+import mongoose, { Schema, type Types } from "mongoose";
 
 export interface User {
   _id: Types.ObjectId;
@@ -10,7 +10,6 @@ export interface User {
   sessionsInvalidBefore?: Date;
 }
 
-export type UserDocument = HydratedDocument<User>;
 
 const userSchema = new Schema<User>(
   {

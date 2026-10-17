@@ -13,7 +13,7 @@ import { connectDB } from "./db";
 
 export type ProductAdminResult = { ok: true } | { ok: false; error: string };
 
-export interface ProductAdminListItem {
+interface ProductAdminListItem {
   id: string;
   slug: string;
   name: string;
@@ -32,7 +32,7 @@ export interface ProductAdminListResult {
   pageSize: number;
 }
 
-export const ADMIN_PAGE_SIZE = 20;
+const ADMIN_PAGE_SIZE = 20;
 
 export interface ProductAdminQuery {
   q?: string;

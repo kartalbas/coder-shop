@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { PurchaseOrderStatus } from "@/models/purchase-order";
 
-export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
+const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
   draft: "Entwurf",
   ordered: "Bestellt",
   received: "Erhalten",

@@ -90,7 +90,7 @@ export interface ListingQuery {
   collection?: string;
 }
 
-export const PAGE_SIZE = 24;
+const PAGE_SIZE = 24;
 
 const SORTS: Record<SortKey, Record<string, 1 | -1>> = {
   "price-asc": { priceCents: 1, _id: 1 },

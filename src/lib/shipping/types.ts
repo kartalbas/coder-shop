@@ -1,4 +1,4 @@
-export interface LabelRecipient {
+interface LabelRecipient {
   name: string;
   street: string;
   postalCode: string;
@@ -23,4 +23,3 @@ export interface ShippingProvider {
   createLabel(request: LabelRequest): Promise<LabelResult>;
 }
 
-export const MOCK_TRACKING_PATTERN = /^1Z[0-9A-Z]{15,16}$/;

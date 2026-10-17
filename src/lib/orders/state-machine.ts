@@ -7,7 +7,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
-export interface OrderStatusLogEntry {
+interface OrderStatusLogEntry {
   status: OrderStatus;
   at: Date;
   note?: string;
@@ -31,7 +31,7 @@ const TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
 
 export const ORDER_STATUSES = Object.keys(TRANSITIONS) as OrderStatus[];
 
-export const RESTOCK_STATUSES: readonly OrderStatus[] = ["new", "paid", "picking"];
+const RESTOCK_STATUSES: readonly OrderStatus[] = ["new", "paid", "picking"];
 
 // The non-cancelled path through the graph — the single source for anything that renders
 // or reasons about "how far is this order" (issue #31).

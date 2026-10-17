@@ -2,7 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { MOCK_TRACKING_PATTERN, type LabelRequest, type ShippingProvider } from "@/lib/shipping/types";
+import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
+
+// Issue #34: the pattern is a test expectation, not production code.
+const MOCK_TRACKING_PATTERN = /^1Z[0-9A-Z]{15,16}$/;
 import { OrderModel, type Order, type OrderStatus } from "@/models/order";
 import { MockUpsProvider } from "@/server/shipping/mock";
 import { LABELS_DIR, createLabelCore, getLabelFileCore } from "@/server/shipping/label";

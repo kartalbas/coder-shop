@@ -1,6 +1,6 @@
 import type { ProductDto, VariantDto } from "@/server/search";
 
-export type SelectionKey = "color" | "size" | "storage";
+type SelectionKey = "color" | "size" | "storage";
 export type Selection = Record<SelectionKey, string | null>;
 
 export interface Dimension {

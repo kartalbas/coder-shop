@@ -12,7 +12,7 @@ export function mockTrackingNumber(random: () => number = Math.random): string {
   return `1Z${rest}`;
 }
 
-export async function renderMockLabelPdf(request: LabelRequest, trackingNumber: string): Promise<Uint8Array> {
+async function renderMockLabelPdf(request: LabelRequest, trackingNumber: string): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([400, 600]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);

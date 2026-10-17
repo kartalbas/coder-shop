@@ -15,7 +15,7 @@ export const supplierInputSchema = z.object({
 
 export type SupplierInput = z.infer<typeof supplierInputSchema>;
 
-export const poLineInputSchema = z.object({
+const poLineInputSchema = z.object({
   sku: z.string().trim().min(1, "SKU ist erforderlich."),
   qty: z.coerce.number().int().min(1, "Mindestens 1 Stück.").max(10000),
   unitPriceCents: z.coerce.number().int().min(0),
@@ -33,4 +33,3 @@ export const createPurchaseOrderSchema = z.object({
     ),
 });
 
-export type CreatePurchaseOrderInput = z.infer<typeof createPurchaseOrderSchema>;

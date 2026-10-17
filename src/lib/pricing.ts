@@ -1,4 +1,4 @@
-export const VAT_RATE_PERCENT = 8.1;
+const VAT_RATE_PERCENT = 8.1;
 
 // The German-formatted VAT wording ("8,1 % MwSt.") — every UI note about VAT comes from
 // here, so changing the rate above changes the copy too (issue #30).
@@ -28,10 +28,6 @@ export interface Totals {
 
 export function vatFromGross(grossCents: number): number {
   return grossCents - Math.round((grossCents * 100) / (100 + VAT_RATE_PERCENT));
-}
-
-export function netFromGross(grossCents: number): number {
-  return grossCents - vatFromGross(grossCents);
 }
 
 // The price a listing may advertise: the cheapest variant price that actually exists

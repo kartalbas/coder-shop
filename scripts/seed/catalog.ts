@@ -3,7 +3,7 @@ import { CATALOG_BRANDS } from "@/lib/brands";
 import { deriveFilter, type ProductAttributes } from "@/lib/facets";
 import type { ProductType } from "@/models/product";
 
-export interface SeedVariant {
+interface SeedVariant {
   sku: string;
   label: string;
   priceDeltaCents: number;
