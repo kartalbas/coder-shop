@@ -156,3 +156,26 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **E2E strategy:** Playwright (Chromium only) against a production build on its own port
   with a freshly seeded throw-away replica set (`tests/e2e/`, ARCHITECTURE §12) — the
   developer's `data/mongo` is never touched.
+
+## BUG1 — admin session cookie over plain HTTP (issue #1)
+
+- **Symptom:** production build on `http://<lan-ip>:4000` — login succeeds but every admin
+  click redirects to `/admin/login`; on `http://localhost:4000` it works.
+- **Root cause:** `setSessionCookie` set `Secure` whenever `NODE_ENV === "production"`.
+  Browsers only store `Secure` cookies on trustworthy origins — https plus
+  localhost/127.* — so on a LAN address over plain HTTP Chrome silently dropped the
+  session cookie and the proxy redirected to the login on every request.
+- **Decision:** the `Secure` flag is decided per login request
+  (`resolveSessionCookieSecure` in `src/server/session.ts`): the explicit
+  `SESSION_COOKIE_SECURE=true|false` env wins; otherwise the request's own protocol
+  (`x-forwarded-proto` for TLS-terminating proxies, else the browser's `Origin`/`Referer`
+  scheme); otherwise the old `NODE_ENV === "production"` default (non-request contexts).
+  Served over https the cookie stays `Secure` exactly as before.
+- **Trade-off (accepted):** on plain http no cookie flag can protect transport — a `Secure`
+  cookie there is not "more secure", it is simply never stored, which broke the admin
+  entirely. Sessions over an untrusted network must run behind TLS (or set
+  `SESSION_COOKIE_SECURE=true` and serve https); on a trusted LAN the exposure is the same
+  cleartext HTTP the login credentials themselves already have.
+- **Regression test:** `tests/e2e/admin-session.spec.ts` — Playwright maps a non-localhost
+  hostname to loopback (`--host-resolver-rules`) and drives login + three admin pages over
+  plain HTTP; fails without the fix (cookie dropped, redirect to `/admin/login`).

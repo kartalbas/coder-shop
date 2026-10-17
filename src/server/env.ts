@@ -5,9 +5,15 @@ const optionalNonEmpty = z.preprocess(
   z.string().min(1).optional(),
 );
 
+const optionalBoolean = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.enum(["true", "false"]).optional(),
+);
+
 const envSchema = z.object({
   MONGODB_URI: optionalNonEmpty,
   SESSION_SECRET: optionalNonEmpty,
+  SESSION_COOKIE_SECURE: optionalBoolean,
   UPS_CLIENT_ID: optionalNonEmpty,
   UPS_CLIENT_SECRET: optionalNonEmpty,
   UPS_ACCOUNT: optionalNonEmpty,
@@ -22,6 +28,11 @@ export const IMAGE_API_DEFAULT_URL = "http://192.168.10.210:8080/v1/images/gener
 export const env = {
   MONGODB_URI: parsed.MONGODB_URI,
   SESSION_SECRET: parsed.SESSION_SECRET,
+  get sessionCookieSecure(): boolean | undefined {
+    return parsed.SESSION_COOKIE_SECURE === undefined
+      ? undefined
+      : parsed.SESSION_COOKIE_SECURE === "true";
+  },
   UPS_CLIENT_ID: parsed.UPS_CLIENT_ID,
   UPS_CLIENT_SECRET: parsed.UPS_CLIENT_SECRET,
   UPS_ACCOUNT: parsed.UPS_ACCOUNT,

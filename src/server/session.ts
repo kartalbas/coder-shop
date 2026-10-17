@@ -1,5 +1,6 @@
 import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
+import { env } from "./env";
 import { verifyPassword } from "./password";
 import {
   SESSION_COOKIE,
@@ -131,13 +132,38 @@ export async function requireAdminSession(): Promise<string> {
   return userId;
 }
 
+function protocolOfUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).protocol.replace(/:$/, "");
+  } catch {
+    return null;
+  }
+}
+
+// A `Secure` cookie is only stored by browsers on trustworthy origins — over plain HTTP that
+// is https plus localhost/127.*, so a production server on a LAN address would silently
+// discard the session and bounce the admin back to the login on every click. Decide per
+// request: explicit SESSION_COOKIE_SECURE wins, else the request's own protocol (proxy
+// hint first, then the browser's Origin/Referer), else the old NODE_ENV default.
+export async function resolveSessionCookieSecure(): Promise<boolean> {
+  if (env.sessionCookieSecure !== undefined) return env.sessionCookieSecure;
+  const { headers } = await import("next/headers");
+  const all = await headers();
+  const forwarded = all.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol =
+    forwarded || protocolOfUrl(all.get("origin")) || protocolOfUrl(all.get("referer"));
+  if (protocol) return protocol === "https";
+  return process.env.NODE_ENV === "production";
+}
+
 export async function setSessionCookie(token: string): Promise<void> {
   const { cookies } = await import("next/headers");
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: await resolveSessionCookieSecure(),
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
   });

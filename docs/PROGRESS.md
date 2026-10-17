@@ -398,6 +398,30 @@ Verified
   replica set), `npm run test:e2e` ✅ 3/3 against the production build on port 3100 with a
   freshly seeded database.
 
+## BUG1 — admin login loop on LAN addresses (issue #1) ✅ (2026-10-17)
+
+Root cause
+- `setSessionCookie` set the session cookie `Secure` whenever `NODE_ENV === "production"`.
+  Browsers only store `Secure` cookies on trustworthy origins (https + localhost/127.*), so
+  on `http://<lan-ip>:4000` Chrome silently dropped the cookie after a successful login and
+  the proxy redirected to `/admin/login` on every following admin request; on
+  `http://localhost:4000` the same build worked because localhost is trustworthy.
+
+Fix
+- `resolveSessionCookieSecure` (`src/server/session.ts`): `Secure` is decided per login
+  request — explicit `SESSION_COOKIE_SECURE=true|false` env (added to `env.ts` + README)
+  wins, else the request's own protocol (`x-forwarded-proto`, then the browser's
+  `Origin`/`Referer` scheme), else the old `NODE_ENV` default. Over https the cookie stays
+  `Secure` exactly as before; trade-off recorded in DECISIONS.
+
+Verified
+- New e2e `tests/e2e/admin-session.spec.ts`: Chromium maps a non-localhost hostname to
+  loopback (`--host-resolver-rules`) and drives login + `/admin/orders` + `/admin/products`
+  + `/admin/purchasing` over plain HTTP, asserting the stored cookie is not `Secure` —
+  **fails on the pre-fix build** (redirect to `/admin/login`), green with the fix.
+- `npm run build` ✅, `npm run lint` ✅, `npm test` ✅ 158 tests / 18 files,
+  `npm run test:e2e` ✅ 4/4.
+
 ## Next
 
 Done — M1–M6 + QA complete.
