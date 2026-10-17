@@ -322,7 +322,10 @@ Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
    the host and rejects mismatches with 403 (Next does this for Server Actions in App Router;
    the custom route handler must do it explicitly). Test: forged `Origin` → rejected.
 2. **Session cookie:** payload `{ userId, exp }` (12 h), signature covers `exp`, verified with
-   `crypto.timingSafeEqual`; a leaked cookie expires.
+   `crypto.timingSafeEqual`; a leaked cookie expires. `SESSION_SECRET` is required (and ≥ 32
+   chars) in production — no source-code fallback; outside production the secret is random
+   per process. A session only counts for a user that still exists (DB check after the
+   signature check).
 3. **scrypt params:** N=2^15, r=8, p=1, 16-byte random salt, 32-byte key; stored as
    `scrypt$N$r$p$salt$hash` so params are self-describing.
 4. **Login throttle:** in-memory failed-attempt counter per IP+account (e.g. 5 attempts /

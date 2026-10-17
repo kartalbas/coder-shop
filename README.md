@@ -77,7 +77,7 @@ All optional for local development (sensible defaults / embedded database):
 | Variable | Purpose |
 |---|---|
 | `MONGODB_URI` | External MongoDB. **Required in production** — must be a replica-set-capable URI (core functions use transactions). Without it, the embedded `mongodb-memory-server` replica set is used (dev/seed/test only). |
-| `SESSION_SECRET` | Secret for the admin session cookie HMAC. **Set it in production**; unset falls back to a fixed development secret. |
+| `SESSION_SECRET` | Secret for the admin session cookie HMAC. **Required in production** (≥ 32 characters, e.g. `openssl rand -base64 48`); outside production a random per-process secret is generated. |
 | `SESSION_COOKIE_SECURE` | `true`/`false` to pin the admin session cookie's `Secure` flag. Unset (default) sets it per request from the request protocol (https → `Secure`, plain http → not), so the admin also works from other machines on the LAN over http. See DECISIONS. |
 | `UPS_CLIENT_ID` / `UPS_CLIENT_SECRET` / `UPS_ACCOUNT` | Set **all three** to create real UPS labels via `UpsShippingProvider`; otherwise the `MockUpsProvider` generates `1Z…` tracking numbers and PDF labels in `data/labels/`. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL for metadata/Open Graph (defaults to `http://localhost:3000`). |

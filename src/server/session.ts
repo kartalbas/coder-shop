@@ -109,12 +109,21 @@ export async function loginCore(
   };
 }
 
+// A valid signature alone is not enough: the session only counts while the user still
+// exists (deleting an admin immediately invalidates their cookies).
+export async function resolveSessionUserId(token: string | undefined): Promise<string | null> {
+  if (!token) return null;
+  const payload = verifySessionToken(token);
+  if (!payload) return null;
+  await connectDB();
+  const user = await UserModel.findById(payload.userId).select("_id").lean().exec();
+  return user ? payload.userId : null;
+}
+
 export async function getSessionUserId(): Promise<string | null> {
   const { cookies } = await import("next/headers");
   const store = await cookies();
-  const raw = store.get(SESSION_COOKIE)?.value;
-  if (!raw) return null;
-  return verifySessionToken(raw)?.userId ?? null;
+  return resolveSessionUserId(store.get(SESSION_COOKIE)?.value);
 }
 
 export async function getAdminEmail(userId: string): Promise<string | null> {

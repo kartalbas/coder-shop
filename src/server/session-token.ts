@@ -1,13 +1,50 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { env } from "./env";
 
 export const SESSION_COOKIE = "admin_session";
 export const SESSION_TTL_SECONDS = 12 * 60 * 60;
 
-const DEV_SESSION_SECRET = "coder-shop-dev-session-secret-change-me";
+export const MIN_PRODUCTION_SECRET_LENGTH = 32;
+
+export interface SessionSecretOptions {
+  configured: string | undefined;
+  isProduction: boolean;
+  generate: () => string;
+}
+
+// No secret in the source code: production must configure a strong SESSION_SECRET, while
+// dev/test get a random per-process secret (sessions end at restart, but tokens can never
+// be forged from values published in the repository).
+export function resolveSessionSecret({
+  configured,
+  isProduction,
+  generate,
+}: SessionSecretOptions): string {
+  if (configured !== undefined) {
+    if (isProduction && configured.length < MIN_PRODUCTION_SECRET_LENGTH) {
+      throw new Error(
+        `SESSION_SECRET is too weak for production — use at least ${MIN_PRODUCTION_SECRET_LENGTH} characters.`,
+      );
+    }
+    return configured;
+  }
+  if (isProduction) {
+    throw new Error(
+      "SESSION_SECRET must be set to a strong value in production (e.g. `openssl rand -base64 48`).",
+    );
+  }
+  return generate();
+}
+
+const globalStore = globalThis as { __coderShopDevSessionSecret?: string };
 
 export function sessionSecret(): string {
-  return env.SESSION_SECRET ?? DEV_SESSION_SECRET;
+  return resolveSessionSecret({
+    configured: env.SESSION_SECRET,
+    isProduction: process.env.NODE_ENV === "production",
+    generate: () =>
+      (globalStore.__coderShopDevSessionSecret ??= randomBytes(32).toString("base64url")),
+  });
 }
 
 export interface SessionPayload {

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 
@@ -72,7 +73,12 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     ],
     {
       cwd: REPO_ROOT,
-      env: { ...process.env, MONGODB_URI: mongoUri, NEXT_TELEMETRY_DISABLED: "1" },
+      env: {
+        ...process.env,
+        MONGODB_URI: mongoUri,
+        SESSION_SECRET: randomBytes(48).toString("base64"),
+        NEXT_TELEMETRY_DISABLED: "1",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     },
   );

@@ -425,3 +425,15 @@ Verified
 ## Next
 
 Done — M1–M6 + QA complete.
+
+## ISSUES — queue session 1 (2026-10-17)
+
+### #2 — forgeable admin sessions without SESSION_SECRET ✅
+- `resolveSessionSecret` (pure, unit-tested): production **requires** `SESSION_SECRET`
+  (≥ 32 chars) — missing/weak throws at first use instead of falling back to a
+  source-code secret; outside production a random per-process secret (globalThis-cached,
+  HMR-safe) replaces the fixed dev secret.
+- `resolveSessionUserId`: after the signature check the user must exist in the DB —
+  tokens for unknown/deleted users are rejected (tests cover all three paths).
+- e2e global setup signs with a fresh random `SESSION_SECRET` (production start).
+- Verified: `npm test` ✅ 167, lint/build ✅, `npm run test:e2e` ✅ 4/4.

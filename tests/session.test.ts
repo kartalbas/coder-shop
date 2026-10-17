@@ -5,9 +5,15 @@ import {
   createSessionToken,
   loginCore,
   resetLoginThrottle,
+  resolveSessionUserId,
   signSessionToken,
   verifySessionToken,
 } from "@/server/session";
+import {
+  MIN_PRODUCTION_SECRET_LENGTH,
+  resolveSessionSecret,
+  sessionSecret,
+} from "@/server/session-token";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 const SECRET = "test-secret";
@@ -44,6 +50,61 @@ describe("session tokens", () => {
   it("rejects a token signed with another secret", () => {
     const token = createSessionToken("u1");
     expect(verifySessionToken(token, "other-secret")).toBeNull();
+  });
+});
+
+describe("session secret resolution", () => {
+  const longSecret = "s".repeat(MIN_PRODUCTION_SECRET_LENGTH);
+
+  it("refuses to run production without a configured secret", () => {
+    expect(() =>
+      resolveSessionSecret({
+        configured: undefined,
+        isProduction: true,
+        generate: () => "generated",
+      }),
+    ).toThrow(/SESSION_SECRET/);
+  });
+
+  it("refuses a weak secret in production", () => {
+    expect(() =>
+      resolveSessionSecret({
+        configured: "kurz",
+        isProduction: true,
+        generate: () => "generated",
+      }),
+    ).toThrow(/too weak/i);
+  });
+
+  it("accepts a strong secret in production", () => {
+    expect(
+      resolveSessionSecret({ configured: longSecret, isProduction: true, generate: () => "x" }),
+    ).toBe(longSecret);
+  });
+
+  it("uses a random per-process secret outside production, never a source-code constant", () => {
+    let calls = 0;
+    const secret = resolveSessionSecret({
+      configured: undefined,
+      isProduction: false,
+      generate: () => `generated-${++calls}`,
+    });
+    expect(secret).toBe("generated-1");
+    const live = sessionSecret();
+    expect(live.length).toBeGreaterThanOrEqual(32);
+    expect(live).not.toBe("coder-shop-dev-session-secret-change-me");
+    expect(sessionSecret()).toBe(live);
+  });
+
+  it("sessionSecret() throws in production when SESSION_SECRET is unset", () => {
+    const mutableEnv = process.env as { NODE_ENV?: string };
+    const previous = mutableEnv.NODE_ENV;
+    mutableEnv.NODE_ENV = "production";
+    try {
+      expect(() => sessionSecret()).toThrow(/SESSION_SECRET/);
+    } finally {
+      mutableEnv.NODE_ENV = previous;
+    }
   });
 });
 
@@ -99,5 +160,49 @@ describe("loginCore", () => {
 
     const otherIp = await loginCore("admin@codershop.ch", "Admin!2026", { ip: "10.0.0.5" });
     expect(otherIp.ok).toBe(true);
+  });
+});
+
+describe("resolveSessionUserId", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+    await clearCollections();
+    await UserModel.create({
+      email: "admin@codershop.ch",
+      name: "Shop Admin",
+      passwordHash: await hashPassword("Admin!2026"),
+      role: "admin",
+    });
+  });
+
+  afterAll(disconnectTestDB);
+
+  it("accepts a validly signed token for an existing user", async () => {
+    const user = await UserModel.findOne({ email: "admin@codershop.ch" }).exec();
+    const token = createSessionToken(user!._id.toString());
+    expect(await resolveSessionUserId(token)).toBe(user!._id.toString());
+  });
+
+  it("rejects a correctly signed token for a user that does not exist", async () => {
+    const token = createSessionToken("507f1f77bcf86cd799439011");
+    expect(await resolveSessionUserId(token)).toBeNull();
+  });
+
+  it("rejects a token for a user that was deleted after login", async () => {
+    const user = await UserModel.create({
+      email: "temp@codershop.ch",
+      name: "Temp Admin",
+      passwordHash: await hashPassword("Temp!2026"),
+      role: "admin",
+    });
+    const token = createSessionToken(user._id.toString());
+    expect(await resolveSessionUserId(token)).toBe(user._id.toString());
+    await UserModel.deleteOne({ _id: user._id });
+    expect(await resolveSessionUserId(token)).toBeNull();
+  });
+
+  it("rejects forged or empty tokens", async () => {
+    expect(await resolveSessionUserId(undefined)).toBeNull();
+    expect(await resolveSessionUserId("gibts-nicht")).toBeNull();
   });
 });

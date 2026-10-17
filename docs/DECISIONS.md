@@ -79,9 +79,13 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   Mongoose/the DB layer.
 - **Session cookie:** name `admin_session`, value `<base64url(payload)>.<base64url(hmac)>` with
   payload `{ userId, exp }` (12 h), HMAC-SHA256; signature verified with `crypto.timingSafeEqual`
-  before `exp` is trusted. Secret: `SESSION_SECRET` env var; when unset a fixed development
-  fallback secret is used (documented — dev/demo app with public credentials; production must set
-  `SESSION_SECRET`).
+  before `exp` is trusted. Secret: `SESSION_SECRET` env var — **required in production**
+  (≥ 32 characters; a production start without it, or with a weak one, throws instead of
+  falling back to anything in the source). Outside production a random per-process secret is
+  generated (sessions end at restart, but tokens can never be forged from repository
+  contents). A session only counts while the user still exists: `resolveSessionUserId`
+  checks the DB after the signature check, so deleting an admin invalidates their cookies
+  immediately (issue #2).
 - **Login throttle:** in-memory Map keyed `ip|email`, 5 failures per 15 min window, then locked
   until the window ends (ARCHITECTURE §4.4 — acceptable for the single-process deployment).
 - **`transitionOrderCore` throws `IllegalTransitionError`** for illegal edges (the state machine
