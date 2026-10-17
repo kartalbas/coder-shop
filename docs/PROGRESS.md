@@ -145,6 +145,56 @@ Open / known issues
   exists its product shows the neutral placeholder.
 - The 4 proof images are gitignored (`public/products/*`) like all generated content.
 
+## M3 — Cart, checkout, orders ✅ (2026-10-17)
+
+Done
+- Cart page `/warenkorb` (`cart/page.tsx` + `cart-page-view.tsx`) mirroring the drawer: line
+  items with qty steppers (clamped to stock), remove, free-shipping progress bar (free ≥ CHF
+  100, standard 4.90 / express 12.90 — already recorded in DECISIONS), sticky summary with
+  "Zur Kasse"; empty state with CTA.
+- Checkout `/kasse`: single column with 3 anchored steps (Adresse → Versand → Zahlung),
+  zod-validated client + server (`lib/validations/checkout.ts` — name/email/phone/street/
+  4-digit PLZ/city, shipping method enum), shipping method radio cards with live prices,
+  mock payment card stub (demo, not sent), sticky summary sidebar with `computeTotals`.
+- `createOrderCore` (`src/server/checkout.ts`): one MongoDB transaction re-checks stock and
+  decrements variants via `findOneAndUpdate` with a `stock ≥ qty` guard, mints
+  `orderNumber` from the Counter (`B-YYYY-######`, gap-free, inside the transaction),
+  inserts the order `new` → mock payment → `paid` (state-machine `transition`, both
+  `statusLog` entries), commits; insufficient stock / unknown sku abort and write nothing;
+  transient write-conflicts retried ≤ 3×, then a clean `{ ok: false, error }`.
+- Thin Server Action `createOrderAction` (`server/actions/checkout.ts`): JSON payload →
+  zod → `createOrderCore`; checkout form uses `useActionState`, toasts errors, clears the
+  cart and routes to the confirmation on success.
+- Confirmation `/bestellung/[nummer]` (`order/[number]/page.tsx` + `server/orders.ts`
+  `getOrderByNumber`): status timeline over the state-machine chain with timestamps,
+  cancelled banner, items, totals with VAT note "8,1 % MwSt. inbegriffen", payment
+  reference, tracking number + parcel weight once shipped, delivery address; unknown
+  numbers render the 404 UI.
+- Stock edge cases: out-of-stock variants block add-to-cart (M2 guard, kept), last-item
+  race fails cleanly through the transaction guard (error toast, nothing written).
+
+Verified (acceptance — integration tests call `createOrderCore` directly)
+- Valid order → `B-YYYY-######` (`formatOrderNumber`), status `paid` with `statusLog`
+  `["new","paid"]`, `payment.paidAt` set, totals equal `computeTotals`, variant stock
+  decreased by the ordered qty; second order gets the next gap-free number.
+- Ordering more than available stock → `{ ok: false }`, stock, orders and counter all
+  unchanged (transaction abort); unknown sku and invalid customer rejected.
+- Concurrent last-item race (stock 1, two parallel `createOrderCore`): exactly one
+  succeeds, stock ends at 0, exactly one order written.
+- Cart store survives reload: `cart:v1` serialize/deserialize round-trip + hydrate tests
+  (M2 suite, still green).
+- Background `npm run start` + curl: `/warenkorb` 200, `/kasse` 200,
+  `/bestellung/B-2026-000001` 200 showing the number (11×), status "Bezahlt", timeline and
+  "8,1 % MwSt. inbegriffen"; server + mongod stopped again.
+- `npm run build` ✅ (no mongod, no env); `npm run lint` ✅; `npm test` ✅ 108 tests /
+  12 files (new `tests/create-order.test.ts`: 8 tests).
+
+Open / known issues
+- With `cacheComponents`/PPR a streamed `notFound()` keeps HTTP 200 (documented Next 16
+  behaviour) — unknown order/product URLs render the 404 UI with `noindex`; same as the
+  M2 product page.
+- Mock payment fields are a UI stub only (never validated or persisted) by design.
+
 ## Next
 
-M3 — Cart, checkout, orders (M6 product photos done ahead of it).
+M4 — Admin: auth, orders, packing, shipping.
