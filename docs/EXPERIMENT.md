@@ -131,6 +131,8 @@ Stack as built: Next.js 16.4.2, React 19.3.1, TypeScript 6.0.3, Mongoose 9.11.2,
 |---|---|---|---|
 | [#1](https://github.com/kartalbas/coder-shop/issues/1) | every admin menu click asks for the login again (opened via the LAN address) | 1 session, 5 min, from the report and the lead's LAN-vs-localhost observation only | root cause found (the session cookie was `Secure` whenever `NODE_ENV=production`, which browsers do not store over plain HTTP on a LAN address); `Secure` now follows the request's protocol (incl. `X-Forwarded-Proto` behind a TLS proxy) with an explicit `SESSION_COOKIE_SECURE` override; an e2e test that fails without the fix; gate and 4/4 e2e green; issue closed by the commit |
 
+| #2–#36 | the lead's code review (4 parallel reviewers, every finding verified): 2 blockers, 17 majors, 16 minors — security, correctness, UX, code quality | worked the queue itself with `gh`, only in this repository: 5 sessions (09:31–12:34), one commit with "fixes #N" per issue; gate red after sessions 1, 3, 4 (session 4: a mongod it had left running locked the database), green after 2 and 5 | all 35 closed by fix commits; 303 unit/integration tests (was 158) and 10 e2e specs (was 4), all green |
+
 The e2e suite had missed it because it ran against `localhost`, which browsers treat as a secure
 origin.
 
