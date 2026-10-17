@@ -18,16 +18,32 @@ export const checkoutCustomerSchema = z.object({
   country: z.string().trim().length(2).toUpperCase().default("CH"),
 });
 
+// Anti-abuse limits (issue #8): a real basket is small; a scripted drain sends many
+// distinct SKUs at max quantity. Per-SKU merging in createOrderCore closes the
+// "same SKU in several lines" loophole, these caps bound a single order.
+export const MAX_CHECKOUT_LINES = 20;
+export const MAX_QTY_PER_LINE = 10;
+export const MAX_QTY_PER_SKU = 10;
+
 export const checkoutLineSchema = z.object({
   sku: z.string().min(1).max(64),
-  qty: z.number().int().min(1).max(100),
+  qty: z.number().int().min(1).max(MAX_QTY_PER_LINE),
 });
 
-export const checkoutSchema = z.object({
-  lines: z.array(checkoutLineSchema).min(1, "Der Warenkorb ist leer").max(50),
-  customer: checkoutCustomerSchema,
-  shippingMethod: z.enum(shippingMethods),
-});
+export const checkoutSchema = z
+  .object({
+    lines: z.array(checkoutLineSchema).min(1, "Der Warenkorb ist leer").max(MAX_CHECKOUT_LINES),
+    customer: checkoutCustomerSchema,
+    shippingMethod: z.enum(shippingMethods),
+  })
+  .refine(
+    (data) => {
+      const bySku = new Map<string, number>();
+      for (const line of data.lines) bySku.set(line.sku, (bySku.get(line.sku) ?? 0) + line.qty);
+      return [...bySku.values()].every((qty) => qty <= MAX_QTY_PER_SKU);
+    },
+    { message: `Maximal ${MAX_QTY_PER_SKU} Stück pro Artikel.`, path: ["lines"] },
+  );
 
 export type CheckoutCustomer = z.infer<typeof checkoutCustomerSchema>;
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

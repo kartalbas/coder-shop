@@ -248,3 +248,10 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `TRUST_PROXY_HEADERS=true` — Next fills it with `http` itself when a TLS proxy does not
   send it, which silently stripped `Secure` on https sites. Otherwise the browser's own
   Origin/Referer scheme decides (BUG1 behavior preserved), then the NODE_ENV default.
+
+### #8 — checkout abuse limits
+- Per order: ≤ 20 lines, ≤ 10 per line, ≤ 10 per SKU **after merging** duplicate SKUs
+  (schema-level, so client and server agree). Per client: 10 orders per 10 minutes
+  (`createRateLimiter`, fixed window, keyed like the login throttle — without a trusted
+  proxy all clients share one bucket, which is still far above human demo usage).
+  `createOrderCore` itself stays unthrottled for integration tests.

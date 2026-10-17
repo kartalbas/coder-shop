@@ -474,3 +474,8 @@ Done — M1–M6 + QA complete.
   `x-forwarded-proto` only trusted with `TRUST_PROXY_HEADERS` (pure
   `decideSessionCookieSecure` + tests).
 - Verified: e2e `security-headers.spec.ts`, 4 decision tests; `npm test` ✅ 194, e2e ✅ 7/7.
+
+### #8 — scripted checkouts could drain all stock ✅
+- Caps 20 lines / 10 per line / 10 per SKU (merged) in `checkoutSchema`; rate limit
+  10 orders/10 min per client in the checkout action (`src/server/rate-limit.ts`).
+- Verified: `tests/checkout-limits.test.ts` (7); `npm test` ✅ 201, build/e2e ✅ 7/7.
