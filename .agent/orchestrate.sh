@@ -137,6 +137,13 @@ milestone() {
   return 1
 }
 
+# session EFFORT NAME PROMPTFILE MINUTES — one OpenCode session at a reasoning effort (high for
+# planning and reviewing, medium for building); inline config overrides the project's opencode.json.
+session() {
+  local cfg='{"provider":{"llm":{"models":{"llm-qwen3.8-flash-next-unsloth-ud-q5_k_xl":{"options":{"reasoningEffort":"'"$1"'"}}}}}}'
+  env -u LLAMA_API_KEY GH_REPO="$GH_REPO" OPENCODE_CONFIG_CONTENT="$cfg" "$REPO/.agent/prompts/run-phase.sh" "$2" "$3" "$4"
+}
+
 # issues_loop — sessions on the GitHub issue queue of this repository until it is empty; each
 # session is gated like a milestone, a red gate goes into the next session's prompt.
 issues_loop() {
@@ -148,13 +155,21 @@ issues_loop() {
     (( n >= ${ISSUE_SESSIONS:-12} )) && { log "ISSUES: session limit reached"; break; }
     past_deadline && { log "ISSUES: deadline $DEADLINE reached"; break; }
     n=$((n + 1)); since="$(git rev-parse HEAD)"
-    prompt="$LOGS/ISSUES-$n-prompt.md"; prompt_for ISSUES "$gatef" "$prompt"
     web_stop
-    log "ISSUES session $n (≤ ${SESSION_MIN} min)"
-    env -u LLAMA_API_KEY GH_REPO="$GH_REPO" "$REPO/.agent/prompts/run-phase.sh" "ISSUES-$n" "$prompt" "$SESSION_MIN"
+    log "ISSUES round $n: plan (effort high, ≤ ${PLAN_MIN:-15} min)"
+    session high "ISSUES-$n-plan" "$REPO/.agent/prompts/issues-plan.md" "${PLAN_MIN:-15}"
+    prompt="$LOGS/ISSUES-$n-prompt.md"; prompt_for ISSUES "$gatef" "$prompt"
+    log "ISSUES round $n: build (effort medium, ≤ ${SESSION_MIN} min)"
+    session medium "ISSUES-$n" "$prompt" "$SESSION_MIN"
     gatef="$LOGS/gate-ISSUES-$n.txt"
-    if gate ISSUES "$gatef" "$since"; then log "ISSUES session $n: GATE GREEN"; : >"$gatef"
-    else log "ISSUES session $n: gate red — $(grep -c . "$gatef") report line(s) go to the next session"; fi
+    if gate ISSUES "$gatef" "$since"; then log "ISSUES round $n: GATE GREEN"; : >"$gatef"
+    else log "ISSUES round $n: gate red — $(grep -c . "$gatef") report line(s) go to the next build"; fi
+    sed "s|{{SINCE}}|$since|g" "$REPO/.agent/prompts/issues-review.md" >"$LOGS/ISSUES-$n-review-prompt.md"
+    log "ISSUES round $n: review (effort high, ≤ ${REVIEW_MIN:-15} min)"
+    session high "ISSUES-$n-review" "$LOGS/ISSUES-$n-review-prompt.md" "${REVIEW_MIN:-15}"
+    { [[ -s "$gatef" ]] && cat "$gatef"; jq -r 'select(.part.type=="text") | .part.text' "$LOGS/ISSUES-$n-review.jsonl" 2>/dev/null | tail -1 | sed '1s/^/Findings of the review session:\n/'; } >"$gatef.next"
+    mv "$gatef.next" "$gatef"
+    log "ISSUES round $n: review done — $(gh issue list -R "$GH_REPO" --state open --limit 200 --json number --jq length) open"
     web_start
   done
 }
