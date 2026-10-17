@@ -601,3 +601,11 @@ Done — M1–M6 + QA complete.
   („Bitte Farbe / Grösse wählen") instead of adding a random variant (#18).
 - e2e storefront spec asserts the disabled-then-enabled add-to-cart flow.
 - Verified: `npm test` ✅ 255, lint/build ✅, e2e ✅ 7/7.
+
+### #14 — re-running the seed no longer resets shop data ✅
+- Products, the admin user and suppliers are now written with `$setOnInsert` only — a
+  re-run creates what is missing and changes nothing that exists (sold stock, edited
+  prices/texts, photo paths all survive); `--fresh` is the only reset. README and
+  ARCHITECTURE §11 wording corrected.
+- Verified: regression test (edit price/name/stock → re-seed → unchanged);
+  `npm test` ✅ 256, lint/build ✅, e2e ✅ 7/7.

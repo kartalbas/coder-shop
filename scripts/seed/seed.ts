@@ -63,7 +63,10 @@ const STATUS_PLAN: OrderStatus[] = [
   "cancelled",
 ];
 
-async function seedProducts(): Promise<number> {
+// Re-running the seed never touches existing shop data (issue #14): every field is
+// `$setOnInsert`, so an admin edit or a sold-out stock value survives; only products that
+// do not exist yet are created. Use `npm run seed -- --fresh` for a real reset.
+export async function seedProducts(): Promise<number> {
   const catalog = generateCatalog();
   // Image slots are recorded with their final photo paths (public/products/<slug>-<n>.webp,
   // gitignored); `npm run images` fills them. The seed writes no image files (issue #29).
@@ -71,7 +74,7 @@ async function seedProducts(): Promise<number> {
     const { images, ...rest } = product;
     await ProductModel.updateOne(
       { slug: product.slug },
-      { $set: rest, $setOnInsert: { images } },
+      { $setOnInsert: { ...rest, images } },
       { upsert: true },
     );
   }
@@ -84,8 +87,7 @@ export async function seedUser(): Promise<{ created: boolean; generatedPassword?
   const result = await UserModel.updateOne(
     { email: ADMIN_EMAIL },
     {
-      $set: { name: "Shop Admin", role: "admin" },
-      $setOnInsert: { passwordHash },
+      $setOnInsert: { name: "Shop Admin", role: "admin", passwordHash },
     },
     { upsert: true },
   );
@@ -98,7 +100,7 @@ async function seedSuppliers() {
   for (const supplier of SUPPLIERS) {
     const doc = await SupplierModel.findOneAndUpdate(
       { name: supplier.name },
-      { $set: supplier, $setOnInsert: {} },
+      { $setOnInsert: supplier },
       { upsert: true, returnDocument: "after" },
     );
     byName.set(supplier.name, doc._id);

@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { ProductModel } from "@/models/product";
 import { UserModel } from "@/models/user";
 import { hashPassword, verifyPassword } from "@/server/password";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 // Importing the seed script under Vitest must not run main() (guarded via process.env.VITEST).
-import { seedUser } from "../scripts/seed/seed";
+import { seedProducts, seedUser } from "../scripts/seed/seed";
 
 const env = process.env as Record<string, string | undefined>;
 
@@ -54,5 +55,31 @@ describe("seedUser (issue #4: password is not a source-code constant)", () => {
     expect(again.created).toBe(false);
     expect(await verifyPassword("Geaendert!99", await passwordHashOfAdmin())).toBe(true);
     expect(await verifyPassword("Urspruenglich1!", await passwordHashOfAdmin())).toBe(false);
+  });
+});
+
+describe("seed does not overwrite existing shop data (issue #14)", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+    await clearCollections();
+  });
+
+  afterAll(disconnectTestDB);
+
+  it("keeps edited price, stock and texts of an existing product", async () => {
+    await seedProducts();
+    const before = await ProductModel.findOne().sort({ slug: 1 }).lean().exec();
+    expect(before).not.toBeNull();
+
+    await ProductModel.updateOne(
+      { _id: before!._id },
+      { $set: { priceCents: 1, name: "Vom Admin umbenannt", "variants.0.stock": 0 } },
+    );
+    await seedProducts();
+
+    const after = await ProductModel.findById(before!._id).lean().exec();
+    expect(after?.priceCents).toBe(1);
+    expect(after?.name).toBe("Vom Admin umbenannt");
+    expect(after?.variants[0].stock).toBe(0);
   });
 });

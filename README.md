@@ -26,12 +26,15 @@ external replica-set-capable MongoDB instead of the embedded one (required in pr
 ## Seed
 
 ```bash
-npm run seed          # idempotent: upserts catalog, creates sample orders/POs only once
+npm run seed          # adds missing products/users/suppliers; never changes existing data
 npm run seed -- --fresh  # drop the database first, then seed
 ```
 
 `--fresh` refuses to run while another process (e.g. the dev server) holds the `data/mongo`
-lock. The seed is deterministic (fixed PRNG seed): same 200 products (70 smartphones /
+lock. Re-running the seed never overwrites shop data (issue #14): products, the admin
+user and suppliers are written with `$setOnInsert` only — sold stock, edited prices and
+every other admin change survive; sample orders/POs are created only once. Use `--fresh`
+for a real reset. The seed is deterministic (fixed PRNG seed): same 200 products (70 smartphones /
 70 shoes / 60 clothing), 1–5 image slots per product recorded with their final photo
 paths (`/products/<slug>-<n>.webp`), clock-relative order dates, same order numbers on
 every run. The seed never resets recorded

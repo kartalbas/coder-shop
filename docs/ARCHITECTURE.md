@@ -557,9 +557,11 @@ caps generations per run; resumable, stop/restart anytime).
   state until `npm run images` fills the slot) falls back to the same placeholder via
   `onError`. Used by product cards, gallery (main/thumbs/zoom), instant search and the cart
   drawer.
-- **Seed invariant (gate fix):** `npm run seed` sets `images` only on insert
-  (`$setOnInsert`) — re-seeding after a generation run must never reset recorded photo
-  paths; a drifted document is repaired by the next `npm run images` (skip pass).
+- **Seed invariant (issue #14):** every seed write is `$setOnInsert` — products (incl.
+  `images`), the admin user and suppliers are only ever created, never updated. Sold
+  stock, edited prices/texts and recorded photo paths survive any re-run; a drifted image
+  document is repaired by the next `npm run images` (skip pass). `--fresh` is the only
+  reset.
 
 ## 12. End-to-end tests (Playwright, `npm run test:e2e`)
 
