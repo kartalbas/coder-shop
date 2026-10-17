@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { swissYear } from "../../src/lib/dates";
 
 // Issue #3: order numbers are sequential and the confirmation page used to render every
 // customer's name, address, e-mail and phone for anyone who guessed one. Now a stranger
@@ -10,8 +11,11 @@ test("order confirmation: PII is hidden until the buyer proves ownership", async
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto("/bestellung/B-2026-000001");
-  await expect(page.getByRole("heading", { name: "Bestellung B-2026-000001" })).toBeVisible();
+  // Issue #36: the seed mints numbers with the current Swiss year — derive it,
+  // do not hard-code "2026" (which would 404 from 1 January 2027 on).
+  const orderNumber = `B-${swissYear(new Date())}-000001`;
+  await page.goto(`/bestellung/${orderNumber}`);
+  await expect(page.getByRole("heading", { name: `Bestellung ${orderNumber}` })).toBeVisible();
   await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
 
   const html = await page.content();

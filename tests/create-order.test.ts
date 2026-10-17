@@ -335,7 +335,10 @@ describe("createOrderCore", () => {
 
 describe("order number format", () => {
   it("pads the sequence to six digits", () => {
-    expect(formatOrderNumber(swissYear(new Date()), 1)).toBe("B-2026-000001");
+    // Issue #36: fixed years only — mixing the current year with a literal
+    // "2026" would fail on 1 January 2027.
+    expect(formatOrderNumber(2026, 1)).toBe("B-2026-000001");
     expect(formatOrderNumber(2026, 123456)).toBe("B-2026-123456");
+    expect(formatOrderNumber(2027, 1)).toBe("B-2027-000001");
   });
 });
