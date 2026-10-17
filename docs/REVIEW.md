@@ -299,3 +299,69 @@ to execute; **MAJOR** = will cause real defects, rework, or a security hole if b
    (MA2).
 5. Patch the dependency table (`tsx`, `@types/node@24`) and DECISIONS list (stock model,
    shipping prices, deployment target, seed idempotency) (MA4, MA6, MA9, MA10, MA11).
+
+## Resolution
+
+Every item resolved in the revised `docs/ARCHITECTURE.md` and `docs/PLAN.md` (2026-10-17).
+
+- **B1** — applied. Actions are thin wrappers over `*Core` functions in `src/server`; acceptance
+  checks call them in Vitest integration tests; "via UI action" and action-curling removed.
+- **B2** — applied. §4 fixes Origin checks on state-changing handlers, 12 h `exp` cookie
+  verified with `timingSafeEqual`, scrypt N=2^15/r=8/p=1 stored self-describing, in-memory
+  login throttle; forged-Origin test in M4.
+- **B3** — applied. Labels written to `data/labels/` (gitignored, outside the web root), served
+  only through session-guarded `GET /admin/labels/[orderId]`.
+- **B4** — applied. §6: async SIGINT/SIGTERM shutdown, lock-error retry with clear message,
+  `mkdir -p` before create, `--fresh` refuses while the lock is held; recovery in README.
+- **MA1** — applied. Vitest pool single-threaded against the shared throw-away replica set (§6).
+- **MA2** — applied. Token cached until `expiresIn − 60 s` with single-flight refresh; API
+  resource/version looked up and pinned in DECISIONS; `UpsShippingProvider` unit-tested with
+  mocked `fetch`; provider-failure-keeps-`packed` is an explicit test.
+- **MA3** — applied. Pure `deriveFilter` recomputed inside every operation touching variants
+  (§3); middleware never relied on; edit-variant→facet integration test.
+- **MA4** — applied with a change: decrement at `createOrder`, restock on cancel, no
+  reservations, `lib/stock.ts` pure — but instead of documenting "no transactions", dev/test
+  run a single-node `MongoMemoryReplSet`, so real transactions replace compensation entirely.
+- **MA5** — applied. Cancel restocks from `new`/`paid`/`picking`; `createLabelCore` legal only
+  from `packed` and idempotent when already `shipped`.
+- **MA6** — applied. `tsx` 4.23.15 added to §1; `@types/node` pinned to 24.19.2.
+- **MA7** — applied. MMS binary version pinned via the package.json config block,
+  `downloadDir: ".cache/mongod"` (gitignored), one-time download in M1,
+  `MONGOMS_SYSTEM_BINARY` documented, distro check recorded in DECISIONS.
+- **MA8** — applied. `globalThis.__mongoPromise ??= startAndConnect()` — the promise is cached,
+  single-flight falls out for free.
+- **MA9** — applied. DECISIONS entry: long-running Node server, all routes
+  `runtime = 'nodejs'`, production requires `MONGODB_URI` (§6).
+- **MA10** — applied. Seed timestamps clock-relative (spread over the last 14 days, §9);
+  revenue defined as `paid | picking | packed | shipped | delivered` within 30 days (§8).
+- **MA11** — applied. §9 defines upsert keys (slug/email/name), sample docs only when
+  collections are empty, counters set to `max(existing)+n`; "run twice" test.
+- **Minor 1** — applied: `_id: 1` tiebreaker on every sort, page clamped to
+  `[1, ceil(total/pageSize)]` (§3).
+- **Minor 2** — applied: regex-escaped literal-prefix search; no German stemming, recorded in
+  DECISIONS (§3/§4).
+- **Minor 3** — applied: `vatCents = grossCents − round(grossCents × 100 / 108.1)`,
+  unit-tested (§8).
+- **Minor 4** — applied: `PACKAGING_GRAMS = 150` in `lib/shipping/weight.ts`, unit-tested (§8).
+- **Minor 5** — applied: 4.90 / 12.90, free ≥ CHF 100, in §8 and the DECISIONS list (§10).
+- **Minor 6** — applied: one language rule — all identifiers and statuses English; German only
+  in UI copy and public URLs via rewrites (header of ARCHITECTURE, §7).
+- **Minor 7** — applied: M1 task 8 gitignores `public/products/*` (keeping `.gitkeep`),
+  `data/mongo/`, `data/labels/`, `.cache/`.
+- **Minor 8** — applied: the sole image criterion is per-product `1 ≤ images.length ≤ 5` plus
+  file existence (§9); the bare file count is gone.
+- **Minor 9** — applied: M2 task 6 explicitly delivers a working cart drawer (add-to-cart,
+  badge, persistence) with an acceptance line; no "if needed".
+- **Minor 10** — applied: M2 has a checkable responsive/focus audit recorded in PROGRESS.md;
+  M5 has an axe-core scan (0 critical) or a recorded manual review.
+- **Minor 11** — applied: shared `toProductDto()` in `src/server/search.ts` feeds both the
+  server page and `/api/products` (§4).
+- **Minor 12** — applied: `env.ts` marks `MONGODB_URI`/`UPS_*` optional with defaults;
+  "build without env" is an acceptance check (§6).
+- **Minor 13** — applied: `--fresh` refuses with a clear error while another process holds the
+  dbPath lock (§6).
+- **Minor 14** — applied: enter-only route transition; exit animations explicitly not
+  attempted (§7).
+- **Minor 15** — applied: the B1 core-function split means tests never mock
+  `cookies()`/`revalidatePath` (§2).
+- **Minor 16** — applied: `syncIndexes` guarded to once per process (§6).

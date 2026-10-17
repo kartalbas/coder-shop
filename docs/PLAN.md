@@ -1,135 +1,156 @@
 # coder-shop — PLAN (milestones M1–M5)
 
-Every milestone ends with: `npm run build` ✅, `npm run lint` ✅, `npm test` ✅,
-PROGRESS.md updated (done / open / known issues), git commit `M<n>: …`.
+Every milestone ends with: `npm run build` ✅ (no mongod running, no env set), `npm run lint` ✅,
+`npm test` ✅, `docs/PROGRESS.md` updated (done / open / known issues), git commit `M<n>: …`.
 Server checks only via background start + `curl` + stop (never foreground long-running).
+`curl` is used only for GET pages and real route handlers — **Server Actions are never curled**:
+acceptance checks call the `*Core` functions in `src/server` directly from Vitest integration
+tests against the throw-away replica set (ARCHITECTURE §2/§4). All identifiers, statuses and
+query params are English; German only in UI copy and public URLs (rewrites, §7).
 
 ## M1 — Scaffold, database, seed
 
 Tasks
-1. `create-next-app` (App Router, TS strict, ESLint) pinned to next 16.4.2 / react 19.3.1;
-   add all deps at the exact versions from ARCHITECTURE.md §1; Tailwind v4 via
-   `@tailwindcss/postcss`; `eslint.config.mjs` flat config; vitest config with `globalSetup`.
-2. `shadcn@4.22.0` init; add button, input, select, checkbox, sheet, drawer, dialog, badge,
-   table, tabs, skeleton, toast, card, accordion, breadcrumb, avatar, separator, label.
-3. `src/lib/env.ts` (zod env), `src/lib/db.ts` single-flight connection helper
-   (MONGODB_URI ⇢ external; else MongoMemoryServer with `dbPath: ./data/mongo`),
-   `GET /api/health`.
-4. Mongoose models + index creation (`syncIndexes` on connect): Product, Order, User,
-   Supplier, PurchaseOrder, Counter (§3 of ARCHITECTURE).
-5. Vitest `globalSetup` throw-away mongod + cleanup helpers; smoke test connecting and
-   round-tripping a Product.
-6. `lib/seed/catalog.ts` deterministic 200 products (70/70/60) + `lib/seed/svg.ts` image
-   generator; `npm run seed` writes products + images + admin user + suppliers + sample POs
-   + sample orders; `--fresh` drops first.
-7. Pure libs with unit tests: `pricing.ts` (VAT 8.1 % in/out, rounding, totals),
-   `format.ts` (de-CH CHF), `orders/state-machine.ts` (full transition graph),
-   `stock.ts` (reserve/release/low-stock).
-8. README (run/seed/test, admin credentials), DECISIONS.md, PROGRESS.md, .gitignore updates.
+1. `create-next-app` (App Router, TS strict, ESLint) at the exact ARCHITECTURE §1 pins (incl.
+   `tsx`, `@types/node@24.19.2`); Tailwind v4 via `@tailwindcss/postcss`; `eslint.config.mjs`;
+   vitest config with `globalSetup` + single-thread pool. Toolchain gate: if a pin combination
+   does not build, fall back to the newest that does and record it in `docs/DECISIONS.md`.
+2. shadcn init; add button, input, select, checkbox, sheet, drawer, dialog, badge, table, tabs,
+   skeleton, toast, card, accordion, breadcrumb, avatar, separator, label.
+3. `src/server/env.ts` (zod; `MONGODB_URI`, `UPS_*` optional with defaults); `src/server/db.ts`:
+   `MONGODB_URI` → external, else single-node `MongoMemoryReplSet` (dbPath `data/mongo`,
+   `mkdir -p` first), promise cached on `globalThis`, async SIGINT/SIGTERM shutdown, lock-error
+   retry with clear message, `syncIndexes` once per process; `GET /api/health`. Pin the MMS
+   binary + `downloadDir: ".cache/mongod"` in `package.json`; trigger the download once.
+4. Mongoose models + indexes (`docs/ARCHITECTURE.md` §3): Product, Order, User, Supplier,
+   PurchaseOrder, Counter.
+5. Vitest `globalSetup` throw-away in-RAM `MongoMemoryReplSet` + cleanup helpers; smoke test
+   round-tripping a Product and a transaction (commit + abort).
+6. `scripts/seed/` (`catalog.ts`, `svg.ts`, `seed.ts`): deterministic 200 products (70/70/60),
+   1–5 generated SVGs per product into `public/products/`, admin user, 3 suppliers, sample POs,
+   ~15 clock-relative orders; idempotent per §9; `--fresh` refuses while another process holds
+   the dbPath lock. `npm run seed` → `tsx scripts/seed/seed.ts`.
+7. Pure libs with unit tests: `lib/pricing.ts` (VAT rule §8), `lib/format.ts` (de-CH CHF),
+   `lib/orders/state-machine.ts` (full graph), `lib/stock.ts` (pure predicates),
+   `lib/facets.ts` (`deriveFilter`), `lib/shipping/weight.ts` (`PACKAGING_GRAMS = 150`).
+8. README (run/seed/test, admin credentials, lock recovery, `MONGOMS_SYSTEM_BINARY`),
+   `docs/DECISIONS.md`, `docs/PROGRESS.md`, `.gitignore` (`data/`, `public/products/*` keeping
+   `.gitkeep`, `.cache/`).
 
 Acceptance
-- `npm run build` passes with no mongod running beforehand (no DB at build time).
-- `npm test` green; ≥ 25 unit tests covering pricing, state machine, stock, format.
-- `npm run seed` exits 0; second run is idempotent; `ls public/products | wc -l` ≥ 200 and
-  every product doc has 1–5 images whose files exist on disk.
-- `node -e` script (or test) counts products: exactly 70/70/60 by typ; every variant has
-  unique sku, stock ≥ 0, weightGrams > 0.
-- After `npm run seed`, background `npm run start` + `curl -s localhost:3000/api/health`
-  returns `{"ok":true,…}`; server stopped afterwards.
-- `npm run lint` passes.
+- `npm run build` passes with no mongod running and no env set.
+- `npm test` green; ≥ 30 unit tests: pricing incl. the VAT rounding rule, every state-machine
+  edge, stock predicates, format, `deriveFilter`, parcel weight.
+- `npm run seed` exits 0; second run → same collection counts and same order numbers; per
+  product `1 ≤ images.length ≤ 5` and every `images[].src` exists on disk; exactly 70/70/60 by
+  type; skus unique; stock ≥ 0; `weightGrams > 0`.
+- Integration test: a checkout transaction over-sells → aborts, nothing written.
+- Background `npm run start` + `curl -s localhost:3000/api/health` → `{"ok":true,…}`; stop.
+- `npm run lint` green.
 
 ## M2 — Storefront
 
 Tasks
-1. Global layout: fonts, theme provider + toggle (class dark), header with mega-menu,
-   footer, `RouteTransition` wrapper, toasts.
-2. Instant search: `/api/search` + `search-instant.tsx` (debounce 200 ms, keyboard nav,
-   a11y combobox pattern).
+1. Global layout: fonts, theme provider + toggle (class dark), header with mega-menu, footer,
+   enter-only `RouteTransition`, toasts; `next.config.ts` rewrites for German URLs (§7).
+2. Instant search: `/api/search` (regex-escaped literal prefix) + `search-instant.tsx`
+   (debounce 200 ms, keyboard nav, a11y combobox pattern).
 3. Listing `/produkte`: server first paint + client `ListingShell`, facet sidebar with counts,
-   sort, pagination, skeletons, empty state; `/api/products`; URL params `typ,marke,groesse,
-   farbe,speicher,material,sort,seite`.
+   sort, pagination, skeletons, empty state; `/api/products` via shared `toProductDto()`; URL
+   params `type, brand, size, color, storage, material, sort, page`; sorts `price-asc |
+   price-desc | newest`, every sort with `_id` tiebreaker, page clamped.
 4. Product page: gallery (thumbs, swipe, zoom dialog), variant picker updating price/stock/
    image, stock indicator, qty + add-to-cart, related products, breadcrumbs, JSON-LD.
 5. Home: hero, category tiles, featured rails.
-6. Cart store + drawer + badge (localStorage, optimistic) — drawer chrome now, contents
-   wired in M3 if needed.
+6. Cart store + drawer + badge (localStorage `cart:v1`, optimistic) — **working in M2**:
+   add-to-cart from product page updates badge and drawer, survives reload.
 7. Motion polish + `prefers-reduced-motion`; responsive audit at 375/768/1440.
 
 Acceptance
-- `curl -s "localhost:3000/produkte?typ=schuhe&groesse=42" | grep -c 'produkt/'` > 0 and
-  every listed href matches a size-42 shoe (verify via `/api/products` JSON: all items
-  `typ=schuhe`, `"42" ∈ filter.groessen`).
-- `curl -s "localhost:3000/api/products?typ=smartphone&marke=Apple&sort=preis-auf"` returns
-  only Apple phones, ascending `priceCents`; `seite=2` returns the next 24.
-- `curl -s "localhost:3000/api/search?q=iphone"` returns ≤ 8 JSON hits.
-- Product page HTML contains `"@type":"Product"` JSON-LD and 1–5 `<img>` gallery sources.
-- Home, listing, product pages return 200 and contain German copy + `CHF`.
+- `curl -s "localhost:3000/produkte?type=shoes&size=42"` → 200 with product links;
+  `/api/products?type=shoes&size=42` JSON: every item `type=shoes`, `"42" ∈ filter.sizes`.
+- `/api/products?type=smartphone&brand=Apple&sort=price-asc` → only Apple phones, ascending
+  `priceCents`; `page=2` returns the next 24.
+- `/api/search?q=iphone` → ≤ 8 JSON hits.
+- Product page HTML contains `"@type":"Product"` JSON-LD and 1–5 gallery `<img>` sources.
+- Home, listing, product pages 200 with German copy + `CHF`.
+- Cart store unit test: serialize/deserialize round-trip; add-to-cart updates badge/drawer.
+- Responsive audit + visible focus on interactive elements recorded in `docs/PROGRESS.md`.
 - build/lint/test green.
 
 ## M3 — Cart, checkout, orders
 
 Tasks
-1. Cart page `/warenkorb` mirroring drawer; free-shipping progress; persisted across reload.
-2. Checkout: address form (zod), shipping method (standard CHF 4.90 / express CHF 12.90,
-   free ≥ CHF 100), mock payment stub; `createOrder` server action with atomic stock
-   decrement + compensation; order number via Counter.
-3. Confirmation `/bestellung/[nummer]` with timeline, totals, VAT note.
-4. Stock edge cases: out-of-stock variant blocks add-to-cart; last-item race handled.
-5. Tests: pricing totals incl. shipping, createOrder stock behavior, order number format.
+1. Cart page `/warenkorb` mirroring drawer; free-shipping progress (free ≥ CHF 100, standard
+   4.90 / express 12.90 — recorded in `docs/DECISIONS.md`).
+2. Checkout: address form (zod client+server), shipping method, mock payment stub; `createOrder`
+   action → `createOrderCore`: one transaction re-checks stock, decrements variants
+   (`findOneAndUpdate` with `$gte` guard), mints `orderNumber` from Counter, inserts `new`,
+   mock payment → `paid`.
+3. Confirmation `/bestellung/[nummer]` with timeline, totals, VAT note ("8,1 % MwSt.
+   inbegriffen", rule §8).
+4. Stock edge cases: out-of-stock variant blocks add-to-cart; last-item race fails cleanly.
+5. Tests: pricing totals incl. shipping, `createOrderCore` stock behavior, order number format.
 
-Acceptance
-- `curl -s -X POST localhost:3000/checkout` (or action-call test) with a valid payload
-  creates order `B-YYYY-######`, sets status `bezahlt`, and the variant's stock decreased by
-  the ordered qty (checked via DB script/test).
-- Ordering more than available stock fails with a validation error and leaves stock unchanged.
-- Cart survives reload (localStorage key `cart:v1` present in client bundle logic; unit test
-  for store serialize/deserialize).
-- Confirmation page for the created order returns 200 and shows the order number + status.
+Acceptance (integration tests calling `createOrderCore`, not curling actions)
+- Valid order → `B-YYYY-######`, status `paid` with `statusLog`, variant stock decreased by
+  the ordered qty; concurrent over-sell attempt fails and leaves stock unchanged.
+- Ordering more than available stock fails validation; nothing written (transaction abort).
+- Cart store survives reload (unit test on `cart:v1` serialize/deserialize).
+- Confirmation page for a seeded order returns 200 via curl and shows number + status.
 - build/lint/test green.
 
 ## M4 — Admin: auth, orders, packing, shipping
 
 Tasks
-1. Session lib (signed cookie) + `/admin/login` + layout guard; seeded admin.
-2. Orders list (status tabs + counts) and detail with state-machine transition buttons
-   (`transitionOrder` action, logged timestamps, cancel restocks).
-3. Packing queue + pick list + printable slip (`druckansicht`, print CSS) + parcel weight.
-4. `ShippingProvider` interface, `UpsShippingProvider` (OAuth client-credentials + Shipping
-   API via fetch, only when UPS_CLIENT_ID/SECRET/ACCOUNT set), `MockUpsProvider`
-   (deterministic-looking `1Z…` number, pdf-lib label PDF saved to `public/labels/`),
-   factory + `createLabel` action/route → order `shipped`.
+1. `server/session.ts` (scrypt `scrypt$N$r$p$salt$hash`, 12 h HMAC cookie with `exp`,
+   `timingSafeEqual`, login throttle) + `/admin/login` + layout guard; seeded admin.
+2. Orders list (status tabs + counts) and detail with transition buttons → `transitionOrderCore`
+   (logged timestamps; cancel from `new`/`paid`/`picking` restocks in the same transaction).
+3. Packing queue + pick list + printable slip (print CSS) + parcel weight (Σ qty×weight + 150).
+4. `ShippingProvider` interface; `UpsShippingProvider` (OAuth token cached until
+   `expiresIn − 60 s`, single-flight, API resource/version looked up and pinned in
+   `docs/DECISIONS.md`) only when `UPS_CLIENT_ID/SECRET/ACCOUNT` set; `MockUpsProvider`
+   (`1Z…`, pdf-lib label → `data/labels/`); `createLabelCore` (only from `packed`, idempotent)
+   behind action + `POST /api/shipping/label/[orderId]` (Origin-checked); label served by
+   session-guarded `GET /admin/labels/[orderId]`.
 5. Label button in packing/order detail; tracking shown on customer confirmation.
-6. Tests: state machine via action, provider factory selection, mock tracking format `1Z[0-9A-Z]{15,16}`, label PDF magic bytes, cancel-restock.
+6. Tests: `transitionOrderCore` graph incl. cancel-restock, provider factory selection,
+   `UpsShippingProvider` with mocked `fetch` (token caching, success, error mapping), mock
+   tracking `^1Z[0-9A-Z]{15,16}`, label PDF magic bytes, provider failure keeps `packed`.
 
 Acceptance
-- `curl -s localhost:3000/admin` without cookie → redirect to `/admin/login`; with seeded
-  login cookie → 200.
-- Login as seeded admin, transition an order `bezahlt → picking → packed` via UI action;
-  `statusLog` has one entry per step with timestamps; illegal jump `packed → bezahlt`
-  rejected (test asserts error).
-- `POST /api/shipping/label/<orderId>` (mock mode) returns tracking matching `^1Z`, writes a
-  PDF starting `%PDF-`, order status becomes `shipped`, `versand.paketGewichtGrams` equals
-  Σ qty×weight (+ packaging constant) per unit test.
-- Packing slip page contains each line's sku/name/qty and prints (has `@media print` rules).
+- `curl -s localhost:3000/admin` without cookie → redirect to `/admin/login`.
+- Integration test: `loginCore` with seeded credentials returns a valid cookie that fetches
+  `/admin` → 200; expired or forged cookie rejected; `POST /api/shipping/label/…` with forged
+  `Origin` → 403.
+- `transitionOrderCore` `paid → picking → packed`: one `statusLog` entry per step; illegal
+  `packed → paid` throws `IllegalTransitionError`.
+- `createLabelCore` from `packed` (mock mode): tracking `^1Z`, PDF starting `%PDF-` under
+  `data/labels/`, order `shipped`, `shipping.parcelWeightGrams` = Σ qty×weight + 150; second
+  call returns the same tracking; from `paid` it is rejected; provider failure keeps `packed`.
+- Packing slip contains each line's sku/name/qty and `@media print` rules.
 - build/lint/test green.
 
 ## M5 — Purchasing, dashboard, polish
 
 Tasks
-1. Suppliers CRUD (list + edit) and PO editor (lines by SKU search); draft → ordered →
-   received; receiving increments variant stock transactionally-safe with per-line guard.
-2. Dashboard: revenue (paid+ orders, 30 d), open orders count, low-stock table, revenue
-   sparkline, recent activity.
-3. Polish pass: focus states, aria audit (axe pass on key pages), motion consistency, empty
-  /loading states everywhere, 404 pages, metadata/OG, Lighthouse-minded image sizing.
-4. README final (UPS env vars, production MONGODB_URI), DECISIONS.md complete, PROGRESS.md
-   final.
+1. Suppliers CRUD (list + edit) and PO editor (lines by SKU search); `draft → ordered →
+   received`; `receivePurchaseOrderCore` increments variant stock in one transaction.
+2. Dashboard: revenue (statuses `paid | picking | packed | shipped | delivered`, last 30 d),
+   open orders, low-stock table (`stock ≤ restockThreshold`), SVG sparkline, recent orders.
+3. Polish: focus states, aria audit, motion consistency, empty/loading states, 404 pages,
+   metadata/OG, image sizing.
+4. README final (UPS env vars, production `MONGODB_URI`), `docs/DECISIONS.md` complete,
+   `docs/PROGRESS.md` final.
 
 Acceptance
-- Create PO (draft) for 2 SKUs × qty, mark ordered, mark received → variant stocks increased
-  exactly by ordered qty (DB check in test); PO status chip shows `received`.
-- Dashboard shows Umsatz > 0 given seeded orders; low-stock table lists every variant with
-  `stock ≤ restockThreshold` (verified by test comparing query result vs page data source).
-- Cancelling a `bezahlt` order restocks; `shipped` cannot be cancelled (test).
-- `npm run build && npm run lint && npm test` all green; full smoke: seed → start → curl
+- Integration test: PO for 2 SKUs × qty → `receivePurchaseOrderCore` → variant stocks increased
+  exactly by ordered qty; PO status `received`.
+- Dashboard revenue > 0 given clock-relative seeded orders; low-stock table matches the query
+  (test compares data source vs expected set).
+- Cancelling a `paid` order restocks; `shipped` cannot be cancelled (state-machine + core tests).
+- axe-core scan of home/listing/product reports 0 critical violations (or manual a11y review
+  recorded in `docs/PROGRESS.md`).
+- `npm run build && npm run lint && npm test` green; full smoke: seed → start → curl
   home/listing/product/confirmation/admin → stop.
