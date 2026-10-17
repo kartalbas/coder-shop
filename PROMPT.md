@@ -13,8 +13,10 @@ for the filters and search). Locally the app needs no installed database: mongod
 runs a real mongod from node_modules with a persistent data directory (./data/mongo); a single
 connection helper starts it on demand when MONGODB_URI is not set, and uses MONGODB_URI when it
 is (production). Tests use their own throw-away instance. Model products with embedded
-variants and image lists (document-oriented, not a relational schema in disguise). Node.js 24 is installed. UI language
-German, currency CHF (formatted de-CH), Swiss VAT 8.1 % included in prices.
+variants and image lists (document-oriented, not a relational schema in disguise).
+
+Node.js 24 is installed. UI language German, currency CHF (formatted de-CH), Swiss VAT 8.1 %
+included in prices.
 
 STOREFRONT — modern, premium UX (think Apple Store / Zalando quality):
 - Home with hero, featured collections, category tiles; header with mega-menu, instant search
