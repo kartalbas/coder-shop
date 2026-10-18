@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { interpolate, label } from "@/lib/i18n";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 import { escapeRegex } from "@/lib/regex";
+import { localizedPath } from "@/lib/locale-path";
 import { absoluteUrl } from "@/lib/site";
 import { passwordResetMail } from "@/lib/mail-templates";
 import { OrderModel, type Order } from "@/models/order";
@@ -11,6 +12,7 @@ import { UserModel, type CustomerAddress } from "@/models/user";
 import { connectDB } from "./db";
 import { hashResetToken, RESET_TOKEN_TTL_MS } from "./customers";
 import { getRequestLabels } from "./i18n";
+import { getMailContext } from "./mail-context";
 import { listInvoicesForUser } from "./invoices";
 import { sendMail } from "./mail";
 
@@ -212,7 +214,7 @@ export async function adminResetPasswordCore(id: string): Promise<CustomerAction
   const notFound = label(labels, "admin.error.customerNotFound");
   await connectDB();
   if (!mongoose.isValidObjectId(id)) return { ok: false, error: notFound };
-  const user = await UserModel.findById(id).select("name email role").lean().exec();
+  const user = await UserModel.findById(id).select("name email role language").lean().exec();
   if (!user || user.role !== "customer") return { ok: false, error: notFound };
   const token = randomBytes(32).toString("base64url");
   await PasswordResetModel.create({
@@ -220,7 +222,12 @@ export async function adminResetPasswordCore(id: string): Promise<CustomerAction
     userId: user._id,
     expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
   });
-  const link = absoluteUrl(`/account/reset-password?token=${token}`);
-  await sendMail({ to: user.email, ...passwordResetMail(user.name, link) });
+  // #58 decision point 3: the admin acts, the customer is answered — the mail renders
+  // in the account's language, not the admin's.
+  const ctx = await getMailContext(user.language);
+  const link = absoluteUrl(
+    localizedPath(ctx.language, `/account/reset-password?token=${token}`),
+  );
+  await sendMail({ to: user.email, ...passwordResetMail(ctx, user.name, link) });
   return { ok: true };
 }

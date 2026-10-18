@@ -899,3 +899,16 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   option's own message — the discount amount refusal text was unreachable even in the
   German base. `createOptionalChf` now checks the pattern inside a single transform
   with `ctx.addIssue`, so the row's text is what the admin reads.
+- **Language is stored where the request happens; mails render from it (#58 decision
+  point 3).** Checkout stores the request language on the order, restock subscription
+  on the alert, registration on the account; every mail about such a document renders
+  through `getMailContext(language)` (`src/server/mail-context.ts`) — texts from the
+  `mail.*` rows, amounts/dates from the language's Intl locale, `<html lang>` and the
+  localized link prefix from the same code. Admin-triggered mails (tracking, pickup
+  ready, invoice reminder, admin password reset) answer in the *stored* language, never
+  the admin's; documents predating the field fall back to the first active language
+  row. The templates stay pure (`MailContext` in, `MailContent` out); the former
+  `toLocaleDateString("de-CH")` in the checkout core and the base-locale `formatChf`
+  in the templates are gone — the invoice mail's due date now follows the mail
+  language (visible change: German mails show the long date form). The carrier in the
+  tracking mail travels as data (the stored carrier code), not a literal.

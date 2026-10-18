@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { interpolate, label } from "@/lib/i18n";
+import { localizedPath } from "@/lib/locale-path";
 import { absoluteUrl } from "@/lib/site";
 import {
   createAddressSchema,
@@ -12,7 +13,8 @@ import { OrderModel } from "@/models/order";
 import { PasswordResetModel } from "@/models/password-reset";
 import { UserModel, type CustomerAddress } from "@/models/user";
 import { connectDB } from "./db";
-import { getRequestLabels } from "./i18n";
+import { getLabels, getRequestLabels, getRequestLanguage } from "./i18n";
+import { getMailContext } from "./mail-context";
 import { hashPassword } from "./password";
 import { sendMail } from "./mail";
 import { passwordResetMail, welcomeMail } from "@/lib/mail-templates";
@@ -46,8 +48,11 @@ export async function registerCustomerCore(
   opts: { ip?: string } = {},
 ): Promise<CustomerAuthResult> {
   // #58: every refusal of this core answers in the request language — the rows are
-  // process-cached, so resolving them up front costs no I/O inside the flow.
-  const labels = await getRequestLabels();
+  // process-cached, so resolving them up front costs no I/O inside the flow. The
+  // language is stored on the account (#58 decision point 3): it is the language the
+  // welcome mail and every later account mail render in.
+  const language = await getRequestLanguage();
+  const labels = await getLabels(language);
   const limit = registerLimit.check(opts.ip ?? "local");
   if (!limit.allowed) {
     return {
@@ -86,8 +91,9 @@ export async function registerCustomerCore(
     name: parsed.data.name,
     passwordHash,
     role: "customer",
+    language,
   });
-  await sendMail({ to: email, ...welcomeMail(parsed.data.name) });
+  await sendMail({ to: email, ...welcomeMail(await getMailContext(language), parsed.data.name) });
   return { ok: true, userId: user._id.toString(), email, name: user.name };
 }
 
@@ -122,7 +128,7 @@ export async function requestPasswordResetCore(
     email: email.trim().toLowerCase(),
     role: "customer",
   })
-    .select("_id name email")
+    .select("_id name email language")
     .lean()
     .exec();
   if (user) {
@@ -132,8 +138,13 @@ export async function requestPasswordResetCore(
       userId: user._id,
       expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
     });
-    const link = absoluteUrl(`/account/reset-password?token=${token}`);
-    await sendMail({ to: user.email, ...passwordResetMail(user.name, link) });
+    // #58 decision point 3: the reset mail renders in the account's mail language and
+    // links into it — the request language only ever answered the refusal above.
+    const ctx = await getMailContext(user.language);
+    const link = absoluteUrl(
+      localizedPath(ctx.language, `/account/reset-password?token=${token}`),
+    );
+    await sendMail({ to: user.email, ...passwordResetMail(ctx, user.name, link) });
   }
   return { ok: true };
 }

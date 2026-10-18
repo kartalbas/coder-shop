@@ -23,6 +23,7 @@ import {
 import { ProductModel, type Product } from "@/models/product";
 import { UserModel } from "@/models/user";
 import { absoluteUrl } from "@/lib/site";
+import { localizedPath } from "@/lib/locale-path";
 import { invoiceMail, orderConfirmationMail } from "@/lib/mail-templates";
 import { connectDB } from "./db";
 import { NotEnoughUnitsError, reserveUnitsForOrder, serialTrackedTypes } from "./stock-units";
@@ -33,8 +34,9 @@ import {
   normalizeDiscountCode,
   redeemDiscount,
 } from "./discounts";
-import { getRequestLabels } from "./i18n";
+import { getLabels, getRequestLanguage } from "./i18n";
 import { getInvoiceCreditUsageCents } from "./invoices";
+import { getMailContext } from "./mail-context";
 import { sendMail } from "./mail";
 import { mintNumber } from "./numbers";
 import { generatePickupCode } from "./pickup";
@@ -187,6 +189,7 @@ async function runCheckout(
   settings: ShopSettings,
   userId: string | undefined,
   discountCode: string | undefined,
+  language: string,
   session: ClientSession,
 ): Promise<{ orderNumber: string; totals: Totals; invoiceDueAt?: Date }> {
   const lines = await resolveLines(bySku, session);
@@ -320,6 +323,9 @@ async function runCheckout(
           ...(shipping.storePickup && { pickup: { code: generatePickupCode() } }),
         },
         payment: orderPayment,
+        // #58 decision point 3: the request language rides on the order — every mail
+        // about it (also admin-triggered ones) renders in the customer's language.
+        language,
       },
     ],
     { session },
@@ -338,13 +344,17 @@ async function sendCheckoutMails(
   customer: OrderCustomer,
   payment: PaymentMethodConfig,
   result: { orderNumber: string; totals: Totals; invoiceDueAt?: Date },
+  language: string,
 ): Promise<void> {
   const { orderNumber, totals } = result;
-  const link = absoluteUrl(`/orders/${orderNumber}`);
+  // #58 decision point 3: texts, amounts, dates and the link prefix all follow the
+  // order's language — a French customer gets a French mail and a /fr/ link.
+  const ctx = await getMailContext(language);
+  const link = absoluteUrl(localizedPath(language, `/orders/${orderNumber}`));
   try {
     await sendMail({
       to: customer.email,
-      ...orderConfirmationMail({
+      ...orderConfirmationMail(ctx, {
         name: customer.name,
         orderNumber,
         totalCents: totals.totalCents,
@@ -354,12 +364,12 @@ async function sendCheckoutMails(
     if (payment.kind === "invoice" && result.invoiceDueAt) {
       await sendMail({
         to: customer.email,
-        ...invoiceMail({
+        ...invoiceMail(ctx, {
           name: customer.name,
           orderNumber,
           totalCents: totals.totalCents,
-          dueDate: result.invoiceDueAt.toLocaleDateString("de-CH"),
-          pdfLink: absoluteUrl(`/orders/${orderNumber}/invoice`),
+          dueDate: result.invoiceDueAt,
+          pdfLink: absoluteUrl(localizedPath(language, `/orders/${orderNumber}/invoice`)),
         }),
       });
     }
@@ -434,6 +444,7 @@ async function runClaimedCheckout(
   settings: ShopSettings,
   userId: string | undefined,
   discountCode: string | undefined,
+  language: string,
   labels: Readonly<Record<string, string>>,
 ): Promise<CreateOrderResult> {
   const release = () => CheckoutClaimModel.deleteOne({ _id: key }).catch(() => {});
@@ -455,11 +466,12 @@ async function runClaimedCheckout(
         settings,
         userId,
         discountCode,
+        language,
         session,
       );
       await session.commitTransaction();
       await CheckoutClaimModel.updateOne({ _id: key }, { $set: { orderNumber: result.orderNumber } });
-      await sendCheckoutMails(customer, payment, result);
+      await sendCheckoutMails(customer, payment, result, language);
       return { ok: true, ...result };
     } catch (error) {
       if (session.inTransaction()) await session.abortTransaction();
@@ -513,8 +525,10 @@ export async function createOrderCore(
 ): Promise<CreateOrderResult> {
   // #58: the payload is validated with the request language's messages (outside a
   // request scope — tests, scripts — the first active language answers), and every
-  // refusal below resolves through the same label map.
-  const labels = await getRequestLabels();
+  // refusal below resolves through the same label map. The language itself is stored
+  // on the order (#58 decision point 3) so its mails render in it later.
+  const language = await getRequestLanguage();
+  const labels = await getLabels(language);
   const parsed = createCheckoutSchema(labels).safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? label(labels, "shop.action.invalidForm") };
@@ -574,6 +588,7 @@ export async function createOrderCore(
       settings,
       opts.userId,
       normalizedCode,
+      language,
       labels,
     );
   }

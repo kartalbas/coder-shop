@@ -2448,3 +2448,38 @@ Done — M1–M6 + QA complete.
   request, the mechanical sweep of the remaining literals — mails, invoice/QR PDFs,
   label content, UPS texts — and the no-German-literals guard), the recipient-language
   boundary (store the request language on the order), and the editor remainder.
+
+## ISSUES — queue session 38 (2026-10-18)
+
+### #58 (decision point 3 slice) — mails render from the table in the recipient's language ✅ — issue stays open
+- **Gate report re-checked:** `/produkte → 308` and no `/produkt/` links are the
+  intended #63/#65 English-URL contract, asserted by the green `english-urls` spec —
+  nothing to fix.
+- **Stored language:** `Order.language` (checkout), `RestockAlert.language` (subscribe),
+  `User.language` (registration) — plain data set from `getRequestLanguage()` where the
+  request happens; documents without the field fall back to the first active row.
+  `createOrderCore` resolves the language itself (it already resolved the request label
+  map — one resolution feeds both), so no action changed.
+- **Templates:** `src/lib/mail-templates.ts` is table-driven — every subject, sentence,
+  greeting, CTA and the two layout strings are `mail.*` rows (27 new rows × 5 languages
+  in `src/server/translations.json`), amounts/dates come from the context's Formatters
+  (the `toLocaleDateString("de-CH")` literal in the checkout core dies; the invoice
+  mail's due date now follows the mail language), `<html lang>` and the link prefix
+  (`/fr/orders/…` via `localizedPath`) follow the same code, the carrier rides as data.
+  `getMailContext(language?)` (`src/server/mail-context.ts`) resolves texts + formats;
+  admin-triggered mails (label, pickup-ready, reminder, admin reset) use the *stored*
+  language, self-service mails the account's.
+- **Seed:** sample orders rotate over the active language rows.
+- **Tests:** new `tests/mail-templates.test.ts` (7 — German byte-identity of every
+  subject/chrome + French texts, Intl-derived fr-CH amounts and long due date, level
+  interpolation, all seeded languages filled) and `tests/mail-language.test.ts` (6 —
+  mocked request scope: fr checkout stores fr + French mails with `/fr/` links, German
+  admin's label/pickup/reminder/reset mails answer in the order's/account's language,
+  fr restock alert, fr registration). Adjusted for the localized links: `mails.test.ts`
+  (`/de/orders/`, Intl-derived due date) and `restock-alerts.test.ts`
+  (`/de/products/…`).
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 663 (66 files),
+  `npm run test:e2e` ✅; tree clean, nothing running.
+- **Left open (#58):** invoice/QR PDF + packing slip + label content through the table
+  (then the named `format.ts` exports retire), the no-German-literals guard over
+  `src/` (decision point 4), the editor remainder and translatable catalog content.

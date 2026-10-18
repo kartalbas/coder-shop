@@ -236,6 +236,12 @@ async function seedOrders(rng: () => number, now: Date, settings: ShopSettings):
     settings.paymentMethods.find((method) => method.active && method.kind === "immediate") ??
     settings.paymentMethods[0];
   const products = await ProductModel.find().sort({ slug: 1 }).lean();
+  // #58 decision point 3: the sample orders carry a language too — rotating over the
+  // active rows so admin-triggered mails on demo orders show the multilingual mails.
+  const languageRows = await LanguageModel.find({ active: true }).sort({ position: 1 }).lean();
+  const languageCodes = languageRows.length
+    ? languageRows.map((row) => row.code)
+    : DEFAULT_LANGUAGES.map((row) => row.code);
   const year = swissYear(now);
   const orders = [];
   for (let i = 0; i < STATUS_PLAN.length; i++) {
@@ -311,6 +317,7 @@ async function seedOrders(rng: () => number, now: Date, settings: ShopSettings):
           ? { paidAt: new Date(createdAt.getTime() + 2 * HOUR_MS) }
           : {}),
       },
+      language: languageCodes[i % languageCodes.length],
       createdAt,
       updatedAt: statusLog[statusLog.length - 1].at,
     });

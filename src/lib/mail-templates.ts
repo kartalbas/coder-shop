@@ -1,7 +1,19 @@
-// German e-mail templates (issue #39/#44) — pure functions so tests can assert the
-// content; the shop's look is inlined because e-mail clients strip stylesheets.
-import { BASE_LANGUAGE } from "@/lib/i18n";
-import { formatChf } from "@/lib/format";
+// E-mail templates (issue #39/#44) — rendered from the translation table in the
+// recipient's language (#58 decision point 3): every function takes the language's
+// label map and formatters, so they stay pure and tests can assert the content. The
+// HTML structure (paragraphs, emphasis, the code block) lives here, every text is a
+// `mail.*` row with `{param}` holes; the shop's look is inlined because e-mail
+// clients strip stylesheets.
+import { interpolate, label } from "@/lib/i18n";
+import type { Formatters } from "@/lib/format";
+
+// The language a mail renders in: the stored language of its order/alert/account,
+// resolved to texts and formats by the server (server/mail-context.ts).
+export interface MailContext {
+  language: string;
+  labels: Readonly<Record<string, string>>;
+  formatters: Formatters;
+}
 
 export interface MailContent {
   subject: string;
@@ -9,16 +21,33 @@ export interface MailContent {
   text: string;
 }
 
-function layout(title: string, bodyHtml: string, bodyText: string, cta?: { label: string; url: string }): MailContent {
-  const html = `<!doctype html><html lang="${BASE_LANGUAGE}"><body style="margin:0;background:#f4f4f5;padding:24px;font-family:ui-sans-serif,system-ui,sans-serif;color:#18181b">
+function t(ctx: MailContext, key: string): string {
+  return label(ctx.labels, key);
+}
+
+function greeting(ctx: MailContext, name: string): string {
+  return interpolate(t(ctx, "mail.greeting"), { name });
+}
+
+function layout(
+  ctx: MailContext,
+  title: string,
+  bodyHtml: string,
+  bodyText: string,
+  cta?: { label: string; url: string },
+): MailContent {
+  const copyLink = cta
+    ? `<p style="margin:8px 0 0;font-size:12px;color:#71717a">${interpolate(t(ctx, "mail.layout.copyLink"), { url: cta.url })}</p>`
+    : "";
+  const html = `<!doctype html><html lang="${ctx.language}"><body style="margin:0;background:#f4f4f5;padding:24px;font-family:ui-sans-serif,system-ui,sans-serif;color:#18181b">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px">
 <p style="margin:0 0 16px;font-weight:700;font-size:18px">coder-shop</p>
 <h1 style="margin:0 0 16px;font-size:20px">${title}</h1>
 ${bodyHtml}
 ${cta ? `<p style="margin:24px 0 8px"><a href="${cta.url}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:600">${cta.label}</a></p>
-<p style="margin:8px 0 0;font-size:12px;color:#71717a">Oder kopieren Sie diesen Link: ${cta.url}</p>` : ""}
+${copyLink}` : ""}
 <hr style="margin:24px 0;border:none;border-top:1px solid #e4e4e7">
-<p style="margin:0;font-size:12px;color:#71717a">coder-shop · Demo-Shop · Preise in CHF inkl. MwSt.</p>
+<p style="margin:0;font-size:12px;color:#71717a">${t(ctx, "mail.layout.footer")}</p>
 </div></body></html>`;
   const text = [`coder-shop`, "", title, "", bodyText, cta ? `${cta.label}: ${cta.url}` : ""]
     .filter(Boolean)
@@ -26,113 +55,144 @@ ${cta ? `<p style="margin:24px 0 8px"><a href="${cta.url}" style="display:inline
   return { subject: title, html, text };
 }
 
-export function welcomeMail(name: string): MailContent {
+export function welcomeMail(ctx: MailContext, name: string): MailContent {
+  const body = t(ctx, "mail.welcome.body");
+  const account = t(ctx, "mail.welcome.account");
   return layout(
-    "Willkommen bei coder-shop",
-    `<p>Hallo ${name},</p><p>Ihr Konto ist eingerichtet. Unter <em>Mein Konto</em> finden Sie Ihre Bestellungen, Rechnungen und Adressen.</p>`,
-    `Hallo ${name},\n\nIhr Konto ist eingerichtet. Unter "Mein Konto" finden Sie Ihre Bestellungen, Rechnungen und Adressen.`,
+    ctx,
+    t(ctx, "mail.welcome.subject"),
+    `<p>${greeting(ctx, name)}</p><p>${interpolate(body, { account: `<em>${account}</em>` })}</p>`,
+    `${greeting(ctx, name)}\n\n${interpolate(body, { account: `"${account}"` })}`,
   );
 }
 
-// Reminder levels of an overdue invoice (issue #40) — German UI copy.
+// Reminder levels of an overdue invoice (issue #40) — the 2. Mahnung sentence is a
+// row of its own, appended to the body only on level 2.
 export function invoiceReminderMail(
+  ctx: MailContext,
   name: string,
   orderNumber: string,
   openCents: number,
   level: 1 | 2,
 ): MailContent {
-  const amount = formatChf(openCents);
-  const title = level === 1 ? "1. Mahnung" : "2. Mahnung";
+  const amount = ctx.formatters.chf(openCents);
+  const body = t(ctx, "mail.reminder.body");
+  const second = level === 2 ? ` ${t(ctx, "mail.reminder.second")}` : "";
   return layout(
-    title,
-    `<p>Hallo ${name},</p><p>die Rechnung zur Bestellung <strong>${orderNumber}</strong> ist überfällig. Bitte begleichen Sie den offenen Betrag von <strong>${amount}</strong> in den nächsten Tagen${level === 2 ? " — es ist bereits die zweite Mahnung" : ""}. Bei bereits beglichener Rechnung ignorieren Sie diese E-Mail einfach.</p>`,
-    `Hallo ${name},\n\ndie Rechnung zur Bestellung ${orderNumber} ist überfällig. Bitte begleichen Sie den offenen Betrag von ${amount} in den nächsten Tagen${level === 2 ? " (2. Mahnung)" : ""}. Bei bereits beglichener Rechnung ignorieren Sie diese E-Mail.`,
+    ctx,
+    interpolate(t(ctx, "mail.reminder.subject"), { level }),
+    `<p>${greeting(ctx, name)}</p><p>${interpolate(body, { orderNumber: `<strong>${orderNumber}</strong>`, amount: `<strong>${amount}</strong>` })}${second}</p>`,
+    `${greeting(ctx, name)}\n\n${interpolate(body, { orderNumber, amount })}${second}`,
   );
 }
 
 // Order confirmation (issue #44) — sent right after checkout; the link leads to the
 // confirmation page, which shows the full details behind the access rule (#3).
-export function orderConfirmationMail(input: {
-  name: string;
-  orderNumber: string;
-  totalCents: number;
-  link: string;
-}): MailContent {
-  const amount = formatChf(input.totalCents);
+export function orderConfirmationMail(
+  ctx: MailContext,
+  input: { name: string; orderNumber: string; totalCents: number; link: string },
+): MailContent {
+  const amount = ctx.formatters.chf(input.totalCents);
+  const body = t(ctx, "mail.confirm.body");
   return layout(
-    "Vielen Dank für Ihre Bestellung",
-    `<p>Hallo ${input.name},</p><p>Ihre Bestellung <strong>${input.orderNumber}</strong> ist bei uns eingegangen. Der Betrag von <strong>${amount}</strong> wurde${""} vorbereitet; sobald das Paket unterwegs ist, senden wir Ihnen die Sendungsnummer.</p>`,
-    `Hallo ${input.name},\n\nIhre Bestellung ${input.orderNumber} ist bei uns eingegangen. Der Betrag von ${amount} wurde vorbereitet; sobald das Paket unterwegs ist, senden wir Ihnen die Sendungsnummer.`,
-    { label: "Bestellung ansehen", url: input.link },
+    ctx,
+    t(ctx, "mail.confirm.subject"),
+    `<p>${greeting(ctx, input.name)}</p><p>${interpolate(body, { orderNumber: `<strong>${input.orderNumber}</strong>`, amount: `<strong>${amount}</strong>` })}</p>`,
+    `${greeting(ctx, input.name)}\n\n${interpolate(body, { orderNumber: input.orderNumber, amount })}`,
+    { label: t(ctx, "mail.confirm.cta"), url: input.link },
   );
 }
 
-// Invoice order (issue #40/#44) — the PDF is downloadable behind the order visibility rule.
-export function invoiceMail(input: {
-  name: string;
-  orderNumber: string;
-  totalCents: number;
-  dueDate: string;
-  pdfLink: string;
-}): MailContent {
-  const amount = formatChf(input.totalCents);
+// Invoice order (issue #40/#44) — the PDF is downloadable behind the order visibility
+// rule; the due date follows the mail language's date format (#58, no locale literal).
+export function invoiceMail(
+  ctx: MailContext,
+  input: {
+    name: string;
+    orderNumber: string;
+    totalCents: number;
+    dueDate: Date;
+    pdfLink: string;
+  },
+): MailContent {
+  const amount = ctx.formatters.chf(input.totalCents);
+  const dueDate = ctx.formatters.date(input.dueDate);
+  const body = t(ctx, "mail.invoice.body");
   return layout(
-    "Ihre Rechnung",
-    `<p>Hallo ${input.name},</p><p>vielen Dank für Bestellung <strong>${input.orderNumber}</strong>. Anbei finden Sie die Rechnung über <strong>${amount}</strong>, zahlbar bis <strong>${input.dueDate}</strong>. Der Einzahlungsschein ist QR-rechtskonform.</p>`,
-    `Hallo ${input.name},\n\nvielen Dank für Bestellung ${input.orderNumber}. Die Rechnung über ${amount} ist zahlbar bis ${input.dueDate}. Der Einzahlungsschein ist QR-rechtskonform.`,
-    { label: "Rechnung als PDF", url: input.pdfLink },
+    ctx,
+    t(ctx, "mail.invoice.subject"),
+    `<p>${greeting(ctx, input.name)}</p><p>${interpolate(body, { orderNumber: `<strong>${input.orderNumber}</strong>`, amount: `<strong>${amount}</strong>`, dueDate: `<strong>${dueDate}</strong>` })}</p>`,
+    `${greeting(ctx, input.name)}\n\n${interpolate(body, { orderNumber: input.orderNumber, amount, dueDate })}`,
+    { label: t(ctx, "mail.invoice.cta"), url: input.pdfLink },
   );
 }
 
-// Shipment (issue #44) — tracking number as soon as the label exists (#16).
-export function shippedMail(input: {
-  name: string;
-  orderNumber: string;
-  trackingNumber: string;
-  link: string;
-}): MailContent {
+// Shipment (issue #44) — tracking number as soon as the label exists (#16); the
+// carrier travels as data (the stored carrier code), never a literal.
+export function shippedMail(
+  ctx: MailContext,
+  input: {
+    name: string;
+    orderNumber: string;
+    trackingNumber: string;
+    carrier: string;
+    link: string;
+  },
+): MailContent {
+  const body = t(ctx, "mail.shipped.body");
   return layout(
-    "Ihre Sendung ist unterwegs",
-    `<p>Hallo ${input.name},</p><p>Bestellung <strong>${input.orderNumber}</strong> haben wir an UPS übergeben. Sendungsnummer: <strong>${input.trackingNumber}</strong>. Damit können Sie den Lauf der Sendung verfolgen.</p>`,
-    `Hallo ${input.name},\n\nBestellung ${input.orderNumber} haben wir an UPS übergeben. Sendungsnummer: ${input.trackingNumber}.`,
-    { label: "Bestellung verfolgen", url: input.link },
+    ctx,
+    t(ctx, "mail.shipped.subject"),
+    `<p>${greeting(ctx, input.name)}</p><p>${interpolate(body, { orderNumber: `<strong>${input.orderNumber}</strong>`, carrier: input.carrier, tracking: `<strong>${input.trackingNumber}</strong>` })}</p>`,
+    `${greeting(ctx, input.name)}\n\n${interpolate(body, { orderNumber: input.orderNumber, carrier: input.carrier, tracking: input.trackingNumber })}`,
+    { label: t(ctx, "mail.shipped.cta"), url: input.link },
   );
 }
 
-// Pickup ready (issue #41/#44) — the code is the ticket at the counter.
-export function pickupReadyMail(input: {
-  name: string;
-  orderNumber: string;
-  code: string;
-  store: { name: string; street: string; postalCode: string; city: string; hours: readonly string[] };
-}): MailContent {
+// Pickup ready (issue #41/#44) — the code is the ticket at the counter; the store
+// address and hours are store data, the sentences around them are rows.
+export function pickupReadyMail(
+  ctx: MailContext,
+  input: {
+    name: string;
+    orderNumber: string;
+    code: string;
+    store: { name: string; street: string; postalCode: string; city: string; hours: readonly string[] };
+  },
+): MailContent {
   const address = `${input.store.name}, ${input.store.street}, ${input.store.postalCode} ${input.store.city}`;
+  const body = t(ctx, "mail.pickup.body");
+  const payment = t(ctx, "mail.pickup.payment");
   return layout(
-    "Ihre Bestellung liegt bereit",
-    `<p>Hallo ${input.name},</p><p>Bestellung <strong>${input.orderNumber}</strong> liegt ab sofort zur Abholung bereit: <strong>${address}</strong>. Zeigen Sie an der Kasse diesen Abholcode:</p><p style="margin:16px 0;font-size:28px;font-weight:700;letter-spacing:4px">${input.code}</p><p>${input.store.hours.join("<br>")}<br>Bezahlung bar oder mit Karte bei der Übergabe.</p>`,
-    `Hallo ${input.name},\n\nBestellung ${input.orderNumber} liegt zur Abholung bereit: ${address}.\n\nAbholcode: ${input.code}\n\n${input.store.hours.join("\n")}\nBezahlung bar oder mit Karte bei der Übergabe.`,
+    ctx,
+    t(ctx, "mail.pickup.subject"),
+    `<p>${greeting(ctx, input.name)}</p><p>${interpolate(body, { orderNumber: `<strong>${input.orderNumber}</strong>`, address: `<strong>${address}</strong>` })}</p><p style="margin:16px 0;font-size:28px;font-weight:700;letter-spacing:4px">${input.code}</p><p>${input.store.hours.join("<br>")}<br>${payment}</p>`,
+    `${greeting(ctx, input.name)}\n\n${interpolate(body, { orderNumber: input.orderNumber, address })}\n\n${input.code}\n\n${input.store.hours.join("\n")}\n${payment}`,
   );
 }
 
 // Back in stock (issue #46) — sent to every address waiting on a sold-out variant.
-export function restockAlertMail(input: {
-  productName: string;
-  variantLabel: string;
-  link: string;
-}): MailContent {
+export function restockAlertMail(
+  ctx: MailContext,
+  input: { productName: string; variantLabel: string; link: string },
+): MailContent {
+  const body = t(ctx, "mail.restock.body");
+  const hello = t(ctx, "mail.greeting.formal");
   return layout(
-    "Wieder an Lager",
-    `<p>Guten Tag,</p><p><strong>${input.productName} — ${input.variantLabel}</strong> ist wieder an Lager. Wie gewünscht geben wir Ihnen früh Bescheid — solange der Vorrat reicht.</p>`,
-    `Guten Tag,\n\n${input.productName} — ${input.variantLabel} ist wieder an Lager. Wie gewünscht geben wir Ihnen früh Bescheid — solange der Vorrat reicht.`,
-    { label: "Zum Artikel", url: input.link },
+    ctx,
+    t(ctx, "mail.restock.subject"),
+    `<p>${hello}</p><p>${interpolate(body, { product: `<strong>${input.productName}</strong>`, variant: `<strong>${input.variantLabel}</strong>` })}</p>`,
+    `${hello}\n\n${interpolate(body, { product: input.productName, variant: input.variantLabel })}`,
+    { label: t(ctx, "mail.restock.cta"), url: input.link },
   );
 }
 
-export function passwordResetMail(name: string, link: string): MailContent {
+export function passwordResetMail(ctx: MailContext, name: string, link: string): MailContent {
   return layout(
-    "Passwort zurücksetzen",
-    `<p>Hallo ${name},</p><p>Sie haben ein neues Passwort angefordert. Der Link ist eine Stunde gültig und lässt sich nur einmal verwenden. Falls Sie das nicht waren, ignorieren Sie diese E-Mail einfach.</p>`,
-    `Hallo ${name},\n\nSie haben ein neues Passwort angefordert. Der Link ist eine Stunde gültig und nur einmal verwendbar. Falls Sie das nicht waren, ignorieren Sie diese E-Mail.`,
-    { label: "Passwort zurücksetzen", url: link },
+    ctx,
+    t(ctx, "mail.reset.subject"),
+    `<p>${greeting(ctx, name)}</p><p>${t(ctx, "mail.reset.body")}</p>`,
+    `${greeting(ctx, name)}\n\n${t(ctx, "mail.reset.body")}`,
+    { label: t(ctx, "mail.reset.subject"), url: link },
   );
 }

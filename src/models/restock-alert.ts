@@ -9,6 +9,9 @@ export interface RestockAlert {
   email: string;
   productSlug: string;
   variantLabel: string;
+  // The subscriber's request language (#58 decision point 3) — the restock mail
+  // renders in it; absent documents fall back to the first active language.
+  language?: string;
   createdAt: Date;
   notifiedAt?: Date;
 }
@@ -20,6 +23,7 @@ const restockAlertSchema = new Schema<RestockAlert>(
     email: { type: String, required: true, lowercase: true, trim: true },
     productSlug: { type: String, required: true },
     variantLabel: { type: String, required: true },
+    language: { type: String },
     createdAt: { type: Date, required: true, default: () => new Date() },
     notifiedAt: { type: Date },
   },

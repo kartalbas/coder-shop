@@ -5,9 +5,12 @@ import {
   orderConfirmationMail,
   pickupReadyMail,
   shippedMail,
+  type MailContext,
 } from "@/lib/mail-templates";
 import { STORE } from "@/lib/store";
-import { formatChf } from "@/lib/format";
+import { createFormatters } from "@/lib/format";
+import { BASE_LANGUAGE, DEFAULT_LANGUAGES, intlLocaleOf, labelMap } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { MailMessageModel } from "@/models/mail-message";
 import { OrderModel } from "@/models/order";
 import { ProductModel } from "@/models/product";
@@ -68,56 +71,70 @@ async function outbox(to?: string) {
   return messages;
 }
 
+// The base-language context — the German regression check of the #58 mail extraction:
+// texts come from the table, formats from the base language's Intl locale.
+const de: MailContext = {
+  language: BASE_LANGUAGE,
+  labels: labelMap(DEFAULT_TRANSLATIONS, BASE_LANGUAGE),
+  formatters: createFormatters(intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE)),
+};
+
 describe("mail templates (issue #44)", () => {
   it("confirmation names the order, the amount and links to the confirmation page", () => {
-    const mail = orderConfirmationMail({
+    const mail = orderConfirmationMail(de, {
       name: "Lena",
       orderNumber: "B-2026-000123",
       totalCents: 12_345,
       link: "https://shop.example/orders/B-2026-000123",
     });
     expect(mail.subject).toBe("Vielen Dank für Ihre Bestellung");
+    const amount = new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(123.45);
     for (const body of [mail.html, mail.text]) {
       expect(body).toContain("Lena");
       expect(body).toContain("B-2026-000123");
-      expect(body).toContain(formatChf(12_345));
+      expect(body).toContain(amount);
     }
     expect(mail.html).toContain("https://shop.example/orders/B-2026-000123");
+    expect(mail.html).toContain('lang="de"');
   });
 
   it("invoice carries the amount, the due date and the PDF link", () => {
-    const mail = invoiceMail({
+    const dueDate = new Date(Date.UTC(2026, 10, 16));
+    const mail = invoiceMail(de, {
       name: "Lena",
       orderNumber: "B-2026-000124",
       totalCents: 50_000,
-      dueDate: "16.11.2026",
+      dueDate,
       pdfLink: "https://shop.example/orders/B-2026-000124/invoice",
     });
     expect(mail.subject).toBe("Ihre Rechnung");
+    // The due date follows the mail language's date format — computed, not pinned.
+    const due = new Intl.DateTimeFormat("de-CH", { dateStyle: "long" }).format(dueDate);
     for (const body of [mail.html, mail.text]) {
       expect(body).toContain("B-2026-000124");
-      expect(body).toContain(formatChf(50_000));
-      expect(body).toContain("16.11.2026");
+      expect(body).toContain(due);
     }
     expect(mail.html).toContain("/invoice");
   });
 
   it("shipment mail contains the tracking number", () => {
-    const mail = shippedMail({
+    const mail = shippedMail(de, {
       name: "Lena",
       orderNumber: "B-2026-000125",
       trackingNumber: "1ZTESTTRACKING01",
+      carrier: "UPS",
       link: "https://shop.example/orders/B-2026-000125",
     });
     expect(mail.subject).toBe("Ihre Sendung ist unterwegs");
     for (const body of [mail.html, mail.text]) {
       expect(body).toContain("1ZTESTTRACKING01");
       expect(body).toContain("B-2026-000125");
+      expect(body).toContain("UPS");
     }
   });
 
   it("pickup mail contains the code, the store address and the hours", () => {
-    const mail = pickupReadyMail({
+    const mail = pickupReadyMail(de, {
       name: "Lena",
       orderNumber: "B-2026-000126",
       code: "K7M2XQ",
@@ -160,7 +177,9 @@ describe("workflow mails land in the dev outbox (issue #44)", () => {
     expect(mails).toHaveLength(1); // card payment: no invoice mail
     expect(mails[0]?.subject).toBe("Vielen Dank für Ihre Bestellung");
     expect(mails[0]?.html).toContain(result.orderNumber);
-    expect(mails[0]?.html).toContain("/orders/" + result.orderNumber);
+    // #58 decision point 3: the link carries the order's language prefix (de here —
+    // outside a request scope the first active language answers).
+    expect(mails[0]?.html).toContain("/de/orders/" + result.orderNumber);
 
     // Rechnung order of a registered customer → confirmation + invoice with PDF link.
     const user = await UserModel.create({

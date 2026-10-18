@@ -9,6 +9,7 @@ import { label } from "@/lib/i18n";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "./db";
 import { getRequestLabels } from "./i18n";
+import { getMailContext } from "./mail-context";
 import { sendMail } from "./mail";
 import { advanceUnitsForOrder } from "./stock-units";
 
@@ -132,11 +133,13 @@ export async function markPickupReadyCore(
     }
     await session.commitTransaction();
     // Issue #44: "lies bereit" mail with the handover code — after the commit, never
-    // failing the admin action.
+    // failing the admin action. #58 decision point 3: it renders in the *order's*
+    // language, not the admin's.
     try {
+      const ctx = await getMailContext(order.language);
       await sendMail({
         to: order.customer.email,
-        ...pickupReadyMail({
+        ...pickupReadyMail(ctx, {
           name: order.customer.name,
           orderNumber: order.orderNumber,
           code: order.shipping.pickup?.code ?? "",

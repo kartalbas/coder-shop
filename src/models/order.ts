@@ -103,6 +103,10 @@ export interface Order {
   payment: OrderPayment;
   // Applied discount code (issue #45) — the code as typed and the booked reduction.
   discount?: { code: string; cents: number };
+  // The request language at checkout (#58 decision point 3) — every mail about this
+  // order renders in it. Absent on documents that predate the field; the mail context
+  // then falls back to the first active language.
+  language?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,6 +225,7 @@ const orderSchema = new Schema<Order>(
         { _id: false },
       ),
     },
+    language: { type: String },
   },
   { versionKey: false, timestamps: true },
 );

@@ -1,10 +1,12 @@
 import { label } from "@/lib/i18n";
+import { localizedPath } from "@/lib/locale-path";
 import { ProductModel, type Product } from "@/models/product";
 import { RestockAlertModel } from "@/models/restock-alert";
 import { restockAlertMail } from "@/lib/mail-templates";
 import { absoluteUrl } from "@/lib/site";
 import { connectDB } from "./db";
-import { getRequestLabels } from "./i18n";
+import { getLabels, getRequestLanguage } from "./i18n";
+import { getMailContext } from "./mail-context";
 import { sendMail } from "./mail";
 
 // Back-in-stock alerts (issue #46): customers leave an e-mail for a sold-out variant;
@@ -20,7 +22,10 @@ export async function subscribeRestockAlertCore(
   sku: string,
   email: string,
 ): Promise<SubscribeResult> {
-  const labels = await getRequestLabels();
+  // #58 decision point 3: refusals in the request language, and the language itself is
+  // stored on the alert — the restock mail renders in it whenever stock arrives.
+  const language = await getRequestLanguage();
+  const labels = await getLabels(language);
   await connectDB();
   const product = await ProductModel.findOne({ "variants.sku": sku })
     .select("slug variants")
@@ -39,6 +44,7 @@ export async function subscribeRestockAlertCore(
       email: normalized,
       productSlug: product.slug,
       variantLabel: variant.label,
+      language,
       createdAt: new Date(),
     });
   } catch (error) {
@@ -73,13 +79,15 @@ export async function notifyRestockedCore(skus: string[]): Promise<number> {
   for (const alert of alerts) {
     const product = products.find((candidate) => candidate.slug === alert.productSlug);
     // Same rule as every workflow mail (#44): a failing mail never fails the workflow.
+    // #58 decision point 3: each alert's mail renders in the subscriber's language.
     try {
+      const ctx = await getMailContext(alert.language);
       await sendMail({
         to: alert.email,
-        ...restockAlertMail({
+        ...restockAlertMail(ctx, {
           productName: product?.name ?? alert.productSlug,
           variantLabel: alert.variantLabel,
-          link: absoluteUrl(`/products/${alert.productSlug}`),
+          link: absoluteUrl(localizedPath(ctx.language, `/products/${alert.productSlug}`)),
         }),
       });
       await RestockAlertModel.updateOne({ _id: alert._id }, { $set: { notifiedAt: new Date() } });

@@ -16,6 +16,7 @@ import { UserModel } from "@/models/user";
 import { interpolate, label } from "@/lib/i18n";
 import { connectDB } from "./db";
 import { getRequestLabels } from "./i18n";
+import { getMailContext } from "./mail-context";
 import { sendMail } from "./mail";
 import { buildInvoicePdf } from "./invoices-pdf";
 import { getShopSettings } from "./shop-settings";
@@ -364,7 +365,8 @@ export async function sendInvoiceReminderCore(
 
   await sendMail({
     to: order.customer.email,
-    ...invoiceReminderMail(order.customer.name, order.orderNumber, open, level),
+    // #58 decision point 3: the reminder renders in the order's language, not the admin's.
+    ...invoiceReminderMail(await getMailContext(order.language), order.customer.name, order.orderNumber, open, level),
   });
   return { ok: true };
 }

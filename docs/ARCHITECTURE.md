@@ -284,8 +284,9 @@ src/
     compare.ts              # comparison rows + difference detection (#48)
     invoices.ts             # pure invoice rules: due date, open amount, overdue, credit
                             # default, ISO-11649 QRR reference + SPC QR payload (#40)
-    mail-templates.ts       # German e-mail templates as pure functions (#39/#44),
-                            # incl. invoice reminders (#40)
+    mail-templates.ts       # e-mail templates as pure functions rendering from the
+                            # translation table in the recipient's language (#39/#44,
+                            # #58 decision point 3), incl. invoice reminders (#40)
     validations/            # zod schemas shared by actions + forms (checkout, listing,
                             # product, purchasing, account (#39), common: objectIdSchema)
   server/                   # ALL I/O: db, session, queries, providers, actions
@@ -316,6 +317,9 @@ src/
     account.ts              # portal queries: order list, reorder lines (#39)
     mail.ts                 # sendMail behind a MailTransport interface: dev outbox
                             # collection (/admin/mails) or nodemailer SMTP (#39/#44)
+    mail-context.ts         # getMailContext(language?): the recipient language of a
+                            # mail resolved to its label map + Intl formatters; absent
+                            # languages fall back to the first active row (#58 dp 3)
     password.ts             # scrypt hash/verify (self-describing format)
     limiter.ts              # token bucket (scrypt login concurrency guard)
     rate-limit.ts           # checkout rate limit (per client)
@@ -670,6 +674,17 @@ tabs and timeline; `STATUS_LABELS` remains only as the badge's no-provider fallb
 `PICKUP_PAYMENT_TYPE_LABELS` became `admin.pickup.paymentType.*` rows — components take
 a label map and read the table (#58 step 3, admin orders slice).
 
+**Recipient language (#58 decision point 3).** The language of a request is stored where
+it happens — `Order.language` at checkout, `RestockAlert.language` at subscribe,
+`User.language` at registration — and every mail about that document renders from it via
+`getMailContext(language)` (`src/server/mail-context.ts`): texts from the table, amounts
+and dates from the language's Intl locale, `<html lang>` and the link prefix
+(`/fr/orders/…`) from the same code. Admin-triggered mails (label, pickup-ready,
+reminder, admin reset) use the *stored* language, never the admin's; documents without
+the field fall back to the first active language. The templates
+(`src/lib/mail-templates.ts`) are pure over a `MailContext` — a sixth language mails in
+it by having rows, not code.
+
 ## 4. Server functions, actions and route handlers
 
 Every action is a thin wrapper over a pure-ish **core function** in `src/server` (B1):
@@ -920,7 +935,8 @@ row (`createFormatters(intlLocale)` in `src/lib/format.ts`, #58 step 2b) — the
 reads it from the `LocaleFormatters` context (client) or `getIntlLocale(lang)` (server);
 the admin follows the same row (`getRequestFormatters()` server-side, the shared
 `LocaleFormattersProvider` client-side — #58 admin formats slice); only the
-recipient-language boundary (mails, invoice/QR PDFs, label content, seed, scripts) still
+recipient-language boundary (mails render from the stored language since #58 decision
+point 3; invoice/QR PDFs, label content, seed and scripts) still
 uses the base-locale exports (#58 step 6).
 
 **VAT rounding rule (unit-tested):** `vatCents = grossCents − round(grossCents × 100 /

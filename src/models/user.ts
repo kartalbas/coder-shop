@@ -33,6 +33,9 @@ export interface User {
   // Wishlist (issue #46): product slugs, newest first — the account copy the local
   // browser list syncs into while logged in.
   wishlist: string[];
+  // The request language at registration (#58 decision point 3) — the account's mail
+  // language; absent documents fall back to the first active language.
+  language?: string;
 }
 
 const addressSchema = new Schema<CustomerAddress>(
@@ -60,6 +63,7 @@ const userSchema = new Schema<User>(
     blocked: { type: Boolean, default: false },
     notes: { type: String, trim: true, maxlength: 2000 },
     wishlist: { type: [String], default: [] },
+    language: { type: String },
   },
   { versionKey: false },
 );

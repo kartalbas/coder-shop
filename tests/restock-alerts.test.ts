@@ -125,7 +125,7 @@ describe("back-in-stock alerts (issue #46)", () => {
       expect(mails[0].subject).toBe("Wieder an Lager");
       expect(mails[0].text).toContain("Alarm Produkt alarm-c");
       expect(mails[0].text).toContain("128 GB / schwarz");
-      expect(mails[0].text).toContain("/products/alarm-c");
+      expect(mails[0].text).toContain("/de/products/alarm-c");
     }
     expect(await RestockAlertModel.countDocuments({ sku: "AL-C", notifiedAt: { $ne: null } })).toBe(2);
 

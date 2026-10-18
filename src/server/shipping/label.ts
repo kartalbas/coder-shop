@@ -5,11 +5,13 @@ import { parcelWeightGrams } from "@/lib/shipping/weight";
 import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
 import { transition } from "@/lib/orders/state-machine";
 import { shippedMail } from "@/lib/mail-templates";
+import { localizedPath } from "@/lib/locale-path";
 import { absoluteUrl } from "@/lib/site";
 import { label } from "@/lib/i18n";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "../db";
 import { getRequestLabels } from "../i18n";
+import { getMailContext } from "../mail-context";
 import { sendMail } from "../mail";
 import { advanceUnitsForOrder } from "../stock-units";
 import { resolveInsideDir } from "../secure-path";
@@ -148,15 +150,19 @@ export async function createLabelCore(
   await advanceUnitsForOrder(order.orderNumber, "shipped", "Etikett erstellt");
 
   // Issue #44: the tracking mail only after the order actually moved to shipped (not on
-  // the idempotent early return) — and never fails the label flow.
+  // the idempotent early return) — and never fails the label flow. #58 decision point 3:
+  // it renders in the *order's* language, not the admin's; the carrier code rides along
+  // as data.
   try {
+    const ctx = await getMailContext(order.language);
     await sendMail({
       to: order.customer.email,
-      ...shippedMail({
+      ...shippedMail(ctx, {
         name: order.customer.name,
         orderNumber: order.orderNumber,
         trackingNumber: shipment.trackingNumber,
-        link: absoluteUrl(`/orders/${order.orderNumber}`),
+        carrier: (order.shipping.carrier ?? provider.name).toUpperCase(),
+        link: absoluteUrl(localizedPath(ctx.language, `/orders/${order.orderNumber}`)),
       }),
     });
   } catch (error) {
