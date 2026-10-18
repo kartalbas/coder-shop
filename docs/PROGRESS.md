@@ -1617,3 +1617,15 @@ Done — M1–M6 + QA complete.
   (needs-review filter, usage context + preview link, keyboard-driven inline editing,
   change history); step 5 translatable catalog content + two-language checkout e2e;
   admin language switcher.
+### #58 (step 3 slice) — page metadata follows the translation table ✅ — issue stays open
+- `generateMetadata` of the listing, cart, checkout, comparison and order-confirmation
+  pages now reads `getLabels(lang)` behind `connection()`: titles and descriptions are
+  table texts, `{vat}`/`{number}` interpolated. The #63 rename had mechanically turned
+  the German comparison title into „Produkte compare" — the table restores
+  „Produkte vergleichen". All ten metadata keys seeded in all five languages (the seed
+  test covers them).
+- Verified: e2e `chrome-translations.spec.ts` +1 (fr listing title/description, es cart
+  title, it compare title — fails on the pre-change build); `npm run build`/lint/knip ✅,
+  `npm test` ✅ 569, `npm run test:e2e` ✅ 67/67.
+- **Left open (#58):** step 3 remainder (remaining storefront/admin/mail/invoice body
+  strings + no-German-literals guard), step 4 remainder, step 5, admin switcher.

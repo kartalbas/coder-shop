@@ -12,12 +12,23 @@ import { dimensionsForTypes } from "@/lib/catalog-types";
 import { cn } from "@/lib/utils";
 import { getCatalogTypes } from "@/server/catalog-types";
 import { getProductsBySlugs } from "@/server/search";
-import { getIntlLocale } from "@/server/i18n";
+import { getIntlLocale, getLabels } from "@/server/i18n";
+import { label } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "Produkte compare",
-  description: "Bis zu vier Produkte Seite an Seite — Preise, Marken und die Attribute des Typs.",
-};
+// Issue #58 step 3: metadata texts from the translation table (the #63 rename had
+// mechanically turned the German title into "Produkte compare" — the table fixes it).
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  await connection();
+  const labels = await getLabels((await params).lang);
+  return {
+    title: label(labels, "shop.meta.compare.title"),
+    description: label(labels, "shop.meta.compare.description"),
+  };
+}
 
 const MAX_SLUGS = 12;
 

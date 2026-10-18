@@ -161,6 +161,98 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       es: "coder-shop — tienda de demostración",
     },
   },
+  // Page metadata (#58 step 3): titles and descriptions per page, {placeholders} for
+  // the VAT label and the order number.
+  {
+    key: "shop.meta.products.title",
+    area: "shop",
+    de: "Alle Produkte",
+    texts: { fr: "Tous les produits", it: "Tutti i prodotti", rm: "Tut ils products", es: "Todos los productos" },
+  },
+  {
+    key: "shop.meta.products.description",
+    area: "shop",
+    de: "Das Sortiment des coder-shop — filterbar nach Marke und den Attributen der Produkte.",
+    texts: {
+      fr: "L'assortiment de coder-shop — filtrable par marque et par attribut des produits.",
+      it: "L'assortimento di coder-shop — filtrabile per marca e attributi dei prodotti.",
+      rm: "Il assortment dal coder-shop — filtrabel ten marca ed attributs dals products.",
+      es: "El surtido de coder-shop: filtrable por marca y atributos de los productos.",
+    },
+  },
+  {
+    key: "shop.meta.cart.title",
+    area: "shop",
+    de: "Warenkorb",
+    texts: { fr: "Panier", it: "Carrello", rm: "Charret", es: "Cesta" },
+  },
+  {
+    key: "shop.meta.cart.description",
+    area: "shop",
+    de: "Ihr Warenkorb — coder-shop. Preise in CHF inklusive {vat}",
+    texts: {
+      fr: "Votre panier — coder-shop. Prix en CHF, {vat} comprise",
+      it: "Il vostro carrello — coder-shop. Prezzi in CHF, {vat} inclusa",
+      rm: "Voss charret — coder-shop. Pretschs en CHF, {vat} inclus",
+      es: "Su cesta — coder-shop. Precios en CHF, {vat} incluido",
+    },
+  },
+  {
+    key: "shop.meta.checkout.title",
+    area: "shop",
+    de: "Kasse",
+    texts: { fr: "Caisse", it: "Cassa", rm: "Cassa", es: "Caja" },
+  },
+  {
+    key: "shop.meta.checkout.description",
+    area: "shop",
+    de: "Adresse, Versand und Zahlung — coder-shop. Preise in CHF inklusive {vat}",
+    texts: {
+      fr: "Adresse, livraison et paiement — coder-shop. Prix en CHF, {vat} comprise",
+      it: "Indirizzo, spedizione e pagamento — coder-shop. Prezzi in CHF, {vat} inclusa",
+      rm: "Indiris, spediziun e pajament — coder-shop. Pretschs en CHF, {vat} inclus",
+      es: "Dirección, envío y pago — coder-shop. Precios en CHF, {vat} incluido",
+    },
+  },
+  {
+    key: "shop.meta.compare.title",
+    area: "shop",
+    de: "Produkte vergleichen",
+    texts: {
+      fr: "Comparer des produits",
+      it: "Confrontare prodotti",
+      rm: "Comparar products",
+      es: "Comparar productos",
+    },
+  },
+  {
+    key: "shop.meta.compare.description",
+    area: "shop",
+    de: "Bis zu vier Produkte Seite an Seite — Preise, Marken und die Attribute des Typs.",
+    texts: {
+      fr: "Jusqu'à quatre produits côte à côte — prix, marques et attributs du type.",
+      it: "Fino a quattro prodotti fianco a fianco — prezzi, marchi e attributi del tipo.",
+      rm: "Fin a quatter products in ina rinfatscha — pretschs, marcas ed attributs dal tip.",
+      es: "Hasta cuatro productos lado a lado: precios, marcas y atributos del tipo.",
+    },
+  },
+  {
+    key: "shop.meta.order.title",
+    area: "shop",
+    de: "Bestellung {number}",
+    texts: { fr: "Commande {number}", it: "Ordine {number}", rm: "Ordin {number}", es: "Pedido {number}" },
+  },
+  {
+    key: "shop.meta.order.description",
+    area: "shop",
+    de: "Status und Details Ihrer Bestellung {number} — coder-shop.",
+    texts: {
+      fr: "Statut et détails de votre commande {number} — coder-shop.",
+      it: "Stato e dettagli del vostro ordine {number} — coder-shop.",
+      rm: "Status e detagls da voss ordin {number} — coder-shop.",
+      es: "Estado y detalles de su pedido {number} — coder-shop.",
+    },
+  },
 ];
 
 export function activeLanguages(languages: LanguageConfig[]): LanguageConfig[] {

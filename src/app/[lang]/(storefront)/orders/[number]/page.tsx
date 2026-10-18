@@ -11,7 +11,8 @@ import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrderStatusChain } from "@/components/storefront/order-status-chain";
 import QRCode from "qrcode";
 import { createFormatters } from "@/lib/format";
-import { getIntlLocale } from "@/server/i18n";
+import { getIntlLocale, getLabels } from "@/server/i18n";
+import { interpolate, label } from "@/lib/i18n";
 import { HAPPY_PATH, PICKUP_PATH } from "@/lib/orders/state-machine";
 import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
 import { STORE } from "@/lib/store";
@@ -26,10 +27,12 @@ interface PagePropsLocal {
 }
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
-  const { number } = await params;
+  const { number, lang } = await params;
+  // Issue #58 step 3: metadata texts from the translation table, order number interpolated.
+  const labels = await getLabels(lang);
   return {
-    title: `Bestellung ${number}`,
-    description: `Status und Details Ihrer Bestellung ${number} — coder-shop.`,
+    title: interpolate(label(labels, "shop.meta.order.title"), { number }),
+    description: interpolate(label(labels, "shop.meta.order.description"), { number }),
   };
 }
 

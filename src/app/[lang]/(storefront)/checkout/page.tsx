@@ -10,13 +10,23 @@ import { getCustomerProfile } from "@/server/customers";
 import { getCreditLimitCents, getInvoiceCreditUsageCents } from "@/server/invoices";
 import { getCustomerSessionUserId } from "@/server/session";
 import { getShopSettings } from "@/server/shop-settings";
+import { getLabels } from "@/server/i18n";
+import { interpolate, label } from "@/lib/i18n";
 
-export async function generateMetadata(): Promise<Metadata> {
+// Issue #58 step 3: metadata texts from the translation table, VAT label interpolated.
+export async function generateMetadata({
+  params,
+}: PageProps<"/[lang]/checkout">): Promise<Metadata> {
   await connection();
-  const settings = await getShopSettings();
+  const [settings, labels] = await Promise.all([
+    getShopSettings(),
+    getLabels((await params).lang),
+  ]);
   return {
-    title: "Kasse",
-    description: `Adresse, Versand und Zahlung — coder-shop. Preise in CHF inklusive ${vatLabel(settings.vatRatePercent)}`,
+    title: label(labels, "shop.meta.checkout.title"),
+    description: interpolate(label(labels, "shop.meta.checkout.description"), {
+      vat: vatLabel(settings.vatRatePercent),
+    }),
   };
 }
 

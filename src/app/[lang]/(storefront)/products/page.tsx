@@ -5,16 +5,26 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { listProducts } from "@/server/search";
 import { getCatalogTypes } from "@/server/catalog-types";
+import { getLabels } from "@/server/i18n";
+import { label } from "@/lib/i18n";
 import { allFacetDimensionKeys } from "@/lib/catalog-types";
 import { menuCategories } from "@/lib/menu";
 import { parseListingParams } from "@/lib/validations/listing";
 import { ListingShell } from "@/components/storefront/listing-shell";
 import { ProductGridSkeleton } from "@/components/storefront/skeletons";
 
-export const metadata: Metadata = {
-  title: "Alle Produkte",
-  description: "Das Sortiment des coder-shop — filterbar nach Marke und den Attributen der Produkte.",
-};
+// Issue #58 step 3: the metadata texts come from the translation table in the request
+// language (behind connection(), like the `[lang]` layout's own metadata).
+export async function generateMetadata({
+  params,
+}: PageProps<"/[lang]/products">): Promise<Metadata> {
+  await connection();
+  const labels = await getLabels((await params).lang);
+  return {
+    title: label(labels, "shop.meta.products.title"),
+    description: label(labels, "shop.meta.products.description"),
+  };
+}
 
 async function ProductsView({ searchParams }: { searchParams: PageProps<"/[lang]/products">["searchParams"] }) {
   await connection();

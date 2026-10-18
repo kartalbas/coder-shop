@@ -27,3 +27,15 @@ test("the Spanish chrome answers in Spanish", async ({ request }) => {
   expect(html).toContain("Surtido");
   expect(html).toContain("Derecho de devolución de 14 días");
 });
+
+test("page titles and descriptions follow the language", async ({ request }) => {
+  const products = await (await request.get("/fr/products")).text();
+  expect(products).toContain("<title>Tous les produits");
+  expect(products).toContain('content="L&#x27;assortiment de coder-shop');
+
+  const cart = await (await request.get("/es/cart")).text();
+  expect(cart).toContain("<title>Cesta");
+
+  const compare = await (await request.get("/it/products/compare?slugs=a,b")).text();
+  expect(compare).toContain("<title>Confrontare prodotti");
+});
