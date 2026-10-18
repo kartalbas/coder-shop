@@ -3,9 +3,12 @@
 import { ShoppingCart } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { interpolate, label } from "@/lib/i18n";
 import { cartCount, openCartDrawer, useCart } from "@/stores/cart";
 
-export function CartButton() {
+// Issue #58 step 3: the aria label is a translation-table text of the request language;
+// the test id keeps the drawer reachable without selecting a label in any one language.
+export function CartButton({ labels }: { labels: Readonly<Record<string, string>> }) {
   const cart = useCart();
   const count = cartCount(cart);
   return (
@@ -13,7 +16,8 @@ export function CartButton() {
       variant="ghost"
       size="icon"
       className="relative"
-      aria-label={`Warenkorb, ${count} Artikel`}
+      data-testid="cart-button"
+      aria-label={interpolate(label(labels, "shop.header.cart"), { count: String(count) })}
       onClick={openCartDrawer}
     >
       <ShoppingCart className="size-4" />

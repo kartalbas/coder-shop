@@ -94,9 +94,9 @@ export function CartDrawer({ labels }: { labels: Record<string, string> }) {
                     variant="ghost"
                     size="icon"
                     className="size-8 shrink-0 self-start text-muted-foreground"
-                      aria-label={interpolate(label(labels, "shop.cart.remove"), {
-                        name: line.name,
-                      })}
+                    aria-label={interpolate(label(labels, "shop.cart.remove"), {
+                      name: line.name,
+                    })}
                     onClick={() => removeLine(line.sku)}
                   >
                     <Trash2 className="size-4" />

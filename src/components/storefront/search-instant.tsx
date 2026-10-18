@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ProductImage } from "@/components/storefront/product-image";
 import { useFormatters } from "@/components/storefront/locale-formatters";
 import { useDebounce } from "@/hooks/use-debounce";
+import { interpolate, label } from "@/lib/i18n";
 
 interface SearchHit {
   slug: string;
@@ -18,7 +19,8 @@ interface SearchHit {
   variantHint: string;
 }
 
-export function SearchInstant() {
+// Issue #58 step 3: every fixed text is a translation-table label of the request language.
+export function SearchInstant({ labels }: { labels: Readonly<Record<string, string>> }) {
   const { chf } = useFormatters();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -110,8 +112,8 @@ export function SearchInstant() {
           aria-controls="search-listbox"
           aria-autocomplete="list"
           aria-activedescendant={activeIndex >= 0 ? `search-option-${activeIndex}` : undefined}
-          aria-label="Schnellsuche"
-          placeholder="Suchen… (⌘K)"
+          aria-label={label(labels, "shop.search.label")}
+          placeholder={label(labels, "shop.search.placeholder")}
           className="pl-8"
           value={query}
           onChange={(event) => {
@@ -133,7 +135,7 @@ export function SearchInstant() {
         <ul
           id="search-listbox"
           role="listbox"
-          aria-label="Suchergebnisse"
+          aria-label={label(labels, "shop.search.results")}
           className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg"
         >
           {hits.map((hit, index) => (
@@ -177,7 +179,7 @@ export function SearchInstant() {
           role="status"
           className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-lg"
         >
-          Keine Treffer für «{term}»
+          {interpolate(label(labels, "shop.search.noHits"), { term })}
         </div>
       )}
     </div>

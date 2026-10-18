@@ -1670,3 +1670,35 @@ Done — M1–M6 + QA complete.
   account/auth forms, listing/filter, admin strings + admin language switcher,
   mail/invoice/slip/label texts in the recipient's language, no-German-literals guard),
   step 4 remainder, step 5, admin switcher.
+
+### #58 (review fixes) — hermetic cart e2e + the untranslated header/cart labels ✅ — issue stays open
+- **e2e hermeticity (the review's blocker):** `cart-translations.spec.ts` `seedCart`
+  assumed the seeded line stays under the free-shipping threshold — after earlier specs
+  consumed stock the first in-stock product could exceed it and the locked-sentence
+  assertion timed out (69/70 at HEAD). It now reads `freeShippingFromCents` from
+  `/api/shop-settings` and picks, cheapest-first, a variant with stock whose unit price
+  is below the threshold — the locked bar renders deterministically regardless of what
+  earlier specs consumed; the threshold stays data, never a hard-coded price.
+- **Untranslated labels into the table (9 keys, seeded in all five languages):** the cart
+  page's empty-state subtitle, `Maximal {max} an Lager` and the summary footnote
+  (`{shipping}`/`{amount}`/`{vat}` interpolated already formatted), and the three header
+  control labels the step-3 chrome pass missed — cart button `Warenkorb, {count}
+  Artikel`, theme toggle, and the instant search (field label, placeholder, results
+  aria-label, „Keine Treffer für «{term}»"). `Header` hands its existing label map to
+  `CartButton`/`ThemeToggle`/`SearchInstant` (the established prop pattern).
+- **Language-independent drawer test:** `CartButton` gained `data-testid="cart-button"`
+  (same convention as `compare-tray`); the drawer spec clicks it instead of the German
+  „Warenkorb" name and asserts the French cart/search labels are present and the German
+  ones absent on `/fr`.
+- Verified: two consecutive full `npm run test:e2e` runs 70/70 (the failure was
+  stock-state dependent — a single run proves nothing); on the stashed pre-change build
+  the updated spec fails 2/3 (German subtitle, missing testid/French header labels),
+  reproduced; seed-translation test covers the 9 new keys × 5 languages. Gate report
+  `/ → 307`, `/produkte → 308` re-confirmed as the intended #63/#58 behaviour (asserted
+  by the green `language-routing`/`english-urls` specs). `npm run build`/lint/knip ✅,
+  `npm test` ✅ 571, `npm run test:e2e` ✅ 70/70; tree clean, nothing running.
+- **Left open (#58):** unchanged — step 3 remainder (checkout body, product page +
+  review strings incl. the `ab` price prefix, listing/filter strings such as the sort
+  select's „Sortierung", account/auth forms, admin strings + admin language switcher,
+  mail/invoice/slip/label texts in the recipient's language, no-German-literals guard),
+  step 4 remainder, step 5, admin switcher.

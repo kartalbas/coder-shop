@@ -35,9 +35,9 @@ export function Header({
           <MegaMenu categories={categories} />
         </nav>
         <div className="ml-auto flex flex-1 items-center justify-end gap-1 sm:gap-2">
-          <SearchInstant />
+          <SearchInstant labels={labels} />
           <LanguageSwitcher languages={languages} />
-          <ThemeToggle />
+          <ThemeToggle labels={labels} />
           {/* Issue #39: the portal itself decides between account and login page. */}
           <Link
             href="/account"
@@ -46,7 +46,7 @@ export function Header({
           >
             <UserRound className="size-5" aria-hidden />
           </Link>
-          <CartButton />
+          <CartButton labels={labels} />
         </div>
       </div>
       <nav

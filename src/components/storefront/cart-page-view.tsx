@@ -48,9 +48,7 @@ export function CartPageView({ labels }: { labels: Record<string, string> }) {
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-24 text-center">
         <ShoppingBag className="size-12 text-muted-foreground" aria-hidden />
         <h1 className="text-2xl font-bold">{label(labels, "shop.cart.emptyPage")}</h1>
-        <p className="text-muted-foreground">
-          Entdecken Sie unser Sortiment an Smartphones, Schuhen und Kleidung.
-        </p>
+        <p className="text-muted-foreground">{label(labels, "shop.cart.emptySubtitle")}</p>
         <Button asChild size="lg">
           <Link href="/products">{label(labels, "shop.action.continueShopping")}</Link>
         </Button>
@@ -91,9 +89,9 @@ export function CartPageView({ labels }: { labels: Record<string, string> }) {
                         variant="ghost"
                         size="icon"
                         className="size-8 shrink-0 text-muted-foreground"
-                          aria-label={interpolate(label(labels, "shop.cart.remove"), {
-                            name: line.name,
-                          })}
+                        aria-label={interpolate(label(labels, "shop.cart.remove"), {
+                          name: line.name,
+                        })}
                         onClick={() => removeLine(line.sku)}
                       >
                         <Trash2 className="size-4" />
@@ -132,7 +130,9 @@ export function CartPageView({ labels }: { labels: Record<string, string> }) {
                         <p className="font-semibold">{chf(line.unitPriceCents * line.qty)}</p>
                         {line.qty >= line.stock && (
                           <p className="text-xs text-destructive">
-                            Maximal {line.stock} an Lager
+                            {interpolate(label(labels, "shop.cart.maxStock"), {
+                              max: line.stock,
+                            })}
                           </p>
                         )}
                       </div>
@@ -157,12 +157,14 @@ export function CartPageView({ labels }: { labels: Record<string, string> }) {
               {/* Issue #45: the code is remembered here and applied in the checkout. */}
               <DiscountInput subtotalCents={subtotal} labels={labels} />
               <p className="text-xs text-muted-foreground">
-                {activeShippingMethods(settings)
-                  .filter((method) => !method.storePickup)
-                  .map((method) => `${method.label} ${chf(method.priceCents)}`)
-                  .join(", ")}{" "}
-                — ab {chf(settings.freeShippingFromCents)} kostenlos. Preise inkl.{" "}
-                {vatLabel(settings.vatRatePercent)}.
+                {interpolate(label(labels, "shop.cart.summaryNote"), {
+                  shipping: activeShippingMethods(settings)
+                    .filter((method) => !method.storePickup)
+                    .map((method) => `${method.label} ${chf(method.priceCents)}`)
+                    .join(", "),
+                  amount: chf(settings.freeShippingFromCents),
+                  vat: vatLabel(settings.vatRatePercent),
+                })}
               </p>
               <Button asChild size="lg" className="w-full">
                 <Link href="/checkout">{label(labels, "shop.action.checkout")}</Link>

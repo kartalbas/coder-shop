@@ -20,11 +20,29 @@ interface ApiProduct {
   variants: ApiVariant[];
 }
 
+// Hermetic: the free-shipping assertion below expects the *locked* bar, so the seeded
+// line must stay below the configured threshold — read from /api/shop-settings (data,
+// never a hard-coded price) and cheapest-first, so earlier specs consuming stock or the
+// admin editing the threshold can never flip the bar out from under the assertion.
 async function seedCart(page: Page): Promise<void> {
-  const response = await page.request.get("/api/products");
+  const settings = (await (await page.request.get("/api/shop-settings")).json()) as {
+    freeShippingFromCents: number;
+  };
+  const response = await page.request.get("/api/products?sort=price-asc");
   const body = (await response.json()) as { items: ApiProduct[] };
-  const product = body.items.find((item) => item.variants.some((v) => v.stock > 0))!;
-  const variant = product.variants.find((v) => v.stock > 0)!;
+  const candidate = body.items
+    .flatMap((item) =>
+      item.variants
+        .filter((v) => v.stock > 0)
+        .map((variant) => ({
+          product: item,
+          variant,
+          unitPriceCents: item.priceCents + variant.priceDeltaCents,
+        })),
+    )
+    .find((entry) => entry.unitPriceCents < settings.freeShippingFromCents)!;
+  const product = candidate.product;
+  const variant = candidate.variant;
   const line = {
     productId: product.id,
     slug: product.slug,
@@ -49,7 +67,11 @@ test("the empty French cart page answers in French", async ({ page }) => {
     page.getByRole("heading", { level: 1, name: "Votre panier est vide" }),
   ).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("link", { name: "Continuer vos achats" })).toBeVisible();
+  await expect(
+    page.getByText("Découvrez notre assortiment de smartphones"),
+  ).toBeVisible();
   await expect(page.getByText("Ihr Warenkorb ist leer")).toHaveCount(0);
+  await expect(page.getByText("Entdecken Sie unser Sortiment")).toHaveCount(0);
 });
 
 test("the filled French cart page, summary and discount field are French", async ({ page }) => {
@@ -75,7 +97,15 @@ test("the filled French cart page, summary and discount field are French", async
 test("the French cart drawer answers in French", async ({ page }) => {
   await seedCart(page);
   await page.goto("/fr/products");
-  await page.locator("header").getByRole("button", { name: /Warenkorb/ }).click();
+  // The header's own control labels follow the language — the drawer is reached through
+  // the language-independent test id, and no German label remains in the French header.
+  await expect(page.getByTestId("cart-button")).toHaveAttribute("aria-label", /^Panier,/);
+  await expect(page.getByRole("combobox", { name: "Recherche rapide" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Warenkorb/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Helles oder dunkles Design aktivieren" }),
+  ).toHaveCount(0);
+  await page.getByTestId("cart-button").click();
   const drawer = page.getByRole("dialog");
   await expect(drawer.getByRole("heading", { name: "Panier" })).toBeVisible({
     timeout: 30_000,

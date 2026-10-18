@@ -296,6 +296,107 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       es: "Código de descuento",
     },
   },
+  {
+    key: "shop.cart.emptySubtitle",
+    area: "shop",
+    de: "Entdecken Sie unser Sortiment an Smartphones, Schuhen und Kleidung.",
+    texts: {
+      fr: "Découvrez notre assortiment de smartphones, chaussures et vêtements.",
+      it: "Scoprite la nostra gamma di smartphone, scarpe e abbigliamento.",
+      rm: "Scuvrizzi our assortiment da smartphones, chalzas e vestgadira.",
+      es: "Descubra nuestro surtido de smartphones, zapatos y ropa.",
+    },
+  },
+  {
+    key: "shop.cart.maxStock",
+    area: "shop",
+    de: "Maximal {max} an Lager",
+    texts: {
+      fr: "Maximum {max} en stock",
+      it: "Massimo {max} in magazzino",
+      rm: "Maximal {max} en magazun",
+      es: "Máximo {max} en stock",
+    },
+  },
+  {
+    key: "shop.cart.summaryNote",
+    area: "shop",
+    de: "{shipping} — ab {amount} kostenlos. Preise inkl. {vat}.",
+    texts: {
+      fr: "{shipping} — offerts dès {amount}. Prix incl. {vat}.",
+      it: "{shipping} — gratuiti da {amount}. Prezzi incl. {vat}.",
+      rm: "{shipping} — gratuit da {amount}. Preiss incl. {vat}.",
+      es: "{shipping} — gratis a partir de {amount}. Precios con {vat}.",
+    },
+  },
+  // Header control labels (#58 step 3): the cart button, theme toggle and instant
+  // search sit in the header but were missed when the chrome was extracted.
+  {
+    key: "shop.header.cart",
+    area: "shop",
+    de: "Warenkorb, {count} Artikel",
+    texts: {
+      fr: "Panier, {count} articles",
+      it: "Carrello, {count} articoli",
+      rm: "Charret, {count} artitgels",
+      es: "Cesta, {count} artículos",
+    },
+  },
+  {
+    key: "shop.header.theme",
+    area: "shop",
+    de: "Helles oder dunkles Design aktivieren",
+    texts: {
+      fr: "Activer le thème clair ou sombre",
+      it: "Attiva il tema chiaro o scuro",
+      rm: "Activar il design cler u stgir",
+      es: "Activar el tema claro u oscuro",
+    },
+  },
+  {
+    key: "shop.search.label",
+    area: "shop",
+    de: "Schnellsuche",
+    texts: {
+      fr: "Recherche rapide",
+      it: "Ricerca rapida",
+      rm: "Tschertga sperta",
+      es: "Búsqueda rápida",
+    },
+  },
+  {
+    key: "shop.search.placeholder",
+    area: "shop",
+    de: "Suchen… (⌘K)",
+    texts: {
+      fr: "Rechercher… (⌘K)",
+      it: "Cerca… (⌘K)",
+      rm: "Tschertgar… (⌘K)",
+      es: "Buscar… (⌘K)",
+    },
+  },
+  {
+    key: "shop.search.results",
+    area: "shop",
+    de: "Suchergebnisse",
+    texts: {
+      fr: "Résultats de recherche",
+      it: "Risultati di ricerca",
+      rm: "Resultats da tschertga",
+      es: "Resultados de búsqueda",
+    },
+  },
+  {
+    key: "shop.search.noHits",
+    area: "shop",
+    de: "Keine Treffer für «{term}»",
+    texts: {
+      fr: "Aucun résultat pour «{term}»",
+      it: "Nessun risultato per «{term}»",
+      rm: "Nagins resultats per «{term}»",
+      es: "Sin resultados para «{term}»",
+    },
+  },
   // Page metadata (#58 step 3): titles and descriptions per page, {placeholders} for
   // the VAT label and the order number.
   {
