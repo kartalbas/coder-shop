@@ -43,7 +43,7 @@ web_deploy() {  # web_deploy [COMMIT] — default HEAD
     rsync -a --include='*.webp' --exclude='*' "$REPO/public/products/" public/products/ 2>/dev/null
     npm ci --no-audit --no-fund >"$LOGS/live-install.log" 2>&1 \
       && npx next build >"$LOGS/live-build.log" 2>&1 \
-      && npm run seed >"$LOGS/live-seed.log" 2>&1 \
+      && { if [[ -f .env.local ]]; then npm run seed; else npm run setup:lan; fi; } >"$LOGS/live-seed.log" 2>&1 \
       && npm run images >"$LOGS/live-images.log" 2>&1 ) \
     || { log "live: update to ${rev:0:7} failed (live-*.log) — the running shop stays"; return 1; }
   systemctl --user stop coder-shop-web 2>/dev/null || true
