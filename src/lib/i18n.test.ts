@@ -4,9 +4,13 @@ import {
   createTranslator,
   defaultLanguage,
   DEFAULT_LANGUAGES,
+  DEFAULT_TRANSLATIONS,
   filterTranslations,
+  interpolate,
   intlLocaleOf,
   isTranslated,
+  label,
+  labelMap,
   parseAcceptLanguage,
   resolveLanguage,
   textFor,
@@ -141,6 +145,39 @@ describe("intlLocaleOf (#58 step 2b)", () => {
 
   it("an empty table falls back to the base language code", () => {
     expect(intlLocaleOf([], "fr")).toBe("de");
+  });
+});
+
+describe("labelMap / label / interpolate (#58 step 3)", () => {
+  const entries: TranslationEntry[] = [
+    { key: "a.b", area: "shop", de: "Hallo {name}", texts: { fr: "Bonjour {name}" } },
+    { key: "c.d", area: "shop", de: "Service", texts: {} },
+  ];
+
+  it("resolves every key to the language's text with German fallback", () => {
+    const labels = labelMap(entries, "fr");
+    expect(labels).toEqual({ "a.b": "Bonjour {name}", "c.d": "Service" });
+  });
+
+  it("an unknown label answers the key itself — visibly missing", () => {
+    expect(label({ "a.b": "x" }, "unknown.key")).toBe("unknown.key");
+  });
+
+  it("fills {placeholder} values and leaves unknown ones standing", () => {
+    expect(interpolate("Hallo {name}, {vat}", { name: "Welt" })).toBe("Hallo Welt, {vat}");
+  });
+});
+
+describe("seed translations (#58 — no key ships untranslated)", () => {
+  it("every seeded key has a text in every seeded language", () => {
+    for (const entry of DEFAULT_TRANSLATIONS) {
+      for (const language of DEFAULT_LANGUAGES) {
+        expect(
+          isTranslated(entry, language.code),
+          `${entry.key} fehlt in ${language.code}`,
+        ).toBe(true);
+      }
+    }
   });
 });
 

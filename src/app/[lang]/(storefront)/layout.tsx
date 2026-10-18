@@ -13,7 +13,7 @@ import { LocalStoreHydrator } from "@/components/storefront/local-store-hydrator
 import { CompareTray } from "@/components/storefront/compare-tray";
 import { WishlistSync } from "@/components/storefront/wishlist-sync";
 import { getCustomerSessionUserId } from "@/server/session";
-import { getActiveLanguages, getIntlLocale } from "@/server/i18n";
+import { getActiveLanguages, getIntlLocale, getLabels } from "@/server/i18n";
 import {
   LocaleFormattersProvider,
   LocaleSync,
@@ -32,10 +32,18 @@ async function WishlistSyncGate() {
 // Issue #61: the category navigation is catalog configuration (data). It is read in a
 // dynamic hole so the static shell of every storefront page survives; the fallbacks
 // carry the exact header heights so nothing shifts when the real navigation streams in.
-async function HeaderSlot() {
+async function HeaderSlot({ lang }: { lang: string }) {
   await connection();
-  const [types, languages] = await Promise.all([getCatalogTypes(), getActiveLanguages()]);
-  return <Header categories={menuCategories(types)} languages={languages} />;
+  // Issue #58 step 3: the chrome texts come from the translation table, resolved to
+  // the request language and handed to the client header as a plain label map.
+  const [types, languages, labels] = await Promise.all([
+    getCatalogTypes(),
+    getActiveLanguages(),
+    getLabels(lang),
+  ]);
+  return (
+    <Header categories={menuCategories(types)} languages={languages} labels={labels} />
+  );
 }
 
 function HeaderSkeleton() {
@@ -62,10 +70,20 @@ async function LocaleSlot({ lang }: { lang: string }) {
   return <LocaleSync intlLocale={await getIntlLocale(lang)} />;
 }
 
-async function FooterSlot() {
+async function FooterSlot({ lang }: { lang: string }) {
   await connection();
-  const [types, settings] = await Promise.all([getCatalogTypes(), getShopSettings()]);
-  return <Footer categories={menuCategories(types)} vatLabelText={vatLabel(settings.vatRatePercent)} />;
+  const [types, settings, labels] = await Promise.all([
+    getCatalogTypes(),
+    getShopSettings(),
+    getLabels(lang),
+  ]);
+  return (
+    <Footer
+      categories={menuCategories(types)}
+      vatLabelText={vatLabel(settings.vatRatePercent)}
+      labels={labels}
+    />
+  );
 }
 
 function FooterSkeleton() {
@@ -103,14 +121,14 @@ export default async function StorefrontLayout({
         Zum Inhalt springen
       </a>
       <Suspense fallback={<HeaderSkeleton />}>
-        <HeaderSlot />
+        <HeaderSlot lang={lang} />
       </Suspense>
       <CartDrawer />
       <main id="main" className="flex-1">
         {children}
       </main>
       <Suspense fallback={<FooterSkeleton />}>
-        <FooterSlot />
+        <FooterSlot lang={lang} />
       </Suspense>
     </CartProvider>
     </ShopSettingsProvider>

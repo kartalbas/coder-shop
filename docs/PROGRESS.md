@@ -1596,3 +1596,24 @@ Done — M1–M6 + QA complete.
   metadata; step 4 remainder (needs-review filter, usage context + preview link,
   keyboard-driven inline editing, change history); step 5 translatable catalog content
   + two-language checkout e2e; admin language switcher.
+
+### #58 (step 3 slice) — chrome texts come from the translation table ✅ — issue stays open
+- **Label plumbing:** `labelMap`/`label`/`interpolate` (pure, `lib/i18n.ts`),
+  `getLabels(lang)` (server) — the whole table resolved to the request language as one
+  serializable key→text map; `HeaderSlot`/`FooterSlot` hand it to the client chrome as
+  a prop (DECISIONS: a client translator context fed by an API was rejected — first-paint
+  flash). Unknown keys answer themselves (visibly missing).
+- **Extracted (seeded in all five languages):** header nav/account aria labels and the
+  footer (tagline with `{vat}` placeholder, assortment, service, shipping, payment,
+  returns, copyright with `{year}` rendered around it).
+- Verified: `i18n.test.ts` +4 (labelMap language + German fallback, key-as-missing
+  label, placeholder fill/keep, and the seed check — every `DEFAULT_TRANSLATIONS` key
+  translated in every `DEFAULT_LANGUAGES` language, fails on an untranslated key);
+  new e2e `chrome-translations.spec.ts` (3: de base, fr and es chrome — fails on the
+  pre-change build where the chrome was hard-coded German).
+  `npm run build`/lint/knip ✅, `npm test` ✅ 569, `npm run test:e2e` ✅ 66/66.
+- **Left open (#58):** step 3 remainder — extract the remaining storefront/admin/mail/
+  invoice strings + no-German-literals guard + translated metadata; step 4 remainder
+  (needs-review filter, usage context + preview link, keyboard-driven inline editing,
+  change history); step 5 translatable catalog content + two-language checkout e2e;
+  admin language switcher.

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
+import { interpolate, label } from "@/lib/i18n";
 import type { MenuCategory } from "@/lib/menu";
 
 const noSubscribe = () => () => {};
@@ -17,12 +18,16 @@ function CurrentYear() {
 
 // Issue #61: the assortment links follow the catalog type configuration.
 // Issue #64: the VAT wording is configured data, passed in by the server slot.
+// Issue #58 step 3: every fixed text is a translation-table label of the request
+// language; the VAT label and the year fill the text's placeholders.
 export function Footer({
   categories,
   vatLabelText,
+  labels,
 }: {
   categories: readonly MenuCategory[];
   vatLabelText: string;
+  labels: Readonly<Record<string, string>>;
 }) {
   return (
     <footer className="border-t bg-muted/40">
@@ -30,11 +35,11 @@ export function Footer({
         <div>
           <p className="text-sm font-semibold">coder-shop</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Premium-Technik, Schuhe und Kleidung. Alle Preise in CHF inklusive {vatLabelText}
+            {interpolate(label(labels, "shop.footer.tagline"), { vat: vatLabelText })}
           </p>
         </div>
-        <nav aria-label="Footer Navigation">
-          <p className="text-sm font-semibold">Sortiment</p>
+        <nav aria-label={label(labels, "shop.footer.assortment")}>
+          <p className="text-sm font-semibold">{label(labels, "shop.footer.assortment")}</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
             {categories.map((category) => (
               <li key={category.type}>
@@ -49,16 +54,16 @@ export function Footer({
           </ul>
         </nav>
         <div>
-          <p className="text-sm font-semibold">Service</p>
+          <p className="text-sm font-semibold">{label(labels, "shop.footer.service")}</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            <li>Versand aus der Schweiz</li>
-            <li>Zahlung in CHF</li>
-            <li>14 Tage Rückgaberecht</li>
+            <li>{label(labels, "shop.footer.shipping")}</li>
+            <li>{label(labels, "shop.footer.payment")}</li>
+            <li>{label(labels, "shop.footer.returns")}</li>
           </ul>
         </div>
       </div>
       <p className="border-t py-4 text-center text-xs text-muted-foreground">
-        © <CurrentYear /> coder-shop — Demo-Shop
+        © <CurrentYear /> {label(labels, "shop.footer.copyright")}
       </p>
     </footer>
   );

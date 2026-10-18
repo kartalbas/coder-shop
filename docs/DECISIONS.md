@@ -688,7 +688,21 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   friends) stay the **base-locale** formatters of the German-based side (admin, mails,
   invoices) until step 3 moves their strings into the table. A per-request rewrite of the
   formatters through module state was rejected: it would race between requests.
-- **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin editor,
-  step 2's routing/switcher/hreflang and step 2b's locale-parameterized formats are done;
-  the string extraction, the catalog content and the two-language checkout e2e follow in
-  the remaining steps.
+- **UI texts reach components as a resolved label map, not as a live translator
+  object (#58 step 3).** `getLabels(lang)` turns the whole table into one plain
+  key→text map (German fallback already applied) that a server slot hands to client
+  components as a serializable prop — no second round-trip, no context fetch, no way
+  for a client component to see another language's base text. `label(map, key)`
+  answers an unknown key with the key itself (visibly missing, like the translator),
+  and `interpolate(text, { vat, year, … })` fills `{placeholder}` values so texts
+  stay whole sentences per language while the values stay data. A client-side
+  translator context fed by an API was rejected: it would flash German (or raw keys)
+  on every first paint.
+- **Every seeded key ships translated in every seeded language** — a unit test walks
+  `DEFAULT_TRANSLATIONS` × `DEFAULT_LANGUAGES` and fails on any missing text, which
+  is the #58 "missing translations fall back visibly in tests" check for seed content.
+- **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin
+  editor, step 2's routing/switcher/hreflang, step 2b's locale-parameterized formats
+  and step 3's first slice (label plumbing + header/footer chrome) are done; the rest
+  of the string extraction with the no-German-literals guard, the catalog content and
+  the two-language checkout e2e follow in the remaining steps.

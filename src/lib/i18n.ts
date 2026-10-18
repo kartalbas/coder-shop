@@ -64,6 +64,103 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     de: "Warenkorb",
     texts: { fr: "Panier", it: "Carrello", rm: "Charret", es: "Cesta" },
   },
+  // Storefront chrome (#58 step 3 slice): header and footer strings, every one seeded
+  // in all five languages — the seed test below fails if a key ships untranslated.
+  {
+    key: "shop.header.nav.main",
+    area: "shop",
+    de: "Hauptnavigation",
+    texts: {
+      fr: "Navigation principale",
+      it: "Navigazione principale",
+      rm: "Navigaziun principala",
+      es: "Navegación principal",
+    },
+  },
+  {
+    key: "shop.header.nav.categories",
+    area: "shop",
+    de: "Kategorien (mobil)",
+    texts: {
+      fr: "Catégories (mobile)",
+      it: "Categorie (mobile)",
+      rm: "Categorias (mobil)",
+      es: "Categorías (móvil)",
+    },
+  },
+  {
+    key: "shop.header.account",
+    area: "shop",
+    de: "Mein Konto",
+    texts: {
+      fr: "Mon compte",
+      it: "Il mio account",
+      rm: "Mes conto",
+      es: "Mi cuenta",
+    },
+  },
+  {
+    key: "shop.footer.tagline",
+    area: "shop",
+    de: "Premium-Technik, Schuhe und Kleidung. Alle Preise in CHF inklusive {vat}",
+    texts: {
+      fr: "Technique premium, chaussures et vêtements. Tous les prix en CHF, {vat} inclus",
+      it: "Tecnica premium, scarpe e abbigliamento. Tutti i prezzi in CHF, {vat} inclusa",
+      rm: "Tecnica premium, chaussas e vestgadira. Tut ils pretschs en CHF, {vat} inclus",
+      es: "Tecnología premium, calzado y ropa. Todos los precios en CHF, {vat} incluido",
+    },
+  },
+  {
+    key: "shop.footer.assortment",
+    area: "shop",
+    de: "Sortiment",
+    texts: { fr: "Assortiment", it: "Assortimento", rm: "Sortiment", es: "Surtido" },
+  },
+  {
+    key: "shop.footer.service",
+    area: "shop",
+    de: "Service",
+    texts: { fr: "Service", it: "Servizio", rm: "Servetsch", es: "Servicio" },
+  },
+  {
+    key: "shop.footer.shipping",
+    area: "shop",
+    de: "Versand aus der Schweiz",
+    texts: {
+      fr: "Expédition depuis la Suisse",
+      it: "Spedizione dalla Svizzera",
+      rm: "Spedition da la Svizra",
+      es: "Envío desde Suiza",
+    },
+  },
+  {
+    key: "shop.footer.payment",
+    area: "shop",
+    de: "Zahlung in CHF",
+    texts: { fr: "Paiement en CHF", it: "Pagamento in CHF", rm: "Pajament en CHF", es: "Pago en CHF" },
+  },
+  {
+    key: "shop.footer.returns",
+    area: "shop",
+    de: "14 Tage Rückgaberecht",
+    texts: {
+      fr: "Droit de retour de 14 jours",
+      it: "Diritto di recesso di 14 giorni",
+      rm: "Dretg da revista da 14 dis",
+      es: "Derecho de devolución de 14 días",
+    },
+  },
+  {
+    key: "shop.footer.copyright",
+    area: "shop",
+    de: "coder-shop — Demo-Shop",
+    texts: {
+      fr: "coder-shop — boutique de démonstration",
+      it: "coder-shop — negozio dimostrativo",
+      rm: "coder-shop — shop da demo",
+      es: "coder-shop — tienda de demostración",
+    },
+  },
 ];
 
 export function activeLanguages(languages: LanguageConfig[]): LanguageConfig[] {
@@ -162,6 +259,35 @@ export function filterTranslations(
       .toLowerCase()
       .includes(q);
   });
+}
+
+// The whole table resolved into one plain key→text map for a language (#58 step 3):
+// serializable, so a server slot can hand it to client components, which read their
+// texts by key without ever seeing the German base of another language.
+export function labelMap(
+  entries: Iterable<TranslationEntry>,
+  language: string,
+): Record<string, string> {
+  const labels: Record<string, string> = {};
+  for (const entry of entries) labels[entry.key] = textFor(entry, language);
+  return labels;
+}
+
+// Reads one label out of a `labelMap` result; an unknown key answers the key itself —
+// visibly missing, exactly like the translator's behaviour.
+export function label(labels: Readonly<Record<string, string>>, key: string): string {
+  return labels[key] ?? key;
+}
+
+// Fills `{name}` placeholders in a translated text (issue #58 step 3) — the texts stay
+// whole sentences per language, the values (VAT label, year, counts) come from code.
+export function interpolate(
+  text: string,
+  vars: Record<string, string | number>,
+): string {
+  return text.replace(/\{(\w+)\}/g, (match: string, name: string) =>
+    name in vars ? String(vars[name]) : match,
+  );
 }
 
 export interface Translator {

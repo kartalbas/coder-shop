@@ -4,6 +4,7 @@ import {
   createTranslator,
   DEFAULT_LANGUAGES,
   intlLocaleOf,
+  labelMap,
   DEFAULT_TRANSLATIONS,
   type LanguageConfig,
   type Translator,
@@ -68,6 +69,13 @@ export async function getTranslations(): Promise<TranslationEntry[]> {
 // `missingKeys()` is the report the missing-translations view and tests read.
 export async function getTranslator(language: string): Promise<Translator> {
   return createTranslator(await getTranslations(), language);
+}
+
+// The whole table as one key→text map for a language (#58 step 3): server slots hand it
+// to client components as a serializable prop, so client UIs read their texts from the
+// table without a second round-trip and without ever seeing another language's base.
+export async function getLabels(language: string): Promise<Record<string, string>> {
+  return labelMap(await getTranslations(), language);
 }
 
 function validKey(key: string): boolean {
