@@ -6,10 +6,19 @@ import { MegaMenu } from "./mega-menu";
 import { SearchInstant } from "./search-instant";
 import { ThemeToggle } from "./theme-toggle";
 import { CartButton } from "./cart-button";
+import { LanguageSwitcher } from "./language-switcher";
 import type { MenuCategory } from "@/lib/menu";
+import type { LanguageConfig } from "@/lib/i18n";
 
 // Issue #61: the category navigation is rendered from the catalog type configuration.
-export function Header({ categories }: { categories: readonly MenuCategory[] }) {
+// Issue #58: the language switcher is rendered from the language rows.
+export function Header({
+  categories,
+  languages,
+}: {
+  categories: readonly MenuCategory[];
+  languages: readonly LanguageConfig[];
+}) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:gap-4">
@@ -24,6 +33,7 @@ export function Header({ categories }: { categories: readonly MenuCategory[] }) 
         </nav>
         <div className="ml-auto flex flex-1 items-center justify-end gap-1 sm:gap-2">
           <SearchInstant />
+          <LanguageSwitcher languages={languages} />
           <ThemeToggle />
           {/* Issue #39: the portal itself decides between account and login page. */}
           <Link

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "Das Sortiment des coder-shop — filterbar nach Marke und den Attributen der Produkte.",
 };
 
-async function ProductsView({ searchParams }: { searchParams: PageProps<"/products">["searchParams"] }) {
+async function ProductsView({ searchParams }: { searchParams: PageProps<"/[lang]/products">["searchParams"] }) {
   await connection();
   // Issue #61: everything the listing knows about types, facets and labels comes from
   // the catalog type configuration.
@@ -32,7 +32,7 @@ async function ProductsView({ searchParams }: { searchParams: PageProps<"/produc
   );
 }
 
-export default function ProductsPage({ searchParams }: PageProps<"/products">) {
+export default function ProductsPage({ searchParams }: PageProps<"/[lang]/products">) {
   return (
     <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-8"><ProductGridSkeleton /></div>}>
       <ProductsView searchParams={searchParams} />

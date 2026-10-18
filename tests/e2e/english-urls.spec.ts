@@ -36,11 +36,16 @@ test("every former German URL permanently redirects to its English route", async
   }
 });
 
-test("the English routes answer directly (no rewrite indirection)", async ({ request }) => {
+// Issue #58: a prefix-free English path is answered with the language redirect (307) to
+// its localized URL; behind the prefix the English path is the route itself.
+test("the English routes answer behind the language prefix", async ({ request }) => {
   const products = await request.get("/products", { maxRedirects: 0, failOnStatusCode: false });
-  expect(products.status(), "/products should answer directly").toBe(200);
-  const account = await request.get("/account", { maxRedirects: 0, failOnStatusCode: false });
-  // Guests are redirected to the login route — which is English too.
+  expect(products.status(), "/products should redirect to the language root").toBe(307);
+  expect(products.headers().location ?? "").toContain("/de/products");
+  const localized = await request.get("/de/products", { maxRedirects: 0, failOnStatusCode: false });
+  expect(localized.status(), "/de/products should answer directly").toBe(200);
+  const account = await request.get("/de/account", { maxRedirects: 0, failOnStatusCode: false });
+  // Guests are redirected to the login route — English path, current language prefix.
   expect(account.status()).toBe(307);
-  expect(account.headers().location ?? "").toContain("/account/login");
+  expect(account.headers().location ?? "").toContain("/de/account/login");
 });

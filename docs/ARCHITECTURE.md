@@ -7,7 +7,9 @@ currency CHF (de-CH), Swiss VAT included in prices (rate is shop configuration, 
 **Language rule (one language for code):** all identifiers, statuses, model fields, sort values,
 query params and route-segment code names are **English** (`new`, `paid`, `picking`, `packed`,
 `shipped`, `delivered`, `cancelled`; `customer`, `lines`, `totals`…) — **routes and public URLs
-too** (`/account/profile`, `/products`, `/cart`, `/checkout`, `/orders/…`, #63). German appears
+too** (`/account/profile`, `/products`, `/cart`, `/checkout`, `/orders/…`, #63) — the
+storefront serves them behind a language prefix (`/fr/account/profile`, #58), which never
+changes the English path. German appears
 **only** as the base language of the content (UI copy from the translation table, #58); the
 former German URLs answer a permanent 308 redirect to their English counterparts via
 `redirects()` in `next.config.ts` (§7).
@@ -78,32 +80,46 @@ scripts/
     prompt.ts               # pure prompt/seed/view logic (unit-tested)
     api.ts                  # image API client (fetch, retry w/ backoff, b64/url → WebP via sharp)
 src/
-  proxy.ts                  # Next 16 Proxy (Node runtime): /admin/* admin-scope session gate,
+  proxy.ts                  # Next 16 Proxy (Node runtime): language prefix for every
+                            # storefront path (#58: resolve → 307 or lang cookie, gates on
+                            # the stripped path), /admin/* admin-scope session gate,
                             # /account/* customer-scope gate (#39) + real 404 for unknown
                             # /products/[slug] before any bytes stream (§4, #28, #63)
   app/
-    layout.tsx              # root: fonts, ThemeProvider, Toaster, <RouteTransition>, metadata (§2 site.ts)
+    fonts.ts                # Geist font init shared by the two root layouts (#58)
+    site-metadata.ts        # metadata base shared by the two root layouts (#58)
     globals.css             # Tailwind v4 @theme, light/dark tokens, @media print (packing slip)
-    not-found.tsx           # global German 404 (noindex) — used by every notFound()/proxy 404
-    (storefront)/
-      layout.tsx            # Header (mega-menu, search, cart badge) + CartDrawer + Footer
-      page.tsx              # home
-      products/page.tsx     # listing — public URL /products (#63)
-      products/compare/page.tsx     # smartphone comparison —
-                            # /products/compare?slugs=… (#48)
-      products/[slug]/page.tsx      # product detail — /products/[slug]
-      cart/page.tsx         # full cart page — /cart (drawer is global)
-      checkout/page.tsx     # /checkout (prefill + login/guest choice, #39)
-      orders/[number]/page.tsx      # confirmation + status — /orders/[number]
-      orders/[number]/invoice/route.ts  # GET invoice PDF behind /orders/[number]/invoice
+    not-found.tsx           # German 404 (noindex) behind the internal /_not-found route —
+                            # the proxy's real-404 rewrite target for unknown products (#28)
+    [lang]/                 # storefront under the language prefix (#58): /de/products,
+                            # /fr/account/profile — the path itself stays English (#63);
+                            # generateStaticParams from the seeded language codes
+      layout.tsx            # storefront root layout: fonts, ThemeProvider, Toaster,
+                            # <RouteTransition>, <html lang>, per-language metadata +
+                            # hreflang alternates from the proxy's x-localized-path header
+      not-found.tsx         # localized 404 boundary (links to /{lang} and /{lang}/products)
+      (storefront)/
+        layout.tsx          # Header (mega-menu, search, language switcher, cart badge)
+                            # + CartDrawer + Footer
+        page.tsx            # home
+        products/page.tsx   # listing — public URL /{lang}/products (#63, #58)
+        products/compare/page.tsx   # smartphone comparison —
+                            # /{lang}/products/compare?slugs=… (#48)
+        products/[slug]/page.tsx    # product detail — /{lang}/products/[slug]
+        cart/page.tsx       # full cart page — /{lang}/cart (drawer is global)
+        checkout/page.tsx   # /{lang}/checkout (prefill + login/guest choice, #39)
+        orders/[number]/page.tsx    # confirmation + status — /{lang}/orders/[number]
+        orders/[number]/invoice/route.ts  # GET invoice PDF behind /{lang}/orders/[number]/invoice
                             # — same visibility rule as the order details (#40, §4)
-      account/              # customer portal (#39), guarded by the proxy + portal layout
-        (auth)/             # public: login, register, forgot-password, reset-password
-        (portal)/           # session-guarded: layout (nav), page (overview),
+        account/            # customer portal (#39), guarded by the proxy + portal layout
+          (auth)/           # public: login, register, forgot-password, reset-password
+          (portal)/         # session-guarded: layout (nav), page (overview),
                             # orders (list+search+claim+reorder), addresses, profile,
                             # invoices (offene Rechnungen mit Fälligkeit/Überfällig, #40),
                             # wishlist (gemerkte Produkte, #46)
-    admin/                  # admin URLs stay English (internal)
+    admin/                  # admin URLs stay English and prefix-free (internal)
+      layout.tsx            # admin root layout: same shell, <html lang="de">, noindex
+      not-found.tsx         # admin 404 boundary
       (auth)/login/page.tsx
       (panel)/              # session-guarded group (layout requires the admin session)
         layout.tsx          # sidebar + mobile sheet nav
@@ -141,13 +157,16 @@ src/
                             # client components (cacheable 60 s, #64)
       health/route.ts       # GET { ok } — also warms DB connection
   components/
+    not-found-content.tsx   # German 404 content shared by the per-root not-found pages (#58)
     password-rules-checklist.tsx  # live, aria-announced password rule checklist shared
                             # by every form that sets a password (#60)
     shop-settings-provider.tsx    # client context: loads /api/shop-settings once per page
                             # so cart/checkout compute totals from the configuration (#64)
     ui/                     # vendored shadcn components (kept canonical, knip-ignored, §13)
     storefront/             # named "storefront" (not "shop") — recorded deviation, DECISIONS
-      header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx, footer.tsx
+      header.tsx, mega-menu.tsx, search-instant.tsx, theme-toggle.tsx, footer.tsx,
+      language-switcher.tsx  # one link per active language row to the same page in that
+                            # language, aria-current + query preserved (#58)
       cart-drawer.tsx, cart-button.tsx, cart-provider.tsx, cart-page-view.tsx, product-card.tsx
       listing-shell.tsx, filter-sidebar.tsx, sort-select.tsx, pagination.tsx, skeletons.tsx,
       empty-state.tsx, free-shipping-progress.tsx
@@ -228,6 +247,8 @@ src/
     collections.ts          # Neuheiten | Bestseller | Sale (seed, listing, home, menu)
     product-selection.ts    # variant dimensions/selection + color→photo-slot rule (#18/#19)
     site.ts                 # SITE_URL + absoluteUrl (metadata, JSON-LD)
+    locale-path.ts          # splitLanguagePrefix/localizedPath — the language prefix as
+                            # pure path arithmetic, codes passed in as data (#58)
     images.ts               # isPhotoSrc — photo vs placeholder rule (§11)
     orders/state-machine.ts # statuses, transitions + validation + logging (pure)
     orders/labels.ts        # German order status labels (UI copy only)
@@ -814,11 +835,16 @@ all use **`MongoMemoryReplSet` (single-node)** — no compensation scheme anywhe
 
 ## 7. Client/server split (SPA feel)
 
-- **Routes and public URLs are English (#63):** the app routes themselves are `/products`,
-  `/products/:slug`, `/cart`, `/checkout`, `/orders/:number`… — no rewrite indirection.
-  `next.config.ts` `redirects()` answers every former German URL (`/produkte`, `/produkt/:slug`,
-  `/warenkorb`, `/kasse`, `/bestellung/:number`, `/konto/…`) with a permanent 308 to its English
-  counterpart; the mapping is configuration, not code. Query params are English
+- **Routes and public URLs are English (#63), prefixed by the language (#58):** the app routes
+  themselves are `/[lang]/products`, `/[lang]/products/:slug`, `/[lang]/cart`… — no rewrite
+  indirection. The proxy resolves the language for every prefix-free storefront request
+  (URL prefix > remembered `lang` cookie > `Accept-Language` > first active language row),
+  redirects to `/{lang}{path}` with the query preserved, and refreshes the cookie on prefixed
+  requests; its gates (admin, account, product-slug 404) run on the stripped path. The admin
+  stays prefix-free. `next.config.ts` `redirects()` answers every former German URL
+  (`/produkte`, `/produkt/:slug`, `/warenkorb`, `/kasse`, `/bestellung/:number`, `/konto/…`)
+  with a permanent 308 to its English counterpart (redirects run before the proxy); the
+  mapping is configuration, not code. Query params are English
   (`type, brand, size, color, storage, material, sort, page`) because they are code-facing.
 - **Server Components** own data fetching: home, listing first paint, product page, all admin
   pages render from Mongoose directly (no client fetch waterfall, no API keys in bundle).
@@ -1045,6 +1071,10 @@ Specs (the three required journeys):
 - `translations.spec.ts` (#58) — admin edits a seeded text's French column and sees it on
   reload → creates a new key (German base + one language, untranslated columns show the
   visible „fehlt" marker) → adds a language row (Portuguese) through the languages editor.
+- `language-routing.spec.ts` (#58) — browser language picks the prefix and `<html lang>` →
+  hreflang lists every active language + x-default for the same path → switcher keeps page,
+  query and the remembered choice → every language serves the listing → unknown product
+  answers a real 404 behind the prefix.
 
 Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
 prerequisite; `npm test` and `npm run lint` are independent).

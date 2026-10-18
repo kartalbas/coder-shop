@@ -655,7 +655,26 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   untouched. A partial payload therefore cannot destroy the texts of the languages it
   did not send — deactivating a language and then editing any row keeps that language's
   texts, which is what the deactivate-not-delete decision above promises.
-- **Steps:** step 1 (tables, resolver, cached loader, insert-only seed) and the admin
-  editor (translation table + languages, behind the validated cores) are done; the
-  language-prefix routing, the switcher, the string extraction, the catalog content and
-  the two-language checkout e2e follow in the remaining steps.
+- **The language is the first URL segment of every storefront route (#58 step 2).** All
+  storefront routes moved under `app/[lang]` (`/de/products`, `/fr/account/profile` — the
+  path itself stays English in every language, #63); the proxy resolves the language
+  (prefix > `lang` cookie > `Accept-Language` > first active row), 307-redirects prefix-free
+  paths with the query preserved and refreshes the cookie on prefixed requests, so the
+  choice is remembered. A proxy *rewrite* was rejected: it would make the root layout
+  dynamic and kill the PPR shell. Two root layouts replace the single one (`app/[lang]`
+  storefront with `<html lang>` + `generateStaticParams` from the seeded language codes,
+  `app/admin` prefix-free with `<html lang="de">` and noindex); the admin gets its language
+  switcher once its strings live in the table (step 3). The proxy's gates (admin, account,
+  product-slug 404) run on the stripped path, and public files (paths with an extension —
+  the generated photos share the `/products/` prefix since #63) pass through untouched.
+- **hreflang comes from `generateMetadata`, fed by a proxy request header (#58 step 2).**
+  Metadata cannot see the current path without opting every page out of prerendering, so
+  the proxy passes the stripped path as `x-localized-path` and the `[lang]` layout builds
+  `alternates.languages` over the active rows plus `x-default` → default language behind
+  `connection()` — the shell stays static and the metadata streams. Rendering the links
+  from a client component was tried and rejected: they only reach the flight payload, not
+  the crawler-visible HTML.
+- **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin editor
+  and step 2's routing/switcher/hreflang are done; the locale-parameterized formats, the
+  string extraction, the catalog content and the two-language checkout e2e follow in the
+  remaining steps.

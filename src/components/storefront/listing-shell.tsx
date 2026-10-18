@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,9 @@ interface Props {
 export function ListingShell({ initial, categories, facetKeys }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Issue #58: the listing URL carries the language prefix — state changes stay on the
+  // current localized path instead of bouncing through the proxy's redirect.
+  const pathname = usePathname();
   // Issue #25: the router re-render triggered by `router.replace` already carries the new
   // listing data (the server page runs the same query) — the old extra client fetch of
   // /api/products made every change load the data twice. Now: one navigation, one request.
@@ -58,10 +61,10 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
       if (!("page" in updates)) next.delete("page");
       const qs = next.toString();
       startTransition(() => {
-        router.replace(qs ? `/products?${qs}` : "/products", { scroll: false });
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
       });
     },
-    [router, searchParams],
+    [router, searchParams, pathname],
   );
 
   // Issue #25: a new page shows the top of the grid, not the middle of the old one.
@@ -100,7 +103,7 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
     if (type) next.set("type", type);
     const qs = next.toString();
     startTransition(() => {
-      router.replace(qs ? `/products?${qs}` : "/products", { scroll: false });
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     });
   };
 

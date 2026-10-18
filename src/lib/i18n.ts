@@ -14,6 +14,10 @@ export interface LanguageConfig {
 
 const BASE_LANGUAGE = "de";
 
+// Issue #58 step 2: the proxy writes this cookie whenever a request arrives with a
+// language prefix, so the choice is remembered for prefix-free links and the next visit.
+export const LANGUAGE_COOKIE = "lang";
+
 // Seed content of the `languages` collection (#61/#64 pattern): the shop answers in the
 // four Swiss national languages plus Spanish; formats follow the Swiss locales.
 export const DEFAULT_LANGUAGES: LanguageConfig[] = [

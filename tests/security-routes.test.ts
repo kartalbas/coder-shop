@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Types } from "mongoose";
 import { NextRequest } from "next/server";
-import { proxy } from "@/proxy";
+import { config, proxy } from "@/proxy";
 import { ProductModel } from "@/models/product";
 import { UserModel } from "@/models/user";
 import { SESSION_COOKIE, createSessionToken } from "@/server/session-token";
@@ -64,7 +64,7 @@ describe("product slug guard (src/proxy.ts, issue #28)", () => {
   });
 
   function productRequest(slug: string): NextRequest {
-    return new NextRequest(`http://localhost:3000/products/${slug}`);
+    return new NextRequest(`http://localhost:3000/de/products/${slug}`);
   }
 
   it("answers a real 404 for an unknown slug", async () => {
@@ -79,12 +79,96 @@ describe("product slug guard (src/proxy.ts, issue #28)", () => {
 
   // Issue #63: /products is public now — the listing and the comparison page are
   // routes, not slugs, and must never fall into the admin gate.
-  for (const pathname of ["/products", "/products/compare"]) {
+  for (const pathname of ["/de/products", "/de/products/compare"]) {
     it(`lets the public route ${pathname} through without a session`, async () => {
       const response = await proxy(new NextRequest(`http://localhost:3000${pathname}`));
       expect(response.status).toBe(200);
     });
   }
+
+  // #63 gave photos and product pages the same /products/ prefix — a photo must never
+  // fall into the slug check (it would answer 404 for a file that exists).
+  it("serves a product photo without the slug check", async () => {
+    const response = await proxy(
+      new NextRequest("http://localhost:3000/products/bekanntes-produkt-1.webp"),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+});
+
+describe("language routing (src/proxy.ts, issue #58)", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+  });
+
+  function requestFor(pathname: string, headers: Record<string, string> = {}): NextRequest {
+    return new NextRequest(`http://localhost:3000${pathname}`, { headers });
+  }
+
+  it("redirects a prefix-free path to the default language, query preserved", async () => {
+    const response = await proxy(requestFor("/products?type=shoes&size=42"));
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/de/products");
+    expect(location.search).toBe("?type=shoes&size=42");
+  });
+
+  it("uses Accept-Language when nothing is remembered", async () => {
+    const response = await proxy(requestFor("/products", { "accept-language": "fr-CH,fr;q=0.9" }));
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/fr/products");
+  });
+
+  it("prefers the remembered cookie over the browser header", async () => {
+    const response = await proxy(
+      requestFor("/products", { "accept-language": "fr", cookie: "lang=it" }),
+    );
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/it/products");
+  });
+
+  it("redirects an unknown first segment into the resolved language", async () => {
+    const response = await proxy(requestFor("/xx/products"));
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/de/xx/products");
+  });
+
+  it("remembers the language of a prefixed request in the cookie", async () => {
+    const response = await proxy(requestFor("/fr/products"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("lang=fr");
+  });
+
+  it("keeps the admin prefix-free and gated", async () => {
+    const response = await proxy(requestFor("/admin/orders"));
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/admin/login");
+  });
+
+  it("gates the account portal behind the language prefix", async () => {
+    const response = await proxy(requestFor("/de/account/orders"));
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/de/account/login");
+    const login = await proxy(requestFor("/de/account/login"));
+    expect(login.status).toBe(200);
+  });
+
+  // The proxy function itself never sees matcher-excluded paths — the matcher is the
+  // only guard for the JSON API and Next internals, so it is asserted here.
+  it("matcher excludes the API, Next internals and files with extensions", () => {
+    const pattern = new RegExp(`^${config.matcher[0]}$`);
+    for (const path of [
+      "/api/health",
+      "/api/products",
+      "/_next/static/chunks/a.js",
+      "/_next/image?url=%2Fx.webp",
+      "/products/bekanntes-produkt-1.webp",
+      "/favicon.ico",
+    ]) {
+      expect(pattern.test(path), path).toBe(false);
+    }
+    for (const path of ["/", "/products", "/de/products", "/fr/account/profile", "/admin"]) {
+      expect(pattern.test(path), path).toBe(true);
+    }
+  });
 });
 
 describe("label path containment (label download route)", () => {

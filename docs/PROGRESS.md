@@ -1459,3 +1459,58 @@ Done — M1–M6 + QA complete.
   missing-translations filter, needs-review filter, usage context + preview link,
   keyboard-driven inline editing, change history; step 5 translatable catalog content
   + two-language checkout e2e.
+
+## ISSUES — queue session 18 (2026-10-18)
+
+### Gate report findings — no defect ✅
+- The gate's `GET /produkte → HTTP 308` and „the HTML links to no product page
+  (/produkt/…)" are the intended #63 behaviour (former German URLs answer a permanent
+  308 to their English counterpart; product links are `/products/…`). Re-verified live:
+  `/produkte` → 308 → `/products`, product links present, health 200.
+
+### #58 (step 2 slice) — language-prefix routing, switcher and hreflang ✅ — issue stays open
+- **Every storefront route moved under `app/[lang]`** (`git mv`, one pass): URLs become
+  `/de/products`, `/fr/account/profile` — the path itself stays English in every language
+  (#63). Two root layouts replace the single one: `app/[lang]/layout.tsx` (storefront:
+  `<html lang>` from the segment, `generateStaticParams` from the seeded language codes so
+  the PPR shells stay prerendered, per-language Open Graph locale) and `app/admin/layout.tsx`
+  (prefix-free, `<html lang="de">`, noindex — the admin switcher waits for step 3's
+  strings). Shared pieces: `app/fonts.ts`, `app/site-metadata.ts`,
+  `components/not-found-content.tsx` (per-root 404 boundaries + the global `/_not-found`
+  page the proxy's real-404 rewrite answers, #28).
+- **Proxy (`src/proxy.ts`):** resolves the language for every storefront request
+  (prefix > `lang` cookie > `Accept-Language` > first active row — the pure
+  `resolveLanguage`), 307-redirects prefix-free paths to `/{lang}{path}` with the query
+  preserved, refreshes the `lang` cookie on prefixed requests (choice remembered), and
+  runs its gates (admin, account, product-slug 404) on the **stripped** path; login
+  redirects get the prefix back. Public files (paths with an extension) pass through —
+  this also fixes a live regression from #63: generated photos share the `/products/`
+  prefix with product pages and the old slug check would have answered 404 for them.
+  Matcher: everything except `_next/`, `api/` and dotted paths.
+- **Pure `src/lib/locale-path.ts`:** `splitLanguagePrefix`/`localizedPath` + the
+  `x-localized-path` header name — the proxy, the switcher and the metadata all derive
+  their URLs from it with the language codes passed in as data.
+- **Switcher + hreflang:** `LanguageSwitcher` in the header (one link per active language
+  row to the same page in that language, query preserved, `aria-current`, iterates the
+  `languages` rows); hreflang alternates + `x-default` + per-language canonical from
+  `generateMetadata`, fed by the proxy's `x-localized-path` request header behind
+  `connection()` (#37 rule; a client-component variant was tried and rejected — its links
+  only reach the flight payload, not the crawler-visible HTML).
+- **Listing shell** state changes now `router.replace` on the current (prefixed) pathname
+  instead of the hard-coded `/products` — no redirect hop per filter change.
+- Verified: `src/lib/locale-path.test.ts` (7); `tests/security-routes.test.ts` rewritten
+  for the prefixed paths + new language-routing block (307 with query, Accept-Language,
+  cookie beats browser, unknown segment, cookie write, admin prefix-free, account gate
+  behind the prefix, photo passthrough, matcher exclusions); new e2e
+  `language-routing.spec.ts` (5: browser language → `/fr` + `<html lang="fr">`, hreflang
+  set + x-default, switcher keeps page/query/choice, all five languages serve the listing,
+  real 404 behind the prefix); `english-urls.spec.ts` updated (prefix-free `/products` is
+  the 307 to `/de/products` now; `/de/products` answers 200 directly) — all fail on the
+  pre-change build. Live: `/de/products` 200 with 6 hreflang links, `/produkte` → 308 →
+  `/products` → 307 → `/de/products`, unknown product 404 with the German 404 UI.
+  `npm run build`/lint/knip ✅, `npm test` ✅ 555, `npm run test:e2e` ✅ 60/60.
+- **Left open:** step 2b locale-parameterized formats (`format.ts` locale from the
+  language row); step 3 string extraction + no-German-literals guard + translated
+  metadata; step 4 remainder (missing/needs-review filters, usage context + preview,
+  keyboard inline editing, history); step 5 translatable catalog content + two-language
+  checkout e2e; admin language switcher.

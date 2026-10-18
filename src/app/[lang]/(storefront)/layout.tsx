@@ -13,6 +13,7 @@ import { LocalStoreHydrator } from "@/components/storefront/local-store-hydrator
 import { CompareTray } from "@/components/storefront/compare-tray";
 import { WishlistSync } from "@/components/storefront/wishlist-sync";
 import { getCustomerSessionUserId } from "@/server/session";
+import { getActiveLanguages } from "@/server/i18n";
 
 // Issue #46: only a logged-in customer has an account wishlist to sync into; guests
 // keep the browser list. The session check is a dynamic hole inside Suspense so the
@@ -29,7 +30,8 @@ async function WishlistSyncGate() {
 // carry the exact header heights so nothing shifts when the real navigation streams in.
 async function HeaderSlot() {
   await connection();
-  return <Header categories={menuCategories(await getCatalogTypes())} />;
+  const [types, languages] = await Promise.all([getCatalogTypes(), getActiveLanguages()]);
+  return <Header categories={menuCategories(types)} languages={languages} />;
 }
 
 function HeaderSkeleton() {
