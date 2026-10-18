@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CatalogDimensionConfig } from "@/lib/catalog-types";
+import { interpolate, label } from "@/lib/i18n";
 import { updateVariantAction, type ProductActionState } from "@/server/actions/admin/products";
 import type { ProductDto, VariantDto } from "@/server/search";
 
@@ -25,14 +27,29 @@ function VariantRow({
   incomingQty: number;
   serialTracked: boolean;
 }) {
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<ProductActionState | null, FormData>(
     updateVariantAction,
     null,
   );
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success(`Variante ${variant.sku} gespeichert.`);
+    if (state?.ok) {
+      toast.success(
+        interpolate(label(labelsRef.current, "admin.variants.saved"), { sku: variant.sku }),
+      );
+    }
   }, [state, variant.sku]);
+
+  // One aria pattern for every variant field: "<field label> <sku>" in each language.
+  const fieldAria = (fieldLabel: string) =>
+    interpolate(label(labels, "admin.variants.fieldAria"), { label: fieldLabel, sku: variant.sku });
 
   const handleSubmit = (formData: FormData) => {
     const payload = {
@@ -64,7 +81,7 @@ function VariantRow({
         {/* Issue #62 (#55): what is on order for this variant (open purchase orders). */}
         {incomingQty > 0 && (
           <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-            {incomingQty} bestellt
+            {interpolate(label(labels, "admin.variants.incoming"), { qty: incomingQty })}
           </p>
         )}
         {/* Issue #62 (#54): serial-tracked stock lives in the unit ledger, not in the field. */}
@@ -73,41 +90,41 @@ function VariantRow({
             href={`/admin/stock-units?q=${encodeURIComponent(variant.sku)}`}
             className="text-xs font-medium text-sky-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring dark:text-sky-400"
           >
-            Serien ansehen
+            {label(labels, "admin.variants.serials")}
           </Link>
         )}
       </div>
       <label className="space-y-1 text-xs text-muted-foreground">
-        Preisdifferenz (CHF)
+        {label(labels, "admin.variants.field.priceDelta")}
         <Input
           name="priceDelta"
           type="number"
           step="0.05"
           defaultValue={(variant.priceDeltaCents / 100).toFixed(2)}
           className="h-8 text-sm"
-          aria-label={`Preisdifferenz ${variant.sku}`}
+          aria-label={fieldAria(label(labels, "admin.variants.field.priceDelta"))}
         />
       </label>
       <label className="space-y-1 text-xs text-muted-foreground">
-        Lager
+        {label(labels, "admin.products.column.stock")}
         <Input
           name="stock"
           type="number"
           min={0}
           defaultValue={variant.stock}
           className="h-8 text-sm"
-          aria-label={`Lager ${variant.sku}`}
+          aria-label={fieldAria(label(labels, "admin.products.column.stock"))}
         />
       </label>
       <label className="space-y-1 text-xs text-muted-foreground">
-        Gewicht (g)
+        {label(labels, "admin.variants.field.weight")}
         <Input
           name="weight"
           type="number"
           min={1}
           defaultValue={variant.weightGrams}
           className="h-8 text-sm"
-          aria-label={`Gewicht ${variant.sku}`}
+          aria-label={fieldAria(label(labels, "admin.variants.field.weight"))}
         />
       </label>
       {dimensions.map((dimension) => (
@@ -123,14 +140,14 @@ function VariantRow({
                 : String(variant.attributes[dimension.key])
             }
             className="h-8 text-sm"
-            aria-label={`${dimension.label} ${variant.sku}`}
+            aria-label={fieldAria(dimension.label)}
           />
         </label>
       ))}
       <div className="col-span-2 flex items-end sm:col-span-4 lg:col-span-1">
         <Button type="submit" size="sm" disabled={pending}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          Speichern
+          {label(labels, "admin.action.save")}
         </Button>
       </div>
     </form>

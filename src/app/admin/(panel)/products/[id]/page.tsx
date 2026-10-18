@@ -8,7 +8,9 @@ import { ArrowLeft } from "lucide-react";
 import { FeaturedToggle, ProductCoreForm } from "@/components/admin/product-core-form";
 import { ImageEditor } from "@/components/admin/image-editor";
 import { VariantEditor } from "@/components/admin/variant-editor";
+import { interpolate, label } from "@/lib/i18n";
 import { getCatalogType } from "@/server/catalog-types";
+import { getRequestLabels } from "@/server/i18n";
 import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductForAdmin } from "@/server/products-admin";
 
@@ -17,14 +19,18 @@ interface PagePropsLocal {
 }
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Produkt ${id} — Admin`, description: "Stammdaten, Varianten und Bilder." };
+  await connection();
+  const [{ id }, labels] = await Promise.all([params, getRequestLabels()]);
+  return {
+    title: interpolate(label(labels, "admin.meta.productDetail.title"), { id }),
+    description: label(labels, "admin.meta.productDetail.description"),
+  };
 }
 
 async function ProductAdminDetail({ params }: PagePropsLocal) {
   await connection();
   const { id } = await params;
-  const product = await getProductForAdmin(id);
+  const [product, labels] = await Promise.all([getProductForAdmin(id), getRequestLabels()]);
   if (!product) notFound();
   // Issue #61: type label and the variant editor's attribute fields come from the
   // product type's configuration.
@@ -41,7 +47,7 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
         className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Zurück zur Produktliste
+        {label(labels, "admin.products.back")}
       </Link>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -55,14 +61,19 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
         <FeaturedToggle productId={product.id} featured={product.featured} />
       </div>
 
-      <section className="mt-6 rounded-xl border bg-card p-5" aria-label="Stammdaten">
-        <h2 className="mb-3 text-sm font-semibold">Stammdaten</h2>
+      <section
+        className="mt-6 rounded-xl border bg-card p-5"
+        aria-label={label(labels, "admin.products.coreHeading")}
+      >
+        <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.products.coreHeading")}</h2>
         <ProductCoreForm product={product} />
       </section>
 
-      <section className="mt-6" aria-label="Varianten">
+      <section className="mt-6" aria-label={label(labels, "admin.products.column.variants")}>
         <h2 className="mb-3 text-sm font-semibold">
-          Varianten ({product.variants.length}) — Preisdifferenz, Lager, Gewicht, Attribute
+          {interpolate(label(labels, "admin.products.variantsHeading"), {
+            count: product.variants.length,
+          })}
         </h2>
         <VariantEditor
           product={product}
@@ -72,8 +83,12 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
         />
       </section>
 
-      <section className="mt-6" aria-label="Bilder">
-        <h2 className="mb-3 text-sm font-semibold">Bilder ({product.images.length})</h2>
+      <section className="mt-6" aria-label={label(labels, "admin.products.imagesAria")}>
+        <h2 className="mb-3 text-sm font-semibold">
+          {interpolate(label(labels, "admin.products.imagesHeading"), {
+            count: product.images.length,
+          })}
+        </h2>
         <ImageEditor product={product} />
       </section>
     </div>

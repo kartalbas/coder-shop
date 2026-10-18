@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { label } from "@/lib/i18n";
 import { objectIdSchema } from "@/lib/validations/common";
+import { getRequestLabels } from "@/server/i18n";
 import {
   toggleFeaturedCore,
   updateImagesCore,
@@ -36,9 +38,10 @@ export async function updateProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   await requireAdminSession();
+  const invalidRequest = label(await getRequestLabels(), "admin.error.invalidRequest");
   const productId = objectIdSchema.safeParse(formData.get("productId"));
   const payload = parsePayload(formData);
-  if (!productId.success || payload === null) return { error: "Ungültige Anfrage." };
+  if (!productId.success || payload === null) return { error: invalidRequest };
 
   const result = await updateProductCore(productId.data, payload);
   if (!result.ok) return { error: result.error };
@@ -52,11 +55,12 @@ export async function updateVariantAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   await requireAdminSession();
+  const invalidRequest = label(await getRequestLabels(), "admin.error.invalidRequest");
   const productId = objectIdSchema.safeParse(formData.get("productId"));
   const sku = z.string().min(1).max(64).safeParse(formData.get("sku"));
   const payload = parsePayload(formData);
   if (!productId.success || !sku.success || payload === null) {
-    return { error: "Ungültige Anfrage." };
+    return { error: invalidRequest };
   }
 
   const result = await updateVariantCore(productId.data, sku.data, payload);
@@ -71,9 +75,10 @@ export async function updateImagesAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   await requireAdminSession();
+  const invalidRequest = label(await getRequestLabels(), "admin.error.invalidRequest");
   const productId = objectIdSchema.safeParse(formData.get("productId"));
   const payload = parsePayload(formData);
-  if (!productId.success || payload === null) return { error: "Ungültige Anfrage." };
+  if (!productId.success || payload === null) return { error: invalidRequest };
 
   const result = await updateImagesCore(productId.data, payload);
   if (!result.ok) return { error: result.error };
@@ -87,8 +92,9 @@ export async function toggleFeaturedAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   await requireAdminSession();
+  const invalidRequest = label(await getRequestLabels(), "admin.error.invalidRequest");
   const productId = objectIdSchema.safeParse(formData.get("productId"));
-  if (!productId.success) return { error: "Ungültige Anfrage." };
+  if (!productId.success) return { error: invalidRequest };
 
   const result = await toggleFeaturedCore(productId.data);
   if (!result.ok) return { error: result.error };

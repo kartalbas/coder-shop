@@ -22,6 +22,21 @@ test("orders, order detail and packing answer in French", async ({ page }) => {
     await expect(page.getByRole("columnheader", { name: "Kunde" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Bestellungen" })).toHaveCount(0);
 
+    // #58 review nit (14:13): the status tabs and badges are shop.status.* rows too —
+    // they answer in French, and no German status text is left on the list.
+    await expect(
+      page
+        .getByText(
+          /^(Nouvelle|Payée|En préparation|Emballée|Expédiée|Livrée|Prête au retrait|Retirée|Annulée)$/,
+        )
+        .first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        /^(Neu|Bezahlt|In Kommission|Verpackt|Versandt|Zugestellt|Bereit zur Abholung|Abgeholt|Storniert)$/,
+      ),
+    ).toHaveCount(0);
+
     // Order detail: sections and history in French; the transition area renders either
     // the French buttons or the French end-of-flow note (statuses vary across the run).
     await page.getByRole("table").getByRole("link").first().click();

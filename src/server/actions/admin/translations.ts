@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { TRANSLATION_AREAS } from "@/lib/i18n";
-import { saveLanguageCore, saveTranslationCore } from "@/server/i18n";
+import { label, TRANSLATION_AREAS, type LabelMap } from "@/lib/i18n";
+import { getRequestLabels, saveLanguageCore, saveTranslationCore } from "@/server/i18n";
 import { requireAdminSession } from "@/server/session";
 
 export interface TranslationActionState {
@@ -15,30 +15,45 @@ export interface TranslationActionState {
 // validated cores — the same write path the seed and tests use, so the cache is always
 // invalidated and no unvalidated text reaches the table.
 
-const translationSchema = z.object({
-  key: z
-    .string()
-    .trim()
-    .regex(/^[a-z][a-z0-9-]*(\.[a-zA-Z0-9-]+)+$/, "Übersetzungs-Key ungültig (z. B. shop.cart.title)."),
-  area: z.enum(TRANSLATION_AREAS),
-  de: z.string().trim().min(1, "Deutscher Basistext fehlt.").max(2000),
-  texts: z.record(z.string(), z.string().trim().max(2000)),
-});
+// Issue #58 step 3: both schemas are label-map factories — every message comes from the
+// translation table in the request language.
+function createTranslationSchema(labels: LabelMap) {
+  return z.object({
+    key: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-z][a-z0-9-]*(\.[a-zA-Z0-9-]+)+$/,
+        label(labels, "admin.translations.validation.keyShape"),
+      ),
+    area: z.enum(TRANSLATION_AREAS),
+    de: z
+      .string()
+      .trim()
+      .min(1, label(labels, "admin.translations.validation.deRequired"))
+      .max(2000),
+    texts: z.record(z.string(), z.string().trim().max(2000)),
+  });
+}
 
 export async function saveTranslationAction(
   _previous: TranslationActionState | null,
   formData: FormData,
 ): Promise<TranslationActionState> {
   await requireAdminSession();
+  const labels = await getRequestLabels();
   let payload: unknown;
   try {
     payload = JSON.parse(String(formData.get("payload") ?? ""));
   } catch {
-    return { ok: false, error: "Ungültige Eingaben." };
+    return { ok: false, error: label(labels, "admin.error.invalidRequest") };
   }
-  const parsed = translationSchema.safeParse(payload);
+  const parsed = createTranslationSchema(labels).safeParse(payload);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.error.invalidRequest"),
+    };
   }
   const result = await saveTranslationCore(parsed.data);
   if (!result.ok) return { ok: false, error: result.error };
@@ -47,28 +62,45 @@ export async function saveTranslationAction(
   return { ok: true };
 }
 
-const languageSchema = z.object({
-  code: z.string().trim().regex(/^[a-z]{2,3}$/, "Sprachcode: 2–3 Kleinbuchstaben."),
-  label: z.string().trim().min(1, "Sprachname fehlt.").max(60),
-  intlLocale: z.string().trim().min(1, "Intl-Locale fehlt.").max(20),
-  position: z.coerce.number().int().min(0).max(999),
-  active: z.boolean(),
-});
+function createLanguageSchema(labels: LabelMap) {
+  return z.object({
+    code: z
+      .string()
+      .trim()
+      .regex(/^[a-z]{2,3}$/, label(labels, "admin.languages.validation.codeShape")),
+    label: z
+      .string()
+      .trim()
+      .min(1, label(labels, "admin.languages.validation.nameRequired"))
+      .max(60),
+    intlLocale: z
+      .string()
+      .trim()
+      .min(1, label(labels, "admin.languages.validation.localeRequired"))
+      .max(20),
+    position: z.coerce.number().int().min(0).max(999),
+    active: z.boolean(),
+  });
+}
 
 export async function saveLanguageAction(
   _previous: TranslationActionState | null,
   formData: FormData,
 ): Promise<TranslationActionState> {
   await requireAdminSession();
+  const labels = await getRequestLabels();
   let payload: unknown;
   try {
     payload = JSON.parse(String(formData.get("payload") ?? ""));
   } catch {
-    return { ok: false, error: "Ungültige Eingaben." };
+    return { ok: false, error: label(labels, "admin.error.invalidRequest") };
   }
-  const parsed = languageSchema.safeParse(payload);
+  const parsed = createLanguageSchema(labels).safeParse(payload);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.error.invalidRequest"),
+    };
   }
   const result = await saveLanguageCore(parsed.data);
   if (!result.ok) return { ok: false, error: result.error };

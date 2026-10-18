@@ -2168,3 +2168,49 @@ Done — M1–M6 + QA complete.
   inline editing, change history); step 5 remainder (translatable catalog content +
   five-language demo content). The admin account page's field labels/toasts outside the
   password form stay with the step-5 settings UI area.
+
+## ISSUES — queue session 31 (2026-10-18)
+
+### #58 step 3 slice finished — admin products + catalog-types + settings + translations UI, tests, docs, gate
+
+- **Gate report fixed first:** `translations.spec.ts` failed because the new
+  `admin.translations.validation.keyShape` row used `shop.cart.title` as its example
+  text — the translation search matches texts too, so `?q=shop.cart.title` listed that
+  row first and the spec edited the wrong key. The example became a language-neutral
+  pattern description in all five languages; no real key is named in a validation text
+  anymore.
+- **The 25-file step-3 diff** (pages on `getRequestLabels()` + `generateMetadata`, the
+  eight client editors on `useLabels()`, the products/settings/catalog-types cores and
+  actions answering refusals from rows, the zod label-map factories) was finished per
+  the 15:05 review: `saveTranslationCore`/`saveLanguageCore` in `server/i18n.ts` were
+  the last cores still refusing in hard-coded German — they now answer from rows too
+  (three new rows: `admin.translations.validation.areaInvalid`,
+  `admin.translations.validation.unknownLanguage`,
+  `admin.languages.validation.positionInvalid`; the value suffixes `: <key>` were
+  dropped — the message names the rule, the payload carries the value).
+- **Tests:** `tests/admin-core-messages.test.ts` +7 (623 total) — the two promised
+  14:13 nit cases (transitionOrderCore lost conditional write → French conflict via a
+  `updateOne` spy; createLabelCore unwritable `data/labels` → French storage refusal,
+  order stays packed, chmod restored in `finally`) plus the step-3 refusals in French
+  with the German base alongside (product/variant/images unknown id, stale
+  `expectedStock` → `stockConflict` with sku, last shipping/payment method
+  deactivation, catalog-type key shape + missing dimensions, translation without German
+  base, language with a bad code). Every French assertion fails on the pre-change
+  build, where these were German literals. e2e: new
+  `admin-settings-translations.spec.ts` (switcher → French: product list heading/
+  columns/search placeholder, product detail sections + variant field labels, settings
+  fields, translation table chrome, German absent, read-only, switches back in
+  `finally`) and the promised French status-badge assertion in
+  `admin-orders-translations.spec.ts` (a `shop.status.*` badge visible, no German
+  status text on the list). Both fail on the pre-change build — those pages were
+  hard-coded German there.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 623 (62 files),
+  `npm run test:e2e` ✅ 94/94 (the product-photo 404 lines are the accepted
+  placeholder noise of 864d333, they fail nothing); tree clean, nothing running.
+- **Left open (#58):** step 4 purchasing + suppliers + stock-units + pickup + invoices
+  UI; step 5 customers + reviews + discounts + mails + dashboard + command palette +
+  picker + admin account page field labels; admin formats (still base-locale); step 6
+  mail/invoice/slip/label texts in the recipient's language (+ UPS provider texts);
+  step 7 no-German-literals guard; step 4 remainder (needs-review filter, usage
+  context, inline editing, change history); step 5 remainder (translatable catalog
+  content + five-language demo content).

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   BASE_LANGUAGE,
   TRANSLATION_AREAS,
+  label,
   type LanguageConfig,
   type TranslationArea,
   type TranslationEntry,
@@ -27,14 +29,6 @@ import {
   saveTranslationAction,
   type TranslationActionState,
 } from "@/server/actions/admin/translations";
-
-const AREA_LABELS: Record<TranslationArea, string> = {
-  shop: "Shop",
-  admin: "Admin",
-  mail: "Mails",
-  invoice: "Rechnungen",
-  catalog: "Katalog",
-};
 
 // Issue #58: one row of the translation table — the German base text is required,
 // every language column is optional (blank = missing, answers German until translated).
@@ -45,6 +39,13 @@ export function TranslationEditor({
   entry: TranslationEntry | null;
   languages: LanguageConfig[];
 }) {
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const router = useRouter();
   const [form, setForm] = useState({
     key: entry?.key ?? "",
@@ -65,7 +66,7 @@ export function TranslationEditor({
     if (!state || announced.current) return;
     announced.current = true;
     if (state.ok) {
-      toast.success("Übersetzung gespeichert");
+      toast.success(label(labelsRef.current, "admin.translations.saved"));
       router.push("/admin/translations");
       router.refresh();
     } else if (state.error) {
@@ -105,11 +106,11 @@ export function TranslationEditor({
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Bereich.Key in Kleinbuchstaben — eindeutig über alle Texte.
+                {label(labels, "admin.translations.keyHint")}
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="translation-area">Bereich</Label>
+              <Label htmlFor="translation-area">{label(labels, "admin.translations.areaLabel")}</Label>
               <Select
                 value={form.area}
                 onValueChange={(value) =>
@@ -122,7 +123,7 @@ export function TranslationEditor({
                 <SelectContent>
                   {TRANSLATION_AREAS.map((area) => (
                     <SelectItem key={area} value={area}>
-                      {AREA_LABELS[area]}
+                      {label(labels, `admin.translations.area.${area}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -130,7 +131,7 @@ export function TranslationEditor({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="translation-de">Deutsch (Basis, Pflicht)</Label>
+            <Label htmlFor="translation-de">{label(labels, "admin.translations.deLabel")}</Label>
             <Textarea
               id="translation-de"
               value={form.de}
@@ -144,10 +145,9 @@ export function TranslationEditor({
 
       <Card>
         <CardContent className="space-y-4 pt-6">
-          <p className="text-sm font-medium">Übersetzungen</p>
+          <p className="text-sm font-medium">{label(labels, "admin.translations.title")}</p>
           <p className="text-xs text-muted-foreground">
-            Leer lassen heisst «fehlt» — der Text antwortet dann sichtbar auf Deutsch,
-            bis er übersetzt ist.
+            {label(labels, "admin.translations.textsHint")}
           </p>
           {languages
             .filter((language) => language.code !== BASE_LANGUAGE)
@@ -159,7 +159,9 @@ export function TranslationEditor({
                     {language.code}
                   </span>
                   {!language.active && (
-                    <span className="ml-1 text-xs text-muted-foreground">(deaktiviert)</span>
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      {label(labels, "admin.translations.deactivated")}
+                    </span>
                   )}
                 </Label>
                 <Input
@@ -177,14 +179,14 @@ export function TranslationEditor({
       <div className="flex gap-2">
         <Button type="submit" disabled={pending}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          Speichern
+          {label(labels, "admin.action.save")}
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={() => router.push("/admin/translations")}
         >
-          Abbrechen
+          {label(labels, "admin.action.cancel")}
         </Button>
       </div>
     </form>

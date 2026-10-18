@@ -8,24 +8,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   BASE_LANGUAGE,
+  TRANSLATION_AREAS,
   filterTranslations,
+  interpolate,
   isTranslated,
-  type TranslationArea,
+  label,
 } from "@/lib/i18n";
-import { getActiveLanguages, getTranslations } from "@/server/i18n";
+import { getActiveLanguages, getRequestLabels, getTranslations } from "@/server/i18n";
 
-export const metadata: Metadata = {
-  title: "Übersetzungen — Admin",
-  description: "Alle Texte des Shops als Zeilen der einen Übersetzungstabelle.",
-};
-
-const AREA_LABELS: Record<TranslationArea, string> = {
-  shop: "Shop",
-  admin: "Admin",
-  mail: "Mails",
-  invoice: "Rechnungen",
-  catalog: "Katalog",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.translations.title"),
+    description: label(labels, "admin.meta.translations.description"),
+  };
+}
 
 interface PagePropsLocal {
   searchParams: Promise<{ q?: string; area?: string; missing?: string }>;
@@ -36,7 +34,11 @@ const LIST_LIMIT = 200;
 export default async function AdminTranslationsPage({ searchParams }: PagePropsLocal) {
   await connection();
   const { q, area, missing } = await searchParams;
-  const [entries, languages] = await Promise.all([getTranslations(), getActiveLanguages()]);
+  const [entries, languages, labels] = await Promise.all([
+    getTranslations(),
+    getActiveLanguages(),
+    getRequestLabels(),
+  ]);
   // The missing filter only accepts a real active language code — junk falls back to off.
   const missingFor =
     missing && missing !== "alle" && languages.some((language) => language.code === missing)
@@ -53,22 +55,20 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
     <div className="max-w-6xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Übersetzungen</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.translations.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Jeder Text des Shops ist eine Zeile — Deutsch ist die Pflichtbasis, jede
-            andere Sprache ein Eintrag in der Karte. Leer heisst «fehlt» und fällt
-            sichtbar auf Deutsch zurück.
+            {label(labels, "admin.translations.intro")}
           </p>
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline">
             <Link href="/admin/translations/languages">
               <Globe className="size-4" aria-hidden />
-              Sprachen
+              {label(labels, "admin.translations.languages")}
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/admin/translations/neu">Neuer Text</Link>
+            <Link href="/admin/translations/neu">{label(labels, "admin.translations.new")}</Link>
           </Button>
         </div>
       </div>
@@ -78,35 +78,37 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
           type="search"
           name="q"
           defaultValue={q ?? ""}
-          placeholder="Key oder Text suchen…"
-          aria-label="Übersetzungen suchen"
+          placeholder={label(labels, "admin.translations.searchPlaceholder")}
+          aria-label={label(labels, "admin.translations.searchAria")}
           className="h-9 min-w-48 flex-1 rounded-md border bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
         />
         <select
           name="area"
           defaultValue={area ?? "alle"}
-          aria-label="Bereich filtern"
+          aria-label={label(labels, "admin.translations.areaAria")}
           className="h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <option value="alle">Alle Bereiche</option>
-          {Object.entries(AREA_LABELS).map(([value, label]) => (
+          <option value="alle">{label(labels, "admin.translations.allAreas")}</option>
+          {TRANSLATION_AREAS.map((value) => (
             <option key={value} value={value}>
-              {label}
+              {label(labels, `admin.translations.area.${value}`)}
             </option>
           ))}
         </select>
         <select
           name="missing"
           defaultValue={missingFor ?? "alle"}
-          aria-label="Nach fehlender Übersetzung filtern"
+          aria-label={label(labels, "admin.translations.missingAria")}
           className="h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <option value="alle">Alle Sprachen vollständig</option>
+          <option value="alle">{label(labels, "admin.translations.allComplete")}</option>
           {languages
             .filter((language) => language.code !== BASE_LANGUAGE)
             .map((language) => (
               <option key={language.code} value={language.code}>
-                Fehlt in: {language.label}
+                {interpolate(label(labels, "admin.translations.missingIn"), {
+                  language: language.label,
+                })}
               </option>
             ))}
         </select>
@@ -114,19 +116,19 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
           type="submit"
           className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring"
         >
-          Filtern
+          {label(labels, "admin.translations.filter")}
         </button>
       </form>
 
       {shown.length === 0 ? (
-        <p className="mt-6 text-sm text-muted-foreground">Keine Texte gefunden.</p>
+        <p className="mt-6 text-sm text-muted-foreground">{label(labels, "admin.translations.empty")}</p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                 <th className="px-4 py-2.5 font-medium">Key</th>
-                <th className="px-4 py-2.5 font-medium">Deutsch</th>
+                <th className="px-4 py-2.5 font-medium">{label(labels, "admin.translations.column.de")}</th>
                 {languages
                   .filter((language) => language.code !== BASE_LANGUAGE)
                   .map((language) => (
@@ -143,7 +145,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
                   <td className="px-4 py-2.5">
                     <p className="font-mono text-xs font-semibold">{entry.key}</p>
                     <Badge variant="outline" className="mt-1">
-                      {AREA_LABELS[entry.area]}
+                      {label(labels, `admin.translations.area.${entry.area}`)}
                     </Badge>
                   </td>
                   <td className="max-w-64 px-4 py-2.5">{entry.de}</td>
@@ -155,7 +157,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
                           entry.texts[language.code]
                         ) : (
                           <span className="text-xs italic text-amber-700 dark:text-amber-400">
-                            fehlt
+                            {label(labels, "admin.translations.missing")}
                           </span>
                         )}
                       </td>
@@ -163,7 +165,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
                   <td className="px-4 py-2.5 text-right">
                     <Button asChild variant="outline" size="sm">
                       <Link href={`/admin/translations/${encodeURIComponent(entry.key)}`}>
-                        Bearbeiten
+                        {label(labels, "admin.action.edit")}
                       </Link>
                     </Button>
                   </td>
@@ -175,8 +177,10 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
       )}
       {filtered.length > LIST_LIMIT && (
         <p className="mt-3 text-sm text-muted-foreground">
-          Es werden die ersten {LIST_LIMIT} von {filtered.length} Treffern angezeigt —
-          weiter eingrenzen mit der Suche.
+          {interpolate(label(labels, "admin.translations.cap"), {
+            limit: LIST_LIMIT,
+            total: filtered.length,
+          })}
         </p>
       )}
     </div>

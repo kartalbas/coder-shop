@@ -1,4 +1,6 @@
+import { interpolate, label } from "@/lib/i18n";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
 import {
   ProductTypeConfigModel,
@@ -25,23 +27,32 @@ export async function getCatalogType(key: string): Promise<CatalogTypeConfig | u
 export async function saveCatalogTypeCore(
   config: CatalogTypeConfig,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Issue #58 step 3: refusals answer from the translation table in the request
+  // language; outside a request scope the first active language answers.
+  const labels = await getRequestLabels();
+  const withKey = (key: string, value: string) =>
+    interpolate(label(labels, key), { key: value });
   if (!/^[a-z][a-z0-9-]*$/.test(config.key)) {
-    return { ok: false, error: "Typ-Key: Kleinbuchstaben, Ziffern und Bindestriche." };
+    return { ok: false, error: label(labels, "admin.catalogTypes.error.keyShape") };
   }
-  if (!config.label.trim()) return { ok: false, error: "Typ-Name fehlt." };
-  if (!config.photoNoun.trim()) return { ok: false, error: "Foto-Beschreibung (photoNoun) fehlt." };
+  if (!config.label.trim()) return { ok: false, error: label(labels, "admin.catalogTypes.error.nameMissing") };
+  if (!config.photoNoun.trim()) {
+    return { ok: false, error: label(labels, "admin.catalogTypes.error.photoNounMissing") };
+  }
   if (config.dimensions.length === 0) {
-    return { ok: false, error: "Mindestens eine Variante-Dimension ist nötig." };
+    return { ok: false, error: label(labels, "admin.catalogTypes.error.dimensionsRequired") };
   }
   const keys = config.dimensions.map((d) => d.key);
   if (new Set(keys).size !== keys.length) {
-    return { ok: false, error: "Dimensions-Key sind nicht eindeutig." };
+    return { ok: false, error: label(labels, "admin.catalogTypes.error.dimensionKeys") };
   }
   for (const dimension of config.dimensions) {
     if (!/^[a-z][a-zA-Z0-9]*$/.test(dimension.key)) {
-      return { ok: false, error: `Dimensions-Key ungültig: ${dimension.key}` };
+      return { ok: false, error: withKey("admin.catalogTypes.error.dimensionKeyShape", dimension.key) };
     }
-    if (!dimension.label.trim()) return { ok: false, error: `Dimensions-Name fehlt: ${dimension.key}` };
+    if (!dimension.label.trim()) {
+      return { ok: false, error: withKey("admin.catalogTypes.error.dimensionNameMissing", dimension.key) };
+    }
   }
   await connectDB();
   await ProductTypeConfigModel.updateOne(

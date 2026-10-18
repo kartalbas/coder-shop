@@ -1,17 +1,19 @@
 import mongoose from "mongoose";
 import { deriveFilter, dimensionsFromAttributes, type VariantForFacets } from "@/lib/facets";
 import { formatDimensionValue, type CatalogDimensionConfig } from "@/lib/catalog-types";
+import { interpolate, label } from "@/lib/i18n";
 import { escapeRegex } from "@/lib/regex";
 import type { ProductType } from "@/models/product";
 import { ProductModel, type Product, type Variant } from "@/models/product";
 import {
-  productCoreSchema,
-  productImagesSchema,
-  variantCoreSchema,
+  createProductCoreSchema,
+  createProductImagesSchema,
+  createVariantCoreSchema,
 } from "@/lib/validations/product";
 import { toProductDto, type ProductDto } from "./search";
 import { connectDB } from "./db";
 import { getCatalogType, getCatalogTypes } from "./catalog-types";
+import { getRequestLabels } from "./i18n";
 
 // Issue #61: the dimensions a product's `filter` block and its variant attributes are
 // validated against come from the product type's configuration; products whose type
@@ -106,15 +108,22 @@ export async function getProductForAdmin(id: string): Promise<ProductDto | null>
 }
 
 export async function updateProductCore(id: string, input: unknown): Promise<ProductAdminResult> {
-  const parsed = productCoreSchema.safeParse(input);
+  // Issue #58 step 3: refusals answer from the translation table in the request
+  // language; outside a request scope (scripts, tests) the first active language does.
+  const labels = await getRequestLabels();
+  const parsed = createProductCoreSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.error.invalidRequest"),
+    };
   }
   await connectDB();
-  if (!mongoose.isValidObjectId(id)) return { ok: false, error: "Produkt nicht gefunden." };
+  const notFound = label(labels, "admin.error.productNotFound");
+  if (!mongoose.isValidObjectId(id)) return { ok: false, error: notFound };
 
   const product = await ProductModel.findById(id).exec();
-  if (!product) return { ok: false, error: "Produkt nicht gefunden." };
+  if (!product) return { ok: false, error: notFound };
 
   const dimensions = await dimensionsForProductType(product.type, product.variants);
 
@@ -133,7 +142,7 @@ export async function updateProductCore(id: string, input: unknown): Promise<Pro
       },
     },
   );
-  if (result.matchedCount === 0) return { ok: false, error: "Produkt nicht gefunden." };
+  if (result.matchedCount === 0) return { ok: false, error: notFound };
   return { ok: true };
 }
 
@@ -142,17 +151,27 @@ export async function updateVariantCore(
   sku: string,
   input: unknown,
 ): Promise<ProductAdminResult> {
-  const parsed = variantCoreSchema.safeParse(input);
+  const labels = await getRequestLabels();
+  const parsed = createVariantCoreSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.error.invalidRequest"),
+    };
   }
   await connectDB();
-  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: "Produkt nicht gefunden." };
+  const notFound = label(labels, "admin.error.productNotFound");
+  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: notFound };
 
   const product = await ProductModel.findById(productId).lean<Product>().exec();
-  if (!product) return { ok: false, error: "Produkt nicht gefunden." };
+  if (!product) return { ok: false, error: notFound };
   const variant = product.variants.find((candidate: Variant) => candidate.sku === sku);
-  if (!variant) return { ok: false, error: `Variante ${sku} nicht gefunden.` };
+  if (!variant) {
+    return {
+      ok: false,
+      error: interpolate(label(labels, "admin.variants.error.notFound"), { sku }),
+    };
+  }
 
   // Issue #61: the submitted attributes are validated against the type's configured
   // dimensions — every dimension needs a value, nothing outside them is accepted.
@@ -161,14 +180,24 @@ export async function updateVariantCore(
   for (const dimension of dimensions) {
     const value = attributes[dimension.key];
     if (value === undefined || String(value).trim() === "") {
-      return { ok: false, error: `Wert für ${dimension.label} fehlt.` };
+      return {
+        ok: false,
+        error: interpolate(label(labels, "admin.variants.error.missingValue"), {
+          label: dimension.label,
+        }),
+      };
     }
   }
   const unknownKeys = Object.keys(attributes).filter(
     (key) => !dimensions.some((dimension) => dimension.key === key),
   );
   if (unknownKeys.length > 0) {
-    return { ok: false, error: `Unbekannte Variante-Attribute: ${unknownKeys.join(", ")}` };
+    return {
+      ok: false,
+      error: interpolate(label(labels, "admin.variants.error.unknownAttributes"), {
+        keys: unknownKeys.join(", "),
+      }),
+    };
   }
   const normalizedAttributes = Object.fromEntries(
     Object.entries(attributes).map(([key, value]) => [
@@ -185,7 +214,7 @@ export async function updateVariantCore(
     if (typeConfig?.stockTracking === "serial") {
       return {
         ok: false,
-        error: `Der Lagerbestand von ${sku} wird über Seriennummern-Wareneingang geführt und kann nicht direkt geändert werden.`,
+        error: interpolate(label(labels, "admin.variants.error.serialTracked"), { sku }),
       };
     }
   }
@@ -225,33 +254,40 @@ export async function updateVariantCore(
   if (result.matchedCount === 0) {
     return {
       ok: false,
-      error: `Der Lagerbestand von ${sku} hat sich seit dem Laden geändert. Bitte Seite neu laden und erneut speichern.`,
+      error: interpolate(label(labels, "admin.variants.error.stockConflict"), { sku }),
     };
   }
   return { ok: true };
 }
 
 export async function updateImagesCore(productId: string, input: unknown): Promise<ProductAdminResult> {
-  const parsed = productImagesSchema.safeParse(input);
+  const labels = await getRequestLabels();
+  const parsed = createProductImagesSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.error.invalidRequest"),
+    };
   }
   await connectDB();
-  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: "Produkt nicht gefunden." };
+  const notFound = label(labels, "admin.error.productNotFound");
+  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: notFound };
 
   const result = await ProductModel.updateOne(
     { _id: productId },
     { $set: { images: parsed.data.images } },
   );
-  if (result.matchedCount === 0) return { ok: false, error: "Produkt nicht gefunden." };
+  if (result.matchedCount === 0) return { ok: false, error: notFound };
   return { ok: true };
 }
 
 export async function toggleFeaturedCore(productId: string): Promise<ProductAdminResult> {
+  const labels = await getRequestLabels();
+  const notFound = label(labels, "admin.error.productNotFound");
   await connectDB();
-  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: "Produkt nicht gefunden." };
+  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: notFound };
   const product = await ProductModel.findById(productId).select("featured").exec();
-  if (!product) return { ok: false, error: "Produkt nicht gefunden." };
+  if (!product) return { ok: false, error: notFound };
   product.featured = !product.featured;
   await product.save();
   return { ok: true };

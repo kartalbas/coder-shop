@@ -5,12 +5,17 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { TranslationEditor } from "@/components/admin/translation-editor";
-import { getLanguages, getTranslations } from "@/server/i18n";
+import { interpolate, label } from "@/lib/i18n";
+import { getLanguages, getRequestLabels, getTranslations } from "@/server/i18n";
 
-export const metadata: Metadata = {
-  title: "Übersetzung bearbeiten — Admin",
-  description: "Deutschen Basistext und Sprachtexte einer Zeile pflegen.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.translationEdit.title"),
+    description: label(labels, "admin.meta.translationEdit.description"),
+  };
+}
 
 interface PagePropsLocal {
   params: Promise<{ key: string }>;
@@ -22,6 +27,7 @@ interface PagePropsLocal {
 export default async function TranslationEditPage({ params }: PagePropsLocal) {
   await connection();
   const { key } = await params;
+  const labels = await getRequestLabels();
   const decoded = decodeURIComponent(key);
   // All languages, active and inactive (#58 review): the editor shows every text —
   // including deactivated ones, marked as such — so editing a row can never drop the
@@ -31,9 +37,9 @@ export default async function TranslationEditPage({ params }: PagePropsLocal) {
   if (decoded !== "neu" && !entry) {
     return (
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Text nicht gefunden</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.translations.notFound")}</h1>
         <Link href="/admin/translations" className="mt-3 inline-block text-sm underline">
-          Zurück zur Übersicht
+          {label(labels, "admin.action.back")}
         </Link>
       </div>
     );
@@ -45,10 +51,12 @@ export default async function TranslationEditPage({ params }: PagePropsLocal) {
         className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Zurück zur Übersicht
+        {label(labels, "admin.action.back")}
       </Link>
       <h1 className="mt-3 text-2xl font-bold tracking-tight">
-        {entry ? `Text bearbeiten: ${entry.key}` : "Neuer Text"}
+        {entry
+          ? interpolate(label(labels, "admin.translations.editTitle"), { key: entry.key })
+          : label(labels, "admin.translations.new")}
       </h1>
       <div className="mt-6">
         <TranslationEditor entry={entry} languages={languages} />

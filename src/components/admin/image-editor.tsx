@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductImage } from "@/components/storefront/product-image";
 import { updateImagesAction, type ProductActionState } from "@/server/actions/admin/products";
+import { interpolate, label, splitOnPlaceholder } from "@/lib/i18n";
 import { MAX_PRODUCT_IMAGES, MIN_PRODUCT_IMAGES } from "@/lib/validations/product";
 import type { ProductDto } from "@/server/search";
 
@@ -16,6 +18,13 @@ interface ImageRow {
 }
 
 export function ImageEditor({ product }: { product: ProductDto }) {
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [images, setImages] = useState<ImageRow[]>(() =>
     product.images.map((image) => ({ src: image.src, alt: image.alt })),
   );
@@ -25,7 +34,7 @@ export function ImageEditor({ product }: { product: ProductDto }) {
   );
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success("Bilder gespeichert.");
+    if (state?.ok) toast.success(label(labelsRef.current, "admin.images.saved"));
   }, [state]);
 
   const update = (index: number, patch: Partial<ImageRow>) =>
@@ -62,27 +71,29 @@ export function ImageEditor({ product }: { product: ProductDto }) {
           >
             <ProductImage
               src={image.src}
-              alt={image.alt || "Bildvorschau"}
+              alt={image.alt || label(labels, "admin.images.preview")}
               className="size-20 shrink-0 rounded-lg border object-cover"
             />
             <label className="min-w-40 flex-1 space-y-1 text-xs text-muted-foreground">
-              Pfad (z. B. /products/{product.slug}-1.webp)
+              {interpolate(label(labels, "admin.images.pathLabel"), {
+                example: `/products/${product.slug}-1.webp`,
+              })}
               <Input
                 value={image.src}
                 onChange={(event) => update(index, { src: event.target.value })}
                 placeholder={`/products/${product.slug}-1.webp`}
                 className="h-8 text-sm"
-                aria-label={`Bildpfad ${index + 1}`}
+                aria-label={interpolate(label(labels, "admin.images.pathAria"), { index: index + 1 })}
               />
             </label>
             <label className="min-w-40 flex-1 space-y-1 text-xs text-muted-foreground">
-              Alt-Text
+              {label(labels, "admin.images.altLabel")}
               <Input
                 value={image.alt}
                 onChange={(event) => update(index, { alt: event.target.value })}
-                placeholder="Beschreibung des Bildes"
+                placeholder={label(labels, "admin.images.altPlaceholder")}
                 className="h-8 text-sm"
-                aria-label={`Alt-Text ${index + 1}`}
+                aria-label={interpolate(label(labels, "admin.images.altAria"), { index: index + 1 })}
               />
             </label>
             <div className="flex items-center gap-1">
@@ -90,7 +101,7 @@ export function ImageEditor({ product }: { product: ProductDto }) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`Bild ${index + 1} nach oben`}
+                aria-label={interpolate(label(labels, "admin.images.moveUp"), { index: index + 1 })}
                 disabled={index === 0}
                 onClick={() => move(index, -1)}
               >
@@ -100,7 +111,7 @@ export function ImageEditor({ product }: { product: ProductDto }) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`Bild ${index + 1} nach unten`}
+                aria-label={interpolate(label(labels, "admin.images.moveDown"), { index: index + 1 })}
                 disabled={index === images.length - 1}
                 onClick={() => move(index, 1)}
               >
@@ -110,7 +121,7 @@ export function ImageEditor({ product }: { product: ProductDto }) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`Bild ${index + 1} entfernen`}
+                aria-label={interpolate(label(labels, "admin.images.remove"), { index: index + 1 })}
                 disabled={images.length <= MIN_PRODUCT_IMAGES}
                 onClick={() => remove(index)}
               >
@@ -129,15 +140,29 @@ export function ImageEditor({ product }: { product: ProductDto }) {
           disabled={images.length >= MAX_PRODUCT_IMAGES}
         >
           <ImagePlus className="size-4" aria-hidden />
-          Bild hinzufügen
+          {label(labels, "admin.images.add")}
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          Bilder speichern
+          {label(labels, "admin.images.save")}
         </Button>
         <p className="text-xs text-muted-foreground">
-          {images.length} von {MAX_PRODUCT_IMAGES} Bildern · Fotos erzeugt das Bild-Tool
-          (<code>npm run images</code>); hier werden Reihenfolge, Pfade und Alt-Texte gepflegt.
+          {(() => {
+            const note = splitOnPlaceholder(
+              interpolate(label(labels, "admin.images.note"), {
+                count: images.length,
+                max: MAX_PRODUCT_IMAGES,
+              }),
+              "code",
+            );
+            return (
+              <>
+                {note.before}
+                <code>npm run images</code>
+                {note.after}
+              </>
+            );
+          })()}
         </p>
       </div>
     </form>

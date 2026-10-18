@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CatalogTypeConfig, FacetOrder, StockTracking } from "@/lib/catalog-types";
+import { interpolate, label } from "@/lib/i18n";
 import {
   saveCatalogTypeAction,
   type CatalogTypeActionState,
@@ -29,15 +31,18 @@ interface DimensionRow {
   unit: string;
 }
 
-const ORDER_LABELS: Record<FacetOrder, string> = {
-  alpha: "Alphabetisch",
-  numeric: "Numerisch",
-  "clothing-size": "Kleidergrössen (XS–XXL)",
-};
+const FACET_ORDERS: readonly FacetOrder[] = ["alpha", "numeric", "clothing-size"];
 
 // Issue #64: the admin editor for the #61 catalog type configuration — types, labels,
 // positions, dimensions, stock tracking, comparison flag, photo noun and brands.
 export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const router = useRouter();
   const [form, setForm] = useState({
     key: config.key,
@@ -66,7 +71,7 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
     if (!state || announced.current) return;
     announced.current = true;
     if (state.ok) {
-      toast.success("Katalogtyp gespeichert");
+      toast.success(label(labelsRef.current, "admin.catalogTypes.saved"));
       router.refresh();
     } else if (state.error) {
       toast.error(state.error);
@@ -101,15 +106,15 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
       <Card>
         <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="typeKey">Key (Product-Type)</Label>
+            <Label htmlFor="typeKey">{label(labels, "admin.catalogTypes.field.key")}</Label>
             <Input id="typeKey" value={form.key} onChange={(event) => set("key", event.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="typeLabel">Name</Label>
+            <Label htmlFor="typeLabel">{label(labels, "admin.field.name")}</Label>
             <Input id="typeLabel" value={form.label} onChange={(event) => set("label", event.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="typePosition">Position</Label>
+            <Label htmlFor="typePosition">{label(labels, "admin.catalogTypes.column.position")}</Label>
             <Input
               id="typePosition"
               value={form.position}
@@ -119,7 +124,7 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="typeStock">Lagerführung</Label>
+            <Label htmlFor="typeStock">{label(labels, "admin.catalogTypes.field.stockTracking")}</Label>
             <Select
               value={form.stockTracking}
               onValueChange={(value) => set("stockTracking", value as StockTracking)}
@@ -128,13 +133,17 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="quantity">Stückzahl</SelectItem>
-                <SelectItem value="serial">Seriennummern</SelectItem>
+                <SelectItem value="quantity">
+                  {label(labels, "admin.catalogTypes.stockTracking.quantity")}
+                </SelectItem>
+                <SelectItem value="serial">
+                  {label(labels, "admin.catalogTypes.stockTracking.serial")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="typePhotoNoun">Foto-Beschreibung (Englisch)</Label>
+            <Label htmlFor="typePhotoNoun">{label(labels, "admin.catalogTypes.field.photoNoun")}</Label>
             <Input
               id="typePhotoNoun"
               value={form.photoNoun}
@@ -142,7 +151,7 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="typeBrands">Marken (Komma-getrennt)</Label>
+            <Label htmlFor="typeBrands">{label(labels, "admin.catalogTypes.field.brands")}</Label>
             <Input id="typeBrands" value={form.brands} onChange={(event) => set("brands", event.target.value)} />
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -152,38 +161,38 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
               onChange={(event) => set("comparable", event.target.checked)}
               className="size-4 accent-primary"
             />
-            Im Vergleich vergleichbar
+            {label(labels, "admin.catalogTypes.comparable")}
           </label>
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="space-y-3 p-5">
-          <h2 className="font-semibold">Varianten-Dimensionen</h2>
+          <h2 className="font-semibold">{label(labels, "admin.catalogTypes.dimensionsTitle")}</h2>
           {dimensions.map((row, index) => (
             <div key={index} className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_180px_110px_auto_auto]">
               <div className="space-y-1">
-                <Label className="text-xs">Key</Label>
+                <Label className="text-xs">{label(labels, "admin.field.key")}</Label>
                 <Input
                   value={row.key}
                   onChange={(event) =>
                     setDimensions((rows) => rows.map((r, i) => (i === index ? { ...r, key: event.target.value } : r)))
                   }
-                  aria-label={`Dimensions-Key ${index + 1}`}
+                  aria-label={interpolate(label(labels, "admin.catalogTypes.dimensionKeyAria"), { index: index + 1 })}
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Name</Label>
+                <Label className="text-xs">{label(labels, "admin.field.name")}</Label>
                 <Input
                   value={row.label}
                   onChange={(event) =>
                     setDimensions((rows) => rows.map((r, i) => (i === index ? { ...r, label: event.target.value } : r)))
                   }
-                  aria-label={`Dimensions-Name ${index + 1}`}
+                  aria-label={interpolate(label(labels, "admin.catalogTypes.dimensionNameAria"), { index: index + 1 })}
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Sortierung</Label>
+                <Label className="text-xs">{label(labels, "admin.catalogTypes.column.order")}</Label>
                 <Select
                   value={row.order}
                   onValueChange={(value) =>
@@ -192,26 +201,26 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
                     )
                   }
                 >
-                  <SelectTrigger aria-label={`Dimensions-Sortierung ${index + 1}`}>
+                  <SelectTrigger aria-label={interpolate(label(labels, "admin.catalogTypes.dimensionOrderAria"), { index: index + 1 })}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(ORDER_LABELS) as FacetOrder[]).map((order) => (
+                    {FACET_ORDERS.map((order) => (
                       <SelectItem key={order} value={order}>
-                        {ORDER_LABELS[order]}
+                        {label(labels, `admin.catalogTypes.order.${order}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Einheit</Label>
+                <Label className="text-xs">{label(labels, "admin.catalogTypes.column.unit")}</Label>
                 <Input
                   value={row.unit}
                   onChange={(event) =>
                     setDimensions((rows) => rows.map((r, i) => (i === index ? { ...r, unit: event.target.value } : r)))
                   }
-                  aria-label={`Dimensions-Einheit ${index + 1}`}
+                  aria-label={interpolate(label(labels, "admin.catalogTypes.dimensionUnitAria"), { index: index + 1 })}
                 />
               </div>
               <label className="flex items-center gap-2 pb-2 text-sm">
@@ -223,14 +232,16 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
                   }
                   className="size-4 accent-primary"
                 />
-                Filter
+                {label(labels, "admin.catalogTypes.column.facet")}
               </label>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="pb-2"
-                aria-label={`Dimension ${row.key || index + 1} entfernen`}
+                aria-label={interpolate(label(labels, "admin.catalogTypes.dimensionRemoveAria"), {
+                  name: row.key || index + 1,
+                })}
                 onClick={() => setDimensions((rows) => rows.filter((_, i) => i !== index))}
               >
                 <Trash2 className="size-4" aria-hidden />
@@ -245,14 +256,14 @@ export function CatalogTypeEditor({ config }: { config: CatalogTypeConfig }) {
               setDimensions((rows) => [...rows, { key: "", label: "", facet: true, order: "alpha", unit: "" }])
             }
           >
-            <Plus className="size-4" aria-hidden /> Dimension hinzufügen
+            <Plus className="size-4" aria-hidden /> {label(labels, "admin.catalogTypes.addDimension")}
           </Button>
         </CardContent>
       </Card>
 
       <Button type="submit" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Speichern
+        {label(labels, "admin.action.save")}
       </Button>
     </form>
   );

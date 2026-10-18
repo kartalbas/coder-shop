@@ -6,6 +6,7 @@ import {
   defaultLanguage,
   DEFAULT_LANGUAGES,
   intlLocaleOf,
+  label,
   labelMap,
   LANGUAGE_COOKIE,
   resolveLanguage,
@@ -127,16 +128,23 @@ function validKey(key: string): boolean {
 export async function saveTranslationCore(
   entry: TranslationEntry,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Issue #58 step 3: refusals answer from the translation table in the request
+  // language; outside a request scope the first active language answers.
+  const labels = await getRequestLabels();
   if (!validKey(entry.key)) {
-    return { ok: false, error: `Übersetzungs-Key ungültig: ${entry.key}` };
+    return { ok: false, error: label(labels, "admin.translations.validation.keyShape") };
   }
   if (!TRANSLATION_AREAS.includes(entry.area)) {
-    return { ok: false, error: `Übersetzungs-Bereich ungültig: ${entry.area}` };
+    return { ok: false, error: label(labels, "admin.translations.validation.areaInvalid") };
   }
-  if (!entry.de.trim()) return { ok: false, error: `Deutscher Basistext fehlt: ${entry.key}` };
+  if (!entry.de.trim()) {
+    return { ok: false, error: label(labels, "admin.translations.validation.deRequired") };
+  }
   const known = new Set((await getLanguages()).map((language) => language.code));
   for (const code of Object.keys(entry.texts)) {
-    if (!known.has(code)) return { ok: false, error: `Unbekannte Sprache: ${code}` };
+    if (!known.has(code)) {
+      return { ok: false, error: label(labels, "admin.translations.validation.unknownLanguage") };
+    }
   }
   const set: Record<string, string> = { key: entry.key, area: entry.area, de: entry.de };
   const unset: Record<string, string> = {};
@@ -155,15 +163,20 @@ export async function saveTranslationCore(
 export async function saveLanguageCore(
   language: LanguageConfig,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Issue #58 step 3: refusals answer from the translation table in the request
+  // language; outside a request scope the first active language answers.
+  const labels = await getRequestLabels();
   if (!/^[a-z]{2,3}$/.test(language.code)) {
-    return { ok: false, error: `Sprachcode ungültig: ${language.code}` };
+    return { ok: false, error: label(labels, "admin.languages.validation.codeShape") };
   }
-  if (!language.label.trim()) return { ok: false, error: `Sprachname fehlt: ${language.code}` };
+  if (!language.label.trim()) {
+    return { ok: false, error: label(labels, "admin.languages.validation.nameRequired") };
+  }
   if (!language.intlLocale.trim()) {
-    return { ok: false, error: `Intl-Locale fehlt: ${language.code}` };
+    return { ok: false, error: label(labels, "admin.languages.validation.localeRequired") };
   }
   if (!Number.isInteger(language.position)) {
-    return { ok: false, error: `Position ungültig: ${language.code}` };
+    return { ok: false, error: label(labels, "admin.languages.validation.positionInvalid") };
   }
   await connectDB();
   await LanguageModel.updateOne(

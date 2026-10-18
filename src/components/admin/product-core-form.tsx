@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useId } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { Loader2, Star } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { label } from "@/lib/i18n";
 import {
   toggleFeaturedAction,
   updateProductAction,
@@ -14,6 +16,13 @@ import {
 import type { ProductDto } from "@/server/search";
 
 export function ProductCoreForm({ product }: { product: ProductDto }) {
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const formId = useId();
   const [state, formAction, pending] = useActionState<ProductActionState | null, FormData>(
     updateProductAction,
@@ -22,7 +31,7 @@ export function ProductCoreForm({ product }: { product: ProductDto }) {
 
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success("Produkt gespeichert.");
+    if (state?.ok) toast.success(label(labelsRef.current, "admin.products.saved"));
   }, [state]);
 
   const handleSubmit = (formData: FormData) => {
@@ -41,15 +50,15 @@ export function ProductCoreForm({ product }: { product: ProductDto }) {
       <input type="hidden" name="productId" value={product.id} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`${formId}-name`}>Name</Label>
+          <Label htmlFor={`${formId}-name`}>{label(labels, "admin.field.name")}</Label>
           <Input id={`${formId}-name`} name="name" defaultValue={product.name} required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-brand`}>Marke</Label>
+          <Label htmlFor={`${formId}-brand`}>{label(labels, "admin.products.column.brand")}</Label>
           <Input id={`${formId}-brand`} name="brand" defaultValue={product.brand} required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-price`}>Basispreis (CHF)</Label>
+          <Label htmlFor={`${formId}-price`}>{label(labels, "admin.products.field.price")}</Label>
           <Input
             id={`${formId}-price`}
             name="price"
@@ -61,7 +70,7 @@ export function ProductCoreForm({ product }: { product: ProductDto }) {
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`${formId}-description`}>Beschreibung</Label>
+          <Label htmlFor={`${formId}-description`}>{label(labels, "shop.product.description")}</Label>
           <textarea
             id={`${formId}-description`}
             name="description"
@@ -75,13 +84,14 @@ export function ProductCoreForm({ product }: { product: ProductDto }) {
       </div>
       <Button type="submit" size="sm" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Speichern
+        {label(labels, "admin.action.save")}
       </Button>
     </form>
   );
 }
 
 export function FeaturedToggle({ productId, featured }: { productId: string; featured: boolean }) {
+  const labels = useLabels();
   const [state, formAction, pending] = useActionState<ProductActionState | null, FormData>(
     toggleFeaturedAction,
     null,
@@ -100,7 +110,7 @@ export function FeaturedToggle({ productId, featured }: { productId: string; fea
         ) : (
           <Star className="size-4" aria-hidden />
         )}
-        {featured ? "Als Featured entfernen" : "Als Featured setzen"}
+        {featured ? label(labels, "admin.products.featuredRemove") : label(labels, "admin.products.featuredAdd")}
       </Button>
     </form>
   );

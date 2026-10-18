@@ -4,11 +4,12 @@ import { useEffect, useRef, useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { LanguageConfig } from "@/lib/i18n";
+import { label, type LanguageConfig } from "@/lib/i18n";
 import {
   saveLanguageAction,
   type TranslationActionState,
@@ -50,6 +51,13 @@ export function LanguagesEditor({ languages }: { languages: LanguageConfig[] }) 
 }
 
 function LanguageRow({ language, isNew }: { language: LanguageForm; isNew: boolean }) {
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const router = useRouter();
   const [form, setForm] = useState(language);
   const [state, formAction, pending] = useActionState<TranslationActionState | null, FormData>(
@@ -61,7 +69,7 @@ function LanguageRow({ language, isNew }: { language: LanguageForm; isNew: boole
     if (!state || announced.current) return;
     announced.current = true;
     if (state.ok) {
-      toast.success("Sprache gespeichert");
+      toast.success(label(labelsRef.current, "admin.languages.saved"));
       router.refresh();
     } else if (state.error) {
       toast.error(state.error);
@@ -79,9 +87,9 @@ function LanguageRow({ language, isNew }: { language: LanguageForm; isNew: boole
         <form action={handleSubmit} className="flex flex-wrap items-end gap-3 pt-6">
           <div className="w-24 space-y-1.5">
             {isNew ? (
-              <Label htmlFor="code-neu">Code</Label>
+              <Label htmlFor="code-neu">{label(labels, "admin.languages.code")}</Label>
             ) : (
-              <span className="block text-sm font-medium">Code</span>
+              <span className="block text-sm font-medium">{label(labels, "admin.languages.code")}</span>
             )}
             {isNew ? (
               <Input
@@ -103,7 +111,7 @@ function LanguageRow({ language, isNew }: { language: LanguageForm; isNew: boole
             )}
           </div>
           <div className="min-w-40 flex-1 space-y-1.5">
-            <Label htmlFor={`label-${language.code || "neu"}`}>Name</Label>
+            <Label htmlFor={`label-${language.code || "neu"}`}>{label(labels, "admin.field.name")}</Label>
             <Input
               id={`label-${language.code || "neu"}`}
               value={form.label}
@@ -113,7 +121,9 @@ function LanguageRow({ language, isNew }: { language: LanguageForm; isNew: boole
             />
           </div>
           <div className="w-32 space-y-1.5">
-            <Label htmlFor={`locale-${language.code || "neu"}`}>Intl-Locale</Label>
+            <Label htmlFor={`locale-${language.code || "neu"}`}>
+              {label(labels, "admin.languages.intlLocale")}
+            </Label>
             <Input
               id={`locale-${language.code || "neu"}`}
               value={form.intlLocale}
@@ -123,7 +133,9 @@ function LanguageRow({ language, isNew }: { language: LanguageForm; isNew: boole
             />
           </div>
           <div className="w-24 space-y-1.5">
-            <Label htmlFor={`position-${language.code || "neu"}`}>Position</Label>
+            <Label htmlFor={`position-${language.code || "neu"}`}>
+              {label(labels, "admin.catalogTypes.column.position")}
+            </Label>
             <Input
               id={`position-${language.code || "neu"}`}
               type="number"
@@ -141,17 +153,17 @@ function LanguageRow({ language, isNew }: { language: LanguageForm; isNew: boole
               onChange={(event) => setForm((f) => ({ ...f, active: event.target.checked }))}
               className="size-4 accent-primary focus-visible:outline-2 focus-visible:outline-ring"
             />
-            Aktiv
+            {label(labels, "admin.field.active")}
           </label>
           <Button type="submit" variant={isNew ? "default" : "outline"} size="sm" disabled={pending}>
             {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
             {isNew ? (
               <>
                 <Plus className="size-4" aria-hidden />
-                Sprache anlegen
+                {label(labels, "admin.languages.create")}
               </>
             ) : (
-              "Speichern"
+              label(labels, "admin.action.save")
             )}
           </Button>
         </form>

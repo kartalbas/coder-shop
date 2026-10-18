@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useLabels } from "@/components/labels";
 import { useDebounce } from "@/hooks/use-debounce";
+import { label } from "@/lib/i18n";
 
 export function ProductSearch() {
+  const labels = useLabels();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initial = searchParams.get("q") ?? "";
@@ -31,8 +34,8 @@ export function ProductSearch() {
         type="search"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="Suche nach Name, Marke oder SKU…"
-        aria-label="Produkte durchsuchen"
+        placeholder={label(labels, "admin.products.searchPlaceholder")}
+        aria-label={label(labels, "admin.products.searchAria")}
         className="pl-9"
       />
     </div>
