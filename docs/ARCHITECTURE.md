@@ -446,7 +446,8 @@ collection falls back to the seed content so a fresh build works before seeding.
   key: string             // unique — the single document is "shop"
   vatRatePercent: number  // gross prices include this rate (§8 rule)
   freeShippingFromCents: number
-  shippingMethods: [{ key, label, priceCents, position, active, storePickup, hint }]
+  shippingMethods: [{ key, label, priceCents, position, active, storePickup,
+                      expressService, hint }]
   paymentMethods:  [{ key, label, position, active,
                       kind: 'immediate' | 'invoice' | 'on_pickup' }]
 }
@@ -457,11 +458,12 @@ content. Read through `getShopSettings()` (empty collection → defaults), writt
 `saveShopSettingsCore` (validated: key format/uniqueness, price bounds, and never the last
 active shipping/payment method — the checkout can't be configured into a dead end); the
 seed inserts it **insert-only** (#14 rule). Orders store the chosen `method` key plus the
-flow data the workflow needs without the config (`shipping.storePickup`, `payment.kind`);
-a retired method falls back to its stored key in labels (DECISIONS). The storefront client
-components read the configuration through `ShopSettingsProvider` via
-`GET /api/shop-settings` (dynamic route, `public, max-age=60` — a tab can lag an admin
-edit by up to a minute, DECISIONS).
+flow data the workflow needs without the config (`shipping.storePickup`,
+`shipping.expressService`, `payment.kind`); a retired method falls back to its stored key
+in labels, and the label service level reads the stored `expressService` flag, never the
+key (DECISIONS, #62 review). The storefront client components read the configuration
+through `ShopSettingsProvider` via `GET /api/shop-settings` (dynamic route,
+`public, max-age=60` — a tab can lag an admin edit by up to a minute, DECISIONS).
 
 ### Order (`orders`)
 ```ts
@@ -479,6 +481,8 @@ edit by up to a minute, DECISIONS).
   totals: { subtotalCents, shippingCents, totalCents, vatCents }
   shipping: { method: string,        // shipping-method key from the shop settings (#64)
               storePickup?: boolean, // flow flag stored at checkout (§5, #64)
+              expressService?: boolean, // flow flag stored at checkout; the label
+                             // service level reads it, never the method key (#62 review)
               carrier?: 'ups',
               trackingNumber?, labelPath?, parcelWeightGrams?,
               pickup?: { code, readyAt?, pickedUpAt?, paymentType?: 'cash'|'card' } }
