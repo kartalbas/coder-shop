@@ -745,6 +745,24 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   has to budget around is a missing configuration, not a test bug. The checkout
   ceiling followed the same path (`CHECKOUT_LIMIT_PER_10_MIN`, default 10) when the
   growing number of completing specs hit it from the one suite IP.
+- **The table's seed content is one file, not code (#58 user decision).** The ~1070-row
+  array that used to sit inside `lib/i18n` is now `src/server/translations.json` — one
+  line-object per row in exactly the shape the collection stores — and
+  `src/server/translation-seed.ts` is its only reader (typed `DEFAULT_TRANSLATIONS` for
+  the seed, the server fallback and the labels provider). `lib/i18n` keeps only types
+  and pure functions, so no seed payload travels in a module the pure layer imports.
+  Future rows are added to the JSON file directly; the admin editor stays the runtime
+  path. `RETIRED_TRANSLATION_KEYS` and `TRANSLATION_TEXT_REPAIRS` stay code — they are
+  migrations, not content. `tests/translations-file.test.ts` guards the file itself
+  (shape, unique keys, areas, full coverage of every seeded language, row-count floor),
+  and the untouched German specs are the byte-identity check of the move.
+- **Test assertions never pin content vocabulary (#58 review).** The admin-formats e2e
+  spec used to match `/octobre/`/`/Oktober/` while the seed dates orders relative to the
+  wall clock (`now − rng()×14 days`) — a time bomb that fails on correct code once the
+  window leaves October. Month names are now derived in the spec from the same window
+  via `Intl.DateTimeFormat(locale, { month: "long" })` and asserted as a set (a 15-day
+  window spans at most two months), the `request-language.test.ts` discipline: the
+  spec stays green in every calendar month.
 - **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin
   editor, step 2's routing/switcher/hreflang, step 2b's locale-parameterized formats
   and step 3's first slice (label plumbing + header/footer chrome) are done; the rest

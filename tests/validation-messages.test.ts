@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, labelMap } from "@/lib/i18n";
+import { BASE_LANGUAGE, labelMap } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { createCheckoutSchema } from "@/lib/validations/checkout";
 import {
   createAddressSchema,

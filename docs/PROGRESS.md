@@ -2410,3 +2410,41 @@ Done — M1–M6 + QA complete.
   language (+ UPS provider texts); step 7 no-German-literals guard; step 4 remainder
   (needs-review filter, usage context, inline editing, change history); step 5
   remainder (translatable catalog content + five-language demo content).
+
+## ISSUES — queue session 37 (2026-10-18)
+
+### #58 (decision slice) — the month-name time bomb defused; the translation table's seed content is one file ✅ — issue stays open
+- **Gate report re-checked:** the 500s and the lock message were the known embedded-
+  mongod flake (an instance holding `data/mongo` while the gate's `next start` tried to
+  start its own); no orphaned mongod at session start, lock file empty, and the live
+  battery at this HEAD answers `/`, `/products`, `/api/health` 200 with `/products/`
+  links (the German 308s stay proven by the `english-urls` spec).
+- **Step 0 (19:12 review):** `tests/e2e/admin-formats.spec.ts` no longer pins month
+  names — it derives the long month names of the last 15 days per locale via
+  `Intl.DateTimeFormat` (the seed window is `now − rng()×14 days`, so the set always
+  covers it; a 15-day window spans at most two months) and asserts the French set
+  visible / German set absent on the French admin and mirrored after the switch back.
+  Case-sensitive word-bounded patterns keep fr/de distinguishable; the CHF
+  prefix/suffix pair stays the primary pre-change-failing assertion. Green today,
+  green in every calendar month.
+- **Step 1 (user decision of 19:06, point 1):** the ~1070-row seed array left
+  `src/lib/i18n.ts` (10 600 → 270 lines, now types + pure functions only) for
+  `src/server/translations.json` — one line-object per row in exactly the stored shape
+  — with `src/server/translation-seed.ts` as the file's only typed reader (seed,
+  server fallback, labels provider). Move, not rewrite: the JSON deep-equals the old
+  array (verified before deleting it) and every German spec stayed green untouched.
+  `RETIRED_TRANSLATION_KEYS`/`TRANSLATION_TEXT_REPAIRS` stay code — migrations, not
+  content (DECISIONS).
+- **Agnostic:** the file is data in the collection's shape; a new text is a line, a
+  sixth language a new field per row plus a `languages` row; nothing branches on a
+  language code.
+- **Tests:** new `tests/translations-file.test.ts` (4 — module equals the file, row
+  floor ≥ 1071, unique well-formed keys, known areas + non-empty German base, texts
+  only for seeded codes and every key translated in all of them) fails without the
+  file; the existing i18n/seed suites are the byte-identity check.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 651 (64 files),
+  `npm run test:e2e` ✅ 102/102; live battery green; tree clean, nothing running.
+- **Left open (#58):** the decision's points 2–4 (one `t(key, params)` translator per
+  request, the mechanical sweep of the remaining literals — mails, invoice/QR PDFs,
+  label content, UPS texts — and the no-German-literals guard), the recipient-language
+  boundary (store the request language on the order), and the editor remainder.

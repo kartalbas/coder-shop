@@ -11,12 +11,12 @@ import {
   labelMap,
   LANGUAGE_COOKIE,
   resolveLanguage,
-  DEFAULT_TRANSLATIONS,
   type LanguageConfig,
   type Translator,
   type TranslationEntry,
   TRANSLATION_AREAS,
 } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "./translation-seed";
 import { LANGUAGE_HEADER } from "@/lib/locale-path";
 import { LanguageModel, toLanguageConfig } from "@/models/language";
 import { TranslationModel, toTranslationEntry } from "@/models/translation";

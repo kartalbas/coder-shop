@@ -5,7 +5,8 @@ import {
   MAX_QTY_PER_SKU,
   createCheckoutSchema,
 } from "@/lib/validations/checkout";
-import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, labelMap } from "@/lib/i18n";
+import { BASE_LANGUAGE, labelMap } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { createRateLimiter } from "@/server/rate-limit";
 
 // #58: the schema is a factory over the label map — the tests run on the German base.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { describe as describeProduct, generateCatalog } from "../scripts/seed/catalog";
-import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, interpolate, labelMap, plural } from "@/lib/i18n";
+import { BASE_LANGUAGE, interpolate, labelMap, plural } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 
 const DE = labelMap(DEFAULT_TRANSLATIONS, BASE_LANGUAGE);
 

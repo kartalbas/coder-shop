@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_LANGUAGES,
-  DEFAULT_TRANSLATIONS,
   RETIRED_TRANSLATION_KEYS,
   type TranslationEntry,
 } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { UserModel } from "@/models/user";
 import { LanguageModel } from "@/models/language";
 import { TranslationModel } from "@/models/translation";

@@ -4,7 +4,6 @@ import {
   createTranslator,
   defaultLanguage,
   DEFAULT_LANGUAGES,
-  DEFAULT_TRANSLATIONS,
   filterTranslations,
   interpolate,
   intlLocaleOf,
@@ -19,6 +18,7 @@ import {
   textFor,
   type TranslationEntry,
 } from "./i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 
 const entry = (over: Partial<TranslationEntry> = {}): TranslationEntry => ({
   key: "shop.action.addToCart",

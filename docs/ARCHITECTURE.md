@@ -239,7 +239,8 @@ src/
                             # DEFAULT_SHOP_SETTINGS (seed content only) + VAT copy helpers (#64)
     i18n.ts                 # languages + translation entries as data, resolveLanguage precedence
                             # (prefix > cookie > browser > default), German fallback + missing
-                            # report, DEFAULT_LANGUAGES/DEFAULT_TRANSLATIONS seed content (#58)
+                            # report, DEFAULT_LANGUAGES seed rows (#58; the translation seed
+                            # content lives in src/server/translations.json)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # createFormatters(intlLocale): CHF, dates, weights (#58);
                             # base-locale exports for mails, invoice/QR PDFs, labels,
@@ -296,6 +297,10 @@ src/
     i18n.ts                 # getLanguages/getTranslations/getTranslator + save cores — the one
                             # access point to the language and translation tables, process-cached
                             # and invalidated on every write (next request, no deploy) (#58)
+    translations.json       # the one seed file of the translation table — one line-object per
+                            # row ({ key, area, de, texts }), read only by translation-seed.ts (#58)
+    translation-seed.ts     # DEFAULT_TRANSLATIONS typed from translations.json — the file's
+                            # only reader (seed, server fallback, labels provider) (#58)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET,
                             # CUSTOMER_REGISTER_LIMIT_PER_HOUR,
                             # CUSTOMER_RESET_LIMIT_PER_HOUR,
@@ -652,7 +657,10 @@ row. `activeLanguages` (position order) is what every reader sees.
 The **single translation table**: `{ key (unique), area: 'shop'|'admin'|'mail'|'invoice'|
 'catalog', de (required base text), texts: Mixed map keyed by language code }`. The map —
 not fixed fields — is what makes a new language a data change. Missing or blank texts fall
-back to `de` and are reported by the translator (`missingKeys()`). `src/server/i18n.ts` is
+back to `de` and are reported by the translator (`missingKeys()`). The seed content is
+one file — `src/server/translations.json`, one line-object per row in exactly the stored
+shape — read only by `src/server/translation-seed.ts`; a new text or language is a line
+in that file, never code (#58 user decision). `src/server/i18n.ts` is
 the only access: rows are process-cached and every write (`saveTranslationCore`,
 `saveLanguageCore`) invalidates the cache, so edits take effect on the next request
 without a deploy. Step 1 of #58; extracting the remaining UI texts into rows is step 2.

@@ -9,10 +9,10 @@ import { parcelWeightGrams } from "@/lib/shipping/weight";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
 import {
   DEFAULT_LANGUAGES,
-  DEFAULT_TRANSLATIONS,
   RETIRED_TRANSLATION_KEYS,
   TRANSLATION_TEXT_REPAIRS,
 } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { DEFAULT_SHOP_SETTINGS, type ShopSettings } from "@/lib/shop-settings";
 import { LanguageModel } from "@/models/language";
 import { TranslationModel } from "@/models/translation";

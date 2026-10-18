@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, labelMap } from "@/lib/i18n";
+import { BASE_LANGUAGE, labelMap } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 
 // Issue #58 step 3: deep client trees (product cards on five pages, rails, the listing
 // shell) read their texts from the translation table without prop-drilling a label map
