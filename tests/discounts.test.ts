@@ -9,6 +9,7 @@ import { ProductModel } from "@/models/product";
 import { createOrderCore } from "@/server/checkout";
 import { checkDiscountCore, createDiscountCore, listDiscountsCore } from "@/server/discounts";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { seedUnitsForSku } from "@/test/units";
 
 const CUSTOMER = {
   name: "Rabatt Person",
@@ -80,6 +81,8 @@ async function seedProduct(stock: number, tag: string, priceCents = 10_000) {
       },
     ],
   });
+  // Issue #62 (#54): smartphones are serial-tracked — stock means units.
+  await seedUnitsForSku(`DC-${tag}`, stock);
 }
 
 function checkout(sku: string, qty: number, email = CUSTOMER.email, discountCode?: string) {

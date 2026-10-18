@@ -11,10 +11,11 @@ import { DEFAULT_SHOP_SETTINGS, type ShopSettings } from "@/lib/shop-settings";
 import { deriveFilter } from "@/lib/facets";
 import { CounterModel } from "@/models/counter";
 import { OrderModel, type OrderStatus, type StatusLogEntry } from "@/models/order";
-import { ProductModel } from "@/models/product";
+import { ProductModel, type Product } from "@/models/product";
 import { ProductTypeConfigModel, toCatalogTypeConfig } from "@/models/product-type-config";
 import { PurchaseOrderModel } from "@/models/purchase-order";
 import { ShopSettingsModel, toShopSettings } from "@/models/shop-settings";
+import { StockUnitModel } from "@/models/stock-unit";
 import { SupplierModel } from "@/models/supplier";
 import { UserModel } from "@/models/user";
 import { connectDB, dbMode, disconnectDB, isDbPathLocked } from "@/server/db";
@@ -304,6 +305,11 @@ async function seedPurchaseOrders(
       lines,
       totalCents: lines.reduce((sum, line) => sum + line.qty * line.unitPriceCents, 0),
       ...(status !== "draft" ? { orderedAt: new Date(createdAt.getTime() + DAY_MS) } : {}),
+      // Issue #62 (#55): an ordered PO shows its expected arrival (lead time from the
+      // supplier, here the seed's fixed 5 days).
+      ...(status === "ordered"
+        ? { expectedArrivalAt: new Date(createdAt.getTime() + 6 * DAY_MS) }
+        : {}),
       ...(status === "received" ? { receivedAt: new Date(createdAt.getTime() + 4 * DAY_MS) } : {}),
       createdAt,
       updatedAt: createdAt,
@@ -311,6 +317,44 @@ async function seedPurchaseOrders(
   }
   await PurchaseOrderModel.insertMany(pos);
   await CounterModel.updateOne({ _id: "po" }, { $set: { seq: pos.length } }, { upsert: true });
+}
+
+// Issue #62 (#54): serial-tracked types are stocked unit by unit — every in-stock
+// piece of the seeded catalog gets its own unit document so the whole serial flow
+// (reserve → pack → ship → sell) works from the first demo order on.
+async function seedStockUnits(types: readonly CatalogTypeConfig[]): Promise<number> {
+  if ((await StockUnitModel.countDocuments()) > 0) {
+    console.log("stock_units collection not empty — skipping serial units (idempotent)");
+    return 0;
+  }
+  const serialTypes = new Set(
+    types.filter((type) => type.stockTracking === "serial").map((type) => type.key),
+  );
+  if (serialTypes.size === 0) return 0;
+  const products = await ProductModel.find({ type: { $in: [...serialTypes] } })
+    .select("type variants.sku variants.stock")
+    .sort({ slug: 1 })
+    .lean<Pick<Product, "type" | "variants">[]>()
+    .exec();
+  const now = new Date();
+  let counter = 0;
+  const units = products.flatMap((product) =>
+    product.variants.flatMap((variant) =>
+      Array.from({ length: variant.stock }, () => {
+        counter += 1;
+        // Deterministic IMEI-shaped serial (35 + 13 digits, unique by construction).
+        const serial = `35${String(counter).padStart(13, "0")}`;
+        return {
+          sku: variant.sku,
+          serial,
+          status: "in_stock" as const,
+          history: [{ status: "in_stock" as const, at: now, note: "Anfangsbestand" }],
+        };
+      }),
+    ),
+  );
+  if (units.length > 0) await StockUnitModel.insertMany(units);
+  return units.length;
 }
 
 async function main(): Promise<void> {
@@ -331,6 +375,8 @@ async function main(): Promise<void> {
   const types = await seedCatalogTypes();
   const shopSettings = await seedShopSettings();
   const productCount = await seedProducts();
+  const unitCount = await seedStockUnits(types);
+  if (unitCount > 0) console.log(`serial units created: ${unitCount}`);
   const repairedFilters = await repairProductFilters(types);
   if (repairedFilters > 0) console.log(`filter blocks recomputed for ${repairedFilters} products`);
   const user = await seedUser();

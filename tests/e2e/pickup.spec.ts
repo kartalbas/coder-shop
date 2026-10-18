@@ -1,19 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { loginAsAdmin } from "./helpers";
-
-async function addOneProductToCart(page: Page): Promise<void> {
-  const response = await page.request.get("/api/products?type=smartphone&sort=price-asc");
-  expect(response.ok()).toBeTruthy();
-  const body = (await response.json()) as { items: { slug: string; variants: { sku: string }[] }[] };
-  const product = body.items.find((item) => item.variants.length > 0);
-  expect(product).toBeDefined();
-  await page.goto(`/products/${product!.slug}`);
-  for (const group of ["Farbe", "Grösse", "Speicher", "Material"]) {
-    const buttons = page.getByRole("group", { name: group }).locator("button");
-    if ((await buttons.count()) > 0) await buttons.first().click();
-  }
-  await page.getByRole("button", { name: "In den Warenkorb" }).click();
-}
+import { expect, test } from "@playwright/test";
+import { addSellableVariantToCart, loginAsAdmin } from "./helpers";
 
 test("pickup order: checkout → ready → handover with code → abgeholt und bezahlt (issue #41)", async ({
   page,
@@ -22,7 +8,7 @@ test("pickup order: checkout → ready → handover with code → abgeholt und b
   test.setTimeout(180_000);
 
   // Guest checkout with pickup shipping and pay-on-pickup.
-  await addOneProductToCart(page);
+  await addSellableVariantToCart(page, "smartphone");
   await page.goto("/checkout");
   await page.fill("#name", "Hans Abholung");
   await page.fill("#email", "hans.abholung@example.ch");

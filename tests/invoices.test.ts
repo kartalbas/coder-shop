@@ -18,6 +18,7 @@ import {
 } from "@/server/invoices";
 import { transitionOrderCore } from "@/server/orders-admin";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { seedUnitsForSku } from "@/test/units";
 
 const CUSTOMER = {
   name: "Reto Invoice",
@@ -52,6 +53,8 @@ async function seedProduct(stock: number, tag: string, priceCents = 10_000) {
       },
     ],
   });
+  // Issue #62 (#54): smartphones are serial-tracked — stock means units.
+  await seedUnitsForSku(`IV-${tag}`, stock);
 }
 
 async function makeCustomer(email = CUSTOMER.email, creditLimitCents?: number) {

@@ -158,7 +158,14 @@ for (const type of DEFAULT_CATALOG_TYPES) {
   }
 }
 
-function stockFor(rng: Rng, threshold: number): number {
+function stockFor(rng: Rng, threshold: number, type: CatalogTypeConfig): number {
+  // Issue #62 (#54): a serial-tracked type is stocked like a real phone shelf — a
+  // handful of units per variant, each one a unit document with its own serial.
+  if (type.stockTracking === "serial") {
+    const roll = rng();
+    if (roll < 0.1) return 0;
+    return int(rng, 1, 8);
+  }
   const roll = rng();
   if (roll < 0.05) return 0;
   if (roll < 0.13) return int(rng, 1, Math.max(1, threshold - 1));
@@ -221,7 +228,7 @@ function buildVariants(
         .map((dimension, position) => formatDimensionValue(dimension, values[position]))
         .join(" / "),
       priceDeltaCents,
-      stock: stockFor(rng, threshold),
+      stock: stockFor(rng, threshold, type),
       restockThreshold: threshold,
       weightGrams: int(rng, content.weightGrams[0], content.weightGrams[1]),
       attributes,

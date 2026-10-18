@@ -12,6 +12,7 @@ import {
   normalizePickupCode,
 } from "@/server/pickup";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { seedUnitsForSku } from "@/test/units";
 
 const CUSTOMER = {
   name: "Vera Abholung",
@@ -46,6 +47,8 @@ async function seedProduct(stock: number, tag: string, priceCents = 10_000) {
       },
     ],
   });
+  // Issue #62 (#54): smartphones are serial-tracked — stock means units.
+  await seedUnitsForSku(`PU-${tag}`, stock);
 }
 
 function pickupCheckout(sku: string, qty: number, paymentMethod: "pickup" | "mock" = "pickup") {

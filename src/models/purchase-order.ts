@@ -20,6 +20,9 @@ export interface PurchaseOrder {
   lines: PurchaseOrderLine[];
   totalCents: number;
   orderedAt?: Date;
+  // Issue #62 (#55): expected arrival, set from the supplier lead time when the PO is
+  // ordered and editable per PO.
+  expectedArrivalAt?: Date;
   receivedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +48,7 @@ const purchaseOrderSchema = new Schema<PurchaseOrder>(
     lines: { type: [lineSchema], required: true },
     totalCents: { type: Number, required: true, min: 0 },
     orderedAt: { type: Date },
+    expectedArrivalAt: { type: Date },
     receivedAt: { type: Date },
   },
   { versionKey: false, timestamps: true },

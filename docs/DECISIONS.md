@@ -572,3 +572,32 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   requested without following redirects and must answer `308` with its exact English
   target in `Location` (query preserved); `200` is checked directly on `/products`, and
   guest `/account` must `307` to `/account/login` — the spec fails on the pre-#63 build.
+
+### #62 — serial-number stock and derived incoming stock
+- **Serial vs quantity is the type config's `stockTracking` (#61), nothing else.**
+  `serialTrackedTypes()` drives goods receipt, checkout reservation and the editor rule;
+  a new serial-tracked type needs no code change, shoes/clothing stay quantity.
+- **The unit ledger (`stock_units`) is the truth for serial types; `variant.stock` stays
+  the derived count of `in_stock` units.** Every quantity reader (listing, stock
+  indicator, dashboard) keeps working unchanged. Consequence: `updateVariantCore`
+  **refuses direct stock edits** on serial-tracked variants — goods receipt and orders
+  are the only writers, so count and ledger can never drift apart.
+- **Reservation lives inside the checkout transaction** (one conditional
+  `findOneAndUpdate` per piece, `in_stock → reserved` bound to the order number, serials
+  recorded on the order line). A missing unit aborts everything exactly like
+  `InsufficientStockError`, so the #12/#15 guarantees (price check, idempotency,
+  at-most-one-order) hold unchanged; units then travel with the order status moves
+  (`packed`/`shipped`/`delivered`/`picked_up`) and a restocking cancel releases them —
+  always in the same transaction as the order.
+- **Migration:** quantity stock that existed before serial tracking has no serials —
+  units start at the next goods receipt. Checkout refuses such legacy stock cleanly
+  (`NotEnoughUnitsError` → same German "Nicht genügend Lager" error, nothing written);
+  the seed closes the gap by creating a unit per in-stock seeded piece.
+- **Serials are customer-linked, therefore admin-only** — ledger page, packing slip and
+  invoice PDF; never on public pages or APIs.
+- **Incoming stock is derived, never stored twice** (#55): per SKU `Σ (qty − received)`
+  over `ordered` PO lines with the earliest `expectedArrivalAt` (set from the supplier
+  lead time when ordering, editable per PO). Partial receipts keep the PO `ordered` —
+  the remainder *is* the incoming quantity. The shop copy ("N Stk. bestellt, Ankunft
+  ca. in 2 Wochen") comes from one pure formatter with coarse day/week buckets, since
+  a lead time deserves no more precision than that.

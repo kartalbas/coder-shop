@@ -112,6 +112,8 @@ src/
         orders/page.tsx, orders/[id]/page.tsx
         packing/page.tsx, packing/[id]/page.tsx (+ print view)
         purchasing/page.tsx, purchasing/[id]/page.tsx, suppliers/page.tsx
+        stock-units/page.tsx  # serial ledger (#62): every unit of a serial-tracked type —
+                            # serial, status, order, per-unit history; search by serial or SKU
         mails/page.tsx      # dev outbox: every mail the shop would have sent (#39/#44)
         invoices/page.tsx   # invoice list + filters (offen/überfällig/bezahlt), payment +
                             # reminder + credit-limit actions (#40)
@@ -183,6 +185,7 @@ src/
     mail-message.ts         # dev outbox messages (#39/#44)
     restock-alert.ts        # (sku, e-mail) back-in-stock subscriptions, notify-once (#46)
     review.ts               # verified-buyer reviews: pending/approved/hidden (#47)
+    stock-unit.ts           # unit ledger of serial-tracked types: serial unique per SKU (#62)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
                           # (guard test: tests/lib-purity.test.ts)
     product-types.ts        # ProductType = string — types are data now (#61), the alias only names it
@@ -199,6 +202,11 @@ src/
     pricing.ts              # totals, VAT rounding + copy, buyable price — every rate/price
                             # comes from the shop settings, no constants (§8 note, #64)
     stock.ts                # pure stock rules: isLowStock, stockLevel, stockLabel
+    stock-units.ts          # unit state machine (in_stock → reserved → packed → shipped →
+                            # sold, cancel releases), order-status→unit-move map, serial
+                            # input rule — all pure (#62)
+    purchasing/incoming.ts  # expected arrival from lead time, open quantity per SKU,
+                            # German "N Stk. bestellt, Ankunft ca. …" copy — pure (#62)
     facets.ts               # deriveFilter(variants, dimensions) + ProductFilter keyed by dimension
                             # key — generic over the configured dimensions (#61, §3/§4)
     facet-order.ts          # natural facet value ordering per a dimension's order rule
@@ -262,8 +270,13 @@ src/
     orders.ts               # customer confirmation lookup (getOrderByNumber)
     orders-admin.ts         # listOrders, transitionOrderCore (conditional write + restock)
     products-admin.ts       # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
-    purchasing.ts           # supplier + PO cores (create/markOrdered/receive, transaction),
-                            # picker searches: variants by sku/name/brand + suppliers (#42)
+    purchasing.ts           # supplier + PO cores (create/markOrdered/receive — partial +
+                            # serial registration, transaction), expected arrival (editable),
+                            # getIncomingBySkuCore (open PO lines → per-SKU incoming),
+                            # picker searches: variants by sku/name/brand + suppliers (#42, #62)
+    stock-units.ts          # unit-ledger data access for serial-tracked types: goods-receipt
+                            # registration (duplicate serials refused), reservation inside the
+                            # checkout txn, advance/release with the order, ledger search (#62)
     dashboard.ts            # revenue series, open counts, low stock, recent orders
     search.ts               # Mongo query/aggregate builders + toProductDto() shared DTO mapper
     wishlist.ts             # account wishlist: sync (merge/replace), list, remove (#46)
@@ -439,7 +452,9 @@ components read it through `ShopSettingsProvider` via `GET /api/shop-settings`
   userId?: ObjectId         // owning customer account (ordered logged-in or claimed, #39)
   customer: { name, email, phone, street, postalCode, city, country }
   lines: [{ productId, sku, name, variantLabel, qty, unitPriceCents,
-            totalCents, weightGrams }]
+            totalCents, weightGrams, serials?: string[] }]  // serials: the exact units
+                            // reserved for a serial-tracked line (#62); admin-only, like
+                            // the ledger — serials tie a device to a customer
   totals: { subtotalCents, shippingCents, totalCents, vatCents }
   shipping: { method: string,        // shipping-method key from the shop settings (#64)
               storePickup?: boolean, // flow flag stored at checkout (§5, #64)
@@ -513,10 +528,32 @@ product as `rating: { average, count }` (recomputed on approve/hide) — cards, 
   status: 'draft' | 'ordered' | 'received'
   lines: [{ productId, sku, qty, unitPriceCents, received: number }]
   totalCents: number
-  orderedAt?, receivedAt?: Date
+  orderedAt?, expectedArrivalAt?, receivedAt?: Date
 }
 ```
 Indexes: `{ poNumber: 1 }` unique, `{ status: 1, createdAt: -1 }`.
+`expectedArrivalAt` (#62) is set from the supplier's `leadTimeDays` when the PO goes
+`ordered` and stays editable per PO; a partial receipt (`lines[].received < qty`)
+keeps the PO `ordered` — the remainder is the incoming stock (§4).
+
+### StockUnit (`stock_units`, #62)
+The unit ledger of **serial-tracked types** (type config `stockTracking: "serial"`);
+quantity types never get documents here.
+```ts
+{
+  sku: string             // the variant this piece belongs to
+  serial: string          // IMEI / serial — unique per SKU
+  status: 'in_stock' | 'reserved' | 'packed' | 'shipped' | 'sold'
+  orderNumber?: string    // the customer order the unit is bound to
+  purchaseOrderId?: ObjectId  // the PO whose goods receipt registered it
+  history: [{ status, at, note? }]  // every move, logged
+}
+```
+Indexes: `{ sku: 1, serial: 1 }` unique (duplicate serials refused by the index),
+`{ sku: 1, status: 1 }`, `{ orderNumber: 1 }`, `{ status: 1, updatedAt: -1 }`.
+The variant's `stock` of a serial-tracked variant **is the count of its `in_stock`
+units** — goods receipt and orders are the only writers; `updateVariantCore` refuses
+direct stock edits for serial types (DECISIONS).
 
 ### Counter (`counters`)
 `{ _id: 'order'|'po', seq: number }` with `findOneAndUpdate({$inc})` for gap-free numbers.
@@ -552,7 +589,11 @@ results and are covered by Vitest integration tests against the real replica set
   current prices, so the customer is never charged other than what was shown (issue #12).
   Stock model decision (docs/DECISIONS.md): decrement at `createOrder`, restock on
   cancel — **no reservations**; `lib/stock.ts` stays pure (predicates only), the DB loop lives
-  here.
+  here. For types whose config says `stockTracking: "serial"` (#62) the same transaction
+  additionally reserves **specific units** (`reserveUnitsForOrder`: one conditional
+  `findOneAndUpdate` per piece, `in_stock → reserved` bound to the order number; too few
+  free units aborts everything like `InsufficientStockError`) and records the serials on
+  the order line — unit ledger and stock count can never disagree.
 - Discount codes (issue #45, `src/server/discounts.ts`): an optional `discountCode` on the
   checkout payload is normalized (trim + upper-case, part of the #15 idempotency fingerprint)
   and checked **inside the transaction** against the DB subtotal — window/active, minimum
@@ -565,6 +606,11 @@ results and are covered by Vitest integration tests against the real replica set
 - `transitionOrderCore(orderId, to, note, by)` — delegates to the state machine; cancel from
   `new`/`paid`/`picking`/`ready` restocks **in the same transaction** (§5). The order's
   `payment.method` and `shipping.method` are part of the transition context (§5, #40/#41).
+  Serial units travel with the order (#62, `src/lib/stock-units.ts` maps order status →
+  unit move): `packed`/`shipped` advance them (the label route moves `shipped`),
+  `delivered`/`picked_up` sell them, a restocking cancel releases them back to
+  `in_stock` — always in the same transaction as the order move. Serials print on the
+  packing slip and the invoice PDF; they are admin-only (customer-linked, like the ledger).
 - Pickup cores (issue #41, `src/server/pickup.ts`): `markPickupReadyCore(orderId, by)` —
   `new`/`picking → ready` (conditional on the loaded status, stamps `pickup.readyAt`);
   `handoverPickupCore(orderId, code, paymentType, by)` — the code the customer shows must
@@ -580,8 +626,18 @@ results and are covered by Vitest integration tests against the real replica set
   check `createOrderCore` re-evaluates **inside the transaction**; `setCreditLimitCore` is
   the admin knob. `getInvoiceFileCore(orderNumber)` — renders the QR-bill PDF on demand into
   `data/invoices/` (outside the web root, path containment via `resolveInsideDir`).
-- `receivePurchaseOrderCore(poId)` — increments `variant.stock` per line and sets `received`
-  in one transaction.
+- `receivePurchaseOrderCore(poId, quantities?, serials?)` — increments `variant.stock` per
+  line and sets `received` in one transaction. Partial receipts (#62): `quantities` per SKU
+  defaults to everything still open; a line below its open quantity keeps the PO `ordered`
+  — the remainder stays visible as incoming stock. For serial-tracked lines each received
+  piece must carry a serial (`serials` per SKU, duplicates refused by the unique index and
+  within the batch); each becomes an `in_stock` unit bound to the PO.
+- Incoming stock (#62, `getIncomingBySkuCore` + `src/lib/purchasing/incoming.ts`): what is
+  on order is **derived** from the open lines of `ordered` POs (`Σ qty − received`, earliest
+  `expectedArrivalAt`), never stored on the product. The product page and variant picker
+  show „N Stk. bestellt, Ankunft ca. in 3 Tagen" on low/zero-stock variants, the admin
+  variant editor shows the open quantity; the PO detail shows and edits the expected
+  arrival (set from the supplier lead time when ordering).
 - `updateProductCore` / `updateVariantCore` / `toggleFeaturedCore` — every update touching
   variants recomputes `filter` via `deriveFilter` (§3 rule). Writes are atomic `$set`s of the
   edited fields only (never a whole-document save), so concurrent stock changes are never
@@ -811,9 +867,15 @@ at standard CHF 4.90, express CHF 12.90, free from CHF 100 (docs/DECISIONS.md).
   shelf-ish sku), printable packing slip (`/admin/packing/[id]` print view, `@media print`),
   computed parcel weight (§8 constants), "UPS-Etikett erstellen" → transitions to shipped,
   shows tracking + PDF link (`/admin/labels/[orderId]`).
-- **Admin Purchasing** — suppliers CRUD-lite, PO list with status chips; PO editor (add lines
-  by SKU search, qty, cost); buttons "Bestellen" (draft→ordered) and "Wareneingang"
-  (→received, transaction increments stock, toast with delta summary).
+- **Admin Purchasing** — suppliers CRUD-lite, PO list with status chips + expected arrival
+  column (#62); PO editor (add lines by SKU search, qty, cost); "Bestellen" (draft→ordered,
+  stamps `expectedArrivalAt` from the supplier lead time) and the receipt form (#62):
+  per-line received quantity (partial keeps the rest on order) plus one serial per piece
+  for serial-tracked lines; full receipt → `received`, toast with delta summary; the
+  expected arrival stays editable per PO.
+- **Admin Serienlager (#62)** — the unit ledger: search by serial or SKU, one card per unit
+  with serial, status chip, bound order/PO and the full per-unit history; linked from the
+  variant editor of serial-tracked products ("Serien ansehen"). Serials are admin-only.
 - **Admin Mails (#39/#44)** — the dev outbox: every mail the shop would have sent
   (registration, password reset, …) listed newest first with the plain-text body.
 - **Admin Einstellungen (#64)** — the shop settings editor: VAT rate, free-shipping
@@ -832,6 +894,9 @@ materials) — the types, their brands and variant dimensions come from the type
 (`DEFAULT_CATALOG_TYPES` upserted into `product_type_configs`, insert-only, #61).
 Realistic German descriptions from template pools, CHF price ranges per type,
 variant stock 0–80 (a few at 0 and a few below threshold for alerts), weights per type range.
+Serial-tracked types (#62) stock like a real phone shelf — 0–8 pieces per variant — and
+`seedStockUnits` gives every in-stock piece its own `in_stock` unit document with a
+deterministic IMEI-shaped serial (skipped while `stock_units` is not empty, idempotent).
 The seed records 1–5 image slots per product with their final photo paths
 (`/products/<slug>-<n>.webp`) but writes no image files itself — the photo pipeline (§11)
 owns `public/products/` (issue #29). Also seeds admin user, 3 suppliers, sample POs and ~15
@@ -918,9 +983,17 @@ Specs (the three required journeys):
 - `admin-shipping.spec.ts` — admin login → first `paid` order → `picking` → `packed` →
   UPS label via the **mock provider** → `shipped` with a `1Z…` tracking number, which is then
   asserted on the customer confirmation page.
-- `purchasing.spec.ts` — open the seeded `ordered` PO → read its lines → "Wareneingang" →
-  every line's variant stock increased by exactly the ordered quantity (stock read through
-  the admin product search page).
+- `purchasing.spec.ts` — open the seeded `ordered` PO → read its lines → type one serial
+  per received piece on serial-tracked lines (#62) → "Wareneingang" → every line's variant
+  stock increased by exactly the ordered quantity (stock read through the admin product
+  search page).
+- `incoming-stock.spec.ts` (#62) — create + order a PO for a quantity-tracked variant →
+  expected arrival visible → admin variant and shop product page show „N Stk. bestellt,
+  Ankunft ca. …" on the sold-out variant → goods receipt grows stock and shrinks the note.
+- `serial-stock.spec.ts` (#62) — buy one smartphone in the storefront → the ledger shows the
+  reserved unit with its serial bound to the order → picking/packed (serial on the packing
+  slip) → label → shipped → delivered → the same serial reads „Verkauft" with the full
+  history.
 
 Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
 prerequisite; `npm test` and `npm run lint` are independent).

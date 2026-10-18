@@ -16,6 +16,7 @@ import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefro
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { ReviewSection } from "@/components/storefront/review-section";
 import { getCatalogType } from "@/server/catalog-types";
+import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
 import { getProductReviewsCore } from "@/server/reviews";
 import { vatLabel } from "@/lib/shop-settings";
@@ -50,12 +51,18 @@ async function ProductView({ params }: PagePropsLocal) {
   if (!product) notFound();
   // Issue #61: the category label and the variant dimensions come from the product
   // type's configuration.
-  const [related, { aggregate }, typeConfig] = await Promise.all([
+  // Issue #62 (#55): what is on order for this product's variants — derived from the
+  // open purchase orders, shown on low/zero-stock variants.
+  const [related, { aggregate }, typeConfig, incoming] = await Promise.all([
     getRelatedProducts(product),
     getProductReviewsCore(product.id),
     getCatalogType(product.type),
+    getIncomingBySkuCore(product.variants.map((variant) => variant.sku)),
   ]);
   const categoryLabel = typeConfig?.label ?? product.type;
+  const incomingBySku = Object.fromEntries(
+    [...incoming].map(([sku, info]) => [sku, { qty: info.qty, arrival: info.arrival.toISOString() }]),
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -67,7 +74,11 @@ async function ProductView({ params }: PagePropsLocal) {
         ]}
       />
       <div className="mt-6">
-        <ProductDetail product={product} typeDimensions={typeConfig?.dimensions ?? []} />
+        <ProductDetail
+          product={product}
+          typeDimensions={typeConfig?.dimensions ?? []}
+          incomingBySku={incomingBySku}
+        />
       </div>
 
       <Accordion type="single" collapsible className="mt-10 border-t">

@@ -59,6 +59,7 @@ async function PurchasingView() {
                   <th className="py-2 pr-4 font-medium">Bestell-Nr.</th>
                   <th className="py-2 pr-4 font-medium">Lieferant</th>
                   <th className="py-2 pr-4 font-medium">Datum</th>
+                  <th className="py-2 pr-4 font-medium">Ankunft</th>
                   <th className="py-2 pr-4 text-right font-medium">Positionen</th>
                   <th className="py-2 pr-4 text-right font-medium">Total</th>
                   <th className="py-2 font-medium">Status</th>
@@ -78,6 +79,11 @@ async function PurchasingView() {
                     <td className="py-2.5 pr-4">{po.supplierName}</td>
                     <td className="py-2.5 pr-4 text-muted-foreground">
                       {formatDate(po.createdAt)}
+                    </td>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      {po.status === "ordered" && po.expectedArrivalAt
+                        ? formatDate(po.expectedArrivalAt)
+                        : "—"}
                     </td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{po.lineCount}</td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">

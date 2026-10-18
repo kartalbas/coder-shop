@@ -6,10 +6,12 @@ import {
   transitionsWithRestock,
   type OrderStatus,
 } from "@/lib/orders/state-machine";
+import { unitMoveForOrderStatus } from "@/lib/stock-units";
 import { OrderModel, type Order, type OrderDocument, type OrderLine } from "@/models/order";
 import { ProductModel } from "@/models/product";
 import { connectDB } from "./db";
 import { notifyRestockedCore } from "./restock-alerts";
+import { advanceUnitsForOrder, releaseUnitsForOrder } from "./stock-units";
 
 export type OrderFilter = OrderStatus | "all";
 
@@ -150,6 +152,15 @@ export async function transitionOrderCore(
     const restock = transitionsWithRestock(from, to);
     if (restock) {
       await restockLines(order, session);
+    }
+
+    // Issue #62 (#54): serial units move with the order — packed/shipped travel,
+    // delivered sells them, a restocking cancel puts them back on the shelf.
+    const unitStep = unitMoveForOrderStatus(to);
+    if (unitStep.release && restock) {
+      await releaseUnitsForOrder(order.orderNumber, session);
+    } else if (unitStep.move) {
+      await advanceUnitsForOrder(order.orderNumber, unitStep.move, `Bestellung ${to}`, session);
     }
 
     await session.commitTransaction();

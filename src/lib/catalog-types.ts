@@ -87,7 +87,9 @@ export const DEFAULT_CATALOG_TYPES: readonly CatalogTypeConfig[] = [
     key: "smartphone",
     label: "Smartphones",
     position: 1,
-    stockTracking: "quantity",
+    // Issue #62 (#54): smartphones are stocked as individual units (IMEI) — their
+    // variant stock is the count of in-stock serial units.
+    stockTracking: "serial",
     comparable: true,
     photoNoun: "smartphone",
     brands: ["Apple", "Samsung", "Xiaomi", "Google", "OnePlus"],

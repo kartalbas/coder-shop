@@ -8,6 +8,7 @@ import { STORE } from "@/lib/store";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "./db";
 import { sendMail } from "./mail";
+import { advanceUnitsForOrder } from "./stock-units";
 
 // Handover code the customer shows at the counter (issue #41). 6 characters from an
 // unambiguous alphabet (no O/0, I/1) so it survives phone calls and bad handwriting.
@@ -216,6 +217,8 @@ export async function handoverPickupCore(
         error: "Die Bestellung wurde zwischenzeitlich geändert. Bitte erneut versuchen.",
       };
     }
+    // Issue #62 (#54): the handover sells the order's serial units.
+    await advanceUnitsForOrder(order.orderNumber, "sold", "Abgeholt", session);
     await session.commitTransaction();
     return { ok: true };
   } catch (error) {

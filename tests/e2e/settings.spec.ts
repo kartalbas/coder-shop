@@ -1,23 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAsAdmin } from "./helpers";
+import { addSellableVariantToCart, loginAsAdmin } from "./helpers";
 
 // Issue #64: VAT rate, shipping prices and the catalog types are configuration —
 // editing them in the admin changes the shop without a code change. The specs share
 // one server, so every edit is restored at the end.
-
-async function addOneProductToCart(page: Page): Promise<void> {
-  const response = await page.request.get("/api/products?type=smartphone&sort=price-asc");
-  expect(response.ok()).toBeTruthy();
-  const body = (await response.json()) as { items: { slug: string; variants: unknown[] }[] };
-  const product = body.items.find((item) => item.variants.length > 0);
-  expect(product).toBeDefined();
-  await page.goto(`/products/${product!.slug}`);
-  for (const group of ["Farbe", "Grösse", "Speicher", "Material"]) {
-    const buttons = page.getByRole("group", { name: group }).locator("button");
-    if ((await buttons.count()) > 0) await buttons.first().click();
-  }
-  await page.getByRole("button", { name: "In den Warenkorb" }).click();
-}
 
 async function saveSettings(page: Page, vat: string, standardPrice: string): Promise<void> {
   await page.goto("/admin/settings");
@@ -43,7 +29,7 @@ test("admin edits VAT rate and a shipping price — the storefront follows (issu
 
     // Cart summary: the edited standard price. formatChf renders a no-break space
     // between "CHF" and the amount, so the regexes match any whitespace there.
-    await addOneProductToCart(page);
+    await addSellableVariantToCart(page, "smartphone");
     await page.goto("/cart");
     await expect(page.getByText(/Standard CHF\s5\.50/).first()).toBeVisible();
     await expect(page.getByText(/7,7 % MwSt/).first()).toBeVisible();

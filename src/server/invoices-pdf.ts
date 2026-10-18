@@ -52,6 +52,17 @@ export async function buildInvoicePdf(order: Order, vatRatePercent: number): Pro
     page.drawText(label.slice(0, 70), { x: 50, y, size: 10, font, color: ink });
     page.drawText(formatChf(line.totalCents), { x: 465, y, size: 10, font, color: ink });
     y -= 15;
+    // Issue #62 (#54): serial-tracked pieces are itemised on the invoice.
+    if (line.serials && line.serials.length > 0) {
+      page.drawText(`Serien: ${line.serials.join(", ")}`.slice(0, 90), {
+        x: 60,
+        y,
+        size: 8,
+        font,
+        color: muted,
+      });
+      y -= 12;
+    }
   }
 
   y -= 8;

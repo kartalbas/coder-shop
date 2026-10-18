@@ -178,6 +178,18 @@ export async function updateVariantCore(
   );
   const stockEdited = stock !== expectedStock;
 
+  // Issue #62 (#54): for serial-tracked types the stock is the count of in-stock
+  // units — it moves with goods receipt and orders, never with a free-form edit.
+  if (stockEdited) {
+    const typeConfig = await getCatalogType(product.type);
+    if (typeConfig?.stockTracking === "serial") {
+      return {
+        ok: false,
+        error: `Der Lagerbestand von ${sku} wird über Seriennummern-Wareneingang geführt und kann nicht direkt geändert werden.`,
+      };
+    }
+  }
+
   const updatedVariant: Variant = {
     ...variant,
     priceDeltaCents: parsed.data.priceDeltaCents,

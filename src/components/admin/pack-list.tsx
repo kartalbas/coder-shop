@@ -35,7 +35,15 @@ export function PackList({ order }: { order: Order }) {
         <tbody>
           {lines.map((line) => (
             <tr key={line.sku} className="border-b last:border-0">
-              <td className="py-2 pr-4 font-mono text-xs">{line.sku}</td>
+              <td className="py-2 pr-4 font-mono text-xs">
+                {line.sku}
+                {/* Issue #62 (#54): the exact units travel with the parcel. */}
+                {line.serials && line.serials.length > 0 && (
+                  <span className="block font-normal text-muted-foreground">
+                    {line.serials.join(", ")}
+                  </span>
+                )}
+              </td>
               <td className="py-2 pr-4">{line.name}</td>
               <td className="py-2 pr-4 text-muted-foreground">{line.variantLabel}</td>
               <td className="py-2 pr-4 text-right tabular-nums">{line.qty}</td>

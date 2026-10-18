@@ -9,6 +9,7 @@ import { FeaturedToggle, ProductCoreForm } from "@/components/admin/product-core
 import { ImageEditor } from "@/components/admin/image-editor";
 import { VariantEditor } from "@/components/admin/variant-editor";
 import { getCatalogType } from "@/server/catalog-types";
+import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductForAdmin } from "@/server/products-admin";
 
 interface PagePropsLocal {
@@ -27,7 +28,11 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
   if (!product) notFound();
   // Issue #61: type label and the variant editor's attribute fields come from the
   // product type's configuration.
-  const typeConfig = await getCatalogType(product.type);
+  // Issue #62 (#55): incoming quantities per variant come from the open purchase orders.
+  const [typeConfig, incoming] = await Promise.all([
+    getCatalogType(product.type),
+    getIncomingBySkuCore(product.variants.map((variant) => variant.sku)),
+  ]);
 
   return (
     <div className="max-w-5xl">
@@ -59,7 +64,12 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
         <h2 className="mb-3 text-sm font-semibold">
           Varianten ({product.variants.length}) — Preisdifferenz, Lager, Gewicht, Attribute
         </h2>
-        <VariantEditor product={product} dimensions={typeConfig?.dimensions ?? []} />
+        <VariantEditor
+          product={product}
+          dimensions={typeConfig?.dimensions ?? []}
+          incomingBySku={Object.fromEntries([...incoming].map(([sku, info]) => [sku, info.qty]))}
+          serialTracked={typeConfig?.stockTracking === "serial"}
+        />
       </section>
 
       <section className="mt-6" aria-label="Bilder">

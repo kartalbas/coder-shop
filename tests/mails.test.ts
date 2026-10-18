@@ -19,6 +19,7 @@ import { createLabelCore } from "@/server/shipping/label";
 import { selectTransportName } from "@/server/mail";
 import { MockUpsProvider } from "@/server/shipping/mock";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { seedUnitsForSku } from "@/test/units";
 
 const CUSTOMER = {
   name: "Mail Person",
@@ -53,6 +54,8 @@ async function seedProduct(stock: number, tag: string, priceCents = 10_000) {
       },
     ],
   });
+  // Issue #62 (#54): smartphones are serial-tracked — stock means units.
+  await seedUnitsForSku(`ML-${tag}`, stock);
 }
 
 async function outbox(to?: string) {

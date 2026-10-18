@@ -31,8 +31,18 @@ test("purchasing: receiving an ordered PO increases variant stock", async ({ pag
   const stockBefore = new Map<string, number>();
   for (const line of lines) stockBefore.set(line.sku, await readStockOfSku(page, line.sku));
 
-  // Wareneingang: ordered → received.
+  // Wareneingang: ordered → received. Serial-tracked lines (issue #62) register each
+  // piece — type one unique serial per received piece before submitting.
   await page.goto(poUrl);
+  for (const line of lines) {
+    const serials = page.getByLabel(`Seriennummern ${line.sku}`);
+    if ((await serials.count()) > 0) {
+      const stamp = Date.now();
+      await serials.fill(
+        Array.from({ length: line.qty }, (_, i) => `E2E-${stamp}-${line.sku}-${i}`).join("\n"),
+      );
+    }
+  }
   await page.getByRole("button", { name: "Wareneingang" }).click();
   // The receipt flips the page to "Erhalten" and removes the Wareneingang button.
   await expect(page.getByRole("button", { name: "Wareneingang" })).toBeHidden({ timeout: 30_000 });

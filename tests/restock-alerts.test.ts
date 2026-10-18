@@ -14,6 +14,7 @@ import {
 import { notifyRestockedCore, subscribeRestockAlertCore } from "@/server/restock-alerts";
 import { transitionOrderCore } from "@/server/orders-admin";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { seedUnitsForSku, serialList } from "@/test/units";
 
 const CUSTOMER = {
   name: "Alarm Person",
@@ -48,6 +49,8 @@ async function seedProduct(slug: string, sku: string, stock: number) {
       },
     ],
   });
+  // Issue #62 (#54): smartphones are serial-tracked — stock means units.
+  await seedUnitsForSku(sku, stock);
 }
 
 async function mailsTo(to: string) {
@@ -111,7 +114,9 @@ describe("back-in-stock alerts (issue #46)", () => {
     if (!created.ok) return;
     expect((await markPurchaseOrderOrderedCore(created.poId)).ok).toBe(true);
 
-    const received = await receivePurchaseOrderCore(created.poId);
+    const received = await receivePurchaseOrderCore(created.poId, undefined, {
+      "AL-C": serialList("AL-C", 10),
+    });
     expect(received.ok).toBe(true);
 
     for (const to of ["eine@example.ch", "zweite@example.ch"]) {

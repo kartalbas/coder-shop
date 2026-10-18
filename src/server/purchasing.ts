@@ -5,6 +5,7 @@ import {
   type SupplierInput,
 } from "@/lib/validations/purchasing";
 import { formatPoNumber } from "@/lib/numbers";
+import { expectedArrival, incomingForLines, type IncomingInfo } from "@/lib/purchasing/incoming";
 import { escapeRegex } from "@/lib/regex";
 import { ProductModel } from "@/models/product";
 import {
@@ -16,6 +17,7 @@ import { SupplierModel, type Supplier } from "@/models/supplier";
 import { mintNumber } from "./numbers";
 import { notifyRestockedCore } from "./restock-alerts";
 import { connectDB } from "./db";
+import { DuplicateSerialError, createReceivedUnits, serialTrackedTypes } from "./stock-units";
 
 export type PurchasingResult = { ok: true } | { ok: false; error: string };
 
@@ -102,6 +104,7 @@ export interface PurchaseOrderListItem {
   lineCount: number;
   createdAt: Date;
   orderedAt?: Date;
+  expectedArrivalAt?: Date;
   receivedAt?: Date;
 }
 
@@ -123,6 +126,7 @@ export async function listPurchaseOrders(): Promise<PurchaseOrderListItem[]> {
     lineCount: po.lines.length,
     createdAt: po.createdAt,
     orderedAt: po.orderedAt,
+    expectedArrivalAt: po.expectedArrivalAt,
     receivedAt: po.receivedAt,
   }));
 }
@@ -131,6 +135,9 @@ export interface PurchaseOrderDetail {
   po: PurchaseOrder;
   supplier: Supplier | null;
   productNames: Map<string, string>;
+  // Issue #62 (#54): SKUs whose product type tracks serials — the receipt form
+  // asks for one serial per received piece for these lines.
+  serialSkus: Set<string>;
 }
 
 export async function getPurchaseOrderById(id: string): Promise<PurchaseOrderDetail | null> {
@@ -138,17 +145,24 @@ export async function getPurchaseOrderById(id: string): Promise<PurchaseOrderDet
   if (!mongoose.isValidObjectId(id)) return null;
   const po = await PurchaseOrderModel.findById(id).lean<PurchaseOrder>().exec();
   if (!po) return null;
-  const [supplier, products] = await Promise.all([
+  const [supplier, products, serialTypes] = await Promise.all([
     SupplierModel.findById(po.supplierId).lean<Supplier>().exec(),
     ProductModel.find({ _id: { $in: po.lines.map((line) => line.productId) } })
-      .select("_id name")
-      .lean<{ _id: mongoose.Types.ObjectId; name: string }[]>()
+      .select("_id name type")
+      .lean<{ _id: mongoose.Types.ObjectId; name: string; type: string }[]>()
       .exec(),
+    serialTrackedTypes(),
   ]);
+  const typeById = new Map(products.map((product) => [product._id.toString(), product.type]));
   return {
     po,
     supplier,
     productNames: new Map(products.map((product) => [product._id.toString(), product.name])),
+    serialSkus: new Set(
+      po.lines
+        .filter((line) => serialTypes.has(typeById.get(line.productId.toString()) ?? ""))
+        .map((line) => line.sku),
+    ),
   };
 }
 
@@ -218,22 +232,65 @@ export async function createPurchaseOrderCore(input: unknown): Promise<
 export async function markPurchaseOrderOrderedCore(poId: string): Promise<PurchasingResult> {
   await connectDB();
   if (!mongoose.isValidObjectId(poId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  const po = await PurchaseOrderModel.findById(poId).exec();
+  if (!po || po.status !== "draft") return { ok: false, error: "Nur Entwürfe können bestellt werden." };
+  const supplier = await SupplierModel.findById(po.supplierId).exec();
+  // Issue #62 (#55): the expected arrival comes from the supplier's lead time; the
+  // admin can adjust it per PO afterwards.
+  const orderedAt = new Date();
+  po.status = "ordered";
+  po.orderedAt = orderedAt;
+  po.expectedArrivalAt = expectedArrival(orderedAt, supplier?.leadTimeDays ?? 0);
+  await po.save();
+  return { ok: true };
+}
+
+// Issue #62 (#55): the expected arrival is editable per PO (supplier delays, holidays).
+export async function setExpectedArrivalCore(poId: string, arrival: Date): Promise<PurchasingResult> {
+  await connectDB();
+  if (!mongoose.isValidObjectId(poId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (Number.isNaN(arrival.getTime())) return { ok: false, error: "Ungültiges Datum." };
   const updated = await PurchaseOrderModel.findOneAndUpdate(
-    { _id: poId, status: "draft" },
-    { $set: { status: "ordered", orderedAt: new Date() } },
+    { _id: poId, status: "ordered" },
+    { $set: { expectedArrivalAt: arrival } },
     { returnDocument: "after" },
   ).exec();
-  if (!updated) return { ok: false, error: "Nur Entwürfe können bestellt werden." };
+  if (!updated) return { ok: false, error: "Nur bestellte Bestellungen haben eine erwartete Ankunft." };
   return { ok: true };
+}
+
+// Issue #62 (#55): what is on order for these SKUs — derived from the open PO lines,
+// never stored on the product. SKUs without incoming stock do not appear.
+export async function getIncomingBySkuCore(skus: readonly string[]): Promise<Map<string, IncomingInfo>> {
+  if (skus.length === 0) return new Map();
+  await connectDB();
+  const pos = await PurchaseOrderModel.find({ status: "ordered", "lines.sku": { $in: [...skus] } })
+    .select("lines.sku lines.qty lines.received expectedArrivalAt")
+    .lean<Pick<PurchaseOrder, "lines" | "expectedArrivalAt">[]>()
+    .exec();
+  const lines = pos.flatMap((po) =>
+    po.lines
+      .filter((line) => skus.includes(line.sku))
+      .map((line) => ({ ...line, arrival: po.expectedArrivalAt ?? null })),
+  );
+  return incomingForLines(lines);
 }
 
 export interface ReceiveResult {
   ok: true;
   restocked: { sku: string; qty: number }[];
+  /** Issue #62 (#55): false while a partial receipt leaves the rest on order. */
+  complete: boolean;
 }
 
+// Goods receipt, optionally partial (issue #62/#55): `quantities` maps SKU → qty
+// received now (default: everything still open). Lines that stay open keep the PO
+// "ordered" — the remainder is still visible as incoming stock. Serial-tracked
+// lines (issue #62/#54) additionally require one serial number per received piece.
 export async function receivePurchaseOrderCore(
   poId: string,
+  quantities?: Record<string, number>,
+  serials?: Record<string, string[]>,
 ): Promise<ReceiveResult | { ok: false; error: string }> {
   await connectDB();
   if (!mongoose.isValidObjectId(poId)) return { ok: false, error: "Bestellung nicht gefunden." };
@@ -251,26 +308,67 @@ export async function receivePurchaseOrderCore(
       return { ok: false, error: "Wareneingang ist nur für bestellte Bestellungen möglich." };
     }
 
+    const serialTypes = await serialTrackedTypes();
     const restocked: { sku: string; qty: number }[] = [];
     for (const line of po.lines) {
-      const delta = line.qty - line.received;
-      if (delta <= 0) continue;
+      const open = line.qty - line.received;
+      const wanted = quantities?.[line.sku] ?? open;
+      if (!Number.isInteger(wanted) || wanted < 0 || wanted > open) {
+        await session.abortTransaction();
+        return { ok: false, error: `Ungültige Empfangsmenge für ${line.sku}.` };
+      }
+      if (wanted === 0) continue;
+
+      // Issue #62 (#54): a serial-tracked line registers each piece by serial number.
+      const productType = await ProductModel.findById(line.productId).select("type").lean().exec();
+      const isSerial = productType !== null && serialTypes.has(productType.type);
+      if (isSerial) {
+        const lineSerials = serials?.[line.sku] ?? [];
+        if (lineSerials.length !== wanted) {
+          await session.abortTransaction();
+          return {
+            ok: false,
+            error: `Für ${line.sku} werden ${wanted} Seriennummer(n) benötigt — erhalten: ${lineSerials.length}.`,
+          };
+        }
+        try {
+          await createReceivedUnits(line.sku, lineSerials, po._id.toString(), session);
+        } catch (error) {
+          await session.abortTransaction();
+          if (error instanceof DuplicateSerialError) {
+            return { ok: false, error: `Seriennummer ${error.serial} ist bereits erfasst.` };
+          }
+          if (error instanceof Error && error.message.startsWith("Ungültige Seriennummer")) {
+            return { ok: false, error: error.message };
+          }
+          throw error;
+        }
+      }
+
       const updated = await ProductModel.findOneAndUpdate(
         { _id: line.productId, "variants.sku": line.sku },
-        { $inc: { "variants.$[v].stock": delta } },
+        { $inc: { "variants.$[v].stock": wanted } },
         { arrayFilters: [{ "v.sku": line.sku }], session, returnDocument: "after" },
       ).lean();
       if (!updated) {
         await session.abortTransaction();
         return { ok: false, error: `Produkt für SKU ${line.sku} nicht gefunden.` };
       }
-      line.received = line.qty;
-      restocked.push({ sku: line.sku, qty: delta });
+      line.received += wanted;
+      restocked.push({ sku: line.sku, qty: wanted });
     }
 
     po.markModified("lines");
-    po.status = "received";
-    po.receivedAt = new Date();
+    // Issue #62 (#55): only a full receipt closes the PO; a partial one keeps the
+    // rest on order and visible as incoming stock.
+    let complete = true;
+    for (const line of po.lines) {
+      if (line.received < line.qty) complete = false;
+    }
+    if (complete) {
+      po.status = "received";
+      po.receivedAt = new Date();
+    }
     await po.save({ session });
     await session.commitTransaction();
     // Issue #46: goods receipt is the canonical restock — notify waiting customers.
@@ -280,7 +378,7 @@ export async function receivePurchaseOrderCore(
     } catch (error) {
       console.error("Wieder-verfügbar-Benachrichtigung fehlgeschlagen", error);
     }
-    return { ok: true, restocked };
+    return { ok: true, restocked, complete };
   } catch (error) {
     if (session.inTransaction()) await session.abortTransaction();
     throw error;

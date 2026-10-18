@@ -24,6 +24,7 @@ import { UserModel } from "@/models/user";
 import { absoluteUrl } from "@/lib/site";
 import { invoiceMail, orderConfirmationMail } from "@/lib/mail-templates";
 import { connectDB } from "./db";
+import { NotEnoughUnitsError, reserveUnitsForOrder, serialTrackedTypes } from "./stock-units";
 import { getShopSettings } from "./shop-settings";
 import {
   checkDiscountCore,
@@ -87,6 +88,7 @@ interface ResolvedLine {
   sku: string;
   qty: number;
   name: string;
+  type: string;
   variantLabel: string;
   unitPriceCents: number;
   expectedUnitPriceCents: number;
@@ -114,11 +116,11 @@ async function resolveLines(
   session: ClientSession,
 ): Promise<ResolvedLine[]> {
   const skus = [...bySku.keys()];
-  type LeanVariantSource = Pick<Product, "name" | "variants" | "priceCents"> & {
+  type LeanVariantSource = Pick<Product, "name" | "variants" | "priceCents" | "type"> & {
     _id: mongoose.Types.ObjectId;
   };
   const products = await ProductModel.find({ "variants.sku": { $in: skus } })
-    .select("_id name priceCents variants")
+    .select("_id name priceCents type variants")
     .session(session)
     .lean<LeanVariantSource[]>();
   const byVariant = new Map(
@@ -136,6 +138,7 @@ async function resolveLines(
       sku,
       qty: entry2.qty,
       name: product.name,
+      type: product.type,
       variantLabel: variant.label,
       unitPriceCents: product.priceCents + variant.priceDeltaCents,
       expectedUnitPriceCents: entry2.expectedUnitPriceCents,
@@ -214,22 +217,40 @@ async function runCheckout(
   const minted = await mintNumber("order", formatOrderNumber, session);
   const orderNumber = minted.value;
 
+  // Issue #62 (#54): serial-tracked types move specific units with the order — the
+  // reservation happens in this transaction, so stock count and unit ledger can
+  // never disagree. Quantity-tracked lines have no units.
+  const serialTypes = await serialTrackedTypes();
+  const serialLines = lines.filter((line) => serialTypes.has(line.type));
+  const serialsBySku =
+    serialLines.length > 0
+      ? await reserveUnitsForOrder(
+          serialLines.map((line) => ({ sku: line.sku, qty: line.qty })),
+          orderNumber,
+          session,
+        )
+      : new Map<string, string[]>();
+
   // Book the redemption now that the order number exists — a later abort of this
   // transaction rolls the counter and the usage document back as well.
   if (discount && discountDoc) {
     await redeemDiscount(discountDoc, customerKey, orderNumber, session);
   }
 
-  const orderLines: OrderLine[] = lines.map((line) => ({
-    productId: line.productId,
-    sku: line.sku,
-    name: line.name,
-    variantLabel: line.variantLabel,
-    qty: line.qty,
-    unitPriceCents: line.unitPriceCents,
-    totalCents: line.unitPriceCents * line.qty,
-    weightGrams: line.weightGrams,
-  }));
+  const orderLines: OrderLine[] = lines.map((line) => {
+    const serials = serialsBySku.get(line.sku);
+    return {
+      productId: line.productId,
+      sku: line.sku,
+      name: line.name,
+      variantLabel: line.variantLabel,
+      qty: line.qty,
+      unitPriceCents: line.unitPriceCents,
+      totalCents: line.unitPriceCents * line.qty,
+      weightGrams: line.weightGrams,
+      ...(serials !== undefined && { serials }),
+    };
+  });
   const totals = computeTotals(orderLines, shipping.key, settings, discount?.cents ?? 0);
 
   const now = new Date();
@@ -435,7 +456,7 @@ async function runClaimedCheckout(
     } catch (error) {
       if (session.inTransaction()) await session.abortTransaction();
       await release();
-      if (error instanceof InsufficientStockError) {
+      if (error instanceof InsufficientStockError || error instanceof NotEnoughUnitsError) {
         return {
           ok: false,
           error: `Nicht genügend Lager für ${error.sku}. Bitte Menge reduzieren.`,

@@ -1269,3 +1269,48 @@ Done — M1–M6 + QA complete.
   such and a #63 entry records the rename, the 308-as-configuration choice and the
   proxy-gate move (reopened finding).
 - Verified: `npm run build`/lint ✅, `npm test` ✅ 474, `npm run test:e2e` ✅ 51/51.
+
+## ISSUES — queue session 15 (2026-10-18)
+
+### #63 (reopened) — DECISIONS entry for the English-URL decision ✅
+- The implementation was verified at e8de0b6; the reopened finding was documentation:
+  DECISIONS still recorded "German public URLs via rewrites" as current. That entry is
+  now marked superseded and a #63 entry documents the rename, the 308-as-configuration
+  choice and the proxy-gate move; the #48 entry's URL updated. Docs-only commit.
+
+### #62 — serial-number stock for smartphones, incoming stock visible ✅
+- **Part B (#55) incoming stock:** PO `expectedArrivalAt` set from the supplier lead time
+  on `markPurchaseOrderOrderedCore` (`expectedArrival` pure) and editable per PO
+  (`setExpectedArrivalCore` + form); partial goods receipt (`receivePurchaseOrderCore(poId,
+  quantities, …)` — per-line received qty, PO stays `ordered` until complete);
+  `getIncomingBySkuCore` derives per-SKU open qty + earliest arrival from the `ordered` PO
+  lines (never stored on the product); pure `src/lib/purchasing/incoming.ts` holds the
+  aggregation and the German bucket copy ("5 Stk. bestellt, Ankunft ca. in 3 Tagen");
+  shown on the product page + variant picker for low/zero-stock variants (sold-out ones
+  marked), in the admin variant editor ("N bestellt") and on the PO list/detail.
+- **Part A (#54) serial stock:** smartphones' type config is `stockTracking: "serial"`;
+  new `stock_units` ledger (`src/models/stock-unit.ts`, serial unique per SKU, status
+  chain `in_stock → reserved → packed → shipped → sold`, cancel releases — pure chain in
+  `src/lib/stock-units.ts`, all data access in `src/server/stock-units.ts`). Goods
+  receipt registers each piece by serial (typed/scanned, duplicates refused in batch and
+  against the ledger); checkout reserves exact units inside its transaction and records
+  the serials on the order line; units travel with `transitionOrderCore`/label/handover
+  and a restocking cancel releases them; serials print on packing slip + invoice PDF.
+  `updateVariantCore` refuses direct stock edits on serial types (stock = unit count).
+  Admin: `/admin/stock-units` ledger (search by serial/SKU, per-unit history, nav entry)
+  + "Serien ansehen" link per variant. Seed: serial smartphone stock (0–8/variant) and
+  `seedStockUnits` (one unit per in-stock piece, idempotent).
+- **Fixes along the way:** duplicate-serial lookup after the aborted transaction reads
+  outside the session (Mongo aborts the txn on the duplicate write); e2e cart helpers
+  (`addSellableVariantToCart` in `tests/e2e/helpers.ts`) now pick a variant that actually
+  has stock via the API and click its label parts — the old "first button of each group"
+  hit sold-out serial variants; `purchasing.spec.ts` types serials at receipt;
+  `incoming-stock.spec.ts` runs on a quantity-tracked shoe (stock edits on serial types
+  are refused by design).
+- Verified: new `tests/stock-units.test.ts` (11: pure unit chain + receipt/units/stock
+  count, duplicate refusal both ways, exact reservation, travel to sold, cancel release,
+  serial→PO→order trace, legacy-stock refusal writes nothing, unit race);
+  `tests/purchasing.test.ts` +ETA/partial/serial tests; new e2e `serial-stock.spec.ts`
+  (buy → reserved unit → slip serial → ship → delivered → "Verkauft" with history) and
+  reworked `incoming-stock.spec.ts` — both fail on the pre-#62 build.
+  `npm run build`/lint/knip ✅, `npm test` ✅ 495, `npm run test:e2e` ✅ 53/53.

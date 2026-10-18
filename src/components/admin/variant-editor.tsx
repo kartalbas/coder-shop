@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,10 +16,14 @@ function VariantRow({
   productId,
   variant,
   dimensions,
+  incomingQty,
+  serialTracked,
 }: {
   productId: string;
   variant: VariantDto;
   dimensions: readonly CatalogDimensionConfig[];
+  incomingQty: number;
+  serialTracked: boolean;
 }) {
   const [state, formAction, pending] = useActionState<ProductActionState | null, FormData>(
     updateVariantAction,
@@ -56,6 +61,21 @@ function VariantRow({
       <div className="col-span-2 text-sm lg:col-span-1">
         <p className="font-medium">{variant.sku}</p>
         <p className="text-xs text-muted-foreground">{variant.label}</p>
+        {/* Issue #62 (#55): what is on order for this variant (open purchase orders). */}
+        {incomingQty > 0 && (
+          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+            {incomingQty} bestellt
+          </p>
+        )}
+        {/* Issue #62 (#54): serial-tracked stock lives in the unit ledger, not in the field. */}
+        {serialTracked && (
+          <Link
+            href={`/admin/stock-units?q=${encodeURIComponent(variant.sku)}`}
+            className="text-xs font-medium text-sky-700 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring dark:text-sky-400"
+          >
+            Serien ansehen
+          </Link>
+        )}
       </div>
       <label className="space-y-1 text-xs text-muted-foreground">
         Preisdifferenz (CHF)
@@ -120,14 +140,25 @@ function VariantRow({
 export function VariantEditor({
   product,
   dimensions,
+  incomingBySku = {},
+  serialTracked = false,
 }: {
   product: ProductDto;
   dimensions: readonly CatalogDimensionConfig[];
+  incomingBySku?: Record<string, number>;
+  serialTracked?: boolean;
 }) {
   return (
     <div className="rounded-xl border">
       {product.variants.map((variant) => (
-        <VariantRow key={variant.sku} productId={product.id} variant={variant} dimensions={dimensions} />
+        <VariantRow
+          key={variant.sku}
+          productId={product.id}
+          variant={variant}
+          dimensions={dimensions}
+          incomingQty={incomingBySku[variant.sku] ?? 0}
+          serialTracked={serialTracked}
+        />
       ))}
     </div>
   );

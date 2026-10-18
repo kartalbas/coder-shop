@@ -9,6 +9,7 @@ import { absoluteUrl } from "@/lib/site";
 import { OrderModel } from "@/models/order";
 import { connectDB } from "../db";
 import { sendMail } from "../mail";
+import { advanceUnitsForOrder } from "../stock-units";
 import { resolveInsideDir } from "../secure-path";
 import { getShippingProvider } from "./provider";
 
@@ -128,6 +129,10 @@ export async function createLabelCore(
       error: "Etikett konnte nicht gespeichert werden. Bitte erneut versuchen.",
     };
   }
+
+  // Issue #62 (#54): the label-only `packed → shipped` moves the order's serial
+  // units along; quantity orders have no units and nothing happens.
+  await advanceUnitsForOrder(order.orderNumber, "shipped", "Etikett erstellt");
 
   // Issue #44: the tracking mail only after the order actually moved to shipped (not on
   // the idempotent early return) — and never fails the label flow.

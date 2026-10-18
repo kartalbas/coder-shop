@@ -20,20 +20,29 @@ import {
 import { buyablePriceCents } from "@/lib/pricing";
 import { useShopSettings } from "@/components/shop-settings-provider";
 import { vatLabel } from "@/lib/shop-settings";
+import { isLowStock } from "@/lib/stock";
+import { incomingLabel } from "@/lib/purchasing/incoming";
 import { Gallery } from "./gallery";
 import { CompareToggle } from "./compare-toggle";
 import { RestockAlertForm } from "./restock-alert-form";
 import { StockIndicator } from "./stock-indicator";
 import { WishlistHeart } from "./wishlist-heart";
 
+// Issue #62 (#55): incoming stock per SKU, serialized from the open purchase orders.
+export interface IncomingBySku {
+  [sku: string]: { qty: number; arrival: string };
+}
+
 // Issue #61: the variant picker renders the dimensions of the product's catalog type
 // configuration (labels, order, units) — never a fixed colour/size/storage triple.
 export function ProductDetail({
   product,
   typeDimensions,
+  incomingBySku,
 }: {
   product: ProductDto;
   typeDimensions: readonly CatalogDimensionConfig[];
+  incomingBySku: IncomingBySku;
 }) {
   const dimensions = useMemo(
     () => dimensionsOf(product, typeDimensions),
@@ -77,6 +86,17 @@ export function ProductDetail({
   };
 
   const canAdd = variant !== undefined && stock > 0;
+
+  // Issue #62 (#55): a variant with low or no stock that has open purchase orders says
+  // what is on order and when it is expected — data from the POs, nothing per type.
+  const incoming = variant ? incomingBySku[variant.sku] : undefined;
+  const showIncoming =
+    variant !== undefined &&
+    incoming !== undefined &&
+    isLowStock(stock, variant.restockThreshold);
+  const incomingText = incoming
+    ? incomingLabel(incoming.qty, new Date(incoming.arrival), new Date())
+    : null;
 
   const add = () => {
     if (!variant || !canAdd) return;
@@ -155,6 +175,12 @@ export function ProductDetail({
                 );
                 const available = candidate !== undefined && candidate.stock > 0;
                 const active = selection[dimension.key] === value;
+                // Issue #62 (#55): a sold-out variant with incoming stock is marked —
+                // sold out now, but replenishment is on order.
+                const onOrder =
+                  candidate !== undefined &&
+                  candidate.stock === 0 &&
+                  incomingBySku[candidate.sku] !== undefined;
                 return (
                   <button
                     key={value}
@@ -162,6 +188,7 @@ export function ProductDetail({
                     aria-pressed={active}
                     disabled={!candidate}
                     onClick={() => select(dimension.key, value)}
+                    title={onOrder ? "Ausverkauft — Nachschub ist bestellt" : undefined}
                     className={cn(
                       "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring",
                       active && "border-primary bg-primary text-primary-foreground",
@@ -170,6 +197,12 @@ export function ProductDetail({
                     )}
                   >
                     {formatSelectionValue(dimension, value)}
+                    {onOrder && (
+                      <span
+                        aria-hidden
+                        className="ml-1.5 inline-block size-1.5 rounded-full bg-amber-500 align-middle"
+                      />
+                    )}
                   </button>
                 );
               })}
@@ -179,6 +212,13 @@ export function ProductDetail({
 
         {variant && (
           <StockIndicator stock={stock} restockThreshold={variant.restockThreshold} />
+        )}
+
+        {/* Issue #62 (#55): incoming stock for the chosen low/zero-stock variant. */}
+        {showIncoming && incomingText && (
+          <p className="text-sm font-medium text-amber-600 dark:text-amber-400" role="status">
+            {incomingText}
+          </p>
         )}
 
         <div className="flex flex-wrap items-center gap-3">

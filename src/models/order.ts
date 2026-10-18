@@ -31,6 +31,9 @@ export interface OrderLine {
   unitPriceCents: number;
   totalCents: number;
   weightGrams: number;
+  // Issue #62 (#54): for serial-tracked types the exact units reserved for this
+  // line; quantity types have no serials.
+  serials?: string[];
 }
 
 interface OrderTotals {
@@ -136,6 +139,7 @@ const lineSchema = new Schema<OrderLine>(
     unitPriceCents: { type: Number, required: true, min: 0 },
     totalCents: { type: Number, required: true, min: 0 },
     weightGrams: { type: Number, required: true, min: 0 },
+    serials: { type: [String] },
   },
   { _id: false },
 );

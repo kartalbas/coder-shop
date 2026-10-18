@@ -10,6 +10,7 @@ import { hashPassword } from "@/server/password";
 import { getShopSettings, saveShopSettingsCore } from "@/server/shop-settings";
 import { seedShopSettings } from "../scripts/seed/seed";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { seedUnitsForSku } from "@/test/units";
 
 // Issue #64 done-when: changing the VAT rate, a shipping price or the payment-method
 // set needs no code change — the checkout books exactly what the configuration says,
@@ -52,6 +53,8 @@ async function seedProduct(tag: string, priceCents = 10000, stock = 10) {
       },
     ],
   });
+  // Issue #62 (#54): smartphones are serial-tracked — stock means units.
+  await seedUnitsForSku(`ST-${tag}`, stock);
 }
 
 async function checkout(tag: string, shippingMethod: string, paymentMethod: string, opts: { userId?: string } = {}) {

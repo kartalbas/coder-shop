@@ -3,18 +3,22 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CounterModel } from "@/models/counter";
 import { ProductModel, type Product } from "@/models/product";
 import { PurchaseOrderModel, type PurchaseOrder } from "@/models/purchase-order";
+import { StockUnitModel } from "@/models/stock-unit";
 import { SupplierModel } from "@/models/supplier";
 import {
   createPurchaseOrderCore,
   createSupplierCore,
+  getIncomingBySkuCore,
   markPurchaseOrderOrderedCore,
   receivePurchaseOrderCore,
   searchSuppliers,
   searchVariantsBySku,
+  setExpectedArrivalCore,
   updateSupplierCore,
 } from "@/server/purchasing";
 import { formatPoNumber } from "@/lib/numbers";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { serialList } from "@/test/units";
 
 async function seedProduct(tag: string, skus: string[], stock: number) {
   return ProductModel.create({
@@ -201,7 +205,10 @@ describe("purchase order core", () => {
       error: "Nur Entwürfe können bestellt werden.",
     });
 
-    const received = await receivePurchaseOrderCore(created.poId);
+    const received = await receivePurchaseOrderCore(created.poId, undefined, {
+      "PO-B1": serialList("PO-B1", 6),
+      "PO-B2": serialList("PO-B2", 11),
+    });
     expect(received.ok).toBe(true);
     if (!received.ok) return;
     expect(received.restocked).toEqual([
@@ -211,6 +218,10 @@ describe("purchase order core", () => {
 
     expect(await stockOf("PO-B1")).toBe(4 + 6);
     expect(await stockOf("PO-B2")).toBe(4 + 11);
+    // Issue #62 (#54): every received piece is registered as an in-stock unit —
+    // the variant stock of a serial type is exactly its unit count.
+    expect(await StockUnitModel.countDocuments({ sku: "PO-B1", status: "in_stock" })).toBe(6);
+    expect(await StockUnitModel.countDocuments({ sku: "PO-B2", status: "in_stock" })).toBe(11);
 
     const po = await PurchaseOrderModel.findById(created.poId).lean<PurchaseOrder>().exec();
     expect(po?.status).toBe("received");
@@ -258,6 +269,128 @@ describe("purchase order core", () => {
     const counter = await CounterModel.findById("po").lean();
     const count = await PurchaseOrderModel.countDocuments();
     expect(counter?.seq).toBeGreaterThanOrEqual(count);
+  });
+});
+
+// Issue #62 (#55): incoming stock — expected arrival from the lead time, partial
+// receipts keep the rest on order, the shop sees the open quantity per SKU.
+describe("incoming stock (issue #62/#55)", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+    await clearCollections();
+  });
+
+  afterAll(disconnectTestDB);
+
+  it("ordering sets expectedArrivalAt from the supplier lead time; it stays editable", async () => {
+    await seedProduct("eta", ["ETA-A1"], 0);
+    const supplier = await SupplierModel.create({
+      name: "Eta Lieferant",
+      email: "eta@example.ch",
+      leadTimeDays: 10,
+      active: true,
+    });
+    const created = await createPurchaseOrderCore({
+      supplierId: supplier._id.toString(),
+      lines: [{ sku: "ETA-A1", qty: 5, unitPriceCents: 1000 }],
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const before = Date.now();
+    expect(await markPurchaseOrderOrderedCore(created.poId)).toEqual({ ok: true });
+    const po = await PurchaseOrderModel.findById(created.poId).lean<PurchaseOrder>().exec();
+    expect(po?.expectedArrivalAt).toBeInstanceOf(Date);
+    const lead = (po!.expectedArrivalAt!.getTime() - po!.orderedAt!.getTime()) / 86_400_000;
+    expect(lead).toBeCloseTo(10, 5);
+    expect(po!.expectedArrivalAt!.getTime()).toBeGreaterThanOrEqual(before);
+
+    const later = new Date(Date.now() + 30 * 86_400_000);
+    expect(await setExpectedArrivalCore(created.poId, later)).toEqual({ ok: true });
+    const edited = await PurchaseOrderModel.findById(created.poId).lean<PurchaseOrder>().exec();
+    expect(edited?.expectedArrivalAt?.getTime()).toBe(later.getTime());
+
+    // A draft PO has no arrival to edit.
+    const draft = await createPurchaseOrderCore({
+      supplierId: supplier._id.toString(),
+      lines: [{ sku: "ETA-A1", qty: 1, unitPriceCents: 1000 }],
+    });
+    expect(draft.ok).toBe(true);
+    if (!draft.ok) return;
+    expect(await setExpectedArrivalCore(draft.poId, later)).toEqual({
+      ok: false,
+      error: "Nur bestellte Bestellungen haben eine erwartete Ankunft.",
+    });
+  });
+
+  it("aggregates incoming across POs, shrinks on partial receipt, clears on full", async () => {
+    await seedProduct("incoming", ["INC-A1", "INC-A2"], 0);
+    const supplier = await SupplierModel.findOne({ name: "Eta Lieferant" }).exec();
+    const first = await createPurchaseOrderCore({
+      supplierId: supplier!._id.toString(),
+      lines: [
+        { sku: "INC-A1", qty: 5, unitPriceCents: 1000 },
+        { sku: "INC-A2", qty: 3, unitPriceCents: 1000 },
+      ],
+    });
+    const second = await createPurchaseOrderCore({
+      supplierId: supplier!._id.toString(),
+      lines: [{ sku: "INC-A1", qty: 4, unitPriceCents: 1000 }],
+    });
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+    await markPurchaseOrderOrderedCore(first.poId);
+    await markPurchaseOrderOrderedCore(second.poId);
+    // The second PO arrives earlier — the earliest arrival wins per SKU.
+    const early = new Date(Date.now() + 2 * 86_400_000);
+    await setExpectedArrivalCore(second.poId, early);
+
+    const open = await getIncomingBySkuCore(["INC-A1", "INC-A2", "INC-UNBEKANNT"]);
+    expect(open.get("INC-A1")).toEqual({ qty: 9, arrival: early });
+    expect(open.get("INC-A2")?.qty).toBe(3);
+    expect(open.has("INC-UNBEKANNT")).toBe(false);
+
+    // Partial receipt: 2 of 5 from the first PO — stock grows, the rest stays on order.
+    const partial = await receivePurchaseOrderCore(
+      first.poId,
+      { "INC-A1": 2, "INC-A2": 0 },
+      { "INC-A1": serialList("INC-A1", 2) },
+    );
+    expect(partial.ok).toBe(true);
+    if (!partial.ok) return;
+    expect(partial.complete).toBe(false);
+    expect(partial.restocked).toEqual([{ sku: "INC-A1", qty: 2 }]);
+    expect(await stockOf("INC-A1")).toBe(2);
+    const po = await PurchaseOrderModel.findById(first.poId).lean<PurchaseOrder>().exec();
+    expect(po?.status).toBe("ordered");
+
+    const afterPartial = await getIncomingBySkuCore(["INC-A1", "INC-A2"]);
+    expect(afterPartial.get("INC-A1")?.qty).toBe(7);
+    expect(afterPartial.get("INC-A2")?.qty).toBe(3);
+
+    // Receiving more than is open is refused.
+    expect(await receivePurchaseOrderCore(first.poId, { "INC-A1": 99 })).toEqual({
+      ok: false,
+      error: "Ungültige Empfangsmenge für INC-A1.",
+    });
+    expect(await stockOf("INC-A1")).toBe(2);
+
+    // Full receipt of both POs clears the incoming view.
+    const rest = await receivePurchaseOrderCore(first.poId, undefined, {
+      "INC-A1": serialList("INC-A1", 3, 3),
+      "INC-A2": serialList("INC-A2", 3),
+    });
+    expect(rest.ok && rest.complete).toBe(true);
+    const restSecond = await receivePurchaseOrderCore(second.poId, undefined, {
+      "INC-A1": serialList("INC-A1", 4, 6),
+    });
+    expect(restSecond.ok && restSecond.complete).toBe(true);
+    expect(await getIncomingBySkuCore(["INC-A1", "INC-A2"])).toEqual(new Map());
+    expect(await stockOf("INC-A1")).toBe(9);
+    expect(await stockOf("INC-A2")).toBe(3);
+    const closed = await PurchaseOrderModel.findById(first.poId).lean<PurchaseOrder>().exec();
+    expect(closed?.status).toBe("received");
+    expect(closed?.receivedAt).toBeInstanceOf(Date);
   });
 });
 

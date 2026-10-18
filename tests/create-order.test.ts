@@ -8,6 +8,7 @@ import { ProductModel, type Product } from "@/models/product";
 import { createOrderCore } from "@/server/checkout";
 import { formatOrderNumber } from "@/lib/numbers";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { seedUnitsForSku } from "@/test/units";
 
 const CUSTOMER = {
   name: "Max Muster",
@@ -20,7 +21,7 @@ const CUSTOMER = {
 };
 
 async function seedProduct(stock: number, tag: string, priceCents = 10000) {
-  return ProductModel.create({
+  const product = await ProductModel.create({
     slug: `checkout-test-${tag}`,
     name: `Checkout Test ${tag}`,
     description: "Produkt für Checkout-Integrationstests.",
@@ -42,6 +43,9 @@ async function seedProduct(stock: number, tag: string, priceCents = 10000) {
       },
     ],
   });
+  // Issue #62: smartphones are serial-tracked — stock means units.
+  await seedUnitsForSku(`CT-${tag}`, stock);
+  return product;
 }
 
 async function stockOf(sku: string): Promise<number> {
@@ -185,6 +189,8 @@ describe("createOrderCore", () => {
       ],
     });
 
+    await seedUnitsForSku("CT-full", 10);
+
     const result = await createOrderCore({
       lines: [{ sku: "CT-empty", qty: 5, expectedUnitPriceCents: 10500 }],
       customer: CUSTOMER,
@@ -260,6 +266,7 @@ describe("createOrderCore", () => {
       { "variants.sku": "CT-release" },
       { $set: { "variants.$.stock": 5 } },
     );
+    await seedUnitsForSku("CT-release", 4);
     const retry = await createOrderCore(payload);
     expect(retry.ok).toBe(true);
     expect(await stockOf("CT-release")).toBe(2);

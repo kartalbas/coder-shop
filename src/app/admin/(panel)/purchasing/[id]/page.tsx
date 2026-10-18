@@ -5,9 +5,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
-import { MarkOrderedButton, ReceiveButton } from "@/components/admin/po-status-actions";
+import {
+  ExpectedArrivalForm,
+  MarkOrderedButton,
+  ReceiveForm,
+} from "@/components/admin/po-status-actions";
 import { PurchaseOrderStatusBadge } from "@/components/admin/po-status-badge";
-import { formatChf, formatDateTime } from "@/lib/format";
+import { formatChf, formatDate, formatDateTime } from "@/lib/format";
 import { getPurchaseOrderById } from "@/server/purchasing";
 
 interface PagePropsLocal {
@@ -24,7 +28,7 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
   const { id } = await params;
   const detail = await getPurchaseOrderById(id);
   if (!detail) notFound();
-  const { po, supplier, productNames } = detail;
+  const { po, supplier, productNames, serialSkus } = detail;
 
   return (
     <div className="max-w-3xl">
@@ -44,9 +48,26 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
         {supplier ? `Lieferant: ${supplier.name}` : "Lieferant: Unbekannt"}
         {supplier?.email ? ` · ${supplier.email}` : ""}
       </p>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-end gap-4">
         {po.status === "draft" && <MarkOrderedButton poId={po._id.toString()} />}
-        {po.status === "ordered" && <ReceiveButton poId={po._id.toString()} />}
+        {po.status === "ordered" && (
+          <>
+            <ExpectedArrivalForm
+              poId={po._id.toString()}
+              defaultValue={(po.expectedArrivalAt ?? new Date()).toISOString().slice(0, 10)}
+            />
+            <ReceiveForm
+              poId={po._id.toString()}
+              lines={po.lines
+                .map((line) => ({
+                  sku: line.sku,
+                  open: line.qty - line.received,
+                  serial: serialSkus.has(line.sku),
+                }))
+                .filter((line) => line.open > 0)}
+            />
+          </>
+        )}
       </div>
 
       <section className="mt-6 rounded-xl border bg-card p-5" aria-label="Positionen">
@@ -58,6 +79,7 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
                 <th className="py-2 pr-4 font-medium">Artikel</th>
                 <th className="py-2 pr-4 text-right font-medium">Menge</th>
                 <th className="py-2 pr-4 text-right font-medium">Erhalten</th>
+                <th className="py-2 pr-4 text-right font-medium">Bestellt</th>
                 <th className="py-2 pr-4 text-right font-medium">Stückpreis</th>
                 <th className="py-2 text-right font-medium">Total</th>
               </tr>
@@ -73,6 +95,15 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
                   </td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">{line.qty}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">{line.received}</td>
+                  <td className="py-2.5 pr-4 text-right tabular-nums">
+                    {po.status === "ordered" && line.qty - line.received > 0 ? (
+                      <span className="text-amber-600 dark:text-amber-400">
+                        noch {line.qty - line.received}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">
                     {formatChf(line.unitPriceCents)}
                   </td>
@@ -103,6 +134,12 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">Bestellt</dt>
               <dd>{formatDateTime(po.orderedAt)}</dd>
+            </div>
+          )}
+          {po.status === "ordered" && po.expectedArrivalAt && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Erwartete Ankunft</dt>
+              <dd>{formatDate(po.expectedArrivalAt)}</dd>
             </div>
           )}
           {po.receivedAt && (

@@ -11,6 +11,7 @@ import {
   receivePurchaseOrderCore,
   searchSuppliers,
   searchVariantsBySku,
+  setExpectedArrivalCore,
   toSupplierInput,
   updateSupplierCore,
   type SkuSearchHit,
@@ -88,24 +89,79 @@ export async function markPurchaseOrderOrderedAction(
   return { ok: true };
 }
 
+// Issue #62 (#55): the goods receipt can be partial — the form sends the received
+// quantity per SKU; anything missing keeps the PO on order.
+const receiveQuantitiesSchema = z.record(z.string(), z.number().int().min(0).max(100000));
+
+// Issue #62 (#54): serial numbers per SKU for serial-tracked receipt lines.
+const receiveSerialsSchema = z.record(z.string(), z.array(z.string().max(80)).max(1000));
+
 export async function receivePurchaseOrderAction(
   _previous: PurchasingActionState | null,
   formData: FormData,
-): Promise<PurchasingActionState & { summary?: string }> {
+): Promise<PurchasingActionState & { summary?: string; complete?: boolean }> {
   await requireAdminSession();
   const poId = poIdSchema.safeParse(formData.get("poId"));
   if (!poId.success) return { error: "Ungültige Anfrage." };
 
-  const result = await receivePurchaseOrderCore(poId.data);
+  let quantities: Record<string, number> | undefined;
+  const raw = formData.get("quantities");
+  if (typeof raw === "string" && raw.length > 0) {
+    let json: unknown;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      return { error: "Ungültige Formular-Daten." };
+    }
+    const parsed = receiveQuantitiesSchema.safeParse(json);
+    if (!parsed.success) return { error: "Ungültige Empfangsmengen." };
+    quantities = parsed.data;
+  }
+
+  let serials: Record<string, string[]> | undefined;
+  const rawSerials = formData.get("serials");
+  if (typeof rawSerials === "string" && rawSerials.length > 0) {
+    let json: unknown;
+    try {
+      json = JSON.parse(rawSerials);
+    } catch {
+      return { error: "Ungültige Formular-Daten." };
+    }
+    const parsed = receiveSerialsSchema.safeParse(json);
+    if (!parsed.success) return { error: "Ungültige Seriennummern." };
+    serials = parsed.data;
+  }
+
+  const result = await receivePurchaseOrderCore(poId.data, quantities, serials);
   if (!result.ok) return { error: result.error };
 
   revalidatePurchasing();
   return {
     ok: true,
+    complete: result.complete,
     summary: result.restocked
       .map((entry) => `${entry.qty}× ${entry.sku}`)
       .join(", "),
   };
+}
+
+// Issue #62 (#55): the expected arrival is editable per purchase order.
+const expectedArrivalSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+export async function setExpectedArrivalAction(
+  _previous: PurchasingActionState | null,
+  formData: FormData,
+): Promise<PurchasingActionState> {
+  await requireAdminSession();
+  const poId = poIdSchema.safeParse(formData.get("poId"));
+  const date = expectedArrivalSchema.safeParse(formData.get("arrival"));
+  if (!poId.success || !date.success) return { error: "Ungültige Anfrage." };
+
+  const result = await setExpectedArrivalCore(poId.data, new Date(`${date.data}T12:00:00Z`));
+  if (!result.ok) return { error: result.error };
+
+  revalidatePurchasing();
+  return { ok: true };
 }
 
 const skuQuerySchema = z.string().trim().max(100);
