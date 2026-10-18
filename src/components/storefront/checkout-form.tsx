@@ -32,13 +32,15 @@ import Link from "next/link";
 import { cartSubtotalCents, clearCart, syncPrices, useCart, useCartHydrated } from "@/stores/cart";
 
 // Issue #58 step 3: the labels are translation-table keys resolved at render; the
-// placeholders stay — they are sample values, not UI copy.
+// placeholders stay — they are sample values, not UI copy. The city sample is the one
+// exception: place names are spelled per language, so it is a row.
 const CUSTOMER_FIELDS: {
   key: keyof CheckoutCustomer;
   labelKey: string;
   type: string;
   autoComplete: string;
-  placeholder: string;
+  placeholder?: string;
+  placeholderKey?: string;
   inputMode?: "numeric" | "tel" | "text";
   className?: string;
 }[] = [
@@ -47,7 +49,7 @@ const CUSTOMER_FIELDS: {
   { key: "phone", labelKey: "shop.checkout.field.phone", type: "tel", autoComplete: "tel", placeholder: "079 123 45 67" },
   { key: "street", labelKey: "shop.checkout.field.street", type: "text", autoComplete: "street-address", placeholder: "Bahnhofstrasse 12" },
   { key: "postalCode", labelKey: "shop.checkout.field.postalCode", type: "text", inputMode: "numeric", autoComplete: "postal-code", placeholder: "8001" },
-  { key: "city", labelKey: "shop.checkout.field.city", type: "text", autoComplete: "address-level2", placeholder: "Zürich" },
+  { key: "city", labelKey: "shop.checkout.field.city", type: "text", autoComplete: "address-level2", placeholderKey: "shop.checkout.sample.city" },
 ];
 
 // Issue #64: the shipping hint of a store-pickup row names the store; every other
@@ -274,7 +276,9 @@ export function CheckoutForm({
                   type={field.type}
                   inputMode={field.inputMode}
                   autoComplete={field.autoComplete}
-                  placeholder={field.placeholder}
+                  placeholder={
+                    field.placeholderKey ? label(labels, field.placeholderKey) : field.placeholder
+                  }
                   defaultValue={prefill?.[field.key as keyof CheckoutPrefill] ?? ""}
                   aria-invalid={errors[field.key] !== undefined}
                   aria-describedby={errors[field.key] ? `${field.key}-error` : undefined}

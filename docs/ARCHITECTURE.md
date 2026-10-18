@@ -89,7 +89,8 @@ src/
                             # the internal /_not-found route passes through untouched
   app/
     fonts.ts                # Geist font init shared by the two root layouts (#58)
-    site-metadata.ts        # metadata base shared by the two root layouts (#58)
+    site-metadata.ts        # structure-only metadata base + siteMetadata(labels) — the
+                            # localized site title/description from the table (#58)
     globals.css             # Tailwind v4 @theme, light/dark tokens, @media print (packing slip)
     not-found.tsx           # global 404 (noindex) behind the internal /_not-found route —
                             # the proxy's real-404 rewrite target for unknown products
@@ -284,7 +285,8 @@ src/
     discounts.ts            # pure discount math + validity window (#45)
     reviews.ts              # pure review rules: statuses, purchase rule, rating
                             # aggregation + distribution (#47)
-    compare.ts              # comparison rows + difference detection (#48)
+    compare.ts              # comparison rows + difference detection; labels and stock
+                            # values come from the caller's label map (#48, #58 step 3)
     invoices.ts             # pure invoice rules: due date, open amount, overdue, credit
                             # default, ISO-11649 QRR reference + SPC QR payload (#40)
     mail-templates.ts       # e-mail templates as pure functions rendering from the
@@ -697,6 +699,14 @@ stays German — banking interop data, not UI text), and `createLabelCore` hands
 order-language label map and its Intl set to the provider (`LabelRequest.labels` +
 `LabelRequest.formatters`, `shop.label.*` rows), so the parcel's label — texts and
 number formats like the weight — answers the customer, not the admin.
+
+**The guard (#58 step 3).** `tests/no-german-literals.test.ts` enforces the rule
+mechanically: every string literal and JSX text in `src/` (AST-extracted, so comments
+and identifiers are never scanned) that reads as German must be a table row or an entry
+in the test's exemption registry — file + exact text + reason, each entry one recorded
+boundary (stored-data notes, developer logs, internal UPS errors, the SPC payload,
+seed/default content, invisible skeleton fillers, machine payloads, the
+`STATUS_LABELS` fallback). Changed texts re-flag, stale exemptions fail their own test.
 
 ## 4. Server functions, actions and route handlers
 
@@ -1155,6 +1165,11 @@ Specs (the three required journeys):
   French confirmation (thanks, heading, status chain/badge, totals, addresses) → a stranger
   opening the same URL sees the French access form, never the German one. Together with
   `storefront.spec` this is step 5's two-language completed checkout.
+- `remaining-literals.spec.ts` (#58 step 3, last-literals slice) — the French comparison
+  table shows French row labels and the French plural stock value with German absent →
+  the French product page ships the French meta description and localized site
+  title/description (Open Graph) and a French switcher aria → after a French purchase,
+  review and admin approval the published rating reads its stars in French.
 
 Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
 prerequisite; `npm test` and `npm run lint` are independent).

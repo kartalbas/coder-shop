@@ -1125,5 +1125,21 @@
 {"key":"shop.label.weight","area":"shop","de":"Gewicht: {weight}","texts":{"fr":"Poids : {weight}","it":"Peso: {weight}","rm":"Pes: {weight}","es":"Peso: {weight}"}},
 {"key":"shop.label.serials","area":"shop","de":"Seriennummern:","texts":{"fr":"Numéros de série :","it":"Numeri di serie:","rm":"Numeros da seria:","es":"Números de serie:"}},
 {"key":"shop.label.moreSerials","area":"shop","de":"+ {count} weitere Serien","texts":{"fr":"+ {count} séries de plus","it":"+ {count} serie in più","rm":"+ {count} dapli","es":"+ {count} series más"}},
-{"key":"shop.label.demoDisclaimer","area":"shop","de":"Kein echtes UPS-Etikett — nur für die lokale Demo ohne UPS-Zugang.","texts":{"fr":"Ceci n'est pas une vraie étiquette UPS — uniquement pour la démo locale sans accès UPS.","it":"Questa non è un'etichetta UPS reale — solo per la demo locale senza accesso UPS.","rm":"Questa n'è in'etichetta UPS vera — mo per la demo locala senza access UPS.","es":"Esta no es una etiqueta real de UPS: solo para la demo local sin acceso a UPS."}}
+{"key":"shop.label.demoDisclaimer","area":"shop","de":"Kein echtes UPS-Etikett — nur für die lokale Demo ohne UPS-Zugang.","texts":{"fr":"Ceci n'est pas une vraie étiquette UPS — uniquement pour la démo locale sans accès UPS.","it":"Questa non è un'etichetta UPS reale — solo per la demo locale senza accesso UPS.","rm":"Questa n'è in'etichetta UPS vera — mo per la demo locala senza access UPS.","es":"Esta no es una etiqueta real de UPS: solo para la demo local sin acceso a UPS."}},
+{"key":"shop.compare.row.price","area":"shop","de":"Preis","texts":{"fr":"Prix","it":"Prezzo","rm":"Pretsch","es":"Precio"}},
+{"key":"shop.compare.row.brand","area":"shop","de":"Marke","texts":{"fr":"Marque","it":"Marca","rm":"Marca","es":"Marca"}},
+{"key":"shop.compare.row.weight","area":"shop","de":"Gewicht","texts":{"fr":"Poids","it":"Peso","rm":"Pes","es":"Peso"}},
+{"key":"shop.compare.row.variants","area":"shop","de":"Varianten","texts":{"fr":"Variantes","it":"Varianti","rm":"Variantas","es":"Variantes"}},
+{"key":"shop.compare.row.availability","area":"shop","de":"Verfügbar","texts":{"fr":"Disponibilité","it":"Disponibilità","rm":"Disponibilitad","es":"Disponibilidad"}},
+{"key":"shop.compare.stockValue.one","area":"shop","de":"{count} Stück","texts":{"fr":"{count} pièce","it":"{count} pezzo","rm":"{count} pezza","es":"{count} unidad"}},
+{"key":"shop.compare.stockValue.other","area":"shop","de":"{count} Stück","texts":{"fr":"{count} pièces","it":"{count} pezzi","rm":"{count} pezzas","es":"{count} unidades"}},
+{"key":"shop.account.address.labelPlaceholder","area":"shop","de":"z. B. Zuhause, Büro","texts":{"fr":"p. ex. Maison, Bureau","it":"es. Casa, Ufficio","rm":"p. ex. Chasa, Office","es":"p. ej. Casa, Oficina"}},
+{"key":"shop.checkout.sample.city","area":"shop","de":"Zürich","texts":{"fr":"Zurich","it":"Zurigo","rm":"Turitg","es":"Zúrich"}},
+{"key":"shop.restock.emailPlaceholder","area":"shop","de":"ihre@email.ch","texts":{"fr":"votre@email.ch","it":"vostra@email.ch","rm":"vossa@email.ch","es":"su@email.ch"}},
+{"key":"shop.meta.product.description","area":"shop","de":"{name} — coder-shop. Preise in CHF inklusive {vat}","texts":{"fr":"{name} — coder-shop. Prix en CHF, {vat} comprise","it":"{name} — coder-shop. Prezzi in CHF, {vat} inclusa","rm":"{name} — coder-shop. Pretschs en CHF, {vat} inclus","es":"{name} — coder-shop. Precios en CHF, {vat} incluido"}},
+{"key":"shop.meta.site.title","area":"shop","de":"coder-shop — Smartphones, Schuhe & Kleidung","texts":{"fr":"coder-shop — Smartphones, chaussures et vêtements","it":"coder-shop — Smartphone, scarpe e abbigliamento","rm":"coder-shop — Smartphones, chalzs e vestgadira","es":"coder-shop — Smartphones, zapatos y ropa"}},
+{"key":"shop.meta.site.description","area":"shop","de":"Premium-Onlineshop. Preise in CHF inklusive MwSt.","texts":{"fr":"Boutique en ligne premium. Prix en CHF, TVA comprise.","it":"Negozio online premium. Prezzi in CHF, IVA inclusa.","rm":"Shop online premium. Pretschs en CHF, IVA inclus.","es":"Tienda en línea premium. Precios en CHF, IVA incluido."}},
+{"key":"shop.invoice.notFound","area":"shop","de":"Rechnung nicht gefunden.","texts":{"fr":"Facture introuvable.","it":"Fattura non trovata.","rm":"Quita betg chattada.","es":"Factura no encontrada."}},
+{"key":"shop.switcher.aria","area":"shop","de":"Sprache","texts":{"fr":"Langue","it":"Lingua","rm":"Lingua","es":"Idioma"}},
+{"key":"shop.action.close","area":"shop","de":"Schliessen","texts":{"fr":"Fermer","it":"Chiudere","rm":"Serrar","es":"Cerrar"}}
 ]

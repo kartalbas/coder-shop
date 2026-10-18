@@ -16,7 +16,7 @@ import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefro
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { ReviewSection } from "@/components/storefront/review-section";
 import { getIntlLocale, getLabels } from "@/server/i18n";
-import { label } from "@/lib/i18n";
+import { interpolate, label } from "@/lib/i18n";
 import { getCatalogType } from "@/server/catalog-types";
 import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
@@ -33,14 +33,22 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
   // is unwrapped first — the MongoDB driver's internal `new Date()` (CMAP events) then
   // trips Next's "unstable value while prerendering" guard on every product page view.
   await connection();
-  const { slug } = await params;
+  const { slug, lang } = await params;
   // Issue #28: the real product name, not the de-slugged URL ("oneplus oneplus 13t 067").
-  const product = await getProductBySlug(slug);
+  const [product, settings, labels] = await Promise.all([
+    getProductBySlug(slug),
+    getShopSettings(),
+    getLabels(lang),
+  ]);
   const name = product?.name ?? slug.replace(/-/g, " ");
-  const settings = await getShopSettings();
+  // #58 step 3: the description is a table row — {name} and the configured VAT label
+  // fill it, so every language ships its own sentence.
   return {
     title: name,
-    description: `${name} — coder-shop. Preise in CHF inklusive ${vatLabel(settings.vatRatePercent)}`,
+    description: interpolate(label(labels, "shop.meta.product.description"), {
+      name,
+      vat: vatLabel(settings.vatRatePercent),
+    }),
   };
 }
 

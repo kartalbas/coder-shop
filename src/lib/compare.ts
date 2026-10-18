@@ -2,6 +2,7 @@ import type { CatalogDimensionConfig } from "@/lib/catalog-types";
 import { formatDimensionValue } from "@/lib/catalog-types";
 import type { ProductDto } from "@/lib/dto";
 import { createFormatters } from "@/lib/format";
+import { interpolate, label, plural, type LabelMap } from "@/lib/i18n";
 
 // Comparison table rules (issue #48) — pure: which products can be compared, the
 // row values, and which rows differ (those are the ones highlighted on the page).
@@ -48,32 +49,40 @@ function formatDimension(dimension: CatalogDimensionConfig, product: ProductDto)
     .join(", ");
 }
 
-function formatPrice(product: ProductDto, intlLocale: string): string {
+function formatPrice(product: ProductDto, intlLocale: string, labels: LabelMap): string {
   const price = createFormatters(intlLocale).chf(product.minPriceCents);
-  return product.priceFrom ? `ab ${price}` : price;
+  // Same join as the product card — the row carries the word, its position is the
+  // translator's (#58 step 3).
+  return product.priceFrom ? `${label(labels, "shop.price.from")} ${price}` : price;
 }
 
-function formatStock(product: ProductDto): string {
+function formatStock(product: ProductDto, intlLocale: string, labels: LabelMap): string {
   const total = product.variants.reduce((sum, variant) => sum + variant.stock, 0);
-  return total === 0 ? "Ausverkauft" : `${total} Stück`;
+  if (total === 0) return label(labels, "shop.state.soldOut");
+  return interpolate(plural(labels, total, "shop.compare.stockValue", intlLocale), {
+    count: total,
+  });
 }
 
-// Issue #58 step 2b: prices and weights follow the request language's Intl locale.
+// Issue #58 step 2b: prices and weights follow the request language's Intl locale;
+// step 3: the row labels and stock values are translation-table texts (data in —
+// the lib stays pure).
 export function buildComparisonRows(
   products: ProductDto[],
   dimensions: readonly CatalogDimensionConfig[],
   intlLocale: string,
+  labels: LabelMap,
 ): ComparisonRow[] {
   const definitions: { label: string; value: (product: ProductDto) => string }[] = [
-    { label: "Preis", value: (product) => formatPrice(product, intlLocale) },
-    { label: "Marke", value: (product) => product.brand },
+    { label: label(labels, "shop.compare.row.price"), value: (product) => formatPrice(product, intlLocale, labels) },
+    { label: label(labels, "shop.compare.row.brand"), value: (product) => product.brand },
     ...dimensions.map((dimension) => ({
       label: dimension.label,
       value: (product: ProductDto) => formatDimension(dimension, product),
     })),
-    { label: "Gewicht", value: (product) => formatWeight(product, intlLocale) },
-    { label: "Varianten", value: (product) => `${product.variants.length}` },
-    { label: "Verfügbar", value: formatStock },
+    { label: label(labels, "shop.compare.row.weight"), value: (product) => formatWeight(product, intlLocale) },
+    { label: label(labels, "shop.compare.row.variants"), value: (product) => `${product.variants.length}` },
+    { label: label(labels, "shop.compare.row.availability"), value: (product) => formatStock(product, intlLocale, labels) },
   ];
   return definitions.map(({ label, value }) => {
     const values = products.map(value);

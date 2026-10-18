@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { useLabels } from "@/components/labels";
 import { localizedPath, splitLanguagePrefix } from "@/lib/locale-path";
-import type { LanguageConfig } from "@/lib/i18n";
+import { label, type LanguageConfig } from "@/lib/i18n";
 
 // Issue #58 step 2: the language switcher — one link per active language row to the same
 // page in that language (query preserved), `aria-current` on the active one. The proxy
@@ -18,12 +19,13 @@ import type { LanguageConfig } from "@/lib/i18n";
 export function LanguageSwitcher({ languages }: { languages: readonly LanguageConfig[] }) {
   const pathname = usePathname();
   const search = useSearchParams().toString();
+  const labels = useLabels();
   const { lang, rest } = splitLanguagePrefix(
     pathname,
     languages.map((language) => language.code),
   );
   return (
-    <nav aria-label="Sprache" className="flex items-center gap-0.5">
+    <nav aria-label={label(labels, "shop.switcher.aria")} className="flex items-center gap-0.5">
       {languages.map((language) => {
         const current = language.code === lang;
         return (

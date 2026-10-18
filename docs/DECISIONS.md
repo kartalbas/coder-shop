@@ -944,3 +944,34 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   renders `formatters.weight(grams)` (fr-CH "1,15 kg", sub-kg parcels in grams); the
   real UPS provider still ignores it — its API JSON keeps machine formats. Rendering
   providers format through the request's Intl set, never through `toFixed`.
+- **The no-German-literals guard makes the boundary permanent (#58 step 3).**
+  `tests/no-german-literals.test.ts` walks every production file in `src/` (tests and
+  the seed's own files excluded), extracts string literals and JSX texts through the
+  TypeScript AST — comments and identifiers are not texts and are not scanned — flags
+  German ones (umlauts/ß/„“«» plus a conservative word list of unmistakably German
+  words, nothing that collides with English), and fails on anything not in an explicit
+  exemption registry. Each exemption names file + exact text + reason and is one of the
+  recorded boundaries: stored-data notes (statusLog, unit history, cancel restock),
+  developer `console.error` logs, internal UPS provider error texts, the SPC QR payload
+  (banking interop), seed/default content (`DEFAULT_CATALOG_TYPES`,
+  `DEFAULT_SHOP_SETTINGS`, store address), the invisible `text-transparent` +
+  `aria-hidden` skeleton fillers, machine payloads (health/search JSON, the
+  `objectIdSchema` admin boundary, the unreachable discount fallback) and the
+  `STATUS_LABELS` no-provider fallback. Exemptions are exact text, so a changed literal
+  re-flags, and a stale exemption fails its own test — the registry cannot rot. A new
+  German literal is therefore red until it is a table row or a justified boundary.
+- **Site-wide metadata is a row, not a constant (#58 step 3).** The German default
+  title/description and Open Graph pair leave `SITE_METADATA_BASE` (which keeps only
+  structure: origin, title template, robots); the two root layouts merge
+  `siteMetadata(labels)` — `shop.meta.site.title`/`.description` in the request
+  language — behind `connection()`, the admin's static `metadata` becoming
+  `generateMetadata` (login-page pattern, #37 rule). This Next version requires
+  `title.default` together with `title.template` (`DefaultTemplateString`), so the
+  template travels with the localized default. The admin 404 title likewise reuses
+  `shop.meta.notFound.title` instead of a static German `metadata`.
+- **One text, one row — reuse before adding (#58 step 3).** The star display's aria
+  reuses the review form's `shop.reviews.starAria` row (identical sentence), the
+  settings form's four unwired texts (`Laden`, `Aktiv`, the payment-remove aria, the
+  Express title) read the rows their shipping counterparts already used, and the
+  compare stock value joins the plural mechanism as `shop.compare.stockValue.one/.other`
+  instead of a single row that would force a „pièce(s)" hack in French.

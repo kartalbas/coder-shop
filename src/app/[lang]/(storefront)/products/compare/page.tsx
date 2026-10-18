@@ -110,8 +110,10 @@ export default async function ComparePage({
       types,
       [...new Set(products.map((product) => product.type))],
     ),
-    // Issue #58 step 2b: prices and weights follow the request language's Intl locale.
+    // Issue #58 step 2b: prices and weights follow the request language's Intl locale;
+    // step 3: the row labels and stock values come from the same language's rows.
     await getIntlLocale(lang),
+    labels,
   );
 
   return (

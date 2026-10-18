@@ -39,14 +39,16 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
     getActiveLanguages(),
     getRequestLabels(),
   ]);
-  // The missing filter only accepts a real active language code — junk falls back to off.
+  // Machine values are English (#63): the "no filter" sentinel is "all". The missing
+  // filter only accepts a real active language code and the area filter only the known
+  // area enum — junk (or an old `?area=alle` bookmark) falls back to the unfiltered list.
   const missingFor =
-    missing && missing !== "alle" && languages.some((language) => language.code === missing)
+    missing && missing !== "all" && languages.some((language) => language.code === missing)
       ? missing
       : undefined;
   const filtered = filterTranslations(entries, {
     q,
-    area: area && area !== "alle" ? area : undefined,
+    area: area && (TRANSLATION_AREAS as readonly string[]).includes(area) ? area : undefined,
     missingFor,
   });
   const shown = filtered.slice(0, LIST_LIMIT);
@@ -84,11 +86,11 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
         />
         <select
           name="area"
-          defaultValue={area ?? "alle"}
+          defaultValue={area ?? "all"}
           aria-label={label(labels, "admin.translations.areaAria")}
           className="h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <option value="alle">{label(labels, "admin.translations.allAreas")}</option>
+          <option value="all">{label(labels, "admin.translations.allAreas")}</option>
           {TRANSLATION_AREAS.map((value) => (
             <option key={value} value={value}>
               {label(labels, `admin.translations.area.${value}`)}
@@ -97,11 +99,11 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
         </select>
         <select
           name="missing"
-          defaultValue={missingFor ?? "alle"}
+          defaultValue={missingFor ?? "all"}
           aria-label={label(labels, "admin.translations.missingAria")}
           className="h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <option value="alle">{label(labels, "admin.translations.allComplete")}</option>
+          <option value="all">{label(labels, "admin.translations.allComplete")}</option>
           {languages
             .filter((language) => language.code !== BASE_LANGUAGE)
             .map((language) => (

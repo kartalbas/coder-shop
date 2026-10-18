@@ -6,7 +6,7 @@ import { RouteTransition } from "@/components/storefront/route-transition";
 import { LabelsProvider, LabelsSync } from "@/components/labels";
 import { LocaleFormattersProvider, LocaleSync } from "@/components/locale-formatters";
 import { getIntlLocale, getLabels, getRequestLanguage } from "@/server/i18n";
-import { SITE_METADATA_BASE } from "../site-metadata";
+import { SITE_METADATA_BASE, siteMetadata } from "../site-metadata";
 import { geistSans, geistMono } from "../fonts";
 import "../globals.css";
 
@@ -16,10 +16,20 @@ import "../globals.css";
 // gate passes them through without one), so the precedence is cookie > Accept-Language
 // > first active row: the language chosen on the storefront is remembered here, and the
 // switcher in the sidebar writes the very same cookie.
-export const metadata: Metadata = {
-  ...SITE_METADATA_BASE,
-  robots: { index: false, follow: false },
-};
+// #58 step 3: the metadata reads the same language's rows (login-page pattern, #37
+// rule) — the admin's tab title and Open Graph pair answer in the admin's language.
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const lang = await getRequestLanguage();
+  const [labels, intlLocale] = await Promise.all([getLabels(lang), getIntlLocale(lang)]);
+  const site = siteMetadata(labels);
+  return {
+    ...SITE_METADATA_BASE,
+    ...site,
+    openGraph: { ...SITE_METADATA_BASE.openGraph, ...site.openGraph, locale: intlLocale.replace("-", "_") },
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function AdminRootLayout({ children }: LayoutProps<"/admin">) {
   // The admin is fully dynamic anyway (proxy gate + requireAdminSession per request);

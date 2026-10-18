@@ -28,7 +28,9 @@ const NEW_CONFIG: CatalogTypeConfig = {
   comparable: false,
   photoNoun: "",
   brands: [],
-  dimensions: [{ key: "color", label: "Farbe", facet: true, order: "alpha" }],
+  // #58 step 3: a new dimension starts empty — the label is content the admin types,
+  // never a pre-filled German word in code.
+  dimensions: [{ key: "color", label: "", facet: true, order: "alpha" }],
 };
 
 interface PagePropsLocal {

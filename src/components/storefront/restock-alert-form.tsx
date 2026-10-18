@@ -58,7 +58,7 @@ export function RestockAlertForm({ sku, productName }: { sku: string; productNam
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="ihre@email.ch"
+          placeholder={label(labels, "shop.restock.emailPlaceholder")}
           aria-label={interpolate(label(labels, "shop.restock.emailAria"), { name: productName })}
           autoComplete="email"
           className="h-9"

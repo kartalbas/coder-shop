@@ -59,7 +59,7 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
             id="label"
             name="label"
             defaultValue={editing ? entry.label : ""}
-            placeholder="z. B. Zuhause, Büro"
+            placeholder={label(labels, "shop.account.address.labelPlaceholder")}
             required
           />
         </div>

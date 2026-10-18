@@ -190,7 +190,7 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
                   }
                   className="size-4 accent-primary"
                 />
-                Laden
+                {label(labels, "admin.settings.storePickup")}
               </label>
               <label className="flex items-center gap-2 pb-2 text-sm">
                 <input
@@ -201,7 +201,7 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
                   }
                   className="size-4 accent-primary"
                   aria-label={interpolate(label(labels, "admin.settings.expressAria"), { name: row.key || index + 1 })}
-                  title="Express-Versanddienst"
+                  title={label(labels, "admin.settings.expressTitle")}
                 />
                 Express
               </label>
@@ -305,14 +305,16 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
                   }
                   className="size-4 accent-primary"
                 />
-                Aktiv
+                {label(labels, "admin.field.active")}
               </label>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="pb-2"
-                aria-label={`Zahlungsart ${row.key || index + 1} entfernen`}
+                aria-label={interpolate(label(labels, "admin.settings.paymentRemoveAria"), {
+                  name: row.key || index + 1,
+                })}
                 onClick={() => setPayment((rows) => rows.filter((_, i) => i !== index))}
               >
                 <Trash2 className="size-4" aria-hidden />

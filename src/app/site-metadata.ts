@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import type { LabelMap } from "@/lib/i18n";
+import { label } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 
 // Issue #58: the two root layouts (storefront `app/[lang]`, admin `app/admin`) share one
 // metadata base; each extends it with what is specific to its routes.
 //
-// The site-wide fallback description stays static (it also serves the prerendered 404);
-// the pages that render product data carry the configured VAT wording in their own
-// metadata (issues #37/#64).
+// #58 step 3: the base holds no texts anymore — the site title and description are
+// `shop.meta.site.*` rows, so every language's metadata answers in its own words
+// (`siteMetadata()` below). What stays code is structure: the origin, the tab-title
+// template and the robots policy.
 // The tab-title suffix every page carries. The root layouts apply it as a metadata
 // template; the global `/_not-found` renders outside both root layouts and composes
 // its title with `titled()` instead (#58 review).
@@ -18,18 +21,22 @@ export function titled(title: string): string {
 
 export const SITE_METADATA_BASE: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: {
-    default: "coder-shop — Smartphones, Schuhe & Kleidung",
-    template: TITLE_TEMPLATE,
-  },
-  description: "Premium-Onlineshop. Preise in CHF inklusive MwSt.",
   openGraph: {
     type: "website",
-    locale: "de_CH",
     url: SITE_URL,
     siteName: "coder-shop",
-    title: "coder-shop — Smartphones, Schuhe & Kleidung",
-    description: "Premium-Onlineshop. Preise in CHF inklusive MwSt.",
   },
   robots: { index: true, follow: true },
 };
+
+// The request language's site-wide title, description and Open Graph pair (#58 step 3)
+// — the two root layouts merge this over SITE_METADATA_BASE behind `connection()`.
+export function siteMetadata(labels: LabelMap): Metadata {
+  const title = label(labels, "shop.meta.site.title");
+  const description = label(labels, "shop.meta.site.description");
+  return {
+    title: { default: title, template: TITLE_TEMPLATE },
+    description,
+    openGraph: { title, description },
+  };
+}

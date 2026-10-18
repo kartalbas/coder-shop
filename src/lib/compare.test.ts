@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_CATALOG_TYPES } from "@/lib/catalog-types";
 import type { ProductDto } from "@/lib/dto";
 import type { VariantDto } from "@/lib/dto";
+import { BASE_LANGUAGE, labelMap } from "@/lib/i18n";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { buildComparisonRows, comparableProducts } from "@/lib/compare";
+
+// #58 step 3: the row labels and stock values are table texts — the German map is
+// built from the seed itself (byte-identity check, not a fixture).
+const DE_LABELS = labelMap(DEFAULT_TRANSLATIONS, BASE_LANGUAGE);
 
 const SMARTPHONE_DIMENSIONS = DEFAULT_CATALOG_TYPES.find((t) => t.key === "smartphone")!.dimensions;
 const COMPARABLE = new Set(["smartphone"]);
@@ -63,7 +69,7 @@ describe("comparison rows (issue #48/#61)", () => {
       minPriceCents: 90_000,
       filter: { color: ["weiss"], storage: ["256"] },
     });
-    const rows = buildComparisonRows([a, b], SMARTPHONE_DIMENSIONS, "de-CH");
+    const rows = buildComparisonRows([a, b], SMARTPHONE_DIMENSIONS, "de-CH", DE_LABELS);
     const byLabel = new Map(rows.map((row) => [row.label, row]));
     expect(byLabel.get("Marke")?.differs).toBe(true);
     expect(byLabel.get("Preis")?.differs).toBe(true);
@@ -82,10 +88,34 @@ describe("comparison rows (issue #48/#61)", () => {
     const heavy = phone("heavy", {
       variants: [variant({ weightGrams: 180 }), variant({ weightGrams: 240 })],
     });
-    const rows = buildComparisonRows([cheap, soldOut, heavy], SMARTPHONE_DIMENSIONS, "de-CH");
+    const rows = buildComparisonRows([cheap, soldOut, heavy], SMARTPHONE_DIMENSIONS, "de-CH", DE_LABELS);
     const byLabel = new Map(rows.map((row) => [row.label, row]));
     expect(byLabel.get("Preis")?.values[0]).toMatch(/^ab CHF\s?500/);
     expect(byLabel.get("Verfügbar")?.values).toEqual(["3 Stück", "Ausverkauft", "6 Stück"]);
     expect(byLabel.get("Gewicht")?.values[2]).toBe("180–240 g");
+  });
+
+  // #58 step 3: row labels, the "ab" prefix and the stock value follow the language —
+  // fails without the change, which rendered German row labels in every language.
+  it("speaks the request language (#58 step 3)", () => {
+    const frLabels = labelMap(DEFAULT_TRANSLATIONS, "fr");
+    const cheap = phone("cheap", { minPriceCents: 50_000, priceFrom: true });
+    const soldOut = phone("out", { variants: [variant({ stock: 0 })] });
+    const rows = buildComparisonRows([cheap, soldOut], SMARTPHONE_DIMENSIONS, "fr-CH", frLabels);
+    const byLabel = new Map(rows.map((row) => [row.label, row]));
+    expect(byLabel.get("Prix")?.values[0]).toMatch(/^dès/);
+    expect(byLabel.get("Marque")?.differs).toBe(false);
+    expect(byLabel.get("Disponibilité")?.values).toEqual(["3 pièces", "Épuisé"]);
+    expect(byLabel.get("Preis")).toBeUndefined();
+    // The plural family follows the count: one piece reads its singular row.
+    const single = buildComparisonRows(
+      [phone("one", { variants: [variant({ stock: 1 })] })],
+      SMARTPHONE_DIMENSIONS,
+      "fr-CH",
+      frLabels,
+    );
+    expect(new Map(single.map((row) => [row.label, row])).get("Disponibilité")?.values).toEqual([
+      "1 pièce",
+    ]);
   });
 });

@@ -4,11 +4,11 @@ import { headers } from "next/headers";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
-import { getLanguages } from "@/server/i18n";
+import { getLabels, getLanguages } from "@/server/i18n";
 import { BASE_LANGUAGE, DEFAULT_LANGUAGES, intlLocaleOf } from "@/lib/i18n";
 import { LOCALIZED_PATH_HEADER, localizedPath, splitLanguagePrefix } from "@/lib/locale-path";
 import { absoluteUrl } from "@/lib/site";
-import { SITE_METADATA_BASE } from "../site-metadata";
+import { SITE_METADATA_BASE, siteMetadata } from "../site-metadata";
 import { geistSans, geistMono } from "../fonts";
 import "../globals.css";
 
@@ -29,7 +29,11 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Promise<Metadata> {
   const { lang } = await params;
   await connection();
-  const [languages, headerList] = await Promise.all([getLanguages(), headers()]);
+  const [languages, headerList, labels] = await Promise.all([
+    getLanguages(),
+    headers(),
+    getLabels(lang),
+  ]);
   const active = languages.filter((language) => language.active);
   const current = active.find((language) => language.code === lang);
   const { rest } = splitLanguagePrefix(
@@ -37,10 +41,13 @@ export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Prom
     active.map((language) => language.code),
   );
   const fallback = active[0]?.code ?? BASE_LANGUAGE;
+  const site = siteMetadata(labels);
   return {
     ...SITE_METADATA_BASE,
+    ...site,
     openGraph: {
       ...SITE_METADATA_BASE.openGraph,
+      ...site.openGraph,
       locale: (current?.intlLocale ?? intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE)).replace(
         "-",
         "_",

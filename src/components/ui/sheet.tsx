@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
+import { useLabels } from "@/components/labels"
+import { label } from "@/lib/i18n"
 import { XIcon } from "lucide-react"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
@@ -55,6 +57,7 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const labels = useLabels()
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -77,7 +80,8 @@ function SheetContent({
             >
               <XIcon
               />
-              <span className="sr-only">Schliessen</span>
+              {/* #58 step 3: even the vendored close button reads the one table. */}
+              <span className="sr-only">{label(labels, "shop.action.close")}</span>
             </Button>
           </SheetPrimitive.Close>
         )}

@@ -2541,3 +2541,76 @@ Done — M1–M6 + QA complete.
   `createLabelCore`. Both verified failing without the fix (2 failed), the German
   byte-identity spec untouched as the regression check.
 - **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅, `npm run test:e2e` ✅.
+
+## ISSUES — queue session 43 (2026-10-18)
+
+### Gate report findings — no defect, re-verified ✅
+- `GET /produkte → 308` and „the HTML links to no product page (/produkt/…)" are the
+  intended #63 English contract (former German URLs answer a permanent 308, product
+  links are `/products/…`), asserted by the green `english-urls`/`language-routing`
+  specs in every gate run. No code change.
+
+### #58 (step 3 slice) — the last German literals in `src/` join the table; the no-German-literals guard lands ✅ — issue stays open
+- **Rows for the remaining literals (16 new keys × 5 languages, German bases
+  byte-identical — `tests/translations-file.test.ts` enforces coverage):** the
+  comparison table (`shop.compare.row.*` for Preis/Marke/Gewicht/Varianten/Verfügbar,
+  `shop.compare.stockValue.one/.other` as a plural family — a single row would force
+  the „pièce(s)" hack the plural mechanism retired; `buildComparisonRows` takes the
+  page's `LabelMap`, the sold-out value reuses `shop.state.soldOut`, the „ab" prefix
+  reuses `shop.price.from` with the card's join), the star display's aria (reuses the
+  review form's `shop.reviews.starAria` — one sentence, one row), the three
+  placeholders that render per language (`shop.account.address.labelPlaceholder`,
+  `shop.checkout.sample.city`, `shop.restock.emailPlaceholder` — the other checkout
+  placeholders stay sample values), the switcher nav aria (`shop.switcher.aria`), the
+  vendored dialog/sheet close label (`shop.action.close` — the `useLabels()` hook sits
+  at the component top, the button itself renders conditionally), and the invoice
+  refusals of both PDF routes (`shop.invoice.notFound`, resolved from the lang param /
+  `getRequestLabels()`).
+- **Per-language metadata (#58 done-when):** the product page description becomes
+  `shop.meta.product.description` (`{name}`/`{vat}`); `SITE_METADATA_BASE` loses its
+  German title/description/OG pair — the two root layouts merge `siteMetadata(labels)`
+  behind `connection()` (this Next's `DefaultTemplateString` requires `default` with
+  `template`, so the template travels with the localized default); the admin layout's
+  static `metadata` becomes `generateMetadata` (#37 rule, login-page pattern) and the
+  admin 404 title reuses `shop.meta.notFound.title`.
+- **Machine values are English (#63):** the translations page's `?area=alle`/
+  `?missing=alle` sentinel becomes `all` and the area filter only accepts the known
+  area enum, so an old `?area=alle` bookmark degrades to the unfiltered list; the
+  catalog-type editor's NEW_CONFIG dimension starts with an empty label (the admin
+  types the content label — the save core refuses to persist it blank). The settings
+  form's four unwired texts (`Laden`, `Aktiv`, payment-remove aria, Express title)
+  read the rows their shipping counterparts already used — no new keys.
+- **The guard (decision point 4):** new `tests/no-german-literals.test.ts` walks every
+  production file in `src/` (tests, `translations.json` and `translation-seed.ts`
+  excluded), extracts string literals + JSX texts through the TypeScript AST (comments
+  and identifiers are never scanned), flags German markers (umlauts/ß/„“«» + a
+  conservative word list — no English collisions: „position"/„standard"/„ware"/„hat"
+  were caught and dropped during development) and fails on anything outside the
+  exemption registry. The registry holds exactly the recorded boundaries from the plan
+  (stored-data notes, console.error logs, internal UPS errors, SPC payload,
+  seed/default content, invisible skeleton fillers, health/search JSON payloads,
+  `objectIdSchema`, the unreachable discount fallback, `STATUS_LABELS` fallback) plus
+  the health route (the table is unreadable when the DB is down) and the
+  `Etikett erstellt` unit-history note; a stale exemption fails its own test.
+  Verified: green at HEAD, red on a planted literal, honest registry.
+- **Tests:** +1 compare unit test (French row labels, „dès" prefix, „3 pièces"/
+  „1 pièce" plural family, German absent — fails without the change), +1 star-rating
+  unit test (fr/es aria sentences via `LabelsProvider` — fails pre-change), new e2e
+  `remaining-literals.spec.ts` (3: fr compare table, fr product-page meta description +
+  localized og:title/og:description + „Langue" switcher aria, full French
+  buy→review→approve flow ending on the „5 sur 5 étoiles" aria with „Sternen" absent)
+  — all three verified failing on the pre-change build (stashed rebuild: 3 failed).
+  German specs (`compare.spec.ts`, `reviews.spec.ts`, seo/settings) stayed green
+  untouched as the byte-identity check.
+- **Docs:** DECISIONS (guard/exemption rule, localized site metadata, reuse-before-
+  adding), ARCHITECTURE (guard paragraph in the Translation section, §12 spec, the
+  `compare.ts`/`site-metadata.ts` entries).
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 669 (68 files),
+  `npm run test:e2e` ✅ 105/105; tree clean, nothing running.
+- **Left open (#58):** the editor remainder (needs-review filter, usage context +
+  preview link, keyboard-driven inline editing, change history); translatable catalog
+  content + admin editing + five-language demo content; the per-area translation e2e
+  deletion once the guard has survived a session of real changes; the German route
+  segments `/admin/translations/neu` and `/admin/catalog-types/neu` (#63 machine-value
+  rule — same category as the `alle` sentinel fixed here); stored-data notes staying
+  German remains the recorded decision the guard exempts.
