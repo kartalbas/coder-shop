@@ -32,7 +32,7 @@ export function Header({
           coder-shop
         </Link>
         <nav aria-label={label(labels, "shop.header.nav.main")} className="hidden md:block">
-          <MegaMenu categories={categories} />
+          <MegaMenu categories={categories} labels={labels} />
         </nav>
         <div className="ml-auto flex flex-1 items-center justify-end gap-1 sm:gap-2">
           <SearchInstant labels={labels} />

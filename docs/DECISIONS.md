@@ -852,3 +852,13 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `/produkt/` links), which REQUIREMENTS forbids and can never go green; it now checks
   `/ /products /api/health` → 200 and `/products/` links — the English contract —
   while the German 308 mapping stays proven by the english-urls e2e spec.
+- **Mega-menu tile and comparison page read the table; one text per concept (#58
+  storefront finish).** The mega-menu's collection tile no longer hard-codes
+  „Neuheiten": it renders `COLLECTIONS[0]` (data, exactly the home-hero pattern) with
+  the existing `shop.home.blurb.<collection>` and `shop.home.heroDiscover` rows — the
+  tile blurb therefore shows the home blurb text instead of its former own sentence
+  (deliberate copy change; no test referenced the old one). The comparison page's
+  „{type} compare" #63 rename artifact becomes the row `shop.compare.heading`
+  („{type} vergleichen"), and with no comparable catalog type configured the page
+  renders `shop.meta.compare.title` + `shop.compare.none` instead of the former
+  `?? "Produkte"` German fallback — no German literal is left in the file.

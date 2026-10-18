@@ -2238,3 +2238,47 @@ Done — M1–M6 + QA complete.
   the two outdated security-routes assertions updated; english-urls spec now asserts
   `/` and `/products` 200 + `lang=fr` → 307 `/fr/products`; language-routing spec gained
   the direct-answer test. `npm test` ✅, lint/build ✅, `npm run test:e2e` ✅.
+
+## ISSUES — queue session 33 (2026-10-18)
+
+### #58 storefront finish — mega-menu and comparison page read their texts from the table
+
+- **Gate report first:** the reported `GET / → 500` / `/api/health → 500` were the
+  known environmental failure — an embedded mongod could not start on `data/mongo`
+  while another instance held it (`NodeNotFound` on the persisted replica-set
+  config). No process is running now and the live battery at HEAD is green again:
+  `/` 200, `/products` 200 with `/products/…` links, `/api/health` 200, `/produkte`
+  308 (the #63 contract). Nothing in code to fix; the review session's #65 record
+  stands.
+- **The slice (16:24 plan, delivered complete).** `MegaMenu` gained the `labels` prop
+  (the Header's established pattern) — „Marken" → `shop.menu.brands`, „Alle {type}" →
+  `shop.menu.allOfType` (per-language word order, no concatenation), and the tile now
+  renders `COLLECTIONS[0]` with the existing `shop.home.blurb.<collection>` and
+  `shop.home.heroDiscover` rows (DECISIONS: one text per concept, deliberate blurb
+  copy change). The comparison page reuses its `getLabels(lang)` in the body:
+  `shop.compare.heading` (repairs the „{type} compare" #63 artifact), `needTwo`
+  (byte-identical — `compare.spec.ts:68` is the check), `discover`, `countLine`
+  (`{count}`/`{max}` from `COMPARE_MAX_PRODUCTS`), `caption`, `feature`, `difference`
+  (the rendered leading space stays in JSX), `back`; the `?? "Produkte"` fallback is
+  gone — with no comparable type the page renders `shop.meta.compare.title` +
+  `shop.compare.none` + the `heroDiscover` CTA. 11 new rows in all five languages
+  (the seed test enforces); no language code or German literal left in either file;
+  type/collection/brand names stay catalog data (step-5 catalog-content boundary).
+- **Tests:** new e2e `menu-compare-translations.spec.ts` (4: French mega-menu
+  „Marques"/„Tous les …"/„Découvrir maintenant" with the German absent, German
+  mega-menu base, French comparison h1/„Caractéristique"/back link with German absent,
+  German comparison „Smartphones vergleichen"/„Merkmal" with the „ compare" artifact
+  gone). 3/4 verified failing on the pre-change build (stash + rebuild + run); the
+  German mega-menu test passes pre-change by design — it is the byte-identity guard.
+  Seed test covers the 11 rows × 5 languages automatically.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 628 (63 files),
+  `npm run test:e2e` ✅ 99/99 (the product-photo 404 lines are the accepted
+  placeholder noise); tree clean, nothing running.
+- **Left open (#58):** step 4 purchasing + suppliers + stock-units + pickup + invoices
+  UI (plan of 15:30, next); step 5 customers + reviews + discounts + mails + dashboard
+  + command palette + picker + admin account page field labels; admin formats (still
+  base-locale); step 6 mail/invoice/slip/label texts in the recipient's language
+  (+ UPS provider texts); step 7 no-German-literals guard; step 4 remainder
+  (needs-review filter, usage context, inline editing, change history); step 5
+  remainder (translatable catalog content + five-language demo content). The
+  storefront extraction is finished and struck from the record.

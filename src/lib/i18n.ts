@@ -88,6 +88,26 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       es: "Categorías (móvil)",
     },
   },
+  // Mega-menu (#58 storefront finish): the fixed panel texts; the category and brand
+  // names stay catalog data, the tile renders COLLECTIONS[0] with the existing
+  // `shop.home.blurb.<collection>` and `shop.home.heroDiscover` rows.
+  {
+    key: "shop.menu.brands",
+    area: "shop",
+    de: "Marken",
+    texts: { fr: "Marques", it: "Marchi", rm: "Marcas", es: "Marcas" },
+  },
+  {
+    key: "shop.menu.allOfType",
+    area: "shop",
+    de: "Alle {type}",
+    texts: {
+      fr: "Tous les {type}",
+      it: "Tutti i {type}",
+      rm: "Tut ils {type}",
+      es: "Todos los {type}",
+    },
+  },
   {
     key: "shop.header.account",
     area: "shop",
@@ -834,6 +854,108 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       it: "Svuota la lista di confronto",
       rm: "Svidar la glista da cumparegl",
       es: "Vaciar la lista de comparación",
+    },
+  },
+  // Comparison page (#58 storefront finish): the German bases are byte-identical to the
+  // literals they replaced, except the heading, which repairs the mechanical
+  // "{type} compare" #63 rename artifact into real German.
+  {
+    key: "shop.compare.heading",
+    area: "shop",
+    de: "{type} vergleichen",
+    texts: {
+      fr: "Comparer {type}",
+      it: "Confronta {type}",
+      rm: "Cumparegliar {type}",
+      es: "Comparar {type}",
+    },
+  },
+  {
+    key: "shop.compare.needTwo",
+    area: "shop",
+    de: "Für einen Vergleich braucht es mindestens zwei {type}. Über das Vergleichs-Symbol auf einem Produkt legen Sie die Liste an.",
+    texts: {
+      fr: "Pour une comparaison, il faut au moins deux {type}. Utilisez l'icône de comparaison sur un produit pour créer la liste.",
+      it: "Per un confronto servono almeno due {type}. Usa l'icona di confronto su un prodotto per creare l'elenco.",
+      rm: "Per ina cumparegliaziun dovri almain duas {type}. Utilisai l'icona da cumparegliaziun sin in product per crear la glista.",
+      es: "Para comparar se necesitan al menos dos {type}. Use el icono de comparación de un producto para crear la lista.",
+    },
+  },
+  {
+    key: "shop.compare.discover",
+    area: "shop",
+    de: "{type} entdecken",
+    texts: {
+      fr: "Découvrir les {type}",
+      it: "Scopri i {type}",
+      rm: "Scuvrir ils {type}",
+      es: "Descubrir los {type}",
+    },
+  },
+  {
+    key: "shop.compare.countLine",
+    area: "shop",
+    de: "{count} von maximal {max} {type} — Zeilen mit Unterschieden sind hervorgehoben.",
+    texts: {
+      fr: "{count} sur {max} {type} au maximum — les lignes avec des différences sont mises en évidence.",
+      it: "{count} di massimo {max} {type} — le righe con differenze sono evidenziate.",
+      rm: "{count} da maximal {max} {type} — las lingias cun differenzas èn markadas.",
+      es: "{count} de un máximo de {max} {type}: las filas con diferencias están resaltadas.",
+    },
+  },
+  {
+    key: "shop.compare.caption",
+    area: "shop",
+    de: "Vergleich von {names}",
+    texts: {
+      fr: "Comparaison de {names}",
+      it: "Confronto di {names}",
+      rm: "Cumparegliaziun da {names}",
+      es: "Comparación de {names}",
+    },
+  },
+  {
+    key: "shop.compare.feature",
+    area: "shop",
+    de: "Merkmal",
+    texts: {
+      fr: "Caractéristique",
+      it: "Caratteristica",
+      rm: "Caratteristica",
+      es: "Característica",
+    },
+  },
+  {
+    key: "shop.compare.difference",
+    area: "shop",
+    de: "(Unterschied)",
+    texts: {
+      fr: "(différence)",
+      it: "(differenza)",
+      rm: "(differenza)",
+      es: "(diferencia)",
+    },
+  },
+  {
+    key: "shop.compare.back",
+    area: "shop",
+    de: "Zurück zu den {type}",
+    texts: {
+      fr: "Retour aux {type}",
+      it: "Torna ai {type}",
+      rm: "Enavos als {type}",
+      es: "Volver a los {type}",
+    },
+  },
+  {
+    key: "shop.compare.none",
+    area: "shop",
+    de: "Derzeit gibt es keinen Produkttyp, den man vergleichen kann.",
+    texts: {
+      fr: "Il n'y a actuellement aucun type de produit à comparer.",
+      it: "Attualmente non c'è nessun tipo di prodotto da confrontare.",
+      rm: "Actualmain datti nagin tip da product inscunter che se po cumparegliar.",
+      es: "Actualmente no hay ningún tipo de producto que se pueda comparar.",
     },
   },
   {
