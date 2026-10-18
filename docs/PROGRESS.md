@@ -1750,9 +1750,49 @@ Done — M1–M6 + QA complete.
   test covers the 36 keys × 5 languages. `npm run build`/lint/knip ✅,
   `npm test` ✅ 574, `npm run test:e2e` ✅ 72/72; tree clean, nothing running.
 - **Left open (#58):** step 3 remainder (product page + review strings incl. the „ab"
-  price prefix, listing/filter strings such as the sort select's „Sortierung",
-  account/auth forms, admin strings + admin language switcher, mail/invoice/slip/label
-  texts in the recipient's language, server-side validation messages,
-  no-German-literals guard), step 4 remainder (needs-review filter, usage context +
-  preview link, keyboard-driven inline editing, change history), step 5 (translatable
-  catalog content + two-language checkout e2e).
+   price prefix, listing/filter strings such as the sort select's „Sortierung",
+   account/auth forms, admin strings + admin language switcher, mail/invoice/slip/label
+   texts in the recipient's language, server-side validation messages,
+   no-German-literals guard), step 4 remainder (needs-review filter, usage context +
+   preview link, keyboard-driven inline editing, change history), step 5 (translatable
+   catalog content + two-language checkout e2e).
+
+## ISSUES — queue session 23 (2026-10-18)
+
+### Gate report findings — no defect, re-verified ✅
+- `GET / → 307`, `GET /produkte → 308` and „no `/produkt/…` links" are the intended
+  #63/#58-step-2 behaviour (English URLs, 308 for the former German ones, 307 onto the
+  language prefix, product links `/products/…`), asserted by the green
+  `language-routing`/`english-urls` specs in every gate run. No code change.
+
+### #58 (step 3 slice) — the browse flow reads its texts from the translation table ✅ — issue stays open
+- **~70 new keys (area `shop`, seeded in all five languages — the seed test enforces):**
+  product cards („Beliebt", „Ausverkauft", the „ab" price prefix), the product page
+  (VAT note, incoming-stock sentence + arrival buckets, qty aria labels,
+  „Bitte {options} wählen", variant line, breadcrumbs „Start", accordion, related
+  rail, „Zuletzt angesehen"), the gallery (arrows + thumb aria), the stock indicator
+  (all three levels — `stockLabel` left `lib/stock`), reviews (heading, counts,
+  distribution aria, empty/verified/reply/pending/done/buyers-only notes, the whole
+  form), restock alerts (title, submit, aria, subscribed note, three toasts), the
+  listing (heading fallback, „Alle", collection chip + remove, result counts, Filter,
+  sort select + four options, empty state, pagination) and the skip link. Every German
+  base is byte-identical to the literal it replaced, so the German specs
+  („Alle Produkte", „In den Warenkorb", „Nächstes Bild", „Sofort lieferbar",
+  „N Stk. bestellt, Ankunft ca. …", „Bitte … wählen", …) stayed green untouched.
+- **`LabelsProvider`/`LabelsSync`/`useLabels` (DECISIONS):** the seed-config label map
+  of the URL's language initialises the context (static shell, no hydration flicker),
+  a dynamic hole syncs the live table — deep client trees (cards on five pages, rails,
+  the listing shell) read texts without prop-drilling. `arrivalBucket`/`incomingLabel`
+  now take the label map (the libs keep the computation, the copy is data).
+- **e2e:** new `product-translations.spec.ts` (3: fr listing — h1, sort options,
+  „Filtres"/„Marque", „dès" prefix, „Affichage 1–24 sur …"/„Suivant", skip link; fr
+  product page — „Accueil", „Veuillez choisir …" → „Ajouter au panier", VAT note,
+  gallery/accordion/„Avis"/„Produits similaires"; es listing + product page) — all
+  three **fail on the pre-change build** (reproduced against a stashed rebuild).
+  `npm run build`/lint/knip ✅, `npm test` ✅ 575, `npm run test:e2e` ✅ 75/75.
+- **Left open (#58):** step 3 remainder (home page hero/collections, account/auth
+  forms, admin strings + admin language switcher, mail/invoice/slip/label texts in the
+  recipient's language, server-side validation messages, no-German-literals guard),
+  step 4 remainder (needs-review filter, usage context + preview link, keyboard-driven
+  inline editing, change history), step 5 (translatable catalog content + two-language
+  checkout e2e).

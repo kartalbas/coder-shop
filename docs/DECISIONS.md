@@ -698,6 +698,20 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   stay whole sentences per language while the values stay data. A client-side
   translator context fed by an API was rejected: it would flash German (or raw keys)
   on every first paint.
+- **Deep client trees read the label map from a provider, not from props (#58 step 3).**
+  Product cards render on five pages, rails fetch their products client-side, and the
+  listing shell threads texts through six children — prop-drilling a map everywhere
+  would touch every call site. `LabelsProvider` in the storefront layout follows the
+  accepted `LocaleFormattersProvider` shape: initialised from the seed configuration of
+  the URL's language (pure, identical on server and client, so the static shell
+  prerenders with the right texts) and synced to the live table by a `LabelsSync`
+  inside a dynamic hole — an admin edit takes effect without a deploy. This is not the
+  rejected API-fed context: the value is server-rendered in the layout, never fetched.
+  Outside the provider (the German admin) the context answers the base-language seed
+  map. Server components keep calling `getLabels(lang)` and pass the map where they
+  render text themselves. With this the stock sentence and the incoming-stock buckets
+  moved out of `lib/stock`/`lib/purchasing/incoming` into table keys — the libs keep
+  the computation and take the label map as a parameter.
 - **Every seeded key ships translated in every seeded language** — a unit test walks
   `DEFAULT_TRANSLATIONS` × `DEFAULT_LANGUAGES` and fails on any missing text, which
   is the #58 "missing translations fall back visibly in tests" check for seed content.

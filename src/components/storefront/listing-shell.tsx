@@ -15,6 +15,8 @@ import { SortSelect } from "./sort-select";
 import { Pagination } from "./pagination";
 import { ProductGridSkeleton } from "./skeletons";
 import { EmptyState } from "./empty-state";
+import { useLabels } from "./labels";
+import { interpolate, label } from "@/lib/i18n";
 
 interface Props {
   initial: ListingResult;
@@ -26,6 +28,7 @@ interface Props {
 }
 
 export function ListingShell({ initial, categories, facetKeys }: Props) {
+  const labels = useLabels();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Issue #58: the listing URL carries the language prefix — state changes stay on the
@@ -119,7 +122,8 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
   // Issue #26: the listing had no <h1> at all (axe page-has-heading-one).
   const heading =
     collection ??
-    (categories.find((category) => category.type === type)?.label ?? "Alle Produkte");
+    (categories.find((category) => category.type === type)?.label ??
+      label(labels, "shop.listing.allProducts"));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -127,7 +131,7 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
 
       {collection && (
         <div className="mb-4 flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Kollektion:</span>
+          <span className="text-muted-foreground">{label(labels, "shop.listing.collection")}</span>
           <button
             type="button"
             onClick={() => applyParams({ collection: null })}
@@ -135,13 +139,15 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
           >
             {collection}
             <span aria-hidden>×</span>
-            <span className="sr-only">Kollektion {collection} entfernen</span>
+            <span className="sr-only">
+              {interpolate(label(labels, "shop.listing.removeCollection"), { name: collection })}
+            </span>
           </button>
         </div>
       )}
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        {[{ value: "", label: "Alle" }, ...categories.map((category) => ({ value: category.type, label: category.label }))].map((tab) => (
+        {[{ value: "", label: label(labels, "shop.listing.all") }, ...categories.map((category) => ({ value: category.type, label: category.label }))].map((tab) => (
           <Button
             key={tab.value}
             variant={tab.value === type ? "default" : "outline"}
@@ -159,18 +165,21 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
         <div>
           <div className="mb-4 flex items-center justify-between gap-3">
             <p aria-live="polite" className="text-sm text-muted-foreground">
-              {data.total} {data.total === 1 ? "Produkt" : "Produkte"}
+              {interpolate(
+                label(labels, data.total === 1 ? "shop.listing.countOne" : "shop.listing.countOther"),
+                { count: data.total },
+              )}
             </p>
             <div className="flex items-center gap-2">
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="lg:hidden">
-                    <SlidersHorizontal className="size-4" /> Filter
+                    <SlidersHorizontal className="size-4" /> {label(labels, "shop.listing.filter")}
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 overflow-y-auto">
                   <SheetHeader>
-                    <SheetTitle>Filter</SheetTitle>
+                    <SheetTitle>{label(labels, "shop.listing.filter")}</SheetTitle>
                   </SheetHeader>
                   <div className="px-4">{sidebar}</div>
                 </SheetContent>

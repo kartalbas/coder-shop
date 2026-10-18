@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/storefront/product-card";
+import { useLabels } from "@/components/storefront/labels";
+import { label } from "@/lib/i18n";
 import { recordViewed, useRecentlyViewed } from "@/stores/recently-viewed";
 import type { ProductDto } from "@/server/search";
 
@@ -19,6 +21,7 @@ export function RecentlyViewedTracker({ slug }: { slug: string }) {
 // in this browser's localStorage, so the products are fetched from the JSON API once
 // the list is known; with no history the rail renders nothing at all.
 export function RecentlyViewedRail({ excludeSlug }: { excludeSlug?: string }) {
+  const labels = useLabels();
   const viewed = useRecentlyViewed();
   const key = useMemo(
     () =>
@@ -53,7 +56,7 @@ export function RecentlyViewedRail({ excludeSlug }: { excludeSlug?: string }) {
   return (
     <section className="mx-auto max-w-7xl px-4 pb-16" aria-labelledby="recently-viewed-heading">
       <h2 id="recently-viewed-heading" className="mb-6 text-2xl font-semibold tracking-tight">
-        Zuletzt angesehen
+        {label(labels, "shop.recent.title")}
       </h2>
       <div className="flex snap-x gap-4 overflow-x-auto pb-4 [scrollbar-width:thin]">
         {products.map((product) => (

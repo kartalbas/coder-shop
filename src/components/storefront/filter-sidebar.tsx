@@ -2,6 +2,8 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useLabels } from "@/components/storefront/labels";
+import { interpolate, label } from "@/lib/i18n";
 import type { CatalogDimensionConfig } from "@/lib/catalog-types";
 import { isNumericFacetValue } from "@/lib/facet-order";
 import type { FacetCounts, FacetValue } from "@/server/search";
@@ -17,9 +19,14 @@ interface Group {
 // in scope — a category only ever offers the attributes its products really have
 // (issue #53). Issue #24 kept: when one dimension mixes numeric and letter values
 // (browsing "Alle" over EU and garment sizes), it splits into two groups; the values
-// are disjoint, so both still write the same param.
-function buildGroups(facets: FacetCounts, dimensions: readonly CatalogDimensionConfig[]): Group[] {
-  const groups: Group[] = [{ key: "brand", label: "Marke", values: facets.brand }];
+// are disjoint, so both still write the same param. Issue #58 step 3: the group
+// captions ("Marke", the EU/Kleider split) are translation-table texts.
+function buildGroups(
+  labels: Readonly<Record<string, string>>,
+  facets: FacetCounts,
+  dimensions: readonly CatalogDimensionConfig[],
+): Group[] {
+  const groups: Group[] = [{ key: "brand", label: label(labels, "shop.filter.brand"), values: facets.brand }];
   for (const dimension of dimensions) {
     const values = facets.dimensions[dimension.key] ?? [];
     if (values.length === 0) continue;
@@ -27,8 +34,18 @@ function buildGroups(facets: FacetCounts, dimensions: readonly CatalogDimensionC
     const letters = values.filter((v) => !isNumericFacetValue(v.value));
     if (numeric.length > 0 && letters.length > 0) {
       groups.push(
-        { key: dimension.key, label: `${dimension.label} (EU)`, unit: dimension.unit, values: numeric },
-        { key: dimension.key, label: `${dimension.label} (Kleider)`, unit: dimension.unit, values: letters },
+        {
+          key: dimension.key,
+          label: interpolate(label(labels, "shop.filter.groupEu"), { label: dimension.label }),
+          unit: dimension.unit,
+          values: numeric,
+        },
+        {
+          key: dimension.key,
+          label: interpolate(label(labels, "shop.filter.groupClothing"), { label: dimension.label }),
+          unit: dimension.unit,
+          values: letters,
+        },
       );
     } else {
       groups.push({ key: dimension.key, label: dimension.label, unit: dimension.unit, values });
@@ -45,11 +62,12 @@ interface Props {
 }
 
 export function FilterSidebar({ facets, dimensions, selected, onToggle }: Props) {
-  const groups = buildGroups(facets, dimensions);
+  const labels = useLabels();
+  const groups = buildGroups(labels, facets, dimensions);
   if (groups.length === 0) return null;
 
   return (
-    <aside aria-label="Filter" className="space-y-6">
+    <aside aria-label={label(labels, "shop.listing.filter")} className="space-y-6">
       {groups.map((group) => (
         <fieldset key={`${group.key}-${group.label}`}>
           <legend className="mb-2 text-sm font-semibold">{group.label}</legend>

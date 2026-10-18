@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useLabels } from "@/components/storefront/labels";
+import { interpolate, label } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { addToCart, openCartDrawer } from "@/stores/cart";
 import type { ProductDto } from "@/server/search";
@@ -45,6 +47,7 @@ export function ProductDetail({
   incomingBySku: IncomingBySku;
 }) {
   const { chf, weight } = useFormatters();
+  const labels = useLabels();
   const dimensions = useMemo(
     () => dimensionsOf(product, typeDimensions),
     [product, typeDimensions],
@@ -96,7 +99,7 @@ export function ProductDetail({
     incoming !== undefined &&
     isLowStock(stock, variant.restockThreshold);
   const incomingText = incoming
-    ? incomingLabel(incoming.qty, new Date(incoming.arrival), new Date())
+    ? incomingLabel(labels, incoming.qty, new Date(incoming.arrival), new Date())
     : null;
 
   const add = () => {
@@ -153,10 +156,16 @@ export function ProductDetail({
           className="text-2xl font-semibold"
         >
           {price.from && (
-            <span className="text-base font-normal text-muted-foreground">ab </span>
+            <span className="text-base font-normal text-muted-foreground">
+              {label(labels, "shop.price.from")}{" "}
+            </span>
           )}
           {chf(price.priceCents)}
-          <span className="ml-2 text-sm font-normal text-muted-foreground">inkl. {vatLabel(settings.vatRatePercent)}.</span>
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            {interpolate(label(labels, "shop.product.vatNote"), {
+              vat: vatLabel(settings.vatRatePercent),
+            })}
+          </span>
         </motion.p>
 
         {dimensions.map((dimension) => (
@@ -189,7 +198,7 @@ export function ProductDetail({
                     aria-pressed={active}
                     disabled={!candidate}
                     onClick={() => select(dimension.key, value)}
-                    title={onOrder ? "Ausverkauft — Nachschub ist bestellt" : undefined}
+                    title={onOrder ? label(labels, "shop.product.incomingTitle") : undefined}
                     className={cn(
                       "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring",
                       active && "border-primary bg-primary text-primary-foreground",
@@ -228,7 +237,7 @@ export function ProductDetail({
               variant="ghost"
               size="icon"
               className="size-10"
-              aria-label="Menge verringern"
+              aria-label={label(labels, "shop.product.decrease")}
               disabled={qty <= 1}
               onClick={() => setQty((q) => Math.max(1, q - 1))}
             >
@@ -241,7 +250,7 @@ export function ProductDetail({
               variant="ghost"
               size="icon"
               className="size-10"
-              aria-label="Menge erhöhen"
+              aria-label={label(labels, "shop.product.increase")}
               disabled={qty >= Math.min(stock, 10)}
               onClick={() => setQty((q) => Math.min(Math.min(stock, 10), q + 1))}
             >
@@ -251,17 +260,22 @@ export function ProductDetail({
           <Button size="lg" className="flex-1 sm:flex-none sm:px-10" disabled={!canAdd} onClick={add}>
             <ShoppingCart className="size-4" />
             {missing.length > 0
-              ? `Bitte ${missing.join(" / ")} wählen`
+              ? interpolate(label(labels, "shop.product.selectMissing"), {
+                  options: missing.join(" / "),
+                })
               : canAdd
-                ? "In den Warenkorb"
-                : "Ausverkauft"}
+                ? label(labels, "shop.action.addToCart")
+                : label(labels, "shop.state.soldOut")}
           </Button>
         </div>
 
         {variant && (
           <p className="text-sm text-muted-foreground">
-            Variante: {variant.label} · Gewicht: {weight(variant.weightGrams)} · Art.-Nr.{" "}
-            {variant.sku}
+            {interpolate(label(labels, "shop.product.variantInfo"), {
+              variant: variant.label,
+              weight: weight(variant.weightGrams),
+              sku: variant.sku,
+            })}
           </p>
         )}
 

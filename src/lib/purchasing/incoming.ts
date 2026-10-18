@@ -1,7 +1,9 @@
 // Issue #62 (#55): "incoming stock" is derived, never stored twice — it is what the
 // open purchase orders say. These pure helpers compute the expected arrival from the
-// supplier lead time, aggregate the open quantity per SKU and phrase the German shop
-// copy ("5 Stk. bestellt, Ankunft ca. in 3 Tagen") from one place.
+// supplier lead time and aggregate the open quantity per SKU; the shop copy
+// ("5 Stk. bestellt, Ankunft ca. in 3 Tagen") comes from the translation table
+// (#58 step 3), so the phrasing follows the request language.
+import { interpolate, label } from "@/lib/i18n";
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 // When a PO ordered at `orderedAt` from a supplier with `leadTimeDays` is expected.
@@ -42,18 +44,32 @@ export function incomingForLines(lines: readonly IncomingLine[]): Map<string, In
   return bySku;
 }
 
-// Coarse German arrival buckets — exact dates would promise more precision than a
-// lead time has. ≤ 7 days count days, then weeks ("in 2 Wochen", "in 3 Wochen" …).
-export function arrivalBucket(arrival: Date, now: Date): string {
+// Coarse arrival buckets — exact dates would promise more precision than a lead time
+// has. ≤ 7 days count days, then weeks ("in 2 Wochen", "in 3 Wochen" …). The bucket
+// texts are translation-table keys, so every language phrases them itself.
+export function arrivalBucket(
+  labels: Readonly<Record<string, string>>,
+  arrival: Date,
+  now: Date,
+): string {
   const days = Math.ceil((arrival.getTime() - now.getTime()) / DAY_MS);
-  if (days <= 0) return "heute";
-  if (days === 1) return "morgen";
-  if (days <= 7) return `in ${days} Tagen`;
-  const weeks = Math.ceil(days / 7);
-  return `in ${weeks} Wochen`;
+  if (days <= 0) return label(labels, "shop.product.arrival.today");
+  if (days === 1) return label(labels, "shop.product.arrival.tomorrow");
+  if (days <= 7) return interpolate(label(labels, "shop.product.arrival.days"), { days });
+  return interpolate(label(labels, "shop.product.arrival.weeks"), {
+    weeks: Math.ceil(days / 7),
+  });
 }
 
 // The shop-facing sentence for a variant with incoming stock.
-export function incomingLabel(qty: number, arrival: Date, now: Date): string {
-  return `${qty} Stk. bestellt, Ankunft ca. ${arrivalBucket(arrival, now)}`;
+export function incomingLabel(
+  labels: Readonly<Record<string, string>>,
+  qty: number,
+  arrival: Date,
+  now: Date,
+): string {
+  return interpolate(label(labels, "shop.product.incoming"), {
+    qty,
+    bucket: arrivalBucket(labels, arrival, now),
+  });
 }

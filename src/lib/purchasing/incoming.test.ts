@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, labelMap } from "@/lib/i18n";
 import {
   DAY_MS,
   arrivalBucket,
@@ -8,6 +9,8 @@ import {
 } from "./incoming";
 
 const NOW = new Date("2026-03-10T08:00:00Z");
+const DE = labelMap(DEFAULT_TRANSLATIONS, BASE_LANGUAGE);
+const FR = labelMap(DEFAULT_TRANSLATIONS, "fr");
 
 describe("expectedArrival", () => {
   it("adds the supplier lead time to the order date", () => {
@@ -38,19 +41,26 @@ describe("incomingForLines", () => {
 });
 
 describe("arrivalBucket / incomingLabel", () => {
-  it("phrases the German buckets", () => {
-    expect(arrivalBucket(new Date(NOW.getTime() - DAY_MS), NOW)).toBe("heute");
-    expect(arrivalBucket(NOW, NOW)).toBe("heute");
-    expect(arrivalBucket(new Date(NOW.getTime() + DAY_MS), NOW)).toBe("morgen");
-    expect(arrivalBucket(new Date(NOW.getTime() + 3 * DAY_MS), NOW)).toBe("in 3 Tagen");
-    expect(arrivalBucket(new Date(NOW.getTime() + 7 * DAY_MS), NOW)).toBe("in 7 Tagen");
-    expect(arrivalBucket(new Date(NOW.getTime() + 10 * DAY_MS), NOW)).toBe("in 2 Wochen");
-    expect(arrivalBucket(new Date(NOW.getTime() + 20 * DAY_MS), NOW)).toBe("in 3 Wochen");
+  it("phrases the German buckets from the translation table", () => {
+    expect(arrivalBucket(DE, new Date(NOW.getTime() - DAY_MS), NOW)).toBe("heute");
+    expect(arrivalBucket(DE, NOW, NOW)).toBe("heute");
+    expect(arrivalBucket(DE, new Date(NOW.getTime() + DAY_MS), NOW)).toBe("morgen");
+    expect(arrivalBucket(DE, new Date(NOW.getTime() + 3 * DAY_MS), NOW)).toBe("in 3 Tagen");
+    expect(arrivalBucket(DE, new Date(NOW.getTime() + 7 * DAY_MS), NOW)).toBe("in 7 Tagen");
+    expect(arrivalBucket(DE, new Date(NOW.getTime() + 10 * DAY_MS), NOW)).toBe("in 2 Wochen");
+    expect(arrivalBucket(DE, new Date(NOW.getTime() + 20 * DAY_MS), NOW)).toBe("in 3 Wochen");
   });
 
   it("combines quantity and bucket", () => {
-    expect(incomingLabel(5, new Date(NOW.getTime() + 3 * DAY_MS), NOW)).toBe(
+    expect(incomingLabel(DE, 5, new Date(NOW.getTime() + 3 * DAY_MS), NOW)).toBe(
       "5 Stk. bestellt, Ankunft ca. in 3 Tagen",
+    );
+  });
+
+  it("follows the language of the label map (#58)", () => {
+    expect(arrivalBucket(FR, new Date(NOW.getTime() + 3 * DAY_MS), NOW)).toBe("dans 3 jours");
+    expect(incomingLabel(FR, 5, new Date(NOW.getTime() + 3 * DAY_MS), NOW)).toBe(
+      "5 pc commandées, arrivée approx. dans 3 jours",
     );
   });
 });

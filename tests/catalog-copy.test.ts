@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { describe as describeProduct, generateCatalog } from "../scripts/seed/catalog";
-import { stockLabel } from "@/lib/stock";
+import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, interpolate, label, labelMap } from "@/lib/i18n";
+
+const DE = labelMap(DEFAULT_TRANSLATIONS, BASE_LANGUAGE);
 
 // Issue #28: the seed used to append declension endings to adjectives that already
 // carried one („hochwertige“ + „er“ → „hochwertigeer“).
@@ -39,12 +41,14 @@ describe("seed product descriptions (issue #28)", () => {
   });
 });
 
-describe("stockLabel (issue #28)", () => {
+// The stock sentence moved into the translation table (#58 step 3); the Swiss plural
+// rule (#28) now lives in the German base text of the key.
+describe("stock copy in the translation table (issues #28/#58)", () => {
   it("keeps the Swiss plural „Stück“ for every count", () => {
-    expect(stockLabel("low", 1)).toBe("Nur noch 1 Stück");
-    expect(stockLabel("low", 3)).toBe("Nur noch 3 Stück");
-    expect(stockLabel("low", 17)).toBe("Nur noch 17 Stück");
-    expect(stockLabel("in", 50)).toBe("Sofort lieferbar");
-    expect(stockLabel("out", 0)).toBe("Ausverkauft");
+    for (const stock of [1, 3, 17]) {
+      expect(interpolate(label(DE, "shop.stock.low"), { stock })).toBe(`Nur noch ${stock} Stück`);
+    }
+    expect(DE["shop.stock.in"]).toBe("Sofort lieferbar");
+    expect(DE["shop.state.soldOut"]).toBe("Ausverkauft");
   });
 });

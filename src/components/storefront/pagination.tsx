@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useLabels } from "@/components/storefront/labels";
+import { interpolate, label } from "@/lib/i18n";
 
 interface Props {
   page: number;
@@ -10,6 +12,7 @@ interface Props {
 }
 
 export function Pagination({ page, pageSize, total, onChange }: Props) {
+  const labels = useLabels();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pages <= 1) return null;
 
@@ -20,13 +23,18 @@ export function Pagination({ page, pageSize, total, onChange }: Props) {
   );
 
   return (
-    <nav aria-label="Seiten" className="mt-8 flex flex-col items-center gap-3">
+    <nav aria-label={label(labels, "shop.pagination.label")} className="mt-8 flex flex-col items-center gap-3">
       <p className="text-sm text-muted-foreground">
-        Zeige {from}–{to} von {total}
+        {interpolate(label(labels, "shop.pagination.showing"), { from, to, total })}
       </p>
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-          Zurück
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+        >
+          {label(labels, "shop.pagination.previous")}
         </Button>
         {numbers.map((n, index) => (
           <span key={n} className="flex items-center gap-1">
@@ -42,8 +50,13 @@ export function Pagination({ page, pageSize, total, onChange }: Props) {
             </Button>
           </span>
         ))}
-        <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => onChange(page + 1)}>
-          Weiter
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page >= pages}
+          onClick={() => onChange(page + 1)}
+        >
+          {label(labels, "shop.pagination.next")}
         </Button>
       </div>
     </nav>

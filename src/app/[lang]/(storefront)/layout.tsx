@@ -18,6 +18,8 @@ import {
   LocaleFormattersProvider,
   LocaleSync,
 } from "@/components/storefront/locale-formatters";
+import { LabelsProvider, LabelsSync } from "@/components/storefront/labels";
+import { SkipLink } from "@/components/storefront/skip-link";
 
 // Issue #46: only a logged-in customer has an account wishlist to sync into; guests
 // keep the browser list. The session check is a dynamic hole inside Suspense so the
@@ -78,6 +80,14 @@ async function CartDrawerSlot({ lang }: { lang: string }) {
   return <CartDrawer labels={await getLabels(lang)} />;
 }
 
+// Issue #58 step 3: the live translation table for the whole client storefront — the
+// LabelsProvider above it already answers the seed configuration of the URL's language
+// (static shell); this dynamic hole only syncs in rows an admin has edited or added.
+async function LabelsSlot({ lang }: { lang: string }) {
+  await connection();
+  return <LabelsSync labels={await getLabels(lang)} />;
+}
+
 async function FooterSlot({ lang }: { lang: string }) {
   await connection();
   const [types, settings, labels] = await Promise.all([
@@ -112,22 +122,21 @@ export default async function StorefrontLayout({
   const { lang } = await params;
   return (
     <LocaleFormattersProvider lang={lang}>
+    <LabelsProvider lang={lang}>
     <ShopSettingsProvider>
     <CartProvider>
       <LocalStoreHydrator />
       <Suspense fallback={null}>
         <LocaleSlot lang={lang} />
       </Suspense>
+      <Suspense fallback={null}>
+        <LabelsSlot lang={lang} />
+      </Suspense>
       <CompareTray />
       <Suspense fallback={null}>
         <WishlistSyncGate />
       </Suspense>
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:shadow-md focus:outline-2 focus:outline-ring"
-      >
-        Zum Inhalt springen
-      </a>
+      <SkipLink />
       <Suspense fallback={<HeaderSkeleton />}>
         <HeaderSlot lang={lang} />
       </Suspense>
@@ -142,6 +151,7 @@ export default async function StorefrontLayout({
       </Suspense>
     </CartProvider>
     </ShopSettingsProvider>
+    </LabelsProvider>
     </LocaleFormattersProvider>
   );
 }

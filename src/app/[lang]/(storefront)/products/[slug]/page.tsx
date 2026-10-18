@@ -15,7 +15,8 @@ import { ProductDetail } from "@/components/storefront/product-detail";
 import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefront/recently-viewed";
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { ReviewSection } from "@/components/storefront/review-section";
-import { getIntlLocale } from "@/server/i18n";
+import { getIntlLocale, getLabels } from "@/server/i18n";
+import { label } from "@/lib/i18n";
 import { getCatalogType } from "@/server/catalog-types";
 import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
@@ -54,11 +55,12 @@ async function ProductView({ params }: PagePropsLocal) {
   // type's configuration.
   // Issue #62 (#55): what is on order for this product's variants — derived from the
   // open purchase orders, shown on low/zero-stock variants.
-  const [related, { aggregate }, typeConfig, incoming] = await Promise.all([
+  const [related, { aggregate }, typeConfig, incoming, labels] = await Promise.all([
     getRelatedProducts(product),
     getProductReviewsCore(product.id),
     getCatalogType(product.type),
     getIncomingBySkuCore(product.variants.map((variant) => variant.sku)),
+    getLabels(lang),
   ]);
   const categoryLabel = typeConfig?.label ?? product.type;
   const incomingBySku = Object.fromEntries(
@@ -69,7 +71,7 @@ async function ProductView({ params }: PagePropsLocal) {
     <div className="mx-auto max-w-7xl px-4 py-8">
       <Breadcrumbs
         items={[
-          { label: "Start", href: "/" },
+          { label: label(labels, "shop.breadcrumbs.start"), href: "/" },
           { label: categoryLabel, href: `/products?type=${encodeURIComponent(product.type)}` },
           { label: product.name },
         ]}
@@ -84,13 +86,13 @@ async function ProductView({ params }: PagePropsLocal) {
 
       <Accordion type="single" collapsible className="mt-10 border-t">
         <AccordionItem value="description">
-          <AccordionTrigger>Beschreibung</AccordionTrigger>
+          <AccordionTrigger>{label(labels, "shop.product.description")}</AccordionTrigger>
           <AccordionContent>
             <p className="whitespace-pre-line text-sm leading-relaxed">{product.description}</p>
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="details">
-          <AccordionTrigger>Details & Varianten</AccordionTrigger>
+          <AccordionTrigger>{label(labels, "shop.product.details")}</AccordionTrigger>
           <AccordionContent>
             <ul className="space-y-1 text-sm">
               {product.variants.map((variant) => (
@@ -105,9 +107,13 @@ async function ProductView({ params }: PagePropsLocal) {
       </Accordion>
 
       <div className="mt-12" />
-      <RelatedProducts products={related} />
+      <RelatedProducts products={related} labels={labels} />
       {/* Issue #47: reviews from verified buyers, with average and distribution. */}
-      <ReviewSection product={product} intlLocale={await getIntlLocale(lang)} />
+      <ReviewSection
+        product={product}
+        intlLocale={await getIntlLocale(lang)}
+        labels={labels}
+      />
       {/* Issue #46: remember this product, and show the rest of the history. */}
       <RecentlyViewedTracker slug={product.slug} />
       <RecentlyViewedRail excludeSlug={product.slug} />

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useLabels } from "@/components/storefront/labels";
+import { label } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { CompareToggle } from "@/components/storefront/compare-toggle";
 import { ProductImage } from "@/components/storefront/product-image";
@@ -11,6 +13,7 @@ import type { ProductDto } from "@/server/search";
 
 export function ProductCard({ product }: { product: ProductDto }) {
   const { chf, number } = useFormatters();
+  const labels = useLabels();
   const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md">
@@ -29,12 +32,12 @@ export function ProductCard({ product }: { product: ProductDto }) {
           ) : null}
           {product.featured && (
             <Badge className="absolute left-2 top-2" variant="secondary">
-              Beliebt
+              {label(labels, "shop.card.featured")}
             </Badge>
           )}
           {totalStock === 0 && (
             <Badge className="absolute bottom-2 left-2" variant="destructive">
-              Ausverkauft
+              {label(labels, "shop.state.soldOut")}
             </Badge>
           )}
         </div>
@@ -51,7 +54,9 @@ export function ProductCard({ product }: { product: ProductDto }) {
           )}
           <p className="mt-auto pt-1 text-sm font-semibold">
             {product.priceFrom && (
-              <span className="font-normal text-muted-foreground">ab </span>
+              <span className="font-normal text-muted-foreground">
+                {label(labels, "shop.price.from")}{" "}
+              </span>
             )}
             {chf(product.minPriceCents)}
           </p>

@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/storefront/product-image";
+import { useLabels } from "@/components/storefront/labels";
+import { interpolate, label } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { isPhotoSrc } from "@/lib/images";
 import type { ProductDto } from "@/server/search";
@@ -17,6 +19,7 @@ interface GalleryProps {
 }
 
 export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
+  const labels = useLabels();
   const images = product.images;
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [failedSrcs, setFailedSrcs] = useState<ReadonlySet<string>>(new Set());
@@ -99,7 +102,7 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
               variant="ghost"
               size="icon"
               className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
-              aria-label="Vorheriges Bild"
+              aria-label={label(labels, "shop.gallery.previous")}
               onClick={() => step(-1)}
             >
               <ChevronLeft className="size-5" />
@@ -108,7 +111,7 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
               variant="ghost"
               size="icon"
               className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
-              aria-label="Nächstes Bild"
+              aria-label={label(labels, "shop.gallery.next")}
               onClick={() => step(1)}
             >
               <ChevronRight className="size-5" />
@@ -122,7 +125,11 @@ export function Gallery({ product, imageIndex, onImageChange }: GalleryProps) {
             <button
               key={image.src}
               type="button"
-              aria-label={`Bild ${index + 1} von ${images.length}: ${image.alt}`}
+              aria-label={interpolate(label(labels, "shop.gallery.thumb"), {
+                index: index + 1,
+                total: images.length,
+                alt: image.alt,
+              })}
               aria-current={index === imageIndex}
               onClick={() => onImageChange(index)}
               className={cn(

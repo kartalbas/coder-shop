@@ -1,6 +1,7 @@
 import { BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { createFormatters } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
 import { getProductReviewsCore, getUserReviewCore, hasPurchasedCore } from "@/server/reviews";
 import { getCustomerSessionUserId } from "@/server/session";
 import type { ProductDto } from "@/server/search";
@@ -10,13 +11,17 @@ import { StarRating } from "./star-rating";
 // Reviews section on the product page (issue #47): average + distribution over the
 // approved reviews, the reviews themselves (every one a verified purchase), and — for
 // a logged-in buyer who has not reviewed yet — the submission form.
+// Issue #58 step 3: every text comes from the translation table, resolved to the
+// request language by the page.
 export async function ReviewSection({
   product,
   intlLocale,
+  labels,
 }: {
   product: ProductDto;
   // Issue #58 step 2b: review dates follow the request language's Intl locale.
   intlLocale: string;
+  labels: Record<string, string>;
 }) {
   const { date, number } = createFormatters(intlLocale);
   const { aggregate, reviews } = await getProductReviewsCore(product.id);
@@ -31,7 +36,7 @@ export async function ReviewSection({
   return (
     <section className="mt-12 border-t pt-8" aria-labelledby="reviews-heading">
       <h2 id="reviews-heading" className="text-xl font-semibold tracking-tight">
-        Bewertungen
+        {label(labels, "shop.reviews.title")}
       </h2>
 
       {aggregate.count > 0 && (
@@ -41,7 +46,13 @@ export async function ReviewSection({
             <div>
               <StarRating value={aggregate.average} size="lg" />
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {aggregate.count} {aggregate.count === 1 ? "Bewertung" : "Bewertungen"}
+                {interpolate(
+                  label(
+                    labels,
+                    aggregate.count === 1 ? "shop.reviews.countOne" : "shop.reviews.countOther",
+                  ),
+                  { count: aggregate.count },
+                )}
               </p>
             </div>
           </div>
@@ -55,7 +66,11 @@ export async function ReviewSection({
                   <div
                     className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
                     role="img"
-                    aria-label={`${count} von ${aggregate.count} Bewertungen mit ${stars} Sternen`}
+                    aria-label={interpolate(label(labels, "shop.reviews.distributionAria"), {
+                      count,
+                      total: aggregate.count,
+                      stars,
+                    })}
                   >
                     <div className="h-full rounded-full bg-amber-400" style={{ width: `${share}%` }} />
                   </div>
@@ -68,10 +83,7 @@ export async function ReviewSection({
       )}
 
       {reviews.length === 0 && aggregate.count === 0 && (
-        <p className="mt-4 text-sm text-muted-foreground">
-          Noch keine Bewertungen — kaufen Sie dieses Produkt und seien Sie die erste Person,
-          die es bewertet.
-        </p>
+        <p className="mt-4 text-sm text-muted-foreground">{label(labels, "shop.reviews.none")}</p>
       )}
 
       <ul className="mt-6 space-y-6">
@@ -82,7 +94,7 @@ export async function ReviewSection({
               {review.title && <p className="font-medium">{review.title}</p>}
               <Badge variant="secondary" className="gap-1">
                 <BadgeCheck className="size-3" aria-hidden />
-                Verifizierter Kauf
+                {label(labels, "shop.reviews.verified")}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -91,7 +103,7 @@ export async function ReviewSection({
             <p className="whitespace-pre-line text-sm leading-relaxed">{review.body}</p>
             {review.adminReply && (
               <div className="mt-2 rounded-md border-l-2 border-primary bg-muted/40 px-3 py-2">
-                <p className="text-xs font-semibold">Antwort vom coder-shop</p>
+                <p className="text-xs font-semibold">{label(labels, "shop.reviews.reply")}</p>
                 <p className="mt-1 whitespace-pre-line text-sm">{review.adminReply}</p>
               </div>
             )}
@@ -103,16 +115,13 @@ export async function ReviewSection({
         {ownReview ? (
           <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground" role="status">
             {ownReview.status === "pending"
-              ? "Vielen Dank! Ihre Bewertung ist eingereicht und wird in Kürze freigeschaltet."
-              : "Sie haben dieses Produkt bereits bewertet — vielen Dank!"}
+              ? label(labels, "shop.reviews.pending")
+              : label(labels, "shop.reviews.done")}
           </p>
         ) : purchased ? (
           <ReviewForm productId={product.id} productName={product.name} />
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Bewertungen können nur Kundinnen und Kunden schreiben, die dieses Produkt gekauft
-            haben.
-          </p>
+          <p className="text-sm text-muted-foreground">{label(labels, "shop.reviews.buyersOnly")}</p>
         )}
       </div>
     </section>
