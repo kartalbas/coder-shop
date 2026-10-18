@@ -28,12 +28,30 @@ BATCH_END="${BATCH_END:-10:15}"
 
 log() { printf '%s %s\n' "$(date +%T)" "$*" | tee -a "$LOGS/orchestrator.log"; }
 past_deadline() { [[ "$(date +%H:%M)" > "$DEADLINE" ]]; }
-web_stop()  { systemctl --user stop coder-shop-web 2>/dev/null || true; }
-web_start() {
+# The shop the user sees runs from its own worktree (LIVE, default ~/repos/coder-shop-live) with
+# its own build and database, so the coder's builds never touch it. It is updated only to a
+# commit whose gate is green: install, build, seed (idempotent), repair photo paths, then the
+# server restarts. A failed update leaves the running shop as it was.
+LIVE="${LIVE:-/home/mkadm/repos/coder-shop-live}"
+web_stop() { :; }
+web_deploy() {  # web_deploy [COMMIT] — default HEAD
+  local rev; rev="$(git rev-parse "${1:-HEAD}")"
+  [[ -d "$LIVE" ]] || git worktree add -q --detach "$LIVE" "$rev" || return 1
+  ( cd "$LIVE" || exit 1
+    git checkout -q --detach "$rev" || exit 1
+    cp -n "$REPO/.env.production.local" "$REPO/.env.local" . 2>/dev/null
+    rsync -a --include='*.webp' --exclude='*' "$REPO/public/products/" public/products/ 2>/dev/null
+    npm ci --no-audit --no-fund >"$LOGS/live-install.log" 2>&1 \
+      && npx next build >"$LOGS/live-build.log" 2>&1 \
+      && npm run seed >"$LOGS/live-seed.log" 2>&1 \
+      && npm run images >"$LOGS/live-images.log" 2>&1 ) \
+    || { log "live: update to ${rev:0:7} failed (live-*.log) — the running shop stays"; return 1; }
   systemctl --user stop coder-shop-web 2>/dev/null || true
-  systemd-run --user --unit=coder-shop-web --collect -p WorkingDirectory="$REPO" -E PATH="$PATH" \
+  systemd-run --user --unit=coder-shop-web --collect -p WorkingDirectory="$LIVE" -E PATH="$PATH" \
     npx next start -H 0.0.0.0 -p 4000 >/dev/null 2>&1
+  log "live: shop on :4000 now runs ${rev:0:7}"
 }
+web_start() { :; }
 
 # gate M — writes the symptom report to $LOGS/gate-M-attemptN.txt; returns 0 when green.
 gate() {
@@ -129,7 +147,7 @@ milestone() {
     gatef="$LOGS/gate-$m-$attempt.txt"
     if gate "$m" "$gatef" "$since"; then
       log "$m attempt $attempt: GATE GREEN"
-      web_start; return 0
+      web_deploy; return 0
     fi
     log "$m attempt $attempt: gate red — $(grep -c . "$gatef") report line(s) go to the next session"
     web_start
@@ -166,7 +184,7 @@ issues_loop() {
     log "ISSUES round $n: build (effort medium, ≤ ${SESSION_MIN} min)"
     session medium "ISSUES-$n" "$prompt" "$SESSION_MIN"
     gatef="$LOGS/gate-ISSUES-$n.txt"
-    if gate ISSUES "$gatef" "$since"; then log "ISSUES round $n: GATE GREEN"; : >"$gatef"
+    if gate ISSUES "$gatef" "$since"; then log "ISSUES round $n: GATE GREEN"; : >"$gatef"; web_deploy
     else log "ISSUES round $n: gate red — $(grep -c . "$gatef") report line(s) go to the next build"; fi
     sed "s|{{SINCE}}|$since|g" "$REPO/.agent/prompts/issues-review.md" >"$LOGS/ISSUES-$n-review-prompt.md"
     log "ISSUES round $n: review (effort high, ≤ ${REVIEW_MIN:-15} min)"
@@ -196,6 +214,9 @@ image_batch() {
   npm run build >"$LOGS/images-build.log" 2>&1 || log "images: build after the batch failed (images-build.log)"
   web_start
 }
+
+# DEPLOY_ONLY=<commit>: just update the live shop to that commit.
+if [[ -n "${DEPLOY_ONLY:-}" ]]; then web_deploy "$DEPLOY_ONLY"; exit $?; fi
 
 # GATE_ONLY=<M> GATE_SINCE=<commit>: just run the gate once and print its report (a self-test).
 if [[ -n "${GATE_ONLY:-}" ]]; then
