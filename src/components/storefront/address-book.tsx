@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Loader2, Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { interpolate, label } from "@/lib/i18n";
+import { useLabels } from "@/components/storefront/labels";
 import { cn } from "@/lib/utils";
 import {
   deleteAddressAction,
@@ -25,6 +27,13 @@ export interface AddressEntry {
 }
 
 function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: () => void }) {
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast.
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<AccountActionState | null, FormData>(
     saveAddressAction,
     null,
@@ -33,7 +42,7 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
   useEffect(() => {
     if (state?.error) toast.error(state.error);
     if (state?.ok) {
-      toast.success(state.message ?? "Adresse gespeichert.");
+      toast.success(state.message ?? label(labelsRef.current, "shop.account.address.saved"));
       onDone();
     }
   }, [state, onDone]);
@@ -45,7 +54,7 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
       {editing && <input type="hidden" name="addressId" value={entry.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="label">Bezeichnung</Label>
+          <Label htmlFor="label">{label(labels, "shop.account.address.field.label")}</Label>
           <Input
             id="label"
             name="label"
@@ -55,7 +64,7 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="street">Strasse, Hausnummer</Label>
+          <Label htmlFor="street">{label(labels, "shop.checkout.field.street")}</Label>
           <Input
             id="street"
             name="street"
@@ -65,7 +74,7 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="postalCode">PLZ</Label>
+          <Label htmlFor="postalCode">{label(labels, "shop.checkout.field.postalCode")}</Label>
           <Input
             id="postalCode"
             name="postalCode"
@@ -76,7 +85,7 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="city">Ort</Label>
+          <Label htmlFor="city">{label(labels, "shop.checkout.field.city")}</Label>
           <Input
             id="city"
             name="city"
@@ -86,15 +95,15 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="kind">Art</Label>
+          <Label htmlFor="kind">{label(labels, "shop.account.address.field.kind")}</Label>
           <select
             id="kind"
             name="kind"
             defaultValue={editing ? entry.kind : "shipping"}
             className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <option value="shipping">Lieferadresse</option>
-            <option value="billing">Rechnungsadresse</option>
+            <option value="shipping">{label(labels, "shop.account.address.kind.shipping")}</option>
+            <option value="billing">{label(labels, "shop.account.address.kind.billing")}</option>
           </select>
         </div>
         <div className="flex items-center gap-2 pt-7">
@@ -106,17 +115,17 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
             className="size-4 accent-primary"
           />
           <Label htmlFor="isDefault" className="font-normal">
-            Als Standard setzen
+            {label(labels, "shop.account.address.setDefault")}
           </Label>
         </div>
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={pending}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          Speichern
+          {label(labels, "shop.action.save")}
         </Button>
         <Button type="button" variant="outline" onClick={onDone}>
-          Abbrechen
+          {label(labels, "shop.action.cancel")}
         </Button>
       </div>
     </form>
@@ -124,6 +133,7 @@ function AddressForm({ entry, onDone }: { entry: AddressEntry | null; onDone: ()
 }
 
 export function AddressBook({ addresses }: { addresses: AddressEntry[] }) {
+  const labels = useLabels();
   const [draft, setDraft] = useState<AddressEntry | null | undefined>(undefined);
 
   const start = (entry: AddressEntry | null) => {
@@ -137,7 +147,9 @@ export function AddressBook({ addresses }: { addresses: AddressEntry[] }) {
         <Card>
           <CardContent className="p-5">
             <h2 className="mb-4 font-semibold">
-              {draft === null ? "Neue Adresse" : "Adresse bearbeiten"}
+              {draft === null
+                ? label(labels, "shop.account.address.new")
+                : label(labels, "shop.account.address.edit")}
             </h2>
             <AddressForm entry={draft} onDone={() => setDraft(undefined)} />
           </CardContent>
@@ -145,14 +157,12 @@ export function AddressBook({ addresses }: { addresses: AddressEntry[] }) {
       ) : (
         <Button onClick={() => start(null)} className="gap-2">
           <Plus className="size-4" aria-hidden />
-          Neue Adresse
+          {label(labels, "shop.account.address.new")}
         </Button>
       )}
 
       {addresses.length === 0 && draft === undefined ? (
-        <p className="text-sm text-muted-foreground">
-          Noch keine Adressen gespeichert. In der Kasse können Sie eine Adresse auswählen.
-        </p>
+        <p className="text-sm text-muted-foreground">{label(labels, "shop.account.address.empty")}</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {addresses.map((address) => (
@@ -168,7 +178,7 @@ export function AddressBook({ addresses }: { addresses: AddressEntry[] }) {
                         )}
                       >
                         <Star className="size-3" aria-hidden />
-                        Standard
+                        {label(labels, "shop.account.address.default")}
                       </span>
                     )}
                   </p>
@@ -178,14 +188,21 @@ export function AddressBook({ addresses }: { addresses: AddressEntry[] }) {
                     {address.postalCode} {address.city} · CH
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {address.kind === "billing" ? "Rechnungsadresse" : "Lieferadresse"}
+                    {label(
+                      labels,
+                      address.kind === "billing"
+                        ? "shop.account.address.kind.billing"
+                        : "shop.account.address.kind.shipping",
+                    )}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Adresse „${address.label}“ bearbeiten`}
+                    aria-label={interpolate(label(labels, "shop.account.address.editAria"), {
+                      label: address.label,
+                    })}
                     onClick={() => start(address)}
                   >
                     <Pencil className="size-4" aria-hidden />
@@ -195,7 +212,9 @@ export function AddressBook({ addresses }: { addresses: AddressEntry[] }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label={`Adresse „${address.label}“ löschen`}
+                      aria-label={interpolate(label(labels, "shop.account.address.deleteAria"), {
+                        label: address.label,
+                      })}
                     >
                       <Trash2 className="size-4" aria-hidden />
                     </Button>

@@ -18,10 +18,13 @@ test("order confirmation: PII is hidden until the buyer proves ownership", async
   await expect(page.getByRole("heading", { name: `Bestellung ${orderNumber}` })).toBeVisible();
   await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
 
+  // Issue #58: the translation table ships with every page, so UI words like
+  // "Lieferadresse" appear in the payload of any storefront page — the check must
+  // name actual personal data, not a label.
   const html = await page.content();
   expect(html).not.toContain("lena.meier@example.ch");
   expect(html).not.toContain("Bahnhofstrasse");
-  expect(html).not.toContain("Lieferadresse");
+  expect(html).not.toContain("Lena Meier");
 
   await page.getByLabel("E-Mail-Adresse").fill("falsch@example.ch");
   await page.getByRole("button", { name: "Bestellung anzeigen" }).click();

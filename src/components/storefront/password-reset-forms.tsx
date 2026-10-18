@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
 import { passwordRulesMet } from "@/lib/password-rules";
+import { label } from "@/lib/i18n";
+import { useLabels } from "@/components/storefront/labels";
 import {
   passwordResetConfirmAction,
   passwordResetRequestAction,
@@ -15,6 +17,7 @@ import {
 } from "@/server/actions/account";
 
 export function PasswordResetRequestForm() {
+  const labels = useLabels();
   const [email, setEmail] = useState("");
   const [state, formAction, pending] = useActionState<AccountActionState | null, FormData>(
     passwordResetRequestAction,
@@ -28,7 +31,7 @@ export function PasswordResetRequestForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">E-Mail</Label>
+        <Label htmlFor="email">{label(labels, "shop.checkout.field.email")}</Label>
         <Input
           id="email"
           name="email"
@@ -42,7 +45,7 @@ export function PasswordResetRequestForm() {
       </div>
       <Button type="submit" className="w-full" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Link anfordern
+        {label(labels, "shop.auth.requestLink")}
       </Button>
       {state?.ok && state.message && (
         <p role="status" className="text-sm text-primary">
@@ -56,6 +59,7 @@ export function PasswordResetRequestForm() {
 // Issue #60: controlled input (a failed submit keeps the value), live rules checklist,
 // submit reflects the rules, error at the field.
 export function PasswordResetConfirmForm({ token }: { token: string }) {
+  const labels = useLabels();
   const [password, setPassword] = useState("");
   const [state, formAction, pending] = useActionState<AccountActionState | null, FormData>(
     passwordResetConfirmAction,
@@ -70,7 +74,7 @@ export function PasswordResetConfirmForm({ token }: { token: string }) {
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="token" value={token} />
       <div className="space-y-2">
-        <Label htmlFor="password">Neues Passwort</Label>
+        <Label htmlFor="password">{label(labels, "shop.auth.newPassword")}</Label>
         <Input
           id="password"
           name="password"
@@ -95,7 +99,7 @@ export function PasswordResetConfirmForm({ token }: { token: string }) {
         disabled={pending || !passwordRulesMet("customer", password)}
       >
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Passwort setzen
+        {label(labels, "shop.auth.setPassword")}
       </Button>
       {state?.ok && state.message && (
         <p role="status" className="text-sm text-primary">

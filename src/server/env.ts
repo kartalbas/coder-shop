@@ -10,6 +10,11 @@ const optionalBoolean = z.preprocess(
   z.enum(["true", "false"]).optional(),
 );
 
+const optionalPositiveInt = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.coerce.number().int().positive().optional(),
+);
+
 const envSchema = z.object({
   MONGODB_URI: optionalNonEmpty,
   SESSION_SECRET: optionalNonEmpty,
@@ -25,11 +30,13 @@ const envSchema = z.object({
   SMTP_USER: optionalNonEmpty,
   SMTP_PASSWORD: optionalNonEmpty,
   SMTP_FROM: optionalNonEmpty,
+  CUSTOMER_REGISTER_LIMIT_PER_HOUR: optionalPositiveInt,
 });
 
 const parsed = envSchema.parse(process.env);
 
 const IMAGE_API_DEFAULT_URL = "http://192.168.10.210:8080/v1/images/generations";
+const REGISTER_LIMIT_DEFAULT = 5;
 
 export const env = {
   MONGODB_URI: parsed.MONGODB_URI,
@@ -55,6 +62,11 @@ export const env = {
   SMTP_USER: parsed.SMTP_USER,
   SMTP_PASSWORD: parsed.SMTP_PASSWORD,
   SMTP_FROM: parsed.SMTP_FROM,
+  // Issue #58: the abuse limit stays a configuration, not a code constant — production
+  // keeps the conservative default, the e2e suite raises it for its own server.
+  get customerRegisterLimitPerHour(): number {
+    return parsed.CUSTOMER_REGISTER_LIMIT_PER_HOUR ?? REGISTER_LIMIT_DEFAULT;
+  },
   // Issue #44: real delivery only when host and sender are configured;
   // otherwise every mail stays in the dev outbox.
   get smtpEnabled(): boolean {

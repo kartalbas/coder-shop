@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
 import { passwordRulesMet } from "@/lib/password-rules";
+import { label } from "@/lib/i18n";
+import { useLabels } from "@/components/storefront/labels";
 import {
   registerAction,
   type AccountActionState,
@@ -19,6 +21,7 @@ import {
 // (React resets uncontrolled fields after a form action), the rules show live and the
 // error sits at the field it belongs to.
 export function RegisterForm() {
+  const labels = useLabels();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +40,7 @@ export function RegisterForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Name, Vorname</Label>
+        <Label htmlFor="name">{label(labels, "shop.checkout.field.name")}</Label>
         <Input
           id="name"
           name="name"
@@ -56,7 +59,7 @@ export function RegisterForm() {
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="email">E-Mail</Label>
+        <Label htmlFor="email">{label(labels, "shop.checkout.field.email")}</Label>
         <Input
           id="email"
           name="email"
@@ -76,7 +79,7 @@ export function RegisterForm() {
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Passwort</Label>
+        <Label htmlFor="password">{label(labels, "shop.auth.field.password")}</Label>
         <Input
           id="password"
           name="password"
@@ -104,20 +107,20 @@ export function RegisterForm() {
           onCheckedChange={(checked) => setConsent(checked === true)}
         />
         <Label htmlFor="consent" className="text-sm font-normal">
-          Ich akzeptiere die AGB und die Datenschutzerklärung (Demo).
+          {label(labels, "shop.auth.consent")}
         </Label>
       </div>
       <Button type="submit" className="w-full" disabled={pending || !passwordMet}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Konto erstellen
+        {label(labels, "shop.action.register")}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
-        Bereits ein Konto?{" "}
+        {label(labels, "shop.auth.hasAccount")}{" "}
         <Link
           href="/account/login"
           className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
         >
-          Anmelden
+          {label(labels, "shop.action.login")}
         </Link>
       </p>
     </form>

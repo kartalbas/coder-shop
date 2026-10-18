@@ -16,13 +16,16 @@ import { sendMail } from "./mail";
 import { passwordResetMail, welcomeMail } from "@/lib/mail-templates";
 import { createLimiter, LimiterBusyError } from "./limiter";
 import { createRateLimiter } from "./rate-limit";
+import { env } from "./env";
 
 // scrypt on registration too — bound the parallelism like the login path.
 const scryptLimiter = createLimiter(2, 8);
 
 // Registration and reset requests are the two places where a bot could create junk;
-// the windows are far above any real human usage.
-const registerLimit = createRateLimiter(5, 60 * 60 * 1000);
+// the windows are far above any real human usage. The registration ceiling is
+// configuration (CUSTOMER_REGISTER_LIMIT_PER_HOUR) so deployments and the e2e suite
+// can raise it without a code change.
+const registerLimit = createRateLimiter(env.customerRegisterLimitPerHour, 60 * 60 * 1000);
 const resetRequestLimit = createRateLimiter(3, 60 * 60 * 1000);
 
 export function resetCustomerRateLimits(): void {

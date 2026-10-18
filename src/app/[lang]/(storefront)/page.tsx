@@ -8,22 +8,87 @@ import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/storefront/product-card";
 import { RecentlyViewedRail } from "@/components/storefront/recently-viewed";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
+import { interpolate, label } from "@/lib/i18n";
 import { menuCategories } from "@/lib/menu";
+import { vatLabel } from "@/lib/shop-settings";
 import { getCatalogTypes } from "@/server/catalog-types";
+import { getLabels } from "@/server/i18n";
+import { getShopSettings } from "@/server/shop-settings";
 import { getCollectionProducts, getFeaturedProducts } from "@/server/search";
 import { COLLECTIONS } from "@/lib/collections";
-import { VatLabel } from "@/components/storefront/vat-label";
+
+// Issue #58 step 3: the hero is the home page's only static-shell content, so its
+// texts stream in through one dynamic slot (transparent same-structure fallback, no
+// layout shift — same pattern as the header/footer skeletons). The VAT hole folds
+// into the lead sentence's {vat} interpolation.
+async function HeroSlot({ lang }: { lang: string }) {
+  await connection();
+  const [labels, settings] = await Promise.all([getLabels(lang), getShopSettings()]);
+  return (
+    <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 px-4 py-16 sm:py-24">
+      <p className="rounded-full border px-3 py-1 text-xs font-medium">
+        {label(labels, "shop.home.heroBadge")}
+      </p>
+      <h1 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
+        {label(labels, "shop.home.heroTitle")}
+      </h1>
+      <p className="max-w-xl text-lg text-muted-foreground">
+        {interpolate(label(labels, "shop.home.heroLead"), {
+          vat: vatLabel(settings.vatRatePercent),
+        })}
+      </p>
+      <div className="flex gap-3">
+        <Button asChild size="lg">
+          <Link href="/products">
+            {label(labels, "shop.home.heroDiscover")} <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+        <Button asChild size="lg" variant="outline">
+          <Link href={`/products?collection=${encodeURIComponent(COLLECTIONS[0])}`}>
+            {COLLECTIONS[0]}
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <div
+      className="mx-auto flex max-w-7xl flex-col items-start gap-6 px-4 py-16 sm:py-24"
+      aria-hidden
+    >
+      <p className="rounded-full border px-3 py-1 text-xs font-medium text-transparent">
+        Neuheiten
+      </p>
+      <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-transparent sm:text-5xl">
+        Technik, Style und Komfort — in der Schweiz zuhause.
+      </h1>
+      <p className="max-w-xl text-lg text-transparent">
+        Faire Preise in CHF, inklusive MwSt. und schnellem Versand aus der Schweiz.
+      </p>
+      <div className="flex gap-3">
+        <div className="h-11 w-40 rounded-md bg-muted" />
+        <div className="h-11 w-32 rounded-md border" />
+      </div>
+    </div>
+  );
+}
 
 // Issue #61: the category tiles are the catalog type configuration — a new type
 // appears here without a code change.
-async function Categories() {
+async function Categories({ lang }: { lang: string }) {
   await connection();
-  const categories = menuCategories(await getCatalogTypes());
+  const [categories, labels] = await Promise.all([
+    getCatalogTypes().then(menuCategories),
+    getLabels(lang),
+  ]);
   if (categories.length === 0) return null;
   return (
     <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="kategorien-heading">
       <h2 id="kategorien-heading" className="mb-6 text-2xl font-semibold tracking-tight">
-        Kategorien
+        {label(labels, "shop.home.categories")}
       </h2>
       <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
         {categories.map((category) => (
@@ -34,10 +99,10 @@ async function Categories() {
           >
             <p className="text-lg font-semibold group-hover:text-primary">{category.label}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Das komplette Sortiment — frisch für Sie ausgewählt.
+              {label(labels, "shop.home.categoryBlurb")}
             </p>
             <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
-              Ansehen{" "}
+              {label(labels, "shop.home.categoryView")}{" "}
               <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
             </span>
           </Link>
@@ -60,20 +125,23 @@ function CategoriesSkeleton() {
   );
 }
 
-async function FeaturedRail() {
+async function FeaturedRail({ lang }: { lang: string }) {
   await connection();
-  const featured = await getFeaturedProducts(12);
+  const [featured, labels] = await Promise.all([
+    getFeaturedProducts(12),
+    getLabels(lang),
+  ]);
   return (
     <section className="mx-auto max-w-7xl px-4 pb-16" aria-labelledby="beliebt-heading">
       <div className="mb-6 flex items-center justify-between">
         <h2 id="beliebt-heading" className="text-2xl font-semibold tracking-tight">
-          Beliebte Produkte
+          {label(labels, "shop.home.featured")}
         </h2>
         <Link
           href="/products"
           className="text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
         >
-          Alle ansehen
+          {label(labels, "shop.home.viewAll")}
         </Link>
       </div>
       <div className="flex snap-x gap-4 overflow-x-auto pb-4 [scrollbar-width:thin]">
@@ -87,26 +155,27 @@ async function FeaturedRail() {
   );
 }
 
-const COLLECTION_BLURBS: Record<(typeof COLLECTIONS)[number], string> = {
-  Neuheiten: "Frisch eingetroffen — die neuesten Zugänge im Sortiment.",
-  Bestseller: "Das kaufen unsere Kundinnen und Kunden am häufigsten.",
-  Sale: "Reduzierte Angebote, solange der Vorrat reicht.",
-};
-
 // Featured collections (issue #23): the seed's `collection` field, rendered as rails
-// whose links lead to the filtered listing.
-async function Collections() {
+// whose links lead to the filtered listing. The blurb text is a translation row keyed
+// by the collection itself (`shop.home.blurb.<collection>`) — a new collection is data.
+async function Collections({ lang }: { lang: string }) {
   await connection();
-  const sections = await Promise.all(
-    COLLECTIONS.map(async (collection) => ({
-      collection,
-      products: await getCollectionProducts(collection, 4),
-    })),
-  );
+  const [labels, sections] = await Promise.all([
+    getLabels(lang),
+    Promise.all(
+      COLLECTIONS.map(async (collection) => ({
+        collection,
+        products: await getCollectionProducts(collection, 4),
+      })),
+    ),
+  ]);
   const filled = sections.filter((section) => section.products.length > 0);
   if (filled.length === 0) return null;
   return (
-    <section className="mx-auto max-w-7xl space-y-12 px-4 py-12" aria-label="Kuratierte Kollektionen">
+    <section
+      className="mx-auto max-w-7xl space-y-12 px-4 py-12"
+      aria-label={label(labels, "shop.home.collectionsAria")}
+    >
       {filled.map(({ collection, products }) => (
         <div key={collection}>
           <div className="mb-2 flex items-baseline justify-between gap-4">
@@ -115,10 +184,12 @@ async function Collections() {
               href={`/products?collection=${encodeURIComponent(collection)}`}
               className="text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
             >
-              Alle ansehen
+              {label(labels, "shop.home.viewAll")}
             </Link>
           </div>
-          <p className="mb-6 text-sm text-muted-foreground">{COLLECTION_BLURBS[collection]}</p>
+          <p className="mb-6 text-sm text-muted-foreground">
+            {label(labels, `shop.home.blurb.${collection}`)}
+          </p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
@@ -162,45 +233,26 @@ function FeaturedRailSkeleton() {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage({ params }: PageProps<"/[lang]">) {
+  const { lang } = await params;
   return (
     <>
       <section className="relative overflow-hidden border-b bg-gradient-to-b from-muted/60 to-background">
-        <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 px-4 py-16 sm:py-24">
-          <p className="rounded-full border px-3 py-1 text-xs font-medium">Neuheiten jede Woche</p>
-          <h1 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
-            Technik, Style und Komfort — in der Schweiz zuhause.
-          </h1>
-          <p className="max-w-xl text-lg text-muted-foreground">
-            Faire Preise in CHF, inklusive{" "}
-            <Suspense fallback={<span aria-hidden className="invisible">MwSt.</span>}>
-              <VatLabel />
-            </Suspense>{" "}
-            und schnellem Versand aus der Schweiz.
-          </p>
-          <div className="flex gap-3">
-            <Button asChild size="lg">
-              <Link href="/products">
-                Jetzt entdecken <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/products?collection=Neuheiten">Neuheiten</Link>
-            </Button>
-          </div>
-        </div>
+        <Suspense fallback={<HeroSkeleton />}>
+          <HeroSlot lang={lang} />
+        </Suspense>
       </section>
 
       <Suspense fallback={<CategoriesSkeleton />}>
-        <Categories />
+        <Categories lang={lang} />
       </Suspense>
 
       <Suspense fallback={<CollectionsSkeleton />}>
-        <Collections />
+        <Collections lang={lang} />
       </Suspense>
 
       <Suspense fallback={<FeaturedRailSkeleton />}>
-        <FeaturedRail />
+        <FeaturedRail lang={lang} />
       </Suspense>
 
       {/* Issue #46: "Zuletzt angesehen" from this browser's history (client-side). */}

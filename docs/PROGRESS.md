@@ -1829,3 +1829,38 @@ Done — M1–M6 + QA complete.
   step 4 remainder (needs-review filter, usage context + preview link, keyboard-driven
   inline editing, change history), step 5 (translatable catalog content + two-language
   checkout e2e).
+
+## ISSUES — queue session 25 (2026-10-18)
+
+### #58 (step 3 slice) — home hero/collections and the whole account area read the table ✅ — issue stays open
+- **Home page:** hero title/subtitle/CTA, category tiles, collection headings and the
+  per-collection blurbs (~`shop.home.blurb.<collection>`) moved into the table; the
+  hero renders through a new `HeroSlot` behind `connection()` (labels + shop settings,
+  `{vat}` interpolated) with a transparent `HeroSkeleton`, so the static shell keeps
+  prerendering. Categories/Collections/FeaturedRail take `lang` + `getLabels`.
+- **Auth pages** (login, register, forgot/reset password): static `metadata` →
+  `generateMetadata` behind `connection()`, headings/hints via `getLabels(lang)`,
+  `instant = false`; the password-rule texts left `lib/password-rules.ts` (the rule
+  keeps key + test only) and live as `shop.password.rule.*` with `{min}` — the
+  checklist reads them through `useLabels()`.
+- **Portal:** layout, overview (order count via `plural` + `intlLocale`), orders,
+  invoices, wishlist, addresses, profile and the claim form converted; client forms
+  (login, register, password reset/change, address book, reorder, wishlist remove,
+  logout) read `useLabels()`. `vat-label.tsx` became unused and was deleted.
+  German bases byte-identical throughout, so every existing German spec passes
+  untouched.
+- **Registration rate limit is configuration (DECISIONS):** the suite registers one
+  account per authenticated spec from one IP and had exhausted the hard-coded 5/h
+  window exactly — the new portal spec made the 6th and throttled `wishlist.spec`.
+  `CUSTOMER_REGISTER_LIMIT_PER_HOUR` (default 5, production unchanged) now feeds
+  `createRateLimiter`; the e2e global setup sets 60 for its own server.
+  `order-privacy.spec` now asserts real PII („Lena Meier") instead of the UI word
+  „Lieferadresse", which the seed label map legitimately ships on every page.
+- **Tests:** new e2e `account-translations.spec.ts` (fr hero, fr login+register,
+  fr portal overview/orders/profile, es login+reset). `npm test` ✅ 580,
+  `npm run build`/lint/knip ✅, `npm run test:e2e` ✅ 80/80; tree clean, nothing running.
+- **Left open (#58):** step 3 remainder (admin strings + admin language switcher,
+  mail/invoice/slip/label texts in the recipient's language, server-side validation
+  messages, no-German-literals guard), step 4 remainder (needs-review filter, usage
+  context + preview link, keyboard-driven inline editing, change history), step 5
+  (translatable catalog content + two-language checkout e2e).

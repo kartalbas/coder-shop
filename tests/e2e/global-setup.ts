@@ -108,6 +108,9 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
         MONGODB_URI: mongoUri,
         SESSION_SECRET: randomBytes(48).toString("base64"),
         NEXT_TELEMETRY_DISABLED: "1",
+        // Every authenticated spec registers its own account from one IP; the
+        // production default (5/h) would throttle the suite itself.
+        CUSTOMER_REGISTER_LIMIT_PER_HOUR: "60",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },

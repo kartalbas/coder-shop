@@ -10,48 +10,64 @@ import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { ClaimOrderForm } from "@/components/storefront/claim-order-form";
 import { ReorderButton } from "@/components/storefront/reorder-button";
 import { createFormatters } from "@/lib/format";
-import { getIntlLocale } from "@/server/i18n";
+import { interpolate, label } from "@/lib/i18n";
+import { getIntlLocale, getLabels } from "@/server/i18n";
 import { listAccountOrders } from "@/server/account";
 import { requireCustomerSession } from "@/server/session";
-
-export const metadata: Metadata = {
-  title: "Meine Bestellungen",
-  description: "Bestellhistorie — coder-shop.",
-  robots: { index: false },
-};
 
 interface PageProps {
   params: Promise<{ lang: string }>;
   searchParams: Promise<{ q?: string }>;
 }
 
-export default async function AccountOrdersPage({ params, searchParams }: PageProps) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
   await connection();
+  const labels = await getLabels((await params).lang);
+  return {
+    title: label(labels, "shop.meta.accountOrders.title"),
+    description: label(labels, "shop.meta.accountOrders.description"),
+    robots: { index: false },
+  };
+}
+
+export default async function AccountOrdersPage({
+  params,
+  searchParams,
+}: PageProps) {
+  await connection();
+  const lang = (await params).lang;
   const userId = await requireCustomerSession();
   // Issue #58 step 2b: dates and amounts follow the request language's Intl locale.
-  const { chf, date } = createFormatters(await getIntlLocale((await params).lang));
+  const [{ chf, date }, labels] = await Promise.all([
+    getIntlLocale(lang).then(createFormatters),
+    getLabels(lang),
+  ]);
   const { q } = await searchParams;
   const orders = await listAccountOrders(userId, q ?? "");
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Bestellhistorie</h2>
+        <h2 className="text-lg font-semibold">{label(labels, "shop.account.orders.title")}</h2>
         <ClaimOrderForm />
       </div>
 
       <form method="get" action="/account/orders" className="flex max-w-sm gap-2">
         <label htmlFor="order-search" className="sr-only">
-          Bestellungen durchsuchen
+          {label(labels, "shop.account.orders.searchAria")}
         </label>
         <Input
           id="order-search"
           name="q"
           defaultValue={q ?? ""}
-          placeholder="Bestellnummer oder Artikel suchen"
+          placeholder={label(labels, "shop.account.orders.searchPlaceholder")}
         />
         <Button type="submit" variant="outline">
-          Suchen
+          {label(labels, "shop.action.search")}
         </Button>
       </form>
 
@@ -59,16 +75,18 @@ export default async function AccountOrdersPage({ params, searchParams }: PagePr
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-16 text-center">
           <PackageSearch className="size-8 text-muted-foreground" aria-hidden />
           <p className="font-medium">
-            {q ? `Keine Bestellung passt zu „${q}“.` : "Noch keine Bestellungen"}
+            {q
+              ? interpolate(label(labels, "shop.account.orders.noMatch"), { q })
+              : label(labels, "shop.account.orders.none")}
           </p>
           <p className="text-sm text-muted-foreground">
             {q
-              ? "Bitte Suchbegriff anpassen."
-              : "Sobald Sie etwas bestellen, erscheint es hier."}
+              ? label(labels, "shop.account.orders.adjustQuery")
+              : label(labels, "shop.account.orders.emptyHint")}
           </p>
           {!q && (
             <Button asChild variant="outline">
-              <Link href="/products">Jetzt einkaufen</Link>
+              <Link href="/products">{label(labels, "shop.account.orders.shopNow")}</Link>
             </Button>
           )}
         </div>
@@ -85,18 +103,24 @@ export default async function AccountOrdersPage({ params, searchParams }: PagePr
                     {order.orderNumber}
                   </Link>
                   <p className="text-sm text-muted-foreground">
-                    {date(new Date(order.createdAt))} · {order.itemCount}{" "}
-                    {order.itemCount === 1 ? "Artikel" : "Artikel"}
-                    {order.trackingNumber && ` · Sendung ${order.trackingNumber}`}
+                    {date(new Date(order.createdAt))} ·{" "}
+                    {interpolate(label(labels, "shop.account.orders.items"), {
+                      count: order.itemCount,
+                    })}
+                    {order.trackingNumber &&
+                      ` · ${interpolate(label(labels, "shop.account.orders.shipment"), {
+                        tracking: order.trackingNumber,
+                      })}`}
                     {/* Issue #41: the pickup code belongs to the order, not the parcel. */}
-                    {order.pickupCode && ` · Abholung, Code ${order.pickupCode}`}
+                    {order.pickupCode &&
+                      ` · ${interpolate(label(labels, "shop.account.orders.pickup"), {
+                        code: order.pickupCode,
+                      })}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <OrderStatusBadge status={order.status} />
-                  <span className="tabular-nums font-medium">
-                    {chf(order.totalCents)}
-                  </span>
+                  <span className="tabular-nums font-medium">{chf(order.totalCents)}</span>
                   <ReorderButton orderNumber={order.orderNumber} />
                 </div>
               </div>

@@ -1,19 +1,36 @@
+export const instant = false;
+
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { PasswordResetRequestForm } from "@/components/storefront/password-reset-forms";
+import { label } from "@/lib/i18n";
+import { getLabels } from "@/server/i18n";
 
-export const metadata: Metadata = {
-  title: "Passwort vergessen",
-  description: "Link zum Passwort-Zurücksetzen anfordern — coder-shop.",
-  robots: { index: false },
-};
+export async function generateMetadata({
+  params,
+}: PageProps<"/[lang]/account/forgot-password">): Promise<Metadata> {
+  await connection();
+  const labels = await getLabels((await params).lang);
+  return {
+    title: label(labels, "shop.meta.forgot.title"),
+    description: label(labels, "shop.meta.forgot.description"),
+    robots: { index: false },
+  };
+}
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage({
+  params,
+}: PageProps<"/[lang]/account/forgot-password">) {
+  await connection();
+  const labels = await getLabels((await params).lang);
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">Passwort vergessen</h1>
+      <h1 className="mb-2 text-2xl font-bold tracking-tight">
+        {label(labels, "shop.meta.forgot.title")}
+      </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Wir senden Ihnen einen Link zum Zurücksetzen — gültig für eine Stunde.
+        {label(labels, "shop.auth.forgotHint")}
       </p>
       <Card>
         <CardContent className="p-5 sm:p-6">

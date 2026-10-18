@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
 import { passwordRulesMet } from "@/lib/password-rules";
+import { label } from "@/lib/i18n";
+import { useLabels } from "@/components/storefront/labels";
 import {
   changePasswordAction,
   type ChangeOwnPasswordActionState,
@@ -16,6 +18,7 @@ import {
 // Issue #60: controlled inputs keep the values through a failed submit; the new
 // password shows its rules live and the error sits at the field it belongs to.
 export function CustomerPasswordForm() {
+  const labels = useLabels();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [state, formAction, pending] = useActionState<
@@ -30,7 +33,7 @@ export function CustomerPasswordForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="currentPassword">Aktuelles Passwort</Label>
+        <Label htmlFor="currentPassword">{label(labels, "shop.account.currentPassword")}</Label>
         <Input
           id="currentPassword"
           name="currentPassword"
@@ -48,7 +51,7 @@ export function CustomerPasswordForm() {
         )}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="newPassword">Neues Passwort</Label>
+        <Label htmlFor="newPassword">{label(labels, "shop.auth.newPassword")}</Label>
         <Input
           id="newPassword"
           name="newPassword"
@@ -71,7 +74,7 @@ export function CustomerPasswordForm() {
         disabled={pending || !passwordRulesMet("customer", newPassword)}
       >
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Passwort ändern
+        {label(labels, "shop.account.changePassword")}
       </Button>
     </form>
   );

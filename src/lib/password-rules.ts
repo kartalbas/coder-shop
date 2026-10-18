@@ -5,9 +5,10 @@ export const MIN_PASSWORD_LENGTH = 10;
 
 export type PasswordScope = "customer" | "admin";
 
+// #58 step 3: the rule wording lives in the translation table (`shop.password.rule.*`);
+// the rule itself stays the pure key + test the checklist renders a row for.
 export interface PasswordRule {
   key: string;
-  label: string;
   test: (password: string) => boolean;
 }
 
@@ -15,14 +16,13 @@ export function passwordRules(scope: PasswordScope): PasswordRule[] {
   const rules: PasswordRule[] = [
     {
       key: "longEnough",
-      label: `mindestens ${MIN_PASSWORD_LENGTH} Zeichen`,
       test: (password) => password.length >= MIN_PASSWORD_LENGTH,
     },
   ];
   if (scope === "customer") {
     rules.push(
-      { key: "hasLetter", label: "ein Buchstabe", test: (password) => /[a-zA-Z]/.test(password) },
-      { key: "hasDigit", label: "eine Zahl", test: (password) => /\d/.test(password) },
+      { key: "hasLetter", test: (password) => /[a-zA-Z]/.test(password) },
+      { key: "hasDigit", test: (password) => /\d/.test(password) },
     );
   }
   return rules;

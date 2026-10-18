@@ -2,22 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { label } from "@/lib/i18n";
+import { useLabels } from "@/components/storefront/labels";
 import { cn } from "@/lib/utils";
 
+// Issue #58 step 3: the labels are translation-table keys, resolved per request language.
 const ACCOUNT_LINKS = [
-  { href: "/account", label: "Übersicht" },
-  { href: "/account/orders", label: "Bestellungen" },
-  { href: "/account/invoices", label: "Rechnungen" },
-  { href: "/account/wishlist", label: "Wunschliste" },
-  { href: "/account/addresses", label: "Adressen" },
-  { href: "/account/profile", label: "Profil" },
+  { href: "/account", labelKey: "shop.account.nav.overview" },
+  { href: "/account/orders", labelKey: "shop.account.nav.orders" },
+  { href: "/account/invoices", labelKey: "shop.account.nav.invoices" },
+  { href: "/account/wishlist", labelKey: "shop.account.nav.wishlist" },
+  { href: "/account/addresses", labelKey: "shop.account.nav.addresses" },
+  { href: "/account/profile", labelKey: "shop.account.nav.profile" },
 ];
 
 export function AccountNav() {
+  const labels = useLabels();
   const pathname = usePathname();
   return (
-    <nav aria-label="Konto-Navigation" className="flex gap-1 overflow-x-auto border-b">
-      {ACCOUNT_LINKS.map(({ href, label }) => {
+    <nav aria-label={label(labels, "shop.account.nav.aria")} className="flex gap-1 overflow-x-auto border-b">
+      {ACCOUNT_LINKS.map(({ href, labelKey }) => {
         const active = href === "/account" ? pathname === "/account" : pathname.startsWith(href);
         return (
           <Link
@@ -29,7 +33,7 @@ export function AccountNav() {
               active && "border-primary text-foreground",
             )}
           >
-            {label}
+            {label(labels, labelKey)}
           </Link>
         );
       })}
