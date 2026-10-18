@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { label } from "@/lib/i18n";
 import { PICKUP_PAYMENT_TYPES } from "@/lib/payments";
 import { objectIdSchema } from "@/lib/validations/common";
+import { getRequestLabels } from "@/server/i18n";
 import { handoverPickupCore, markPickupReadyCore } from "@/server/pickup";
 import { getAdminEmail, requireAdminSession } from "@/server/session";
 
@@ -22,7 +24,9 @@ export async function markPickupReadyAction(
   const adminEmail = (await getAdminEmail(userId)) ?? "admin";
 
   const parsed = readySchema.safeParse({ orderId: formData.get("orderId") });
-  if (!parsed.success) return { error: "Ungültige Anfrage." };
+  if (!parsed.success) {
+    return { error: label(await getRequestLabels(), "admin.error.invalidRequest") };
+  }
 
   const result = await markPickupReadyCore(parsed.data.orderId, adminEmail);
   if (!result.ok) return { error: result.error };
@@ -50,7 +54,9 @@ export async function handoverPickupAction(
     code: formData.get("code"),
     paymentType: formData.get("paymentType"),
   });
-  if (!parsed.success) return { error: "Ungültige Anfrage." };
+  if (!parsed.success) {
+    return { error: label(await getRequestLabels(), "admin.error.invalidRequest") };
+  }
 
   const result = await handoverPickupCore(
     parsed.data.orderId,

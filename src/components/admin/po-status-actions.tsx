@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useEffect, useRef, useActionState } from "react";
 import { Loader2, PackageCheck, Send } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { interpolate, label } from "@/lib/i18n";
 import {
   markPurchaseOrderOrderedAction,
   receivePurchaseOrderAction,
@@ -15,13 +17,18 @@ import {
 type ReceiveState = PurchasingActionState & { summary?: string; complete?: boolean };
 
 export function MarkOrderedButton({ poId }: { poId: string }) {
+  const labels = useLabels();
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<PurchasingActionState | null, FormData>(
     markPurchaseOrderOrderedAction,
     null,
   );
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success("Bestellung als bestellt markiert.");
+    if (state?.ok) toast.success(label(labelsRef.current, "admin.po.markOrderedToast"));
   }, [state]);
 
   return (
@@ -30,7 +37,7 @@ export function MarkOrderedButton({ poId }: { poId: string }) {
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
         <Send className="size-4" aria-hidden />
-        Bestellen
+        {label(labels, "admin.po.markOrdered")}
       </Button>
     </form>
   );
@@ -47,6 +54,11 @@ export interface ReceiveLine {
 // quantity; lowering one of them receives partially and the rest stays "on order".
 // Serial-tracked lines additionally take one serial number per line of input.
 export function ReceiveForm({ poId, lines }: { poId: string; lines: ReceiveLine[] }) {
+  const labels = useLabels();
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<ReceiveState | null, FormData>(
     receivePurchaseOrderAction,
     null,
@@ -54,10 +66,13 @@ export function ReceiveForm({ poId, lines }: { poId: string; lines: ReceiveLine[
   useEffect(() => {
     if (state?.error) toast.error(state.error);
     if (state?.ok) {
+      const summary = state.summary ? `: ${state.summary}` : "";
       toast.success(
         state.complete
-          ? `Wareneingang gebucht${state.summary ? `: ${state.summary}` : ""}`
-          : `Teil-Wareneingang gebucht${state.summary ? `: ${state.summary}` : ""} — der Rest bleibt bestellt.`,
+          ? interpolate(label(labelsRef.current, "admin.po.receivedToast"), { summary })
+          : interpolate(label(labelsRef.current, "admin.po.receivedPartialToast"), {
+              summary,
+            }),
       );
     }
   }, [state]);
@@ -86,7 +101,7 @@ export function ReceiveForm({ poId, lines }: { poId: string; lines: ReceiveLine[
       {lines.map((line) => (
         <div key={line.sku} className="space-y-1">
           <label className="block space-y-1 text-xs text-muted-foreground">
-            Erhalt {line.sku}
+            {interpolate(label(labels, "admin.po.receivedQty"), { sku: line.sku })}
             <Input
               name={`qty-${line.sku}`}
               type="number"
@@ -94,19 +109,23 @@ export function ReceiveForm({ poId, lines }: { poId: string; lines: ReceiveLine[
               max={line.open}
               defaultValue={line.open}
               className="h-8 w-24 text-sm"
-              aria-label={`Erhaltene Menge ${line.sku}`}
+              aria-label={interpolate(label(labels, "admin.po.receivedQtyAria"), {
+                sku: line.sku,
+              })}
             />
           </label>
           {line.serial && (
             <label className="block space-y-1 text-xs text-muted-foreground">
-              Seriennummern {line.sku} (eine pro Zeile)
+              {interpolate(label(labels, "admin.po.serials"), { sku: line.sku })}
               <textarea
                 name={`serials-${line.sku}`}
                 rows={Math.min(6, Math.max(2, line.open))}
                 defaultValue={""}
-                placeholder="IMEI / Seriennummer scannen oder tippen"
+                placeholder={label(labels, "admin.po.serialsPlaceholder")}
                 className="w-56 rounded-md border bg-background p-2 font-mono text-xs focus-visible:outline-2 focus-visible:outline-ring"
-                aria-label={`Seriennummern ${line.sku}`}
+                aria-label={interpolate(label(labels, "admin.po.serialsAria"), {
+                  sku: line.sku,
+                })}
               />
             </label>
           )}
@@ -115,7 +134,7 @@ export function ReceiveForm({ poId, lines }: { poId: string; lines: ReceiveLine[
       <Button type="submit" size="sm" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
         <PackageCheck className="size-4" aria-hidden />
-        Wareneingang
+        {label(labels, "admin.po.receive")}
       </Button>
     </form>
   );
@@ -129,31 +148,36 @@ export function ExpectedArrivalForm({
   poId: string;
   defaultValue: string;
 }) {
+  const labels = useLabels();
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<PurchasingActionState | null, FormData>(
     setExpectedArrivalAction,
     null,
   );
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success("Erwartete Ankunft aktualisiert.");
+    if (state?.ok) toast.success(label(labelsRef.current, "admin.po.expectedArrivalToast"));
   }, [state]);
 
   return (
     <form action={formAction} className="flex items-end gap-2">
       <input type="hidden" name="poId" value={poId} />
       <label className="space-y-1 text-xs text-muted-foreground">
-        Erwartete Ankunft
+        {label(labels, "admin.po.expectedArrival")}
         <Input
           name="arrival"
           type="date"
           defaultValue={defaultValue}
           className="h-8 text-sm"
-          aria-label="Erwartete Ankunft"
+          aria-label={label(labels, "admin.po.expectedArrival")}
         />
       </label>
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Speichern
+        {label(labels, "admin.action.save")}
       </Button>
     </form>
   );

@@ -52,13 +52,8 @@ export function unitMoveForOrderStatus(to: string): {
   }
 }
 
-export const STOCK_UNIT_STATUS_LABELS: Record<StockUnitStatus, string> = {
-  in_stock: "An Lager",
-  reserved: "Reserviert",
-  packed: "Verpackt",
-  shipped: "Versandt",
-  sold: "Verkauft",
-};
+// Issue #58 step 4: the status copy lives in the translation table
+// (`admin.stockUnits.status.<status>`), rendered in the request language.
 
 // Serial input validation (goods receipt): trimmed, printable, bounded — the
 // uniqueness per SKU is a database concern, not a format one.

@@ -3,8 +3,10 @@
 import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { label } from "@/lib/i18n";
 import {
   recordInvoicePaymentAction,
   sendInvoiceReminderAction,
@@ -22,17 +24,18 @@ type InvoiceAction = (
 
 function ActionForm({
   action,
-  success,
-  label,
+  successKey,
+  labelKey,
   className,
   children,
 }: {
   action: InvoiceAction;
-  success: string;
-  label: string;
+  successKey: string;
+  labelKey: string;
   className?: string;
   children?: React.ReactNode;
 }) {
+  const labels = useLabels();
   const [pending, startTransition] = useTransition();
   return (
     <form
@@ -41,33 +44,34 @@ function ActionForm({
         startTransition(async () => {
           const result = await action(null, formData);
           if (result.error) toast.error(result.error);
-          else toast.success(success);
+          else toast.success(label(labels, successKey));
         });
       }}
     >
       {children}
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
         {pending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
-        {label}
+        {label(labels, labelKey)}
       </Button>
     </form>
   );
 }
 
 export function InvoicePaymentForm({ orderId }: { orderId: string }) {
+  const labels = useLabels();
   return (
     <ActionForm
       action={recordInvoicePaymentAction}
-      success="Zahlung erfasst."
-      label="Zahlen"
+      successKey="admin.invoices.payToast"
+      labelKey="admin.invoices.pay"
       className="flex items-center gap-2"
     >
       <input type="hidden" name="orderId" value={orderId} />
       <Input
         name="amount"
         inputMode="decimal"
-        placeholder="Betrag CHF"
-        aria-label="Betrag in CHF"
+        placeholder={label(labels, "admin.invoices.amountPlaceholder")}
+        aria-label={label(labels, "admin.invoices.amountAria")}
         className="h-8 w-28"
         required
       />
@@ -93,8 +97,8 @@ export function ReminderButtons({
       {!hasReminder1 && (
         <ActionForm
           action={withLevel("1")}
-          success="1. Mahnung verschickt."
-          label="1. Mahnung"
+          successKey="admin.invoices.reminder1Toast"
+          labelKey="admin.invoices.reminder1"
         >
           <input type="hidden" name="orderId" value={orderId} />
         </ActionForm>
@@ -102,8 +106,8 @@ export function ReminderButtons({
       {hasReminder1 && !hasReminder2 && (
         <ActionForm
           action={withLevel("2")}
-          success="2. Mahnung verschickt."
-          label="2. Mahnung"
+          successKey="admin.invoices.reminder2Toast"
+          labelKey="admin.invoices.reminder2"
         >
           <input type="hidden" name="orderId" value={orderId} />
         </ActionForm>
@@ -119,11 +123,12 @@ export function CreditLimitForm({
   userId: string;
   currentCents: number;
 }) {
+  const labels = useLabels();
   return (
     <ActionForm
       action={setCreditLimitAction}
-      success="Kreditlimit aktualisiert."
-      label="Setzen"
+      successKey="admin.invoices.creditToast"
+      labelKey="admin.invoices.creditSet"
       className="flex items-center gap-2"
     >
       <input type="hidden" name="userId" value={userId} />
@@ -131,7 +136,7 @@ export function CreditLimitForm({
         name="amount"
         defaultValue={(currentCents / 100).toFixed(2)}
         inputMode="decimal"
-        aria-label="Kreditlimit in CHF"
+        aria-label={label(labels, "admin.invoices.creditLimitAria")}
         className="h-8 w-28"
         required
       />

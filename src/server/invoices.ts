@@ -13,7 +13,9 @@ import type { OrderStatus } from "@/lib/orders/state-machine";
 import { transition } from "@/lib/orders/state-machine";
 import { OrderModel, type Order } from "@/models/order";
 import { UserModel } from "@/models/user";
+import { interpolate, label } from "@/lib/i18n";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 import { sendMail } from "./mail";
 import { buildInvoicePdf } from "./invoices-pdf";
 import { getShopSettings } from "./shop-settings";
@@ -177,16 +179,21 @@ export async function setCreditLimitCore(
   userId: string,
   creditLimitCents: number,
 ): Promise<InvoiceActionResult> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(userId)) return { ok: false, error: "Kunde nicht gefunden." };
+  if (!mongoose.isValidObjectId(userId)) {
+    return { ok: false, error: label(labels, "admin.invoices.error.customerNotFound") };
+  }
   if (!Number.isInteger(creditLimitCents) || creditLimitCents < 0) {
-    return { ok: false, error: "Ungültiger Betrag." };
+    return { ok: false, error: label(labels, "admin.invoices.error.invalidAmount") };
   }
   const moved = await UserModel.updateOne(
     { _id: userId, role: "customer" },
     { $set: { creditLimitCents } },
   );
-  if (moved.matchedCount === 0) return { ok: false, error: "Kunde nicht gefunden." };
+  if (moved.matchedCount === 0) {
+    return { ok: false, error: label(labels, "admin.invoices.error.customerNotFound") };
+  }
   return { ok: true };
 }
 
@@ -234,10 +241,13 @@ export async function recordInvoicePaymentCore(
   amountCents: number,
   by: string,
 ): Promise<InvoiceActionResult> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(orderId)) return { ok: false, error: "Rechnung nicht gefunden." };
+  if (!mongoose.isValidObjectId(orderId)) {
+    return { ok: false, error: label(labels, "admin.invoices.error.notFound") };
+  }
   if (!Number.isInteger(amountCents) || amountCents <= 0) {
-    return { ok: false, error: "Bitte einen Betrag über 0 CHF angeben." };
+    return { ok: false, error: label(labels, "admin.invoices.error.amountPositive") };
   }
 
   const session = await mongoose.startSession();
@@ -247,18 +257,20 @@ export async function recordInvoicePaymentCore(
     const invoice = order?.payment.invoice;
     if (!order || !invoice || order.payment.kind !== "invoice") {
       await session.abortTransaction();
-      return { ok: false, error: "Rechnung nicht gefunden." };
+      return { ok: false, error: label(labels, "admin.invoices.error.notFound") };
     }
     if (order.status === "cancelled") {
       await session.abortTransaction();
-      return { ok: false, error: "Die Bestellung ist storniert." };
+      return { ok: false, error: label(labels, "admin.invoices.error.cancelled") };
     }
     const open = openAmountCents(order.totals.totalCents, invoice.paidCents);
     if (amountCents > open) {
       await session.abortTransaction();
       return {
         ok: false,
-        error: `Der Betrag übersteigt den offenen Betrag von ${formatChf(open)}.`,
+        error: interpolate(label(labels, "admin.invoices.error.amountExceeds"), {
+          amount: formatChf(open),
+        }),
       };
     }
 
@@ -287,10 +299,7 @@ export async function recordInvoicePaymentCore(
       );
       if (moved.matchedCount === 0) {
         await session.abortTransaction();
-        return {
-          ok: false,
-          error: "Die Bestellung wurde zwischenzeitlich geändert. Bitte erneut versuchen.",
-        };
+        return { ok: false, error: label(labels, "admin.orders.error.conflict") };
       }
     } else {
       await OrderModel.updateOne({ _id: order._id }, { $set: update }, { session });
@@ -312,27 +321,36 @@ export async function sendInvoiceReminderCore(
   orderId: string,
   level: 1 | 2,
 ): Promise<InvoiceActionResult> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(orderId)) return { ok: false, error: "Rechnung nicht gefunden." };
+  if (!mongoose.isValidObjectId(orderId)) {
+    return { ok: false, error: label(labels, "admin.invoices.error.notFound") };
+  }
 
   const order = await OrderModel.findById(orderId).exec();
   const invoice = order?.payment.invoice;
   if (!order || !invoice || order.payment.kind !== "invoice") {
-    return { ok: false, error: "Rechnung nicht gefunden." };
+    return { ok: false, error: label(labels, "admin.invoices.error.notFound") };
   }
-  if (order.status === "cancelled") return { ok: false, error: "Die Bestellung ist storniert." };
+  if (order.status === "cancelled") {
+    return { ok: false, error: label(labels, "admin.invoices.error.cancelled") };
+  }
   const open = openAmountCents(order.totals.totalCents, invoice.paidCents);
-  if (open === 0) return { ok: false, error: "Die Rechnung ist bereits bezahlt." };
+  if (open === 0) return { ok: false, error: label(labels, "admin.invoices.error.paid") };
   const now = new Date();
   if (!isInvoiceOverdue({ dueAt: invoice.dueAt, totalCents: order.totals.totalCents, paidCents: invoice.paidCents, now })) {
-    return { ok: false, error: "Die Rechnung ist noch nicht überfällig." };
+    return { ok: false, error: label(labels, "admin.invoices.error.notOverdue") };
   }
   if (level === 1 && invoice.reminder1At) {
-    return { ok: false, error: "Die 1. Mahnung ist bereits verschickt." };
+    return { ok: false, error: label(labels, "admin.invoices.error.reminder1Sent") };
   }
   if (level === 2) {
-    if (!invoice.reminder1At) return { ok: false, error: "Bitte zuerst die 1. Mahnung verschicken." };
-    if (invoice.reminder2At) return { ok: false, error: "Die 2. Mahnung ist bereits verschickt." };
+    if (!invoice.reminder1At) {
+      return { ok: false, error: label(labels, "admin.invoices.error.reminder1First") };
+    }
+    if (invoice.reminder2At) {
+      return { ok: false, error: label(labels, "admin.invoices.error.reminder2Sent") };
+    }
   }
 
   const field = level === 1 ? "payment.invoice.reminder1At" : "payment.invoice.reminder2At";
@@ -341,7 +359,7 @@ export async function sendInvoiceReminderCore(
     { $set: { [field]: now } },
   );
   if (moved.matchedCount === 0) {
-    return { ok: false, error: "Die Rechnung wurde zwischenzeitlich geändert. Bitte erneut versuchen." };
+    return { ok: false, error: label(labels, "admin.invoices.error.changed") };
   }
 
   await sendMail({

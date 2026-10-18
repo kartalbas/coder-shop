@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
+import { interpolate, label } from "@/lib/i18n";
 import {
-  createPurchaseOrderSchema,
-  supplierInputSchema,
+  createPurchaseOrderSchemaFactory,
+  createSupplierInputSchema,
   type SupplierInput,
 } from "@/lib/validations/purchasing";
 import { formatPoNumber } from "@/lib/numbers";
@@ -17,7 +18,13 @@ import { SupplierModel, type Supplier } from "@/models/supplier";
 import { mintNumber } from "./numbers";
 import { notifyRestockedCore } from "./restock-alerts";
 import { connectDB } from "./db";
-import { DuplicateSerialError, createReceivedUnits, serialTrackedTypes } from "./stock-units";
+import { getRequestLabels } from "./i18n";
+import {
+  DuplicateSerialError,
+  InvalidSerialError,
+  createReceivedUnits,
+  serialTrackedTypes,
+} from "./stock-units";
 
 export type PurchasingResult = { ok: true } | { ok: false; error: string };
 
@@ -40,16 +47,20 @@ function duplicateSupplierName(error: unknown): boolean {
 }
 
 export async function createSupplierCore(input: unknown): Promise<PurchasingResult> {
-  const parsed = supplierInputSchema.safeParse(input);
+  const labels = await getRequestLabels();
+  const parsed = createSupplierInputSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.purchasing.error.invalidInput"),
+    };
   }
   await connectDB();
   try {
     await SupplierModel.create(parsed.data);
   } catch (error) {
     if (duplicateSupplierName(error)) {
-      return { ok: false, error: "Ein Lieferant mit diesem Namen existiert bereits." };
+      return { ok: false, error: label(labels, "admin.purchasing.error.supplierNameTaken") };
     }
     throw error;
   }
@@ -60,30 +71,39 @@ export async function updateSupplierCore(
   supplierId: string,
   input: unknown,
 ): Promise<PurchasingResult> {
-  const parsed = supplierInputSchema.safeParse(input);
+  const labels = await getRequestLabels();
+  const parsed = createSupplierInputSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.purchasing.error.invalidInput"),
+    };
   }
   await connectDB();
   if (!mongoose.isValidObjectId(supplierId)) {
-    return { ok: false, error: "Lieferant nicht gefunden." };
+    return { ok: false, error: label(labels, "admin.purchasing.error.supplierNotFound") };
   }
   try {
     const updated = await SupplierModel.findByIdAndUpdate(supplierId, parsed.data, {
       returnDocument: "after",
     }).exec();
-    if (!updated) return { ok: false, error: "Lieferant nicht gefunden." };
+    if (!updated) {
+      return { ok: false, error: label(labels, "admin.purchasing.error.supplierNotFound") };
+    }
   } catch (error) {
     if (duplicateSupplierName(error)) {
-      return { ok: false, error: "Ein Lieferant mit diesem Namen existiert bereits." };
+      return { ok: false, error: label(labels, "admin.purchasing.error.supplierNameTaken") };
     }
     throw error;
   }
   return { ok: true };
 }
 
-export function toSupplierInput(formData: FormData): SupplierInput | null {
-  const parsed = supplierInputSchema.safeParse({
+export function toSupplierInput(
+  formData: FormData,
+  labels: Readonly<Record<string, string>>,
+): SupplierInput | null {
+  const parsed = createSupplierInputSchema(labels).safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
     phone: formData.get("phone") || undefined,
@@ -99,7 +119,7 @@ export interface PurchaseOrderListItem {
   id: string;
   poNumber: string;
   status: PurchaseOrderStatus;
-  supplierName: string;
+  supplierName?: string;
   totalCents: number;
   lineCount: number;
   createdAt: Date;
@@ -121,7 +141,7 @@ export async function listPurchaseOrders(): Promise<PurchaseOrderListItem[]> {
     id: po._id.toString(),
     poNumber: po.poNumber,
     status: po.status,
-    supplierName: names.get(po.supplierId.toString()) ?? "Unbekannt",
+    supplierName: names.get(po.supplierId.toString()) ?? undefined,
     totalCents: po.totalCents,
     lineCount: po.lines.length,
     createdAt: po.createdAt,
@@ -169,18 +189,22 @@ export async function getPurchaseOrderById(id: string): Promise<PurchaseOrderDet
 export async function createPurchaseOrderCore(input: unknown): Promise<
   { ok: true; poId: string; poNumber: string } | { ok: false; error: string }
 > {
-  const parsed = createPurchaseOrderSchema.safeParse(input);
+  const labels = await getRequestLabels();
+  const parsed = createPurchaseOrderSchemaFactory(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.purchasing.error.invalidInput"),
+    };
   }
   const { supplierId, lines } = parsed.data;
 
   await connectDB();
   if (!mongoose.isValidObjectId(supplierId)) {
-    return { ok: false, error: "Lieferant nicht gefunden." };
+    return { ok: false, error: label(labels, "admin.purchasing.error.supplierNotFound") };
   }
   const supplier = await SupplierModel.findById(supplierId).exec();
-  if (!supplier) return { ok: false, error: "Lieferant nicht gefunden." };
+  if (!supplier) return { ok: false, error: label(labels, "admin.purchasing.error.supplierNotFound") };
 
   const skus = lines.map((line) => line.sku);
   type LeanProduct = { _id: mongoose.Types.ObjectId; variants: { sku: string }[] };
@@ -195,7 +219,12 @@ export async function createPurchaseOrderCore(input: unknown): Promise<
     }
   }
   const unknown = skus.find((sku) => !productIds.has(sku));
-  if (unknown) return { ok: false, error: `Unbekannte SKU: ${unknown}` };
+  if (unknown) {
+    return {
+      ok: false,
+      error: interpolate(label(labels, "admin.purchasing.error.unknownSku"), { sku: unknown }),
+    };
+  }
 
   const session = await mongoose.startSession();
   try {
@@ -230,10 +259,13 @@ export async function createPurchaseOrderCore(input: unknown): Promise<
 }
 
 export async function markPurchaseOrderOrderedCore(poId: string): Promise<PurchasingResult> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(poId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (!mongoose.isValidObjectId(poId)) {
+    return { ok: false, error: label(labels, "admin.error.orderNotFound") };
+  }
   const po = await PurchaseOrderModel.findById(poId).exec();
-  if (!po) return { ok: false, error: "Nur Entwürfe können bestellt werden." };
+  if (!po) return { ok: false, error: label(labels, "admin.purchasing.error.onlyDraftOrdered") };
   const supplier = await SupplierModel.findById(po.supplierId).exec();
   // Issue #62 (#55): the expected arrival comes from the supplier's lead time; the
   // admin can adjust it per PO afterwards.
@@ -245,21 +277,28 @@ export async function markPurchaseOrderOrderedCore(poId: string): Promise<Purcha
     { _id: poId, status: "draft" },
     { $set: { status: "ordered" as PurchaseOrderStatus, orderedAt, expectedArrivalAt } },
   ).exec();
-  if (!updated) return { ok: false, error: "Nur Entwürfe können bestellt werden." };
+  if (!updated) return { ok: false, error: label(labels, "admin.purchasing.error.onlyDraftOrdered") };
   return { ok: true };
 }
 
 // Issue #62 (#55): the expected arrival is editable per PO (supplier delays, holidays).
 export async function setExpectedArrivalCore(poId: string, arrival: Date): Promise<PurchasingResult> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(poId)) return { ok: false, error: "Bestellung nicht gefunden." };
-  if (Number.isNaN(arrival.getTime())) return { ok: false, error: "Ungültiges Datum." };
+  if (!mongoose.isValidObjectId(poId)) {
+    return { ok: false, error: label(labels, "admin.error.orderNotFound") };
+  }
+  if (Number.isNaN(arrival.getTime())) {
+    return { ok: false, error: label(labels, "admin.purchasing.error.invalidDate") };
+  }
   const updated = await PurchaseOrderModel.findOneAndUpdate(
     { _id: poId, status: "ordered" },
     { $set: { expectedArrivalAt: arrival } },
     { returnDocument: "after" },
   ).exec();
-  if (!updated) return { ok: false, error: "Nur bestellte Bestellungen haben eine erwartete Ankunft." };
+  if (!updated) {
+    return { ok: false, error: label(labels, "admin.purchasing.error.onlyOrderedArrival") };
+  }
   return { ok: true };
 }
 
@@ -296,8 +335,11 @@ export async function receivePurchaseOrderCore(
   quantities?: Record<string, number>,
   serials?: Record<string, string[]>,
 ): Promise<ReceiveResult | { ok: false; error: string }> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(poId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (!mongoose.isValidObjectId(poId)) {
+    return { ok: false, error: label(labels, "admin.error.orderNotFound") };
+  }
 
   const session = await mongoose.startSession();
   try {
@@ -305,11 +347,11 @@ export async function receivePurchaseOrderCore(
     const po = await PurchaseOrderModel.findById(poId).session(session).exec();
     if (!po) {
       await session.abortTransaction();
-      return { ok: false, error: "Bestellung nicht gefunden." };
+      return { ok: false, error: label(labels, "admin.error.orderNotFound") };
     }
     if (po.status !== "ordered") {
       await session.abortTransaction();
-      return { ok: false, error: "Wareneingang ist nur für bestellte Bestellungen möglich." };
+      return { ok: false, error: label(labels, "admin.purchasing.error.onlyOrderedReceive") };
     }
 
     const serialTypes = await serialTrackedTypes();
@@ -319,7 +361,12 @@ export async function receivePurchaseOrderCore(
       const wanted = quantities?.[line.sku] ?? open;
       if (!Number.isInteger(wanted) || wanted < 0 || wanted > open) {
         await session.abortTransaction();
-        return { ok: false, error: `Ungültige Empfangsmenge für ${line.sku}.` };
+        return {
+          ok: false,
+          error: interpolate(label(labels, "admin.purchasing.error.invalidQty"), {
+            sku: line.sku,
+          }),
+        };
       }
       if (wanted === 0) continue;
 
@@ -332,7 +379,11 @@ export async function receivePurchaseOrderCore(
           await session.abortTransaction();
           return {
             ok: false,
-            error: `Für ${line.sku} werden ${wanted} Seriennummer(n) benötigt — erhalten: ${lineSerials.length}.`,
+            error: interpolate(label(labels, "admin.purchasing.error.serialsNeeded"), {
+              sku: line.sku,
+              wanted,
+              provided: lineSerials.length,
+            }),
           };
         }
         try {
@@ -346,10 +397,20 @@ export async function receivePurchaseOrderCore(
         } catch (error) {
           await session.abortTransaction();
           if (error instanceof DuplicateSerialError) {
-            return { ok: false, error: `Seriennummer ${error.serial} ist bereits erfasst.` };
+            return {
+              ok: false,
+              error: interpolate(label(labels, "admin.purchasing.error.serialDuplicate"), {
+                serial: error.serial,
+              }),
+            };
           }
-          if (error instanceof Error && error.message.startsWith("Ungültige Seriennummer")) {
-            return { ok: false, error: error.message };
+          if (error instanceof InvalidSerialError) {
+            return {
+              ok: false,
+              error: interpolate(label(labels, "admin.purchasing.error.serialInvalid"), {
+                serial: error.raw,
+              }),
+            };
           }
           throw error;
         }
@@ -362,7 +423,12 @@ export async function receivePurchaseOrderCore(
       ).lean();
       if (!updated) {
         await session.abortTransaction();
-        return { ok: false, error: `Produkt für SKU ${line.sku} nicht gefunden.` };
+        return {
+          ok: false,
+          error: interpolate(label(labels, "admin.purchasing.error.productNotFound"), {
+            sku: line.sku,
+          }),
+        };
       }
       line.received += wanted;
       restocked.push({ sku: line.sku, qty: wanted });

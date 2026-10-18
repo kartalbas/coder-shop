@@ -6,40 +6,41 @@ import { connection } from "next/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { HandoverForm, MarkReadyForm } from "@/components/admin/pickup-actions";
 import { formatChf, formatDateTime } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 import { listPickupQueueCore } from "@/server/pickup";
 
-export const metadata: Metadata = {
-  title: "Abholung — Admin",
-  description: "Bestellungen zur Abholung im Laden bereitstellen und übergeben.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.pickup.title"),
+    description: label(labels, "admin.meta.pickup.description"),
+  };
+}
 
 async function PickupView() {
   await connection();
-  const queue = await listPickupQueueCore();
+  const [queue, labels] = await Promise.all([listPickupQueueCore(), getRequestLabels()]);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Abholung</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Bestellungen mit Abholung im Laden — bereitstellen, Code prüfen und bei der
-        Übergabe bar oder per Karte kassieren.
-      </p>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.pickup.title")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{label(labels, "admin.pickup.intro")}</p>
 
       {queue.length === 0 ? (
-        <p className="mt-8 text-sm text-muted-foreground">
-          Keine offenen Abholungen. Alles übergeben.
-        </p>
+        <p className="mt-8 text-sm text-muted-foreground">{label(labels, "admin.pickup.empty")}</p>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Bestellung</th>
-                <th className="py-2 pr-4 font-medium">Kunde</th>
-                <th className="py-2 pr-4 font-medium">Code</th>
-                <th className="py-2 pr-4 text-right font-medium">Total</th>
-                <th className="py-2 pr-4 font-medium">Status</th>
-                <th className="py-2 font-medium">Aktion</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.order")}</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.customer")}</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.pickup.column.code")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.orders.column.total")}</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.status")}</th>
+                <th className="py-2 font-medium">{label(labels, "admin.pickup.column.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -54,7 +55,10 @@ async function PickupView() {
                     </Link>
                     <p className="text-xs text-muted-foreground">
                       {formatDateTime(order.createdAt)}
-                      {order.readyAt && ` · bereit ${formatDateTime(order.readyAt)}`}
+                      {order.readyAt &&
+                        ` · ${interpolate(label(labels, "admin.pickup.readyAt"), {
+                          datetime: formatDateTime(order.readyAt),
+                        })}`}
                     </p>
                   </td>
                   <td className="py-2.5 pr-4">{order.customerName}</td>
@@ -65,7 +69,7 @@ async function PickupView() {
                     {formatChf(order.totalCents)}
                   </td>
                   <td className="py-2.5 pr-4">
-                    <OrderStatusBadge status={order.status} />
+                    <OrderStatusBadge status={order.status} labels={labels} />
                   </td>
                   <td className="py-2.5">
                     {order.status === "ready" ? (

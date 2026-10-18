@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useId, useRef, useState, useActionState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PickerDialog, type PickerItem } from "@/components/admin/picker-dialog";
 import { formatChf } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
 import {
   createPurchaseOrderAction,
   searchSkuAction,
@@ -34,6 +36,13 @@ export function PoCreateForm({
   suppliers: { id: string; name: string }[];
 }) {
   const formId = useId();
+  const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<PurchasingActionState | null, FormData>(
     createPurchaseOrderAction,
     null,
@@ -52,7 +61,8 @@ export function PoCreateForm({
   // last purchase price) are kept per SKU from the same search result.
   const articleData = useRef(new Map<string, { priceCents: number; lastPurchasePriceCents?: number }>());
 
-  // The picker dialogs fetch through these stable callbacks (issue #42).
+  // The picker dialogs fetch through these stable callbacks (issue #42); the labels are
+  // read through the ref so the callbacks stay stable across a language switch.
   const searchArticles = useCallback(async (query: string): Promise<PickerItem[]> => {
     const hits = await searchSkuAction(query);
     for (const hit of hits) {
@@ -67,9 +77,13 @@ export function PoCreateForm({
       id: hit.sku,
       primary: hit.productName,
       secondary: `${hit.sku} · ${hit.variantLabel}`,
-      meta: `Lager ${hit.stock}${
+      meta: `${interpolate(label(labelsRef.current, "admin.poForm.metaStock"), {
+        stock: hit.stock,
+      })}${
         hit.lastPurchasePriceCents !== undefined
-          ? ` · zuletzt ${formatChf(hit.lastPurchasePriceCents)}`
+          ? ` · ${interpolate(label(labelsRef.current, "admin.poForm.metaLastPrice"), {
+              amount: formatChf(hit.lastPurchasePriceCents),
+            })}`
           : ""
       }`,
       imageSrc: hit.imageSrc,
@@ -81,8 +95,15 @@ export function PoCreateForm({
     return found.map((supplier) => ({
       id: supplier.id,
       primary: supplier.name,
-      secondary: `Lieferzeit ${supplier.leadTimeDays} Tage`,
-      meta: supplier.openPos > 0 ? `${supplier.openPos} offene Bestellungen` : "keine offenen Bestellungen",
+      secondary: interpolate(label(labelsRef.current, "admin.poForm.leadTime"), {
+        days: supplier.leadTimeDays,
+      }),
+      meta:
+        supplier.openPos > 0
+          ? interpolate(label(labelsRef.current, "admin.poForm.openPos"), {
+              count: supplier.openPos,
+            })
+          : label(labelsRef.current, "admin.poForm.noOpenPos"),
     }));
   }, []);
 
@@ -129,7 +150,7 @@ export function PoCreateForm({
       <input type="hidden" name="payload" value={payload} />
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Lieferant</Label>
+          <Label>{label(labels, "admin.poForm.supplier")}</Label>
           <Button
             type="button"
             variant="outline"
@@ -137,12 +158,14 @@ export function PoCreateForm({
             aria-haspopup="dialog"
             onClick={() => setSupplierPickerOpen(true)}
           >
-            <span className="truncate">{supplierName || "Lieferant wählen"}</span>
-            <span className="text-xs text-muted-foreground">Suchen…</span>
+            <span className="truncate">
+              {supplierName || label(labels, "admin.poForm.chooseSupplier")}
+            </span>
+            <span className="text-xs text-muted-foreground">{label(labels, "admin.poForm.search")}</span>
           </Button>
         </div>
         <div className="space-y-2">
-          <Label>Artikel</Label>
+          <Label>{label(labels, "admin.poForm.article")}</Label>
           <Button
             type="button"
             variant="outline"
@@ -150,7 +173,7 @@ export function PoCreateForm({
             aria-haspopup="dialog"
             onClick={() => setArticlePickerOpen(true)}
           >
-            <span>Artikel hinzufügen</span>
+            <span>{label(labels, "admin.poForm.addArticle")}</span>
             <Plus className="size-4" aria-hidden />
           </Button>
         </div>
@@ -159,8 +182,8 @@ export function PoCreateForm({
       <PickerDialog
         open={supplierPickerOpen}
         onOpenChange={setSupplierPickerOpen}
-        title="Lieferant wählen"
-        placeholder="Lieferantensuche, z. B. Tech"
+        title={label(labels, "admin.poForm.chooseSupplier")}
+        placeholder={label(labels, "admin.poForm.supplierSearchPlaceholder")}
         search={searchSupplierItems}
         onSelect={(item) => {
           setSupplierId(item.id);
@@ -170,15 +193,15 @@ export function PoCreateForm({
       <PickerDialog
         open={articlePickerOpen}
         onOpenChange={setArticlePickerOpen}
-        title="Artikel wählen"
-        placeholder="Name, SKU oder Marke, z. B. iPhone"
+        title={label(labels, "admin.poForm.chooseArticle")}
+        placeholder={label(labels, "admin.poForm.articleSearchPlaceholder")}
         search={searchArticles}
         onSelect={addLine}
       />
 
       {lines.length === 0 ? (
         <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-          Noch keine Positionen — über „Artikel hinzufügen“ wählen.
+          {label(labels, "admin.poForm.emptyLines")}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -195,7 +218,7 @@ export function PoCreateForm({
               </div>
               <div className="space-y-1">
                 <Label htmlFor={`${formId}-qty-${line.sku}`} className="text-xs">
-                  Menge
+                  {label(labels, "admin.poForm.qty")}
                 </Label>
                 <Input
                   id={`${formId}-qty-${line.sku}`}
@@ -210,7 +233,7 @@ export function PoCreateForm({
               </div>
               <div className="space-y-1">
                 <Label htmlFor={`${formId}-price-${line.sku}`} className="text-xs">
-                  Preis (CHF)
+                  {label(labels, "admin.poForm.price")}
                 </Label>
                 <Input
                   id={`${formId}-price-${line.sku}`}
@@ -226,7 +249,9 @@ export function PoCreateForm({
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`Position ${line.sku} entfernen`}
+                aria-label={interpolate(label(labels, "admin.poForm.removeLine"), {
+                  sku: line.sku,
+                })}
                 onClick={() => removeLine(line.sku)}
               >
                 <Trash2 className="size-4" aria-hidden />
@@ -238,7 +263,8 @@ export function PoCreateForm({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
         <p className="text-sm">
-          Total: <span className="font-semibold tabular-nums">{formatChf(totalCents)}</span>
+          {label(labels, "admin.orders.column.total")}:{" "}
+          <span className="font-semibold tabular-nums">{formatChf(totalCents)}</span>
         </p>
         <Button type="submit" disabled={pending || lines.length === 0 || !supplierId}>
           {pending ? (
@@ -246,7 +272,7 @@ export function PoCreateForm({
           ) : (
             <Plus className="size-4" aria-hidden />
           )}
-          Bestellung anlegen
+          {label(labels, "admin.poForm.submit")}
         </Button>
       </div>
     </form>

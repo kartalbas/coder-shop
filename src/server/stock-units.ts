@@ -28,6 +28,15 @@ export class DuplicateSerialError extends Error {
   }
 }
 
+// Issue #58 step 4: a malformed serial is a typed error too — the receipt core used to
+// recognize it by its German message prefix; the copy is a translation row now.
+export class InvalidSerialError extends Error {
+  constructor(readonly raw: string) {
+    super(`Invalid serial ${raw}`);
+    this.name = "InvalidSerialError";
+  }
+}
+
 function isDuplicateKeyError(error: unknown): boolean {
   return (error as { code?: number } | null)?.code === 11000;
 }
@@ -45,7 +54,7 @@ export async function createReceivedUnits(
   const normalized: string[] = [];
   for (const raw of serials) {
     const serial = normalizeSerial(raw);
-    if (!serial) throw new Error(`Ungültige Seriennummer „${raw}“.`);
+    if (!serial) throw new InvalidSerialError(raw);
     if (normalized.includes(serial)) throw new DuplicateSerialError(serial);
     normalized.push(serial);
   }

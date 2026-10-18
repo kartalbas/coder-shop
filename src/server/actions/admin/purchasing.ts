@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { objectIdSchema } from "@/lib/validations/common";
+import { label } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 import {
   createPurchaseOrderCore,
   createSupplierCore,
@@ -36,8 +38,9 @@ export async function saveSupplierAction(
   formData: FormData,
 ): Promise<PurchasingActionState> {
   await requireAdminSession();
-  const input = toSupplierInput(formData);
-  if (!input) return { error: "Bitte Eingaben prüfen." };
+  const labels = await getRequestLabels();
+  const input = toSupplierInput(formData, labels);
+  if (!input) return { error: label(labels, "admin.purchasing.error.checkInputs") };
 
   const supplierId = formData.get("supplierId");
   const result =
@@ -55,14 +58,15 @@ export async function createPurchaseOrderAction(
   formData: FormData,
 ): Promise<PurchasingActionState> {
   await requireAdminSession();
+  const labels = await getRequestLabels();
   const raw = formData.get("payload");
-  if (typeof raw !== "string") return { error: "Ungültige Formular-Daten." };
+  if (typeof raw !== "string") return { error: label(labels, "admin.purchasing.error.formInvalid") };
 
   let json: unknown;
   try {
     json = JSON.parse(raw);
   } catch {
-    return { error: "Ungültige Formular-Daten." };
+    return { error: label(labels, "admin.purchasing.error.formInvalid") };
   }
 
   const result = await createPurchaseOrderCore(json);
@@ -79,8 +83,9 @@ export async function markPurchaseOrderOrderedAction(
   formData: FormData,
 ): Promise<PurchasingActionState> {
   await requireAdminSession();
+  const labels = await getRequestLabels();
   const poId = poIdSchema.safeParse(formData.get("poId"));
-  if (!poId.success) return { error: "Ungültige Anfrage." };
+  if (!poId.success) return { error: label(labels, "admin.error.invalidRequest") };
 
   const result = await markPurchaseOrderOrderedCore(poId.data);
   if (!result.ok) return { error: result.error };
@@ -101,8 +106,9 @@ export async function receivePurchaseOrderAction(
   formData: FormData,
 ): Promise<PurchasingActionState & { summary?: string; complete?: boolean }> {
   await requireAdminSession();
+  const labels = await getRequestLabels();
   const poId = poIdSchema.safeParse(formData.get("poId"));
-  if (!poId.success) return { error: "Ungültige Anfrage." };
+  if (!poId.success) return { error: label(labels, "admin.error.invalidRequest") };
 
   let quantities: Record<string, number> | undefined;
   const raw = formData.get("quantities");
@@ -111,10 +117,10 @@ export async function receivePurchaseOrderAction(
     try {
       json = JSON.parse(raw);
     } catch {
-      return { error: "Ungültige Formular-Daten." };
+      return { error: label(labels, "admin.purchasing.error.formInvalid") };
     }
     const parsed = receiveQuantitiesSchema.safeParse(json);
-    if (!parsed.success) return { error: "Ungültige Empfangsmengen." };
+    if (!parsed.success) return { error: label(labels, "admin.purchasing.error.invalidQuantities") };
     quantities = parsed.data;
   }
 
@@ -125,10 +131,10 @@ export async function receivePurchaseOrderAction(
     try {
       json = JSON.parse(rawSerials);
     } catch {
-      return { error: "Ungültige Formular-Daten." };
+      return { error: label(labels, "admin.purchasing.error.formInvalid") };
     }
     const parsed = receiveSerialsSchema.safeParse(json);
-    if (!parsed.success) return { error: "Ungültige Seriennummern." };
+    if (!parsed.success) return { error: label(labels, "admin.purchasing.error.invalidSerials") };
     serials = parsed.data;
   }
 
@@ -153,9 +159,10 @@ export async function setExpectedArrivalAction(
   formData: FormData,
 ): Promise<PurchasingActionState> {
   await requireAdminSession();
+  const labels = await getRequestLabels();
   const poId = poIdSchema.safeParse(formData.get("poId"));
   const date = expectedArrivalSchema.safeParse(formData.get("arrival"));
-  if (!poId.success || !date.success) return { error: "Ungültige Anfrage." };
+  if (!poId.success || !date.success) return { error: label(labels, "admin.error.invalidRequest") };
 
   const result = await setExpectedArrivalCore(poId.data, new Date(`${date.data}T12:00:00Z`));
   if (!result.ok) return { error: result.error };

@@ -3,18 +3,24 @@ export const instant = false;
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { STOCK_UNIT_STATUS_LABELS, type StockUnitStatus } from "@/lib/stock-units";
+import type { StockUnitStatus } from "@/lib/stock-units";
 import { formatDateTime } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 import { STOCK_UNIT_LIST_LIMIT, searchStockUnits } from "@/server/stock-units";
 
 interface PagePropsLocal {
   searchParams: Promise<{ q?: string }>;
 }
 
-export const metadata: Metadata = {
-  title: "Serienlager — Admin",
-  description: "Geräte pro Seriennummer: Status, Bestellung und Verlauf.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.stockUnits.title"),
+    description: label(labels, "admin.meta.stockUnits.description"),
+  };
+}
 
 const STATUS_STYLES: Record<StockUnitStatus, string> = {
   in_stock: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
@@ -26,39 +32,33 @@ const STATUS_STYLES: Record<StockUnitStatus, string> = {
 
 async function StockUnitsView({ searchParams }: PagePropsLocal) {
   await connection();
-  const { q } = await searchParams;
+  const [{ q }, labels] = await Promise.all([searchParams, getRequestLabels()]);
   const units = await searchStockUnits(q ?? "");
 
   return (
     <div className="max-w-5xl">
-      <h1 className="text-2xl font-bold tracking-tight">Serienlager</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Jedes Gerät mit Seriennummer (IMEI) — von der Wareneingangsbuchung bis zum
-        Verkauf. Suche über Seriennummer oder SKU.
-      </p>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.stockUnits.title")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{label(labels, "admin.stockUnits.intro")}</p>
 
       <form method="get" action="/admin/stock-units" className="mt-4 flex max-w-md gap-2">
         <input
           type="search"
           name="q"
           defaultValue={q ?? ""}
-          placeholder="Seriennummer oder SKU…"
-          aria-label="Seriennummer oder SKU suchen"
+          placeholder={label(labels, "admin.stockUnits.searchPlaceholder")}
+          aria-label={label(labels, "admin.stockUnits.searchAria")}
           className="h-9 flex-1 rounded-md border bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
         />
         <button
           type="submit"
           className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring"
         >
-          Suchen
+          {label(labels, "shop.action.search")}
         </button>
       </form>
 
       {units.length === 0 ? (
-        <p className="mt-6 text-sm text-muted-foreground">
-          Keine Einheiten gefunden — Seriennummern entstehen beim Wareneingang
-          seriell geführter Typen.
-        </p>
+        <p className="mt-6 text-sm text-muted-foreground">{label(labels, "admin.stockUnits.empty")}</p>
       ) : (
         <div className="mt-6 space-y-3">
           {units.map((unit) => (
@@ -68,12 +68,19 @@ async function StockUnitsView({ searchParams }: PagePropsLocal) {
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[unit.status]}`}
                 >
-                  {STOCK_UNIT_STATUS_LABELS[unit.status]}
+                  {label(labels, `admin.stockUnits.status.${unit.status}`)}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                SKU {unit.sku}
-                {unit.orderNumber ? ` · Bestellung ${unit.orderNumber}` : ""}
+                {interpolate(label(labels, "admin.stockUnits.sku"), { sku: unit.sku })}
+                {unit.orderNumber ? (
+                  <>
+                    {" · "}
+                    {interpolate(label(labels, "admin.po.title"), { number: unit.orderNumber })}
+                  </>
+                ) : (
+                  ""
+                )}
                 {unit.purchaseOrderId && unit.purchaseOrderNumber ? (
                   <>
                     {" · "}
@@ -92,7 +99,7 @@ async function StockUnitsView({ searchParams }: PagePropsLocal) {
                 {unit.history.map((entry, index) => (
                   <li key={index} className="flex justify-between gap-4">
                     <span>
-                      {STOCK_UNIT_STATUS_LABELS[entry.status]}
+                      {label(labels, `admin.stockUnits.status.${entry.status}`)}
                       {entry.note ? ` — ${entry.note}` : ""}
                     </span>
                     <span className="tabular-nums">{formatDateTime(entry.at)}</span>
@@ -103,8 +110,7 @@ async function StockUnitsView({ searchParams }: PagePropsLocal) {
           ))}
           {units.length >= STOCK_UNIT_LIST_LIMIT && (
             <p className="text-sm text-muted-foreground">
-              Es werden die neuesten {STOCK_UNIT_LIST_LIMIT} Einheiten angezeigt —
-              weiter eingrenzen mit der Suche.
+              {interpolate(label(labels, "admin.stockUnits.cap"), { limit: STOCK_UNIT_LIST_LIMIT })}
             </p>
           )}
         </div>

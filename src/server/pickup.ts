@@ -5,8 +5,10 @@ import { flowFlagsFor, transition } from "@/lib/orders/state-machine";
 import type { PickupPaymentType } from "@/lib/payments";
 import { pickupReadyMail } from "@/lib/mail-templates";
 import { STORE } from "@/lib/store";
+import { label } from "@/lib/i18n";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 import { sendMail } from "./mail";
 import { advanceUnitsForOrder } from "./stock-units";
 
@@ -83,8 +85,11 @@ export async function markPickupReadyCore(
   orderId: string,
   by: string,
 ): Promise<PickupActionResult> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(orderId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (!mongoose.isValidObjectId(orderId)) {
+    return { ok: false, error: label(labels, "admin.error.orderNotFound") };
+  }
 
   const session = await mongoose.startSession();
   try {
@@ -92,11 +97,11 @@ export async function markPickupReadyCore(
     const order = await OrderModel.findById(orderId).session(session).exec();
     if (!order || order.shipping.storePickup !== true || !order.shipping.pickup) {
       await session.abortTransaction();
-      return { ok: false, error: "Bestellung nicht gefunden." };
+      return { ok: false, error: label(labels, "admin.error.orderNotFound") };
     }
     if (order.status !== "new" && order.status !== "picking") {
       await session.abortTransaction();
-      return { ok: false, error: "Nur offene Bestellungen können bereitgestellt werden." };
+      return { ok: false, error: label(labels, "admin.pickup.error.notOpen") };
     }
 
     const now = new Date();
@@ -123,10 +128,7 @@ export async function markPickupReadyCore(
     );
     if (moved.matchedCount === 0) {
       await session.abortTransaction();
-      return {
-        ok: false,
-        error: "Die Bestellung wurde zwischenzeitlich geändert. Bitte erneut versuchen.",
-      };
+      return { ok: false, error: label(labels, "admin.orders.error.conflict") };
     }
     await session.commitTransaction();
     // Issue #44: "lies bereit" mail with the handover code — after the commit, never
@@ -162,8 +164,11 @@ export async function handoverPickupCore(
   paymentType: PickupPaymentType,
   by: string,
 ): Promise<PickupActionResult> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(orderId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (!mongoose.isValidObjectId(orderId)) {
+    return { ok: false, error: label(labels, "admin.error.orderNotFound") };
+  }
 
   const session = await mongoose.startSession();
   try {
@@ -171,15 +176,15 @@ export async function handoverPickupCore(
     const order = await OrderModel.findById(orderId).session(session).exec();
     if (!order || order.shipping.storePickup !== true || !order.shipping.pickup) {
       await session.abortTransaction();
-      return { ok: false, error: "Bestellung nicht gefunden." };
+      return { ok: false, error: label(labels, "admin.error.orderNotFound") };
     }
     if (order.status !== "ready") {
       await session.abortTransaction();
-      return { ok: false, error: "Die Bestellung ist nicht bereit zur Abholung." };
+      return { ok: false, error: label(labels, "admin.pickup.error.notReady") };
     }
     if (!codesMatch(order.shipping.pickup.code, normalizePickupCode(code))) {
       await session.abortTransaction();
-      return { ok: false, error: "Der Abholcode stimmt nicht überein." };
+      return { ok: false, error: label(labels, "admin.pickup.error.codeMismatch") };
     }
 
     const now = new Date();
@@ -212,10 +217,7 @@ export async function handoverPickupCore(
     );
     if (moved.matchedCount === 0) {
       await session.abortTransaction();
-      return {
-        ok: false,
-        error: "Die Bestellung wurde zwischenzeitlich geändert. Bitte erneut versuchen.",
-      };
+      return { ok: false, error: label(labels, "admin.orders.error.conflict") };
     }
     // Issue #62 (#54): the handover sells the order's serial units.
     await advanceUnitsForOrder(order.orderNumber, "sold", "Abgeholt", session);

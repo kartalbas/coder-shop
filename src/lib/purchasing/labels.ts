@@ -1,10 +1,4 @@
-// German PO copy + the status union (issue #35): labels belong in the pure lib next to
-// the order labels, not in a component; the model re-exports the union (issue #31:
-// one source per concept).
+// The status union (issue #35: one source per concept, the model re-exports it).
+// Issue #58 step 4: the German copy left for the translation table — the badge renders
+// `admin.po.status.<status>` rows in the request language.
 export type PurchaseOrderStatus = "draft" | "ordered" | "received";
-
-export const PO_STATUS_LABELS: Record<PurchaseOrderStatus, string> = {
-  draft: "Entwurf",
-  ordered: "Bestellt",
-  received: "Erhalten",
-};

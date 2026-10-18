@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { PurchaseOrderStatus } from "@/models/purchase-order";
-// Issue #35: the German PO copy lives in the pure lib, the component keeps only styling.
-import { PO_STATUS_LABELS } from "@/lib/purchasing/labels";
+import { label } from "@/lib/i18n";
 
 // Issue #26: 600 tones failed axe contrast on the light background — 700 reaches 4.5:1.
 const TONES: Record<PurchaseOrderStatus, string> = {
@@ -10,10 +9,18 @@ const TONES: Record<PurchaseOrderStatus, string> = {
   received: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
 };
 
-export function PurchaseOrderStatusBadge({ status }: { status: PurchaseOrderStatus }) {
+// Issue #58 step 4: the status copy is `admin.po.status.<status>` from the translation
+// table — the page passes its request language's label map.
+export function PurchaseOrderStatusBadge({
+  status,
+  labels,
+}: {
+  status: PurchaseOrderStatus;
+  labels: Record<string, string>;
+}) {
   return (
     <Badge variant="outline" className={TONES[status]}>
-      {PO_STATUS_LABELS[status]}
+      {label(labels, `admin.po.status.${status}`)}
     </Badge>
   );
 }

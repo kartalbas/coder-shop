@@ -2282,3 +2282,44 @@ Done — M1–M6 + QA complete.
   (needs-review filter, usage context, inline editing, change history); step 5
   remainder (translatable catalog content + five-language demo content). The
   storefront extraction is finished and struck from the record.
+
+## ISSUES — queue session 34 (2026-10-18)
+
+### #58 (step 4 slice) — purchasing, suppliers, stock-units, pickup and invoices answer in the request language ✅ — issue stays open
+- **Gate report first:** `GET /produkte → 308` and „no `/produkt/…` links" are the
+  intended #63/#65 contract (former German URLs answer a permanent 308, product links
+  are `/products/…`, the gate script itself checks the English contract since #65) —
+  asserted by the green `english-urls`/`language-routing` specs in every gate run.
+- **The slice (plan on the issue):** the five admin areas resolve
+  `getRequestLabels()` behind `connection()` (static metadata → `generateMetadata`),
+  the six client forms read `useLabels()` (toast labels through the address-book ref
+  pattern), and the purchasing/pickup/invoice cores and their actions refuse from rows
+  with byte-identical German bases — so every German spec (purchasing, pickup,
+  invoice-payment, serial-stock, incoming-stock) passed untouched. `PO_STATUS_LABELS`
+  and `STOCK_UNIT_STATUS_LABELS` were deleted — the badges render
+  `admin.po.status.*` / `admin.stockUnits.status.*` rows (`PurchaseOrderStatusBadge`
+  takes the page's label map like `OrderStatusBadge`). The supplier zod schemas and
+  the invoice amount schema became label-map factories; `listPurchaseOrders` no longer
+  embeds the German „Unbekannt" (the page renders the row); the receipt core's
+  `message.startsWith("Ungültige Seriennummer")` string match became a typed
+  `InvalidSerialError`. Reused rows where the text is the same concept:
+  `admin.error.invalidRequest|orderNotFound`, `admin.orders.error.conflict`,
+  `admin.orders.column.*`, `admin.action.save|all`, `admin.pickup.paymentType.*`,
+  `shop.action.search`, `shop.status.*`. ~175 new `admin.*` rows in all five
+  languages (the seed test enforces).
+- **Tests:** `tests/admin-core-messages.test.ts` +7 (duplicate supplier name, unknown
+  SKU, receive-from-draft, serials-needed counts, wrong handover code, parcel order
+  not markable ready, amount-over-open with the formatted amount, junk credit limit /
+  unknown customer — French alongside the German base, all fail on the pre-change
+  build); new e2e `admin-purchasing-translations.spec.ts` (switcher → French:
+  purchasing list + PO detail, suppliers, serial ledger, pickup, invoices; German
+  absent; read-only; switches back in `finally`) — verified failing on the pre-change
+  build (stash + rebuild), green after.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 636 (63 files),
+  `npm run test:e2e` ✅ 100/100; tree clean, nothing running.
+- **Left open (#58):** step 5 customers + reviews + discounts + mails + dashboard +
+  command palette + picker (the palette's and picker's own strings included), admin
+  formats (still base-locale); step 6 mail/invoice/slip/label texts in the recipient's
+  language (+ UPS provider texts); step 7 no-German-literals guard; step 4 remainder
+  (needs-review filter, usage context, inline editing, change history); step 5
+  remainder (translatable catalog content + five-language demo content).

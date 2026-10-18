@@ -7,19 +7,25 @@ import { CreditLimitForm, InvoicePaymentForm, ReminderButtons } from "@/componen
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatChf, formatDate } from "@/lib/format";
 import { DEFAULT_CREDIT_LIMIT_CENTS } from "@/lib/invoices";
+import { interpolate, label } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { getRequestLabels } from "@/server/i18n";
 import { listInvoiceCredits, listInvoices, type InvoiceFilter } from "@/server/invoices";
 
-export const metadata: Metadata = {
-  title: "Rechnungen — Admin",
-  description: "Offene, überfällige und bezahlte Rechnungen, Mahnungen und Kreditlimiten.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.invoices.title"),
+    description: label(labels, "admin.meta.invoices.description"),
+  };
+}
 
-const TABS: { filter: InvoiceFilter; label: string }[] = [
-  { filter: "open", label: "Offen" },
-  { filter: "overdue", label: "Überfällig" },
-  { filter: "paid", label: "Bezahlt" },
-  { filter: "all", label: "Alle" },
+const TABS: { filter: InvoiceFilter; labelKey: string }[] = [
+  { filter: "open", labelKey: "admin.invoices.tab.open" },
+  { filter: "overdue", labelKey: "admin.invoices.tab.overdue" },
+  { filter: "paid", labelKey: "admin.invoices.tab.paid" },
+  { filter: "all", labelKey: "admin.action.all" },
 ];
 
 // Admin invoice bookkeeping (issue #40): filters, payments (also partial), reminder
@@ -30,7 +36,7 @@ async function InvoicesView({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
-  const params = await searchParams;
+  const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
   const raw = typeof params.filter === "string" ? params.filter : undefined;
   const filter: InvoiceFilter = TABS.some((tab) => tab.filter === raw)
     ? (raw as InvoiceFilter)
@@ -39,10 +45,10 @@ async function InvoicesView({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Rechnungen</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.invoices.title")}</h1>
 
-      <nav className="mt-4 flex flex-wrap gap-1 border-b" aria-label="Rechnungsfilter">
-        {TABS.map(({ filter: tab, label }) => (
+      <nav className="mt-4 flex flex-wrap gap-1 border-b" aria-label={label(labels, "admin.invoices.tabsAria")}>
+        {TABS.map(({ filter: tab, labelKey }) => (
           <Link
             key={tab}
             href={tab === "all" ? "/admin/invoices?filter=all" : `/admin/invoices?filter=${tab}`}
@@ -54,25 +60,25 @@ async function InvoicesView({
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            {label}
+            {label(labels, labelKey)}
           </Link>
         ))}
       </nav>
 
       {invoices.length === 0 ? (
-        <p className="mt-8 text-sm text-muted-foreground">Keine Rechnungen in dieser Ansicht.</p>
+        <p className="mt-8 text-sm text-muted-foreground">{label(labels, "admin.invoices.empty")}</p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Bestellung</th>
-                <th className="px-4 py-3">Kunde</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-right">Offen</th>
-                <th className="px-4 py-3">Fällig</th>
-                <th className="px-4 py-3">Aktionen</th>
+                <th className="px-4 py-3">{label(labels, "admin.orders.column.order")}</th>
+                <th className="px-4 py-3">{label(labels, "admin.orders.column.customer")}</th>
+                <th className="px-4 py-3">{label(labels, "admin.orders.column.status")}</th>
+                <th className="px-4 py-3 text-right">{label(labels, "admin.orders.column.total")}</th>
+                <th className="px-4 py-3 text-right">{label(labels, "admin.invoices.column.open")}</th>
+                <th className="px-4 py-3">{label(labels, "admin.invoices.column.due")}</th>
+                <th className="px-4 py-3">{label(labels, "admin.invoices.column.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -92,18 +98,26 @@ async function InvoicesView({
                     <p className="text-xs text-muted-foreground">{invoice.customerEmail}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <OrderStatusBadge status={invoice.status} />
+                    <OrderStatusBadge status={invoice.status} labels={labels} />
                     {invoice.overdue && (
-                      <p className="mt-1 text-xs font-semibold text-destructive">Überfällig</p>
+                      <p className="mt-1 text-xs font-semibold text-destructive">
+                        {label(labels, "admin.invoices.overdue")}
+                      </p>
                     )}
                     {invoice.reminder1At && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        1. Mahnung {formatDate(invoice.reminder1At)}
+                        {interpolate(label(labels, "admin.invoices.reminder"), {
+                          level: 1,
+                          date: formatDate(invoice.reminder1At),
+                        })}
                       </p>
                     )}
                     {invoice.reminder2At && (
-                      <p className="text-xs text-muted-foreground">
-                        2. Mahnung {formatDate(invoice.reminder2At)}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {interpolate(label(labels, "admin.invoices.reminder"), {
+                          level: 2,
+                          date: formatDate(invoice.reminder2At),
+                        })}
                       </p>
                     )}
                   </td>
@@ -144,15 +158,16 @@ async function InvoicesView({
         </div>
       )}
 
-      <section className="mt-10" aria-label="Kreditlimiten">
-        <h2 className="text-lg font-semibold">Kreditlimiten</h2>
+      <section className="mt-10" aria-label={label(labels, "admin.invoices.creditAria")}>
+        <h2 className="text-lg font-semibold">{label(labels, "admin.invoices.creditAria")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Standard ohne persönlichen Wert: {formatChf(DEFAULT_CREDIT_LIMIT_CENTS)} offene
-          Rechnungen pro Konto. 0 sperrt die Zahlungsart für das Konto.
+          {interpolate(label(labels, "admin.invoices.creditIntro"), {
+            amount: formatChf(DEFAULT_CREDIT_LIMIT_CENTS),
+          })}
         </p>
         {credits.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            Noch keine Konten mit Rechnungbestellungen.
+            {label(labels, "admin.invoices.noCredits")}
           </p>
         ) : (
           <ul className="mt-4 space-y-2">
@@ -165,7 +180,10 @@ async function InvoicesView({
                   <p className="font-medium">{credit.name}</p>
                   <p className="text-xs text-muted-foreground">{credit.email}</p>
                   <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                    Ausgenutzt: {formatChf(credit.usedCents)} von {formatChf(credit.creditLimitCents)}
+                    {interpolate(label(labels, "admin.invoices.used"), {
+                      used: formatChf(credit.usedCents),
+                      limit: formatChf(credit.creditLimitCents),
+                    })}
                   </p>
                 </div>
                 <CreditLimitForm userId={credit.userId} currentCents={credit.creditLimitCents} />

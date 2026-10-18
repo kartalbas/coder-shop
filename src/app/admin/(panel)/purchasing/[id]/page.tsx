@@ -12,6 +12,8 @@ import {
 } from "@/components/admin/po-status-actions";
 import { PurchaseOrderStatusBadge } from "@/components/admin/po-status-badge";
 import { formatChf, formatDate, formatDateTime } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 import { getPurchaseOrderById } from "@/server/purchasing";
 
 interface PagePropsLocal {
@@ -19,13 +21,17 @@ interface PagePropsLocal {
 }
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Bestellung ${id}`, description: "Einkaufsbestellung und Wareneingang." };
+  await connection();
+  const [{ id }, labels] = await Promise.all([params, getRequestLabels()]);
+  return {
+    title: interpolate(label(labels, "admin.meta.poDetail.title"), { id }),
+    description: label(labels, "admin.meta.poDetail.description"),
+  };
 }
 
 async function PurchaseOrderDetail({ params }: PagePropsLocal) {
   await connection();
-  const { id } = await params;
+  const [{ id }, labels] = await Promise.all([params, getRequestLabels()]);
   const detail = await getPurchaseOrderById(id);
   if (!detail) notFound();
   const { po, supplier, productNames, serialSkus } = detail;
@@ -37,15 +43,19 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
         className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Zurück zum Einkauf
+        {label(labels, "admin.po.back")}
       </Link>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Bestellung {po.poNumber}</h1>
-        <PurchaseOrderStatusBadge status={po.status} />
+        <h1 className="text-2xl font-bold tracking-tight">
+          {interpolate(label(labels, "admin.po.title"), { number: po.poNumber })}
+        </h1>
+        <PurchaseOrderStatusBadge status={po.status} labels={labels} />
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        {supplier ? `Lieferant: ${supplier.name}` : "Lieferant: Unbekannt"}
+        {supplier
+          ? interpolate(label(labels, "admin.po.supplier"), { name: supplier.name })
+          : label(labels, "admin.po.supplierUnknown")}
         {supplier?.email ? ` · ${supplier.email}` : ""}
       </p>
       <div className="mt-4 flex flex-wrap items-end gap-4">
@@ -70,18 +80,21 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
         )}
       </div>
 
-      <section className="mt-6 rounded-xl border bg-card p-5" aria-label="Positionen">
-        <h2 className="mb-3 text-sm font-semibold">Positionen</h2>
+      <section
+        className="mt-6 rounded-xl border bg-card p-5"
+        aria-label={label(labels, "admin.orders.column.items")}
+      >
+        <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.orders.column.items")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Artikel</th>
-                <th className="py-2 pr-4 text-right font-medium">Menge</th>
-                <th className="py-2 pr-4 text-right font-medium">Erhalten</th>
-                <th className="py-2 pr-4 text-right font-medium">Bestellt</th>
-                <th className="py-2 pr-4 text-right font-medium">Stückpreis</th>
-                <th className="py-2 text-right font-medium">Total</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.po.column.product")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.po.column.qty")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.po.column.received")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.po.column.ordered")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.po.column.unitPrice")}</th>
+                <th className="py-2 text-right font-medium">{label(labels, "admin.orders.column.total")}</th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +111,9 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
                   <td className="py-2.5 pr-4 text-right tabular-nums">
                     {po.status === "ordered" && line.qty - line.received > 0 ? (
                       <span className="text-amber-600 dark:text-amber-400">
-                        noch {line.qty - line.received}
+                        {interpolate(label(labels, "admin.po.stillOpen"), {
+                          count: line.qty - line.received,
+                        })}
                       </span>
                     ) : (
                       "—"
@@ -117,34 +132,37 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
         </div>
         <dl className="mt-4 space-y-1 border-t pt-4 text-sm">
           <div className="flex justify-between font-semibold">
-            <dt>Total</dt>
+            <dt>{label(labels, "admin.orders.column.total")}</dt>
             <dd className="tabular-nums">{formatChf(po.totalCents)}</dd>
           </div>
         </dl>
       </section>
 
-      <section className="mt-6 rounded-xl border bg-card p-5 text-sm" aria-label="Zeitpunkte">
-        <h2 className="mb-3 text-sm font-semibold">Zeitpunkte</h2>
+      <section
+        className="mt-6 rounded-xl border bg-card p-5 text-sm"
+        aria-label={label(labels, "admin.po.times")}
+      >
+        <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.po.times")}</h2>
         <dl className="space-y-1">
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Angelegt</dt>
+            <dt className="text-muted-foreground">{label(labels, "admin.po.created")}</dt>
             <dd>{formatDateTime(po.createdAt)}</dd>
           </div>
           {po.orderedAt && (
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Bestellt</dt>
+              <dt className="text-muted-foreground">{label(labels, "admin.po.column.ordered")}</dt>
               <dd>{formatDateTime(po.orderedAt)}</dd>
             </div>
           )}
           {po.status === "ordered" && po.expectedArrivalAt && (
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Erwartete Ankunft</dt>
+              <dt className="text-muted-foreground">{label(labels, "admin.po.expectedArrival")}</dt>
               <dd>{formatDate(po.expectedArrivalAt)}</dd>
             </div>
           )}
           {po.receivedAt && (
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Erhalten</dt>
+              <dt className="text-muted-foreground">{label(labels, "admin.po.column.received")}</dt>
               <dd>{formatDateTime(po.receivedAt)}</dd>
             </div>
           )}

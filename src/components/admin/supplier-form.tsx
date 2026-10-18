@@ -1,17 +1,24 @@
 "use client";
 
-import { useActionState, useEffect, useId } from "react";
+import { useEffect, useRef, useId, useActionState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { label } from "@/lib/i18n";
 import { saveSupplierAction, type PurchasingActionState } from "@/server/actions/admin/purchasing";
 import type { Supplier } from "@/models/supplier";
 
 export function SupplierForm({ supplier }: { supplier?: Supplier }) {
   const formId = useId();
+  const labels = useLabels();
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<PurchasingActionState | null, FormData>(
     saveSupplierAction,
     null,
@@ -19,7 +26,14 @@ export function SupplierForm({ supplier }: { supplier?: Supplier }) {
 
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success(supplier ? "Lieferant gespeichert." : "Lieferant angelegt.");
+    if (state?.ok) {
+      toast.success(
+        label(
+          labelsRef.current,
+          supplier ? "admin.supplierForm.saved" : "admin.supplierForm.created",
+        ),
+      );
+    }
   }, [state, supplier]);
 
   return (
@@ -27,7 +41,7 @@ export function SupplierForm({ supplier }: { supplier?: Supplier }) {
       {supplier && <input type="hidden" name="supplierId" value={supplier._id.toString()} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-name`}>Name</Label>
+          <Label htmlFor={`${formId}-name`}>{label(labels, "admin.suppliers.column.name")}</Label>
           <Input
             id={`${formId}-name`}
             name="name"
@@ -37,7 +51,7 @@ export function SupplierForm({ supplier }: { supplier?: Supplier }) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-email`}>E-Mail</Label>
+          <Label htmlFor={`${formId}-email`}>{label(labels, "admin.suppliers.column.email")}</Label>
           <Input
             id={`${formId}-email`}
             name="email"
@@ -47,11 +61,13 @@ export function SupplierForm({ supplier }: { supplier?: Supplier }) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-phone`}>Telefon (optional)</Label>
+          <Label htmlFor={`${formId}-phone`}>
+            {label(labels, "admin.supplierForm.phoneOptional")}
+          </Label>
           <Input id={`${formId}-phone`} name="phone" defaultValue={supplier?.phone} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-lead`}>Lieferzeit (Tage)</Label>
+          <Label htmlFor={`${formId}-lead`}>{label(labels, "admin.supplierForm.lead")}</Label>
           <Input
             id={`${formId}-lead`}
             name="leadTimeDays"
@@ -73,11 +89,11 @@ export function SupplierForm({ supplier }: { supplier?: Supplier }) {
             name="active"
             defaultChecked={supplier?.active ?? true}
           />
-          Aktiv
+          {label(labels, "admin.suppliers.active")}
         </label>
         <Button type="submit" size="sm" disabled={pending}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          {supplier ? "Speichern" : "Anlegen"}
+          {supplier ? label(labels, "admin.action.save") : label(labels, "admin.supplierForm.create")}
         </Button>
       </div>
     </form>

@@ -4,6 +4,9 @@ import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from "vitest
 import mongoose from "mongoose";
 import { OrderModel } from "@/models/order";
 import { ProductModel } from "@/models/product";
+import { PurchaseOrderModel } from "@/models/purchase-order";
+import { SupplierModel } from "@/models/supplier";
+import { UserModel } from "@/models/user";
 import { LABELS_DIR, getLabelFileCore, createLabelCore } from "@/server/shipping/label";
 import { MockUpsProvider } from "@/server/shipping/mock";
 import { transitionOrderCore } from "@/server/orders-admin";
@@ -13,6 +16,14 @@ import {
   updateVariantCore,
 } from "@/server/products-admin";
 import { saveShopSettingsCore } from "@/server/shop-settings";
+import { formatChf } from "@/lib/format";
+import {
+  createPurchaseOrderCore,
+  createSupplierCore,
+  receivePurchaseOrderCore,
+} from "@/server/purchasing";
+import { handoverPickupCore, markPickupReadyCore } from "@/server/pickup";
+import { recordInvoicePaymentCore, setCreditLimitCore } from "@/server/invoices";
 import { saveCatalogTypeCore } from "@/server/catalog-types";
 import {
   invalidateI18nCache,
@@ -361,5 +372,238 @@ describe("settings, catalog type, translation and language refusals follow the r
     expect(german.ok).toBe(false);
     if (german.ok) return;
     expect(german.error).toBe("Deutscher Basistext fehlt.");
+  });
+});
+
+// ---------- #58 step 4: purchasing, pickup and invoice cores ----------
+
+async function seedSupplier(name: string) {
+  return SupplierModel.create({ name, email: `${name.toLowerCase()}@example.ch`, leadTimeDays: 7, active: true });
+}
+
+describe("purchasing core refusals follow the request language", () => {
+  it("a duplicate supplier name is refused in French and in the German base", async () => {
+    await seedSupplier("Doppelt AG");
+    const input = { name: "Doppelt AG", email: "neu@example.ch", leadTimeDays: 5, active: true };
+
+    request.cookie = "fr";
+    const french = await createSupplierCore(input);
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("Un fournisseur portant ce nom existe déjà.");
+
+    request.cookie = undefined;
+    const german = await createSupplierCore(input);
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Ein Lieferant mit diesem Namen existiert bereits.");
+  });
+
+  it("an unknown SKU is refused in French with the sku named", async () => {
+    const supplier = await seedSupplier("Einmal AG");
+    request.cookie = "fr";
+    const result = await createPurchaseOrderCore({
+      supplierId: supplier._id.toString(),
+      lines: [{ sku: "GIBTS-NICHT", qty: 1, unitPriceCents: 100 }],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("SKU inconnue : GIBTS-NICHT");
+  });
+
+  it("a goods receipt from a draft is refused in French", async () => {
+    const supplier = await seedSupplier("Entwurf AG");
+    const product = await seedShoe("empfang");
+    const po = await PurchaseOrderModel.create({
+      poNumber: "E-ADM-CORE-1",
+      supplierId: supplier._id,
+      status: "draft",
+      lines: [
+        {
+          productId: product._id,
+          sku: "CORE-empfang",
+          qty: 2,
+          unitPriceCents: 500,
+          received: 0,
+        },
+      ],
+      totalCents: 1000,
+    });
+
+    request.cookie = "fr";
+    const result = await receivePurchaseOrderCore(po._id.toString(), { "CORE-empfang": 1 });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe(
+      "La réception n'est possible que pour les commandes passées.",
+    );
+  });
+
+  it("a serial line without serials is refused in French with the counts", async () => {
+    const supplier = await seedSupplier("Serien AG");
+    const product = await ProductModel.create({
+      slug: "core-serial",
+      name: "Core Serial Phone",
+      description: "Smartphone für Admin-Kern-Tests.",
+      type: "smartphone",
+      brand: "Apple",
+      priceCents: 100000,
+      images: [{ src: "/products/core-serial-1.webp", alt: "Test" }],
+      featured: false,
+      filter: { color: ["schwarz"], storage: ["128 GB"] },
+      variants: [
+        {
+          sku: "CORE-serial",
+          label: "128 GB / schwarz",
+          priceDeltaCents: 0,
+          stock: 0,
+          restockThreshold: 2,
+          weightGrams: 200,
+          attributes: { color: "schwarz", storage: "128 GB" },
+        },
+      ],
+    });
+    const po = await PurchaseOrderModel.create({
+      poNumber: "E-ADM-CORE-2",
+      supplierId: supplier._id,
+      status: "ordered",
+      lines: [
+        { productId: product._id, sku: "CORE-serial", qty: 2, unitPriceCents: 50000, received: 0 },
+      ],
+      totalCents: 100000,
+    });
+
+    request.cookie = "fr";
+    const result = await receivePurchaseOrderCore(po._id.toString(), { "CORE-serial": 2 }, {});
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe(
+      "Pour CORE-serial, 2 numéro(s) de série sont requis — reçus : 0.",
+    );
+  });
+});
+
+function pickupFixture(orderNumber: string, status: "ready" | "paid") {
+  const now = new Date();
+  return {
+    orderNumber,
+    status,
+    statusLog: [{ status: "new" as const, at: now }, { status, at: now }],
+    customer: {
+      name: "Ben Test",
+      email: `pickup-core-${orderNumber}@example.ch`,
+      phone: "079 111 22 33",
+      street: "Testweg 2",
+      postalCode: "8000",
+      city: "Zürich",
+      country: "CH",
+    },
+    lines: [],
+    totals: { subtotalCents: 2000, shippingCents: 0, totalCents: 2000, vatCents: 150 },
+    shipping: {
+      method: "pickup",
+      storePickup: true,
+      pickup: { code: "CODE42" },
+    },
+    payment: { method: "mock", kind: "on_pickup" as const, reference: `P-${orderNumber}` },
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+describe("pickup core refusals follow the request language", () => {
+  it("a wrong handover code is refused in French and in the German base", async () => {
+    const created = await OrderModel.create(pickupFixture("B-ADM-CORE-5", "ready"));
+
+    request.cookie = "fr";
+    const french = await handoverPickupCore(created._id.toString(), "FALSCH", "cash", "admin@example.ch");
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("Le code de retrait ne correspond pas.");
+
+    request.cookie = undefined;
+    const german = await handoverPickupCore(created._id.toString(), "FALSCH", "cash", "admin@example.ch");
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Der Abholcode stimmt nicht überein.");
+  });
+
+  it("marking a parcel order ready is refused in French as not found", async () => {
+    const created = await OrderModel.create(orderFixture("B-ADM-CORE-6", "paid"));
+    request.cookie = "fr";
+    const result = await markPickupReadyCore(created._id.toString(), "admin@example.ch");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("Commande introuvable.");
+  });
+});
+
+describe("invoice core refusals follow the request language", () => {
+  function invoiceFixture(orderNumber: string) {
+    const now = new Date();
+    return {
+      orderNumber,
+      status: "new" as const,
+      statusLog: [{ status: "new" as const, at: now }],
+      customer: {
+        name: "Eva Test",
+        email: `invoice-core-${orderNumber}@example.ch`,
+        phone: "079 111 22 33",
+        street: "Testweg 3",
+        postalCode: "8000",
+        city: "Zürich",
+        country: "CH",
+      },
+      lines: [],
+      totals: { subtotalCents: 1000, shippingCents: 0, totalCents: 1000, vatCents: 75 },
+      shipping: { method: "standard" },
+      payment: {
+        method: "invoice",
+        kind: "invoice" as const,
+        reference: `P-${orderNumber}`,
+        invoice: { dueAt: now, paidCents: 0, qrReference: "RF1234567890123456789012345603" },
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  it("an amount over the open balance is refused in French with the amount", async () => {
+    const created = await OrderModel.create(invoiceFixture("B-ADM-CORE-7"));
+    request.cookie = "fr";
+    const result = await recordInvoicePaymentCore(created._id.toString(), 2000, "admin@example.ch");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    // The amount interpolates the already-formatted value (NBSP included) — the base
+    // formatter, as the admin formats are still base-locale (#58 record).
+    expect(result.error).toBe(
+      `Le montant dépasse le montant ouvert de ${formatChf(1000)}.`,
+    );
+  });
+
+  it("a junk credit limit and an unknown customer are refused in their request language", async () => {
+    request.cookie = "fr";
+    const french = await setCreditLimitCore(new mongoose.Types.ObjectId().toString(), 1.5);
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("Montant invalide.");
+
+    const user = await UserModel.create({
+      email: "credit-core@example.ch",
+      name: "Credit Core",
+      role: "customer",
+      passwordHash: "x",
+    });
+    request.cookie = undefined;
+    const german = await setCreditLimitCore(user._id.toString(), -5);
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Ungültiger Betrag.");
+
+    request.cookie = "fr";
+    const missing = await setCreditLimitCore(new mongoose.Types.ObjectId().toString(), 100);
+    expect(missing.ok).toBe(false);
+    if (missing.ok) return;
+    expect(missing.error).toBe("Client introuvable.");
   });
 });
