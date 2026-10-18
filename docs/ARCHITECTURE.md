@@ -864,12 +864,14 @@ all use **`MongoMemoryReplSet` (single-node)** — no compensation scheme anywhe
 ## 7. Client/server split (SPA feel)
 
 - **Routes and public URLs are English (#63), prefixed by the language (#58):** the app routes
-  themselves are `/[lang]/products`, `/[lang]/products/:slug`, `/[lang]/cart`… — no rewrite
-  indirection. The proxy resolves the language for every prefix-free storefront request
-  (URL prefix > remembered `lang` cookie > `Accept-Language` > first active language row),
-  redirects to `/{lang}{path}` with the query preserved, and refreshes the cookie on prefixed
-  requests; its gates (admin, account, product-slug 404) run on the stripped path. The admin
-  stays prefix-free. `next.config.ts` `redirects()` answers every former German URL
+  themselves are `/[lang]/products`, `/[lang]/products/:slug`, `/[lang]/cart`… The proxy
+  resolves the language for every prefix-free storefront request
+  (URL prefix > remembered `lang` cookie > `Accept-Language` > first active language row):
+  the base language (first active row) answers directly on the prefix-free URL through an
+  internal rewrite to `/{base}{path}` — the entry URL never redirects (#65) — every other
+  language is redirected to `/{lang}{path}` with the query preserved; the cookie is
+  refreshed on every served request; its gates (admin, account, product-slug 404) run on
+  the stripped path. The admin stays prefix-free. `next.config.ts` `redirects()` answers every former German URL
   (`/produkte`, `/produkt/:slug`, `/warenkorb`, `/kasse`, `/bestellung/:number`, `/konto/…`)
   with a permanent 308 to its English counterpart (redirects run before the proxy); the
   mapping is configuration, not code. Query params are English

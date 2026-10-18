@@ -16,6 +16,17 @@ test("the browser language picks the prefix and the page is lang-tagged", async 
   await context.close();
 });
 
+test("the base language answers on the prefix-free URLs without a redirect (#65)", async ({
+  request,
+}) => {
+  for (const path of ["/", "/products"]) {
+    const response = await request.get(path, { maxRedirects: 0, failOnStatusCode: false });
+    expect(response.status(), `${path} answers directly`).toBe(200);
+  }
+  const html = await (await request.get("/products")).text();
+  expect(html).toContain('href="/products/');
+});
+
 test("hreflang lists every active language and x-default for the same path", async ({
   request,
 }) => {

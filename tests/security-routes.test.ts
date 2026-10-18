@@ -106,11 +106,21 @@ describe("language routing (src/proxy.ts, issue #58)", () => {
     return new NextRequest(`http://localhost:3000${pathname}`, { headers });
   }
 
-  it("redirects a prefix-free path to the default language, query preserved", async () => {
+  // Issue #65: the base language answers on the prefix-free URL itself — the entry URL
+  // never redirects; only a non-base resolution moves to the prefix.
+  it("answers a prefix-free path in the default language directly", async () => {
     const response = await proxy(requestFor("/products?type=shoes&size=42"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "http://localhost:3000/de/products?type=shoes&size=42",
+    );
+  });
+
+  it("redirects a prefix-free path to a non-default language, query preserved", async () => {
+    const response = await proxy(requestFor("/products?type=shoes&size=42", { cookie: "lang=it" }));
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get("location")!);
-    expect(location.pathname).toBe("/de/products");
+    expect(location.pathname).toBe("/it/products");
     expect(location.search).toBe("?type=shoes&size=42");
   });
 
@@ -126,9 +136,10 @@ describe("language routing (src/proxy.ts, issue #58)", () => {
     expect(new URL(response.headers.get("location")!).pathname).toBe("/it/products");
   });
 
-  it("redirects an unknown first segment into the resolved language", async () => {
+  it("rewrites an unknown first segment into the base language directly (#65)", async () => {
     const response = await proxy(requestFor("/xx/products"));
-    expect(new URL(response.headers.get("location")!).pathname).toBe("/de/xx/products");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-rewrite")).toBe("http://localhost:3000/de/xx/products");
   });
 
   it("remembers the language of a prefixed document navigation in the cookie", async () => {

@@ -839,3 +839,16 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   toast. Boundary (recorded): stored notes stay German — `CANCEL_NOTE`, the
   `UPS-Sendung …`/`Etikett erstellt` statusLog and unit-move notes are data written at
   the time of the action, not request-time UI copy.
+- **The base language answers on the prefix-free URL; only other languages redirect
+  (#65, gate finding "GET / → HTTP 307").** The #58 proxy redirected every prefix-free
+  storefront request to its language URL, so the entry URL never answered directly —
+  a redirect hop for every first visit and crawler hit. The proxy now serves the base
+  language (first active language row — data, never a hard-coded code) on the
+  prefix-free URL via an internal rewrite to `/{base}{path}` with the same
+  `x-language`/`x-localized-path` headers and cookie refresh; any other resolved
+  language keeps the 307 to its prefix. Canonical/hreflang keep the prefixed URL for
+  the base language (x-default), the accepted duplicate handling. The gate in
+  `.agent/orchestrate.sh` still checked the pre-#63 German contract (`/produkte` 200 +
+  `/produkt/` links), which REQUIREMENTS forbids and can never go green; it now checks
+  `/ /products /api/health` → 200 and `/products/` links — the English contract —
+  while the German 308 mapping stays proven by the english-urls e2e spec.

@@ -2214,3 +2214,27 @@ Done — M1–M6 + QA complete.
   step 7 no-German-literals guard; step 4 remainder (needs-review filter, usage
   context, inline editing, change history); step 5 remainder (translatable catalog
   content + five-language demo content).
+
+## ISSUES — queue session 32 (2026-10-18)
+
+### #65 — gate: entry URLs answered with redirects; gate checked the retired German URLs ✅
+- Root cause 1 (shop): since #58 step 2 the proxy redirected **every** prefix-free
+  storefront request to `/{lang}{path}` — even when the resolved language was the base
+  language — so `GET /` answered 307 and `GET /products` 307 behind the German 308.
+  The proxy now serves the base language (first active language row — data, not code)
+  directly on the prefix-free URL via an internal rewrite to `/{base}{path}` carrying the
+  same `x-language`/`x-localized-path` headers and the cookie refresh; every other
+  resolved language keeps the 307 to its prefix (query preserved). `GET /` and
+  `GET /products` → 200.
+- Root cause 2 (gate): `.agent/orchestrate.sh` still checked the pre-#63 German contract
+  (`/produkte` → 200, `/produkt/` links) that REQUIREMENTS forbids — it can never go
+  green against the documented English design. The gate now checks `/ /products
+  /api/health` → 200 and `/products/` product links; the German 308 mapping stays proven
+  by the english-urls e2e spec.
+- Verified: new `tests/proxy-language.test.ts` (4: direct 200 + rewrite target incl.
+  query, language/path headers on the rewritten request, prefixed URLs untouched, base
+  language follows the first active **row** — with fr-first rows `/products` rewrites to
+  `/fr/products` and a `lang=de` cookie gets the 307) — fails on the pre-fix build;
+  the two outdated security-routes assertions updated; english-urls spec now asserts
+  `/` and `/products` 200 + `lang=fr` → 307 `/fr/products`; language-routing spec gained
+  the direct-answer test. `npm test` ✅, lint/build ✅, `npm run test:e2e` ✅.

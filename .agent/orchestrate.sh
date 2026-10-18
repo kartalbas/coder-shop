@@ -74,12 +74,15 @@ gate() {
     # its own process group, so stopping it also stops next-server and the mongod it started
     setsid npx next start -p "$GATE_PORT" >"$LOGS/gate-server.log" 2>&1 & pid=$!
     for _ in $(seq 1 60); do curl -s -o /dev/null "http://127.0.0.1:$GATE_PORT/" && break; sleep 1; done
-    for url in / /produkte /api/health; do
+    # English URL contract (#63): the base language answers directly on the prefix-free
+    # entry URLs (#65); the former German URLs are permanent 308 redirects and stay
+    # proven by the english-urls e2e spec, so the gate checks the English routes.
+    for url in / /products /api/health; do
       code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "http://127.0.0.1:$GATE_PORT$url")"
       [[ "$code" == 200 ]] || { echo "GET $url → HTTP $code" >>"$out"; rc=1; }
     done
-    if ! curl -s --max-time 30 "http://127.0.0.1:$GATE_PORT/produkte" | grep -q '/produkt/'; then
-      echo "GET /produkte → the HTML links to no product page (/produkt/…)" >>"$out"; rc=1
+    if ! curl -s --max-time 30 "http://127.0.0.1:$GATE_PORT/products" | grep -q '/products/'; then
+      echo "GET /products → the HTML links to no product page (/products/…)" >>"$out"; rc=1
     fi
     if grep -qiE 'error|unhandled|ECONNREFUSED' "$LOGS/gate-server.log"; then
       { printf 'the server logged errors while these pages were fetched (last lines):\n```\n'

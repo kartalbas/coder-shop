@@ -76,11 +76,18 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return adminGate(request);
 
   // Issue #58 step 2: the language is the first URL segment. A prefix-free storefront
-  // path is redirected to its localized URL (query preserved); a prefixed request
-  // refreshes the remembered-choice cookie and its gates run on the stripped path.
+  // path resolves the language (cookie > browser > first active row): the base language
+  // answers directly on the prefix-free URL (#65 — the entry URL never redirects), every
+  // other language is redirected to its localized URL (query preserved). A prefixed
+  // request refreshes the remembered-choice cookie and its gates run on the stripped path.
   const languages = await getActiveLanguages();
   const codes = languages.map((language) => language.code);
-  const { lang, rest } = splitLanguagePrefix(pathname, codes);
+  const split = splitLanguagePrefix(pathname, codes);
+  let lang = split.lang;
+  let rest = split.rest;
+  // True while a prefix-free request is served in the base language via an internal
+  // rewrite — the response then has to carry the request into that rewrite.
+  let prefixFreeBase = false;
 
   if (!lang) {
     const target = resolveLanguage({
@@ -88,9 +95,14 @@ export async function proxy(request: NextRequest) {
       acceptLanguage: request.headers.get("accept-language"),
       languages,
     });
-    const url = request.nextUrl.clone();
-    url.pathname = localizedPath(target, pathname);
-    return NextResponse.redirect(url);
+    if (target !== codes[0]) {
+      const url = request.nextUrl.clone();
+      url.pathname = localizedPath(target, pathname);
+      return NextResponse.redirect(url);
+    }
+    lang = target;
+    rest = pathname;
+    prefixFreeBase = true;
   }
 
   // Issue #28: a PPR page streams its shell before the page code runs, so notFound()
@@ -135,7 +147,14 @@ export async function proxy(request: NextRequest) {
   // behind the slug-404 rewrite above) — the URL prefix wins over cookie and header
   // there too, the same precedence as here.
   requestHeaders.set(LANGUAGE_HEADER, lang);
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // A prefix-free base-language request never leaves the browser with a redirect (#65):
+  // it is rewritten internally to the `[lang]` route and answers 200 on its own URL.
+  const response = prefixFreeBase
+    ? NextResponse.rewrite(
+        new URL(localizedPath(lang, pathname) + request.nextUrl.search, request.url),
+        { request: { headers: requestHeaders } },
+      )
+    : NextResponse.next({ request: { headers: requestHeaders } });
   if (isDocumentNavigation(request)) {
     response.cookies.set(LANGUAGE_COOKIE, lang, {
       path: "/",
