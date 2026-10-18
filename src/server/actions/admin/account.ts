@@ -17,7 +17,7 @@ export interface ChangePasswordActionState {
 // Issue #58 step 2 (review nit): the schema is a label-map factory — the messages come
 // from the translation table in the request language, the length message reuses the
 // login row with MIN_PASSWORD_LENGTH, the fallback the established shop.action.invalidForm.
-export function createChangePasswordSchema(labels: Readonly<Record<string, string>>) {
+function createChangePasswordSchema(labels: Readonly<Record<string, string>>) {
   return z
     .object({
       current: z.string().min(1, label(labels, "admin.account.currentRequired")),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLabels } from "@/components/labels";
@@ -26,6 +26,12 @@ export function TransitionButtons({
   targets: readonly OrderStatus[];
 }) {
   const labels = useLabels();
+  // The toast fires from the action-state effect; the label is read through a ref kept
+  // current by an effect so a label sync can never re-fire the toast (address-book).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<TransitionActionState | null, FormData>(
     transitionOrderAction,
     null,
@@ -33,7 +39,7 @@ export function TransitionButtons({
 
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success(label(labels, "admin.orders.statusUpdated"));
+    if (state?.ok) toast.success(label(labelsRef.current, "admin.orders.statusUpdated"));
   }, [state]);
 
   if (targets.length === 0) {

@@ -265,7 +265,8 @@ src/
                             # pure path arithmetic, codes passed in as data (#58)
     images.ts               # isPhotoSrc — photo vs placeholder rule (§11)
     orders/state-machine.ts # statuses, transitions + validation + logging (pure)
-    orders/labels.ts        # German order status labels (UI copy only)
+    orders/labels.ts        # German order status labels — badge fallback only, the UI
+                            # reads the shop.status.* rows (#58 admin orders slice)
     purchasing/labels.ts    # PurchaseOrderStatus + German PO labels (#35)
     shipping/types.ts       # ShippingProvider interface, label result types
     shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
@@ -653,9 +654,10 @@ the only access: rows are process-cached and every write (`saveTranslationCore`,
 `saveLanguageCore`) invalidates the cache, so edits take effect on the next request
 without a deploy. Step 1 of #58; extracting the remaining UI texts into rows is step 2.
 Customer-visible order status names are rows too (`shop.status.<status>`, keys derived
-from the state-machine statuses); `STATUS_LABELS` and `PICKUP_PAYMENT_TYPE_LABELS`
-remain the German base for the admin until its own slice — storefront components take
-an optional label map and read the table when one is passed (#58 step 3).
+from the state-machine statuses), read by the storefront **and** by the admin's badges,
+tabs and timeline; `STATUS_LABELS` remains only as the badge's no-provider fallback and
+`PICKUP_PAYMENT_TYPE_LABELS` became `admin.pickup.paymentType.*` rows — components take
+a label map and read the table (#58 step 3, admin orders slice).
 
 ## 4. Server functions, actions and route handlers
 

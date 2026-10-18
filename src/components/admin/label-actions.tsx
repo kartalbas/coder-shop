@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ExternalLink, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +14,12 @@ import {
 
 export function LabelButton({ orderId }: { orderId: string }) {
   const labels = useLabels();
+  // The toast fires through a ref kept current by an effect so a label sync can never
+  // re-fire it (address-book pattern).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [state, formAction, pending] = useActionState<CreateLabelActionState | null, FormData>(
     createLabelAction,
     null,
@@ -23,7 +29,9 @@ export function LabelButton({ orderId }: { orderId: string }) {
     if (state?.error) toast.error(state.error);
     if (state?.ok) {
       toast.success(
-        interpolate(label(labels, "admin.label.created"), { tracking: state.trackingNumber ?? "" }),
+        interpolate(label(labelsRef.current, "admin.label.created"), {
+          tracking: state.trackingNumber ?? "",
+        }),
       );
     }
   }, [state]);

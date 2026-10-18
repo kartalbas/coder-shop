@@ -2111,3 +2111,60 @@ Done — M1–M6 + QA complete.
   language, step 7 no-German-literals guard; step 4 remainder (needs-review filter,
   usage context, inline editing, change history); step 5 remainder (translatable
   catalog content + five-language demo content).
+
+## ISSUES — queue session 30 (2026-10-18)
+
+### #58 step 2 slice — admin orders + packing in the request language (+ password nit)
+
+- **Gate report checked first — all three findings are the intended, spec-asserted
+  behaviour, not regressions.** Live battery at HEAD: `/` → 307 → `/de` (proxy language
+  resolution), `/produkte` → 308 → `/products` (former-German-URL redirect,
+  `english-urls.spec.ts` asserts exactly these codes), and the 308 stub has no body by
+  design — following the chain, `/de/products` answers 200 with 24 product links (the
+  prefix-free `href="/products/…"` is the documented cookie-remembered design). The
+  gate's checklist still looks for 200 on `/` and `/produkte` and for `/produkt/`
+  links — it predates #63/#58 step 2; nothing to fix in code.
+- **Orchestrator incident:** while this slice was in progress, the orchestrator's
+  commit 864d333 (its own `.agent/orchestrate.sh` change) committed the whole working
+  tree — i.e. the slice mid-edit — and pushed it. The follow-up commit finishes the
+  four files it caught mid-flight (toast label refs per the address-book pattern,
+  non-exported password-schema factory — the swept-up state failed `knip` and the
+  react-hooks lint rules) and adds the tests and docs. The slice therefore spans
+  864d333 + this commit; together they are the step-2 slice of the posted plan.
+- **Slice (plan of 15:0x):** the orders list/detail and packing queue/slip pages
+  resolve `getRequestLabels()` behind `connection()` (static metadata →
+  `generateMetadata`), the status tabs/badges/timeline read the existing `shop.status.*`
+  rows, `PackList`/`StatusTimeline` take the page's label map (the timeline's is
+  required — DECISIONS), `TransitionButtons`/`LabelButton`/`PrintButton` use
+  `useLabels()`, and `transitionOrderCore`/`createLabelCore`/`getLabelFileCore` plus the
+  two actions answer refusals through `getRequestLabels()` (outside a request the first
+  active language — German — answers, so scripts and the German specs stay green).
+  Shared refusals share one row (`admin.error.orderNotFound`,
+  `admin.error.invalidRequest`); `PICKUP_PAYMENT_TYPE_LABELS` became
+  `admin.pickup.paymentType.cash|card` rows and was deleted. ~75 new `admin.*` rows in
+  all five languages, German bases byte-identical to the literals they replaced (the
+  slip's packaging weight interpolates `PACKAGING_GRAMS` through `formatWeight` →
+  "150 g", the packing note's inline link uses `splitOnPlaceholder {link}`).
+  **Nit from the 13:22 review bundled:** `actions/admin/account.ts` zod messages became
+  a label-map factory (`admin.account.currentRequired`,
+  `admin.account.passwordMismatch`, length reuses `admin.auth.error.passwordTooShort`
+  `{min}`, fallback `shop.action.invalidForm`) and the `password-form.tsx` toast became
+  `admin.account.passwordChanged` — the nit is struck from the left-open record.
+- **Tests:** `tests/admin-core-messages.test.ts` (4 tests — transition/label/label-file
+  refusals in French via the mocked `lang` cookie, German base checked alongside; all 4
+  verified failing at 7d69465) and `tests/e2e/admin-orders-translations.spec.ts`
+  (switcher → French: orders list heading/tab/columns, order detail sections + French
+  transition area, packing heading, German absent; switches back in `finally`). The
+  translations missing-filter spec now searches for its seeded row (`q=shop.cart.title`):
+  the table outgrew the editor's 200-row list cap with this slice's rows.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 616 (62 files),
+  `npm run test:e2e` ✅ 93/93; tree clean, nothing running.
+- **Left open (#58):** step 3 products + catalog-types + settings + translations-editor
+  UI; step 4 purchasing + suppliers + stock-units + pickup + invoices; step 5 customers
+  + reviews + discounts + mails + dashboard + command palette + picker (the palette's
+  own strings included); admin formats (still base-locale); step 6 mail/invoice/slip/
+  label texts in the recipient's language (+ UPS provider texts); step 7
+  no-German-literals guard; step 4 remainder (needs-review filter, usage context,
+  inline editing, change history); step 5 remainder (translatable catalog content +
+  five-language demo content). The admin account page's field labels/toasts outside the
+  password form stay with the step-5 settings UI area.

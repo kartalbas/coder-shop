@@ -141,7 +141,8 @@ test("translations: the missing-in-language filter lists only untranslated rows"
   await expect(row).toHaveCount(0);
   await expect(page.getByText("Keine Texte gefunden.")).toBeVisible();
 
-  // Junk values fall back to the unfiltered list.
-  await page.goto("/admin/translations?missing=xx");
+  // Junk values fall back to the unfiltered list — searched, because the table has
+  // outgrown the list cap and the row is no longer on the first page.
+  await page.goto("/admin/translations?missing=xx&q=shop.cart.title");
   await expect(seeded.first()).toBeVisible({ timeout: 30_000 });
 });

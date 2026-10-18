@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ import {
 // password shows its rules live and every error sits at its field.
 export function PasswordForm() {
   const labels = useLabels();
+  // The toast fires through a ref kept current by an effect so a label sync can never
+  // re-fire it (address-book pattern).
+  const labelsRef = useRef(labels);
+  useEffect(() => {
+    labelsRef.current = labels;
+  }, [labels]);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -28,7 +34,7 @@ export function PasswordForm() {
   );
 
   useEffect(() => {
-    if (state?.ok) toast.success(label(labels, "admin.account.passwordChanged"));
+    if (state?.ok) toast.success(label(labelsRef.current, "admin.account.passwordChanged"));
     else if (state?.error) toast.error(state.error);
   }, [state]);
 

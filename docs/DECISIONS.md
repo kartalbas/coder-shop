@@ -820,3 +820,22 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   rows resolved through `getRequestLabels()` in `session.ts` — byte-identical German
   bases keep the customer-portal specs green, and the customer login benefits
   identically since it shares `loginCore`.
+- **The admin orders and packing areas read the request language through the existing
+  mechanism — no new plumbing (#58 step 2 slice).** The four pages resolve
+  `getRequestLabels()` behind `connection()` (static `metadata` became `generateMetadata`,
+  the login-page pattern), the client components use `useLabels()`, and the
+  `transitionOrderCore`/`createLabelCore`/`getLabelFileCore` refusals resolve through
+  `getRequestLabels()` with byte-identical German bases — outside a request scope the
+  first active language answers, so scripts and German specs are untouched. Identical
+  refusals share one row (`admin.error.orderNotFound` for all three cores,
+  `admin.error.invalidRequest` for both actions) instead of per-file duplicates, and
+  reused texts reuse their row (`admin.orders.heading` for the detail h1, the slip line
+  and both metadata titles; the column rows for the shared table headers and totals).
+  `StatusTimeline` takes a **required** label map (its only caller is a labelled page —
+  a German fallback in the component would only feed the step-7 literal guard);
+  `PICKUP_PAYMENT_TYPE_LABELS` became `admin.pickup.paymentType.*` rows and was deleted.
+  Toast texts in the three action components are read through the address-book ref
+  pattern: as a plain effect dependency the post-action label sync would re-fire the
+  toast. Boundary (recorded): stored notes stay German — `CANCEL_NOTE`, the
+  `UPS-Sendung …`/`Etikett erstellt` statusLog and unit-move notes are data written at
+  the time of the action, not request-time UI copy.
