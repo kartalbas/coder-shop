@@ -30,6 +30,15 @@ function isPublicFile(pathname: string): boolean {
   return pathname.split("/").pop()!.includes(".");
 }
 
+// The remembered-choice cookie is refreshed on document navigations only. Background
+// RSC prefetches of the page's links run through this proxy prefixed as well, and their
+// responses can land after a newer navigation finished — a stale `/de/…` prefetch
+// response would then overwrite the language the user has just switched to (the e2e
+// switcher flake). Only `Accept: text/html` requests write the cookie.
+function isDocumentNavigation(request: NextRequest): boolean {
+  return request.headers.get("accept")?.includes("text/html") ?? false;
+}
+
 function adminGate(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   if (pathname === "/admin/login") return NextResponse.next();
@@ -104,11 +113,13 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(LOCALIZED_PATH_HEADER, rest);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  response.cookies.set(LANGUAGE_COOKIE, lang, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
+  if (isDocumentNavigation(request)) {
+    response.cookies.set(LANGUAGE_COOKIE, lang, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+  }
   return response;
 }
 

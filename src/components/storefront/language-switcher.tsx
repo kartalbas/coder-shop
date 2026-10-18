@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { localizedPath, splitLanguagePrefix } from "@/lib/locale-path";
 import type { LanguageConfig } from "@/lib/i18n";
@@ -10,6 +9,12 @@ import type { LanguageConfig } from "@/lib/i18n";
 // writes the `lang` cookie on every prefixed request, so the choice is remembered for
 // prefix-free links and the next visit. A new language is a row — it appears here without
 // a code change.
+//
+// Real anchors, not `Link`: a client-side navigation can be answered from the router's
+// prefetch cache without any request, and then the proxy never runs — the URL and content
+// switch language while the remembered-choice cookie stays stale. A document navigation
+// guarantees the proxy sees the switch and writes the cookie (the proxy is the cookie's
+// only writer).
 export function LanguageSwitcher({ languages }: { languages: readonly LanguageConfig[] }) {
   const pathname = usePathname();
   const search = useSearchParams().toString();
@@ -22,7 +27,7 @@ export function LanguageSwitcher({ languages }: { languages: readonly LanguageCo
       {languages.map((language) => {
         const current = language.code === lang;
         return (
-          <Link
+          <a
             key={language.code}
             href={localizedPath(language.code, rest) + (search ? `?${search}` : "")}
             hrefLang={language.code}
@@ -37,7 +42,7 @@ export function LanguageSwitcher({ languages }: { languages: readonly LanguageCo
             }
           >
             {language.code}
-          </Link>
+          </a>
         );
       })}
     </nav>

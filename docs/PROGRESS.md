@@ -1514,3 +1514,27 @@ Done — M1–M6 + QA complete.
   metadata; step 4 remainder (missing/needs-review filters, usage context + preview,
   keyboard inline editing, history); step 5 translatable catalog content + two-language
   checkout e2e; admin language switcher.
+
+## ISSUES — queue session 19 (2026-10-18)
+
+### Gate report + switcher flake (before the queue) ✅
+- The gate's `GET / → 307`, `GET /produkte → 308` and „no `/produkt/…` links" are the
+  intended #63/#58-step-2 behaviour, re-verified live: `/` → 307 → `/de`, `/produkte`
+  → 308 → `/products` → 307 → `/de/products` (200, product links present), health 200.
+- **Switcher flake quantified and fixed** (review session finding): the switcher spec
+  failed 9/10 repeated runs. Two stacked root causes, both real product bugs:
+  1. `LanguageSwitcher` used `Link` — a client-side navigation can be answered from the
+     router's prefetch cache without any request, so the proxy never ran and the
+     remembered-choice cookie stayed stale. Switcher links are now real anchors: the
+     proxy (the cookie's only writer) is guaranteed to see the switch.
+  2. The proxy refreshed the `lang` cookie on **every** prefixed request — including
+     background RSC prefetches of the page's links. A stale `/de/…` prefetch response
+     landing after the `/fr/…` navigation overwrote the fresh choice (visible in the
+     Playwright trace: `Set-Cookie: lang=fr`, then late prefetch responses with
+     `Set-Cookie: lang=de`). The cookie is now written on document navigations only
+     (`Accept: text/html`).
+- Verified: new proxy test (RSC prefetch leaves the cookie untouched — fails on the
+  pre-fix proxy; the remembers-test now sends a document `Accept`); the whole
+  `language-routing.spec.ts` × 5 repeats → 25/25 (was 9/10 failures on the switcher
+  test alone); `npm run build`/lint/knip ✅, `npm test` ✅ 556,
+  `npm run test:e2e` ✅ 60/60.

@@ -131,10 +131,21 @@ describe("language routing (src/proxy.ts, issue #58)", () => {
     expect(new URL(response.headers.get("location")!).pathname).toBe("/de/xx/products");
   });
 
-  it("remembers the language of a prefixed request in the cookie", async () => {
-    const response = await proxy(requestFor("/fr/products"));
+  it("remembers the language of a prefixed document navigation in the cookie", async () => {
+    const response = await proxy(requestFor("/fr/products", { accept: "text/html,*/*" }));
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain("lang=fr");
+  });
+
+  // The switcher flake: background RSC prefetches of the page's links also arrive
+  // prefixed; their late responses must not overwrite a language the user has just
+  // switched to, so only document navigations write the cookie.
+  it("does not touch the cookie on a background RSC prefetch", async () => {
+    const response = await proxy(
+      requestFor("/de/products/bekanntes-produkt?_rsc=abc", { accept: "text/x-component" }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toBeNull();
   });
 
   it("keeps the admin prefix-free and gated", async () => {
