@@ -215,6 +215,68 @@ describe("admin editor actions (#58)", () => {
     expect(await TranslationModel.countDocuments()).toBe(0);
   });
 
+  it("editing a row preserves the texts of deactivated languages (#58 review)", async () => {
+    await loginAdmin();
+    await seedLanguages();
+    await seedTranslations();
+    expect(
+      (
+        await saveTranslationAction(
+          null,
+          translationForm({
+            key: "shop.cart.title",
+            area: "shop",
+            de: "Warenkorb",
+            texts: { fr: "Panier", it: "Carrello" },
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+
+    // Deactivate French through the languages editor.
+    const fr = (await getLanguages()).find((language) => language.code === "fr")!;
+    expect((await saveLanguageAction(null, translationForm({ ...fr, active: false }))).ok).toBe(
+      true,
+    );
+
+    // The payload the old editor sent: only the active codes, fr absent. The text of
+    // the deactivated language must survive the edit of the German base.
+    expect(
+      (
+        await saveTranslationAction(
+          null,
+          translationForm({
+            key: "shop.cart.title",
+            area: "shop",
+            de: "Warenkorb (korrigiert)",
+            texts: { it: "Carrello", rm: "", es: "" },
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+    const kept = (await getTranslations()).find((row) => row.key === "shop.cart.title");
+    expect(kept?.de).toBe("Warenkorb (korrigiert)");
+    expect(kept?.texts.fr).toBe("Panier");
+
+    // An explicitly blank value still clears that one text; the others stay.
+    expect(
+      (
+        await saveTranslationAction(
+          null,
+          translationForm({
+            key: "shop.cart.title",
+            area: "shop",
+            de: "Warenkorb (korrigiert)",
+            texts: { fr: "", it: "Carrello" },
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+    const cleared = (await getTranslations()).find((row) => row.key === "shop.cart.title");
+    expect(cleared?.texts.fr).toBeUndefined();
+    expect(cleared?.texts.it).toBe("Carrello");
+  });
+
   it("adds a language row through the action — a new language stays a data change", async () => {
     await loginAdmin();
     await seedLanguages();

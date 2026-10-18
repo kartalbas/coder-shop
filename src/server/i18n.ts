@@ -69,6 +69,11 @@ function validKey(key: string): boolean {
 // Creates or updates one translation row (admin editor, seed, tests). The German base
 // text is required; translations may be blank (that is "missing", not invalid) but only
 // for language codes that exist as rows — a text for an unknown language is a typo.
+// #58 review: `texts` is updated **per code**, never replaced wholesale — a code present
+// with a blank value is unset ("cleared this text"), a code absent from the payload
+// stays untouched. That way a partial payload (e.g. the editor showing only some
+// languages) can never destroy the texts of the languages it did not send, deactivated
+// ones included.
 export async function saveTranslationCore(
   entry: TranslationEntry,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -83,12 +88,16 @@ export async function saveTranslationCore(
   for (const code of Object.keys(entry.texts)) {
     if (!known.has(code)) return { ok: false, error: `Unbekannte Sprache: ${code}` };
   }
+  const set: Record<string, string> = { key: entry.key, area: entry.area, de: entry.de };
+  const unset: Record<string, string> = {};
+  for (const [code, text] of Object.entries(entry.texts)) {
+    if (text.trim()) set[`texts.${code}`] = text;
+    else unset[`texts.${code}`] = "";
+  }
+  const update: Record<string, Record<string, string>> = { $set: set };
+  if (Object.keys(unset).length > 0) update.$unset = unset;
   await connectDB();
-  await TranslationModel.updateOne(
-    { key: entry.key },
-    { $set: { key: entry.key, area: entry.area, de: entry.de, texts: entry.texts } },
-    { upsert: true },
-  ).exec();
+  await TranslationModel.updateOne({ key: entry.key }, update, { upsert: true }).exec();
   invalidateI18nCache();
   return { ok: true };
 }

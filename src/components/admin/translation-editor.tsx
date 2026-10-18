@@ -67,14 +67,17 @@ export function TranslationEditor({
     }
   }, [state, router]);
 
+  // Every rendered language code is sent with its raw value (#58 review): an empty
+  // string says "clear this text", a code that was never rendered is left untouched by
+  // the core — deactivated languages' texts survive every edit of a row.
   const handleSubmit = (formData: FormData) => {
-    const nonEmptyTexts: Record<string, string> = {};
+    const payloadTexts: Record<string, string> = {};
     for (const [code, text] of Object.entries(texts)) {
-      if (code !== "de" && text.trim()) nonEmptyTexts[code] = text.trim();
+      if (code !== "de") payloadTexts[code] = text;
     }
     formData.set(
       "payload",
-      JSON.stringify({ key: form.key, area: form.area, de: form.de, texts: nonEmptyTexts }),
+      JSON.stringify({ key: form.key, area: form.area, de: form.de, texts: payloadTexts }),
     );
     formAction(formData);
   };

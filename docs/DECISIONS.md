@@ -648,6 +648,13 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   with `active: false` stops answering the resolver and leaves the switcher, but its
   `texts` entries survive, so re-activating a language restores every text at once. The
   admin languages editor exposes `active` as a checkbox and gives a row no delete.
+- **A translation save updates `texts` per code, never wholesale (#58 review).** The
+  editor shows *all* languages (inactive ones marked `(deaktiviert)`) and submits every
+  rendered code with its raw value; `saveTranslationCore` `$set`s each non-blank
+  `texts.<code>` and `$unset`s each blank one, while codes absent from the payload stay
+  untouched. A partial payload therefore cannot destroy the texts of the languages it
+  did not send — deactivating a language and then editing any row keeps that language's
+  texts, which is what the deactivate-not-delete decision above promises.
 - **Steps:** step 1 (tables, resolver, cached loader, insert-only seed) and the admin
   editor (translation table + languages, behind the validated cores) are done; the
   language-prefix routing, the switcher, the string extraction, the catalog content and

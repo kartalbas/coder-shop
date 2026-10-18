@@ -1439,3 +1439,23 @@ Done — M1–M6 + QA complete.
   layout dynamic and kill the PPR shell), step 3 extracting every remaining UI/mail/PDF
   string into rows (the missing-key check fails on untranslated keys), step 4 remainder
   (translation history), step 5 translatable catalog content + two-language checkout e2e.
+
+### #58 (review fix) — a translation save no longer destroys deactivated languages ✅ — issue stays open
+- **Bug:** editing any row deleted the texts of deactivated languages — the editor
+  rendered only active languages, submitted only those codes, and `saveTranslationCore`
+  `$set` the whole `texts` map, contradicting the deactivate-not-delete decision.
+- **Fix:** the editor page passes `getLanguages()` (every row, inactive marked
+  „(deaktiviert)"), `handleSubmit` sends every rendered code with its raw value
+  (blank = „clear"), and the core updates `texts` **per code** — non-blank `$set`,
+  blank `$unset`, absent untouched; unknown codes still refused. A partial payload is
+  safe by construction for the editor and any future caller.
+- Verified: `tests/i18n.test.ts` regression (fr survives an old-style payload without
+  fr; explicit `fr: ""` clears only fr, it untouched — first assertion fails on the
+  pre-fix build); e2e `translations.spec.ts` extension (deactivate fr → edit the German
+  base → reactivate → the French text is listed again).
+  `npm run build`/lint/knip ✅, `npm test` ✅ 538, `npm run test:e2e` ✅ 55/55.
+- **Left open (corrected record):** step 2 language-prefix routing + switcher +
+  hreflang; step 3 string extraction + no-German-literals guard; step 4 remainder —
+  missing-translations filter, needs-review filter, usage context + preview link,
+  keyboard-driven inline editing, change history; step 5 translatable catalog content
+  + two-language checkout e2e.
