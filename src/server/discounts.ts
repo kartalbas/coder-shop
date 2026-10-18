@@ -1,11 +1,11 @@
 import mongoose, { type ClientSession } from "mongoose";
 import { discountForSubtotal, isDiscountInWindow, type DiscountDef } from "@/lib/discounts";
-import { formatChf } from "@/lib/format";
+import { createFormatters } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import { DiscountCodeModel, type DiscountCode } from "@/models/discount-code";
 import { DiscountUsageModel } from "@/models/discount-usage";
 import { connectDB } from "./db";
-import { getRequestLabels } from "./i18n";
+import { getIntlLocale, getLabels, getRequestLabels, getRequestLanguage } from "./i18n";
 
 // Discount codes at the server boundary (issue #45). The money math is pure
 // (lib/discounts); this module answers "may this code still be used" and books the
@@ -46,9 +46,15 @@ export async function checkDiscountCore(
   now = new Date(),
   session?: ClientSession,
 ): Promise<DiscountCheck> {
-  // #58: refusals are answered in the request language — the texts are table rows, the
-  // {amount} value is formatted with the base-locale formatters (invoice/admin side).
-  const labels = await getRequestLabels();
+  // #58: refusals are answered in the request language — the texts are table rows and
+  // the {amount} is formatted with that language's Intl locale (#58 review), like the
+  // cart/checkout interpolations, so a French page never shows a German-formatted CHF.
+  const language = await getRequestLanguage();
+  const [labels, intlLocale] = await Promise.all([
+    getLabels(language),
+    getIntlLocale(language),
+  ]);
+  const { chf } = createFormatters(intlLocale);
   const code = normalizeDiscountCode(rawCode);
   const invalid = {
     ok: false as const,
@@ -64,7 +70,7 @@ export async function checkDiscountCore(
     return {
       ok: false,
       error: interpolate(label(labels, "shop.discount.minOrder"), {
-        amount: formatChf(doc.minOrderCents),
+        amount: chf(doc.minOrderCents),
       }),
     };
   }

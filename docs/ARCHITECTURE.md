@@ -82,15 +82,19 @@ scripts/
 src/
   proxy.ts                  # Next 16 Proxy (Node runtime): language prefix for every
                             # storefront path (#58: resolve → 307 or lang cookie, gates on
-                            # the stripped path), /admin/* admin-scope session gate,
+                            # the stripped path, x-language + x-localized-path request
+                            # headers), /admin/* admin-scope session gate,
                             # /account/* customer-scope gate (#39) + real 404 for unknown
-                            # /products/[slug] before any bytes stream (§4, #28, #63)
+                            # /products/[slug] before any bytes stream (§4, #28, #63);
+                            # the internal /_not-found route passes through untouched
   app/
     fonts.ts                # Geist font init shared by the two root layouts (#58)
     site-metadata.ts        # metadata base shared by the two root layouts (#58)
     globals.css             # Tailwind v4 @theme, light/dark tokens, @media print (packing slip)
-    not-found.tsx           # German 404 (noindex) behind the internal /_not-found route —
-                            # the proxy's real-404 rewrite target for unknown products (#28)
+    not-found.tsx           # global 404 (noindex) behind the internal /_not-found route —
+                            # the proxy's real-404 rewrite target for unknown products
+                            # (#28); title and copy follow the request language via the
+                            # x-language header (#58 review)
     [lang]/                 # storefront under the language prefix (#58): /de/products,
                             # /fr/account/profile — the path itself stays English (#63);
                             # generateStaticParams from the seeded language codes
@@ -157,7 +161,8 @@ src/
                             # client components (cacheable 60 s, #64)
       health/route.ts       # GET { ok } — also warms DB connection
   components/
-    not-found-content.tsx   # German 404 content shared by the per-root not-found pages (#58)
+    not-found-content.tsx   # 404 content shared by the per-root not-found pages, copy from
+                            # the label map the wrapper passes (#58, #58 review)
     password-rules-checklist.tsx  # live, aria-announced password rule checklist shared
                             # by every form that sets a password (#60)
     shop-settings-provider.tsx    # client context: loads /api/shop-settings once per page

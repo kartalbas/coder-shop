@@ -15,6 +15,7 @@ import {
   type TranslationEntry,
   TRANSLATION_AREAS,
 } from "@/lib/i18n";
+import { LANGUAGE_HEADER } from "@/lib/locale-path";
 import { LanguageModel, toLanguageConfig } from "@/models/language";
 import { TranslationModel, toTranslationEntry } from "@/models/translation";
 
@@ -82,24 +83,29 @@ export async function getLabels(language: string): Promise<Record<string, string
   return labelMap(await getTranslations(), language);
 }
 
-// The language of the current request (#58 step 3, server-messages slice): the
-// remembered choice (the `lang` cookie the proxy writes on every prefixed document
-// navigation) wins, then the browser header, then the first active row — the same pure
-// precedence the proxy uses, reused not re-spelled. Server actions resolve it to build
-// their validation schemas and messages, so a customer is answered in the language of
-// the page they are on. Outside a request scope (tests, scripts) cookie and headers are
-// unavailable and the first active language answers.
+// The language of the current request (#58 step 3, server-messages slice): the URL
+// prefix the proxy hands over as a request header wins (#58 review — a first visit to
+// `/fr/…` has no cookie yet, and the global `/_not-found` behind the slug-404 rewrite
+// sees neither segment nor cookie), then the remembered choice (the `lang` cookie the
+// proxy writes on every prefixed document navigation), then the browser header, then
+// the first active row — the same pure precedence the proxy uses, reused not re-spelled.
+// Server actions resolve it to build their validation schemas and messages, so a
+// customer is answered in the language of the page they are on. Outside a request scope
+// (tests, scripts) cookie and headers are unavailable and the first active language
+// answers.
 export async function getRequestLanguage(): Promise<string> {
   const languages = await getLanguages();
+  let pathPrefix: string | null = null;
   let cookie: string | null = null;
   let acceptLanguage: string | null = null;
   try {
+    pathPrefix = (await headers()).get(LANGUAGE_HEADER);
     cookie = (await cookies()).get(LANGUAGE_COOKIE)?.value ?? null;
     acceptLanguage = (await headers()).get("accept-language");
   } catch {
     return defaultLanguage(languages);
   }
-  return resolveLanguage({ cookie, acceptLanguage, languages });
+  return resolveLanguage({ pathPrefix, cookie, acceptLanguage, languages });
 }
 
 export async function getRequestLabels(): Promise<Record<string, string>> {

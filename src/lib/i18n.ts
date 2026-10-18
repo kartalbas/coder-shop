@@ -297,6 +297,17 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
+    key: "shop.discount.redeem",
+    area: "shop",
+    de: "Einlösen",
+    texts: {
+      fr: "Utiliser",
+      it: "Utilizza",
+      rm: "Utilisar",
+      es: "Canjear",
+    },
+  },
+  {
     key: "shop.cart.emptySubtitle",
     area: "shop",
     de: "Entdecken Sie unser Sortiment an Smartphones, Schuhen und Kleidung.",
@@ -3532,6 +3543,39 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       it: "Questa pagina non esiste — ritorno all'avvio.",
       rm: "Questa pagina n'existia betg — enavos a la pagina initiala.",
       es: "Esta página no existe — volver al inicio.",
+    },
+  },
+  {
+    key: "shop.notFound.body",
+    area: "shop",
+    de: "Diese Seite existiert nicht oder wurde verschoben. Versuchen Sie die Suche oder stöbern Sie im Sortiment.",
+    texts: {
+      fr: "Cette page n'existe pas ou a été déplacée. Essayez la recherche ou parcourez l'assortiment.",
+      it: "Questa pagina non esiste o è stata spostata. Provate la ricerca o sfogliate l'assortimento.",
+      rm: "Questa pagina n'existia betg u è vegnida spustada. Empruvai la tschertga u sfugliais l'assortiment.",
+      es: "Esta página no existe o se ha movido. Pruebe la búsqueda o explore el surtido.",
+    },
+  },
+  {
+    key: "shop.notFound.home",
+    area: "shop",
+    de: "Zur Startseite",
+    texts: {
+      fr: "Retour à l'accueil",
+      it: "Torna alla home page",
+      rm: "Enavos a la pagina initiala",
+      es: "Volver al inicio",
+    },
+  },
+  {
+    key: "shop.notFound.listing",
+    area: "shop",
+    de: "Zum Sortiment",
+    texts: {
+      fr: "Parcourir l'assortiment",
+      it: "Sfoglia l'assortimento",
+      rm: "Sfuglia l'assortiment",
+      es: "Ver el surtido",
     },
   },
 ];

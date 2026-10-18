@@ -8,6 +8,12 @@
 // `[lang]`'s generateMetadata can build hreflang alternates for the current page.
 export const LOCALIZED_PATH_HEADER = "x-localized-path";
 
+// Request header the proxy sets with the language resolved from the URL prefix — the
+// only channel by which code outside the `[lang]` tree (the global `/_not-found` the
+// proxy rewrites unknown slugs to, #58 review) learns the prefix language, which
+// outranks cookie and Accept-Language exactly like in `resolveLanguage`.
+export const LANGUAGE_HEADER = "x-language";
+
 export interface SplitPath {
   lang: string | null;
   rest: string;

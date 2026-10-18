@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { LanguageModel } from "@/models/language";
+import { checkDiscountCore, createDiscountCore } from "@/server/discounts";
 import { invalidateI18nCache, getRequestLanguage } from "@/server/i18n";
 import { seedLanguages } from "../scripts/seed/seed";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
@@ -12,6 +13,7 @@ import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 const request = vi.hoisted(() => ({
   cookie: undefined as string | undefined,
   acceptLanguage: undefined as string | undefined,
+  pathPrefix: undefined as string | undefined,
   outsideRequest: false,
 }));
 
@@ -25,8 +27,12 @@ vi.mock("next/headers", () => ({
   headers: async () => {
     if (request.outsideRequest) throw new Error("headers() is only supported in a request");
     return {
-      get: (name: string) =>
-        name.toLowerCase() === "accept-language" ? (request.acceptLanguage ?? null) : null,
+      get: (name: string) => {
+        const key = name.toLowerCase();
+        if (key === "accept-language") return request.acceptLanguage ?? null;
+        if (key === "x-language") return request.pathPrefix ?? null;
+        return null;
+      },
     };
   },
 }));
@@ -40,6 +46,7 @@ beforeAll(async () => {
 afterEach(() => {
   request.cookie = undefined;
   request.acceptLanguage = undefined;
+  request.pathPrefix = undefined;
   request.outsideRequest = false;
 });
 
@@ -52,6 +59,19 @@ describe("getRequestLanguage", () => {
   it("the remembered cookie wins over the browser header", async () => {
     request.cookie = "fr";
     request.acceptLanguage = "de-CH,de;q=0.9";
+    expect(await getRequestLanguage()).toBe("fr");
+  });
+
+  it("the URL prefix the proxy hands over wins over cookie and header (#58 review)", async () => {
+    request.pathPrefix = "it";
+    request.cookie = "fr";
+    request.acceptLanguage = "de-CH,de;q=0.9";
+    expect(await getRequestLanguage()).toBe("it");
+  });
+
+  it("a prefix outside the active set falls through to the cookie", async () => {
+    request.pathPrefix = "xx";
+    request.cookie = "fr";
     expect(await getRequestLanguage()).toBe("fr");
   });
 
@@ -84,5 +104,47 @@ describe("getRequestLanguage", () => {
   it("outside a request scope (tests, scripts) the first active language answers", async () => {
     request.outsideRequest = true;
     expect(await getRequestLanguage()).toBe("de");
+  });
+});
+
+// #58 review: the {amount} of a discount refusal is formatted with the request
+// language's Intl locale, not the base locale — a French refusal never carries a
+// German-formatted CHF. Both expected amounts are computed in the test from the
+// locale, so no ICU vocabulary is pinned.
+describe("discount refusals format {amount} per request locale", () => {
+  it("the French minOrder refusal carries the fr-CH-formatted amount", async () => {
+    await createDiscountCore({
+      code: "LOCALE1",
+      kind: "percent",
+      percent: 10,
+      minOrderCents: 12_345,
+      perCustomerOnce: false,
+    });
+    request.cookie = "fr";
+    const check = await checkDiscountCore("LOCALE1", 10_000, undefined);
+    expect(check.ok).toBe(false);
+    const amount = 123.45;
+    const fr = new Intl.NumberFormat("fr-CH", { style: "currency", currency: "CHF" });
+    const de = new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" });
+    expect(check.error).toContain(fr.format(amount));
+    expect(check.error).not.toContain(de.format(amount));
+    expect(check.error).toContain("panier");
+    await clearCollections();
+  });
+
+  it("without a request scope the base locale formats the amount", async () => {
+    await createDiscountCore({
+      code: "LOCALE2",
+      kind: "percent",
+      percent: 10,
+      minOrderCents: 12_345,
+      perCustomerOnce: false,
+    });
+    request.outsideRequest = true;
+    const check = await checkDiscountCore("LOCALE2", 10_000, undefined);
+    expect(check.ok).toBe(false);
+    const de = new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" });
+    expect(check.error).toContain(de.format(123.45));
+    await clearCollections();
   });
 });

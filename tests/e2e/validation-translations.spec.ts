@@ -34,7 +34,12 @@ test("a refused discount code is explained in French", async ({ page }) => {
   ).toBeVisible({ timeout: 30_000 });
 
   await page.getByLabel("Code promo").fill("GIBTS-NICHT");
-  await page.getByRole("button", { name: "Einlösen" }).click();
+  // Language-independent selection (#58 review): the button carries a testid, so the
+  // spec never cements a German label on a French page.
+  const redeem = page.getByTestId("discount-redeem");
+  await expect(redeem).toHaveText("Utiliser");
+  await expect(page.getByRole("button", { name: "Einlösen" })).toHaveCount(0);
+  await redeem.click();
   const alert = page.locator("p[role=alert]");
   await expect(alert).toContainText("Ce code promo est non valide ou expiré.", {
     timeout: 30_000,
@@ -77,13 +82,31 @@ test("the order access form refuses a wrong e-mail in French", async ({ page }) 
 
 test("the localized 404 page carries the French title", async ({ page }) => {
   // An unknown order number runs notFound() inside the [lang] tree — the boundary the
-  // [lang] not-found page renders (unmatched URLs answer the global prefix-free
-  // /_not-found, which stays German by design). With PPR the streamed 404 UI keeps
-  // HTTP 200 (documented Next behaviour, same as the product page).
+  // [lang] not-found page renders. With PPR the streamed 404 UI keeps HTTP 200
+  // (documented Next behaviour, same as the product page).
   await page.goto("/fr/orders/B-2020-000000");
   await expect(page).toHaveTitle("Page introuvable | coder-shop");
   await expect(page.locator("head link[rel=canonical]")).toHaveAttribute(
     "href",
     /\/fr\/orders\/B-2020-000000$/,
   );
+});
+
+test("unmatched URLs and unknown products answer the global 404 in French", async ({
+  page,
+}) => {
+  // #58 review: the global prefix-free /_not-found (every unmatched URL, and the
+  // proxy's real-404 rewrite for unknown product slugs) resolves the request language
+  // too — title, body and buttons follow the remembered `lang` cookie.
+  const response = await page.goto("/fr/products/gibts-nicht");
+  expect(response?.status()).toBe(404);
+  await expect(page).toHaveTitle("Page introuvable | coder-shop");
+  await expect(page.getByText("Cette page n'existe pas ou a été déplacée")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Retour à l'accueil" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Parcourir l'assortiment" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Seite nicht gefunden" })).toHaveCount(0);
+
+  await page.goto("/fr/gibts-nicht");
+  await expect(page).toHaveTitle("Page introuvable | coder-shop");
+  await expect(page.getByText("Cette page n'existe pas ou a été déplacée")).toBeVisible();
 });

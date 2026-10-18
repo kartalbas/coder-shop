@@ -1994,3 +1994,45 @@ Done — M1–M6 + QA complete.
   remainder (needs-review filter, usage context + preview link, keyboard-driven inline
   editing, change history); step 5 remainder: translatable catalog content + admin
   editing + five-language demo content.
+
+## ISSUES — queue session 27 (2026-10-18)
+
+### Gate report finding — the global 404 answered German on French URLs ✅ fixed
+- **Reproduced** `validation-translations.spec.ts` "unmatched URLs and unknown products
+  answer the global 404 in French" against a fresh `next start`: the request reached the
+  page in German. Two root causes: (1) a proxy **rewrite re-enters the proxy**, so the
+  prefix-free rewrite target `/_not-found` hit the language logic and was 307-redirected
+  to `/de/_not-found` — visible URL, base language, and the `x-language` header never
+  arrived; (2) `app/not-found.tsx` was a static German page by design (that design is
+  retired — DECISIONS).
+- **Proxy:** returns early for the internal `/_not-found` path (passes through with the
+  request headers) and sets `x-language` (the resolved prefix language) on every
+  storefront request and on the slug-404 rewrite — the only channel to a route outside
+  the `[lang]` tree. `getRequestLanguage()` reads it first: prefix header > `lang`
+  cookie > `Accept-Language` > first active row (the proxy's precedence reused).
+- **Global 404:** `app/not-found.tsx` static `metadata` → `generateMetadata` + copy
+  behind `connection()` reading the label map of the request language (new
+  `shop.notFound.body/home/listing` rows; title reuses `shop.meta.notFound.title`);
+  `instant = false` only opts the 404 boundary out of the instant/static-shell
+  validation. Outside both root layouts the title composes the shared template through
+  `titled()` (`site-metadata.ts`), so it carries „| coder-shop" like every page.
+  `NotFoundContent` takes the label map; the `[lang]` and admin boundaries pass theirs
+  (admin stays the German base map).
+- **Same review slice:** the discount refusal `{amount}` formats with the request
+  language's `intlLocale` (`createFormatters`), not the base formatters; the discount
+  buttons carry `discount-redeem`/`discount-remove` testids and their texts became
+  `shop.discount.redeem`/`shop.action.remove` rows, so the French spec selects by
+  testid instead of a German button name.
+- **Tests:** `tests/request-language.test.ts` +4 (prefix header wins over cookie and
+  header, inactive prefix falls through, fr-CH vs de-CH `{amount}`, no-request base
+  locale); e2e `validation-translations.spec.ts` +1 (unknown product keeps HTTP 404 on
+  the original URL and answers title/body/links in French, unmatched `/fr/…` too) —
+  fails on the pre-change build (reproduced: 307 → `/de/_not-found`, „Seite nicht
+  gefunden").
+- **Gate:** `npm run build`/lint/knip ✅, `npm test` ✅ 599, `npm run test:e2e` ✅
+  88/88; tree clean, nothing running.
+- **Left open (#58):** unchanged from session 26 — admin strings + admin language
+  switcher, mail/invoice/slip/label texts in the recipient's language, the remaining
+  core error texts, no-German-literals guard; step 4 remainder (needs-review filter,
+  usage context, inline editing, change history); step 5 remainder (translatable
+  catalog content + five-language demo content).

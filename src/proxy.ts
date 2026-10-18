@@ -8,7 +8,12 @@ import {
 import { connectDB } from "@/server/db";
 import { ProductModel } from "@/models/product";
 import { LANGUAGE_COOKIE, resolveLanguage } from "@/lib/i18n";
-import { LOCALIZED_PATH_HEADER, localizedPath, splitLanguagePrefix } from "@/lib/locale-path";
+import {
+  LANGUAGE_HEADER,
+  LOCALIZED_PATH_HEADER,
+  localizedPath,
+  splitLanguagePrefix,
+} from "@/lib/locale-path";
 import { getActiveLanguages } from "@/server/i18n";
 
 // Issue #39: the customer portal is guarded like /admin — signature + expiry only here
@@ -60,6 +65,13 @@ function adminGate(request: NextRequest): NextResponse {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // The internal `/_not-found` route (every unmatched URL, and the target of the
+  // slug-404 rewrite below) has no language prefix — running the language logic on it
+  // would answer the 404 with a redirect to /de/_not-found (visible URL, base
+  // language). It passes through untouched; the x-language header the rewrite
+  // attaches flows on to the page, which resolves the language itself (#58 review).
+  if (pathname === "/_not-found") return NextResponse.next();
+
   if (isPublicFile(pathname)) return NextResponse.next();
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return adminGate(request);
 
@@ -90,7 +102,14 @@ export async function proxy(request: NextRequest) {
     await connectDB();
     const exists = Boolean(slug) && (await ProductModel.exists({ slug }));
     if (!exists) {
-      return NextResponse.rewrite(new URL("/_not-found", request.url), { status: 404 });
+      // The rewritten global `/_not-found` renders the 404 in the prefix language —
+      // the header is the only channel to a route outside the `[lang]` tree.
+      const notFoundHeaders = new Headers(request.headers);
+      notFoundHeaders.set(LANGUAGE_HEADER, lang);
+      return NextResponse.rewrite(new URL("/_not-found", request.url), {
+        status: 404,
+        request: { headers: notFoundHeaders },
+      });
     }
   }
 
@@ -112,6 +131,10 @@ export async function proxy(request: NextRequest) {
   // so the proxy hands it over as a request header (the documented proxy→app channel).
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(LOCALIZED_PATH_HEADER, rest);
+  // The prefix language for code outside the `[lang]` tree (the global `/_not-found`
+  // behind the slug-404 rewrite above) — the URL prefix wins over cookie and header
+  // there too, the same precedence as here.
+  requestHeaders.set(LANGUAGE_HEADER, lang);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   if (isDocumentNavigation(request)) {
     response.cookies.set(LANGUAGE_COOKIE, lang, {

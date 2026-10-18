@@ -7,11 +7,20 @@ import { SITE_URL } from "@/lib/site";
 // The site-wide fallback description stays static (it also serves the prerendered 404);
 // the pages that render product data carry the configured VAT wording in their own
 // metadata (issues #37/#64).
+// The tab-title suffix every page carries. The root layouts apply it as a metadata
+// template; the global `/_not-found` renders outside both root layouts and composes
+// its title with `titled()` instead (#58 review).
+const TITLE_TEMPLATE = "%s | coder-shop";
+
+export function titled(title: string): string {
+  return TITLE_TEMPLATE.replace("%s", title);
+}
+
 export const SITE_METADATA_BASE: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: "coder-shop — Smartphones, Schuhe & Kleidung",
-    template: "%s | coder-shop",
+    template: TITLE_TEMPLATE,
   },
   description: "Premium-Onlineshop. Preise in CHF inklusive MwSt.",
   openGraph: {

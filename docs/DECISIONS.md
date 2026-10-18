@@ -758,10 +758,12 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   request was rejected — it would race between concurrent requests; a factory keeps
   the lib pure and the language explicit. Server actions and the cores they call
   resolve the language through `getRequestLanguage()`/`getRequestLabels()`
-  (`server/i18n`): the `lang` cookie the proxy writes, then `Accept-Language`, then
-  the first active row — the proxy's precedence reused, not re-spelled; outside a
-  request scope (tests, scripts) the first active language answers, which keeps every
-  existing German test green. `checkout-form.tsx` builds its client-side schema from
+  (`server/i18n`): the URL prefix the proxy hands over as the `x-language` request
+  header (#58 review — a first visit has no cookie yet, and routes outside the
+  `[lang]` tree see no segment), then the `lang` cookie the proxy writes, then
+  `Accept-Language`, then the first active row — the proxy's precedence reused, not
+  re-spelled; outside a request scope (tests, scripts) the first active language
+  answers, which keeps every existing German test green. `checkout-form.tsx` builds its client-side schema from
   the same label map the page renders, so field errors match the page language before
   a submit. Admin validations and core error texts stay German until their slices.
 - **Corrected machine-translation rows reach old databases through a fixed seed
@@ -772,3 +774,18 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   and the seed's `repairTranslationTexts` step updates a row only while its stored
   text still equals the flawed one — an admin's edit of that row is never
   overwritten. Same fixed-migration discipline as `RETIRED_TRANSLATION_KEYS`.
+- **The global `/_not-found` answers in the request language, and the proxy passes it
+  through untouched (#58 review).** The earlier "the prefix-free global 404 stays
+  German by design" call is retired: unmatched storefront URLs and the proxy's
+  real-404 rewrite for unknown slugs must not answer German on a French URL. The
+  proxy sets `x-language` on every storefront request (and on the 404 rewrite),
+  `getRequestLanguage()` reads it first, and `app/not-found.tsx` renders title and
+  copy from the label map behind `connection()` — `instant = false` only opts the
+  404 boundary out of the instant/static-shell validation, it does not change
+  rendering. Two consequences found while proving it: a proxy rewrite re-enters the
+  proxy, so the prefix-free `/_not-found` used to be 307-redirected to
+  `/de/_not-found` (visible URL, base language) — the proxy now returns early for
+  that internal path; and the route renders outside both root layouts, so its title
+  composes the shared `TITLE_TEMPLATE` through `titled()` instead of inheriting the
+  metadata template. The discount `{amount}` follows the same language's
+  `intlLocale`, not the base formatters.

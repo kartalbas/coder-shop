@@ -9,10 +9,11 @@ import { label } from "@/lib/i18n";
 import { setDiscountCode, useCart } from "@/stores/cart";
 import { validateDiscountAction } from "@/server/actions/discounts";
 
-// Discount code field for cart and checkout (issue #45): "Einlösen" validates against
-// the server with clear German feedback; the applied code shows its reduction and can
-// be removed again. The server re-checks everything at order time regardless. The
-// field's own text is a translation-table label (#58 step 3).
+// Discount code field for cart and checkout (issue #45): redeeming validates against
+// the server with clear feedback; the applied code shows its reduction and can be
+// removed again. The server re-checks everything at order time regardless. Every text
+// is a translation-table label (#58 step 3); the buttons carry testids so e2e specs
+// stay language-independent (#58 review).
 export function DiscountInput({
   subtotalCents,
   labels,
@@ -61,6 +62,7 @@ export function DiscountInput({
           type="button"
           variant="ghost"
           size="sm"
+          data-testid="discount-remove"
           className="h-6 px-2 text-xs"
           onClick={() => {
             setDiscountCode(undefined);
@@ -70,7 +72,7 @@ export function DiscountInput({
           }}
         >
           <X className="size-3" aria-hidden />
-          Entfernen
+          {label(labels, "shop.action.remove")}
         </Button>
       </div>
     );
@@ -92,11 +94,12 @@ export function DiscountInput({
           type="button"
           variant="outline"
           size="sm"
+          data-testid="discount-redeem"
           disabled={pending || code.trim().length === 0}
           onClick={() => redeem(code)}
         >
           {pending && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
-          Einlösen
+          {label(labels, "shop.discount.redeem")}
         </Button>
       </div>
       {error && (
