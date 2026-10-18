@@ -1933,3 +1933,64 @@ Done — M1–M6 + QA complete.
   editing, change history); step 5 remainder: translatable catalog content + admin
   editing + five-language demo content (the two-language completed checkout e2e
   landed with this slice).
+
+## ISSUES — queue session 26 (2026-10-18)
+
+### Gate report findings — no defect, re-verified ✅
+- `GET / → 307`, `GET /produkte → 308` and „no `/produkt/…` links" are the intended
+  #63/#58-step-2 behaviour (English URLs, 308 for the former German ones, 307 onto the
+  language prefix, product links `/products/…`), asserted by the green
+  `language-routing`/`english-urls` specs in every gate run. No code change.
+
+### #58 (step 3 slice) — customer-facing validation and action messages read the table ✅ — issue stays open
+- **The two bound machine-translation fixes** (review of e1828d2): `shop.order.invoice.open`
+  it „Aperto" → „Resto: {amount}" (and the same-flawed rm „Avert" → „Restant"), and
+  `shop.breadcrumbs.aria` es „Navegación de ruta de navegación" → „Miga de pan". Because
+  the seed is insert-only, `TRANSLATION_TEXT_REPAIRS` + the seed's
+  `repairTranslationTexts` step update exactly the rows still holding the flawed text —
+  an admin edit is never overwritten (DECISIONS).
+- **Schema factories:** `createCheckoutSchema`/`createRegister(Schema)`/
+  `createCustomerLoginSchema`/`createPasswordReset(Request|Confirm)Schema`/
+  `createAddressSchema`/`createAddressIdSchema`/`createClaimOrderSchema` and
+  `validateCustomerPassword(password, labels)` take the label map; every German base is
+  byte-identical to the literal it replaced, so the German checkout/account/password
+  specs stayed green untouched. `checkout-form.tsx` validates client-side with the same
+  rows (`useMemo` over the page's labels); `objectIdSchema` stays the German admin
+  boundary (the customer path uses the localized `addressId` factory).
+- **Request language for actions:** `getRequestLanguage()`/`getRequestLabels()`
+  (`server/i18n`) — `lang` cookie > `Accept-Language` > first active row (the proxy's
+  pure `resolveLanguage` reused), first active language outside a request scope. Wired
+  into `createOrderCore`, the customer cores, the discount check/redemption, the order
+  access core and the checkout/account/discount/review/order-access actions; the
+  checkout rate-limit sentence interpolates `{seconds}`, the discount refusals
+  `{amount}` (four new `shop.discount.*` rows), the access mismatch/throttle answers
+  come from `shop.order.access*` rows.
+- **Not-found:** `app/[lang]/not-found.tsx` static German `metadata` →
+  `generateMetadata` behind `connection()` reading the new `shop.meta.notFound.title`/
+  `.description` rows — `/fr/orders/<unknown>` now ships „Page introuvable | coder-shop"
+  with the per-language canonical. The global `/_not-found` (the proxy's real-404
+  rewrite target, prefix-free) stays German by design.
+- **Checkout ceiling is configuration (DECISIONS):** the suite legitimately completes
+  more checkouts from its one IP than the hard-coded 10/10 min allowed once this spec
+  arrived — `CHECKOUT_LIMIT_PER_10_MIN` (default 10, production unchanged) now feeds
+  the checkout action's limiter and the e2e global setup raises it, like its register
+  sibling. README + ARCHITECTURE updated.
+- **Tests:** `tests/validation-messages.test.ts` (5: German bases byte-identical,
+  French messages through the factories, `{max}` interpolation),
+  `tests/request-language.test.ts` (6: cookie wins, q-values, unknown values fall
+  through, deactivated never answers, no-request fallback), `tests/i18n.test.ts` +1
+  (seed repair fixes the three flawed texts, is idempotent, skips an admin edit);
+  new e2e `validation-translations.spec.ts` (4: fr checkout empty submit → French
+  field errors, refused discount in French, stranger's wrong e-mail refused in French,
+  localized 404 title) — **all four fail on the pre-change build** (reproduced against
+  a stashed rebuild: 4 failed).
+- **Gate:** `npm run build`/lint/knip ✅, `npm test` ✅ 595, `npm run test:e2e` ✅
+  87/87; tree clean, nothing running.
+- **Left open (#58):** step 3 remainder — admin strings + admin language switcher
+  (incl. the `OrderStatusBadge` move out of `components/admin/`, review nit),
+  mail/invoice/slip/label texts in the recipient's language, the remaining core error
+  texts (register duplicate/reset/claim/address, checkout method refusals), the
+  untranslated cart bits („Entfernen"/„Einlösen"), no-German-literals guard; step 4
+  remainder (needs-review filter, usage context + preview link, keyboard-driven inline
+  editing, change history); step 5 remainder: translatable catalog content + admin
+  editing + five-language demo content.

@@ -3,9 +3,13 @@ import {
   MAX_CHECKOUT_LINES,
   MAX_QTY_PER_LINE,
   MAX_QTY_PER_SKU,
-  checkoutSchema,
+  createCheckoutSchema,
 } from "@/lib/validations/checkout";
+import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, labelMap } from "@/lib/i18n";
 import { createRateLimiter } from "@/server/rate-limit";
+
+// #58: the schema is a factory over the label map — the tests run on the German base.
+const checkoutSchema = createCheckoutSchema(labelMap(DEFAULT_TRANSLATIONS, BASE_LANGUAGE));
 
 const customer = {
   name: "Lena Meier",

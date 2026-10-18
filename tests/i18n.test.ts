@@ -19,7 +19,12 @@ import {
   saveLanguageCore,
   saveTranslationCore,
 } from "@/server/i18n";
-import { retireTranslations, seedLanguages, seedTranslations } from "../scripts/seed/seed";
+import {
+  repairTranslationTexts,
+  retireTranslations,
+  seedLanguages,
+  seedTranslations,
+} from "../scripts/seed/seed";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 // The admin editor actions read the session via next/headers and revalidate caches —
@@ -95,6 +100,41 @@ describe("seed (insert-only, #14)", () => {
     expect(keys).toContain("shop.listing.count.one");
     expect(keys).toContain("shop.checkout.legend.shipping");
     expect(await TranslationModel.countDocuments()).toBe(DEFAULT_TRANSLATIONS.length);
+  });
+
+  it("repairs flawed machine-translation texts but never an admin edit (#58 review)", async () => {
+    await seedLanguages();
+    await seedTranslations();
+    // Simulate a database seeded before the fixes: the flawed texts are stored.
+    await TranslationModel.updateOne(
+      { key: "shop.order.invoice.open" },
+      { $set: { "texts.it": "Aperto: {amount}", "texts.rm": "Avert: {amount}" } },
+    );
+    await TranslationModel.updateOne(
+      { key: "shop.breadcrumbs.aria" },
+      { $set: { "texts.es": "Navegación de ruta de navegación" } },
+    );
+    expect(await repairTranslationTexts()).toBe(3);
+    const invoice = await TranslationModel.findOne({ key: "shop.order.invoice.open" })
+      .lean()
+      .exec();
+    expect(invoice?.texts.it).toBe("Resto: {amount}");
+    expect(invoice?.texts.rm).toBe("Restant: {amount}");
+    const aria = await TranslationModel.findOne({ key: "shop.breadcrumbs.aria" }).lean().exec();
+    expect(aria?.texts.es).toBe("Miga de pan");
+    // Idempotent: a second run finds nothing left to repair.
+    expect(await repairTranslationTexts()).toBe(0);
+
+    // An admin-edited text differs from the flawed one and is never overwritten.
+    await TranslationModel.updateOne(
+      { key: "shop.order.invoice.open" },
+      { $set: { "texts.it": "Importo aperto: {amount}" } },
+    );
+    await repairTranslationTexts();
+    const edited = await TranslationModel.findOne({ key: "shop.order.invoice.open" })
+      .lean()
+      .exec();
+    expect(edited?.texts.it).toBe("Importo aperto: {amount}");
   });
 });
 

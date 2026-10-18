@@ -1,7 +1,9 @@
 "use server";
 
 import { z } from "zod";
+import { label } from "@/lib/i18n";
 import { checkDiscountCore } from "@/server/discounts";
+import { getRequestLabels } from "@/server/i18n";
 import { getCustomerSessionUserId } from "@/server/session";
 
 export interface DiscountValidation {
@@ -23,7 +25,9 @@ export async function validateDiscountAction(
   rawSubtotal: number,
 ): Promise<DiscountValidation> {
   const parsed = inputSchema.safeParse({ code: rawCode, subtotalCents: rawSubtotal });
-  if (!parsed.success) return { ok: false, error: "Dieser Gutscheincode ist ungültig." };
+  if (!parsed.success) {
+    return { ok: false, error: label(await getRequestLabels(), "shop.action.discountInvalid") };
+  }
   const userId = (await getCustomerSessionUserId().catch(() => null)) ?? undefined;
   const check = await checkDiscountCore(parsed.data.code, parsed.data.subtotalCents, userId);
   if (!check.ok) return { ok: false, error: check.error };

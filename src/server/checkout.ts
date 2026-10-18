@@ -10,7 +10,7 @@ import type {
   ShopSettings,
 } from "@/lib/shop-settings";
 import { activePaymentMethods, activeShippingMethods } from "@/lib/shop-settings";
-import { checkoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
+import { createCheckoutSchema, type CheckoutInput } from "@/lib/validations/checkout";
 import { CheckoutClaimModel } from "@/models/checkout-claim";
 import {
   OrderModel,
@@ -32,6 +32,7 @@ import {
   normalizeDiscountCode,
   redeemDiscount,
 } from "./discounts";
+import { getRequestLabels } from "./i18n";
 import { getInvoiceCreditUsageCents } from "./invoices";
 import { sendMail } from "./mail";
 import { mintNumber } from "./numbers";
@@ -503,7 +504,9 @@ export async function createOrderCore(
   input: unknown,
   opts: { userId?: string } = {},
 ): Promise<CreateOrderResult> {
-  const parsed = checkoutSchema.safeParse(input);
+  // #58: the payload is validated with the request language's messages (outside a
+  // request scope — tests, scripts — the first active language answers).
+  const parsed = createCheckoutSchema(await getRequestLabels()).safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben" };
   }

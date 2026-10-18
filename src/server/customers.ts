@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { absoluteUrl } from "@/lib/site";
 import {
-  addressSchema,
-  claimOrderSchema,
-  registerSchema,
+  createAddressSchema,
+  createClaimOrderSchema,
+  createRegisterSchema,
   validateCustomerPassword,
   type AddressInput,
 } from "@/lib/validations/account";
@@ -11,6 +11,7 @@ import { OrderModel } from "@/models/order";
 import { PasswordResetModel } from "@/models/password-reset";
 import { UserModel, type CustomerAddress } from "@/models/user";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 import { hashPassword } from "./password";
 import { sendMail } from "./mail";
 import { passwordResetMail, welcomeMail } from "@/lib/mail-templates";
@@ -48,7 +49,7 @@ export async function registerCustomerCore(
       error: `Zu viele Registrierungen in kurzer Folge. Bitte in ${limit.retryInSeconds} Sekunden erneut versuchen.`,
     };
   }
-  const parsed = registerSchema.safeParse(input);
+  const parsed = createRegisterSchema(await getRequestLabels()).safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
   }
@@ -130,7 +131,7 @@ export async function resetPasswordCore(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const invalid = { ok: false as const, error: "Der Link ist ungültig oder abgelaufen." };
   if (!token) return invalid;
-  const passwordError = validateCustomerPassword(newPassword);
+  const passwordError = validateCustomerPassword(newPassword, await getRequestLabels());
   if (passwordError) return { ok: false, error: passwordError };
 
   await connectDB();
@@ -208,7 +209,7 @@ export async function saveAddressCore(
   input: unknown,
   addressId?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const parsed = addressSchema.safeParse(input);
+  const parsed = createAddressSchema(await getRequestLabels()).safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
   }
@@ -254,7 +255,7 @@ export async function claimOrderCore(
   userId: string,
   input: unknown,
 ): Promise<{ ok: true; orderNumber: string } | { ok: false; error: string }> {
-  const parsed = claimOrderSchema.safeParse(input);
+  const parsed = createClaimOrderSchema(await getRequestLabels()).safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
   }

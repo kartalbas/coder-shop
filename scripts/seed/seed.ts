@@ -7,7 +7,12 @@ import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { computeTotals } from "@/lib/pricing";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
-import { DEFAULT_LANGUAGES, DEFAULT_TRANSLATIONS, RETIRED_TRANSLATION_KEYS } from "@/lib/i18n";
+import {
+  DEFAULT_LANGUAGES,
+  DEFAULT_TRANSLATIONS,
+  RETIRED_TRANSLATION_KEYS,
+  TRANSLATION_TEXT_REPAIRS,
+} from "@/lib/i18n";
 import { DEFAULT_SHOP_SETTINGS, type ShopSettings } from "@/lib/shop-settings";
 import { LanguageModel } from "@/models/language";
 import { TranslationModel } from "@/models/translation";
@@ -131,6 +136,22 @@ export async function seedTranslations(): Promise<void> {
 export async function retireTranslations(): Promise<void> {
   if (RETIRED_TRANSLATION_KEYS.length === 0) return;
   await TranslationModel.deleteMany({ key: { $in: [...RETIRED_TRANSLATION_KEYS] } });
+}
+
+// Fixed machine-translation repairs (#58 review): the insert-only seed never updates an
+// existing row, so a corrected default text would stay wrong in databases seeded before
+// the fix. Each repair updates one (key, language) row only while its stored text still
+// equals the flawed text — an admin's edit of that row is never overwritten.
+export async function repairTranslationTexts(): Promise<number> {
+  let repaired = 0;
+  for (const repair of TRANSLATION_TEXT_REPAIRS) {
+    const result = await TranslationModel.updateOne(
+      { key: repair.key, [`texts.${repair.language}`]: repair.from },
+      { $set: { [`texts.${repair.language}`]: repair.to } },
+    );
+    repaired += result.modifiedCount;
+  }
+  return repaired;
 }
 
 // The denormalized `filter` block is derived data (ARCHITECTURE §3): recompute it from
@@ -421,6 +442,8 @@ async function main(): Promise<void> {
   await seedLanguages();
   await seedTranslations();
   await retireTranslations();
+  const repairedTexts = await repairTranslationTexts();
+  if (repairedTexts > 0) console.log(`repaired ${repairedTexts} machine-translation texts`);
   const productCount = await seedProducts();
   const unitCount = await seedStockUnits(types);
   if (unitCount > 0) console.log(`serial units created: ${unitCount}`);

@@ -281,7 +281,8 @@ src/
                             # and invalidated on every write (next request, no deploy) (#58)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET,
                             # CUSTOMER_REGISTER_LIMIT_PER_HOUR,
-                            # CUSTOMER_RESET_LIMIT_PER_HOUR optional)
+                            # CUSTOMER_RESET_LIMIT_PER_HOUR,
+                            # CHECKOUT_LIMIT_PER_10_MIN optional)
     numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
     session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
     session.ts              # admin + customer login/session (scrypt, throttle, scoped cookies)
@@ -333,7 +334,8 @@ src/
     shipping/mock.ts        # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
     shipping/label.ts       # createLabelCore + getLabelFileCore (packed-only, idempotent)
     actions/
-      checkout.ts           # thin action wrapper → createOrderCore (transaction, + userId #39)
+      checkout.ts           # thin action wrapper → createOrderCore (transaction, + userId #39,
+                            # rate limit = CHECKOUT_LIMIT_PER_10_MIN, default 10/10 min #8/#58)
       discounts.ts          # validateDiscountAction — live feedback for the code field (#45)
       order-access.ts       # verifyOrderEmailAction (#3)
       account.ts            # register/login/logout, password reset, claim, addresses,

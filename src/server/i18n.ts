@@ -1,10 +1,14 @@
+import { cookies, headers } from "next/headers";
 import { connectDB } from "./db";
 import {
   activeLanguages,
   createTranslator,
+  defaultLanguage,
   DEFAULT_LANGUAGES,
   intlLocaleOf,
   labelMap,
+  LANGUAGE_COOKIE,
+  resolveLanguage,
   DEFAULT_TRANSLATIONS,
   type LanguageConfig,
   type Translator,
@@ -76,6 +80,30 @@ export async function getTranslator(language: string): Promise<Translator> {
 // table without a second round-trip and without ever seeing another language's base.
 export async function getLabels(language: string): Promise<Record<string, string>> {
   return labelMap(await getTranslations(), language);
+}
+
+// The language of the current request (#58 step 3, server-messages slice): the
+// remembered choice (the `lang` cookie the proxy writes on every prefixed document
+// navigation) wins, then the browser header, then the first active row — the same pure
+// precedence the proxy uses, reused not re-spelled. Server actions resolve it to build
+// their validation schemas and messages, so a customer is answered in the language of
+// the page they are on. Outside a request scope (tests, scripts) cookie and headers are
+// unavailable and the first active language answers.
+export async function getRequestLanguage(): Promise<string> {
+  const languages = await getLanguages();
+  let cookie: string | null = null;
+  let acceptLanguage: string | null = null;
+  try {
+    cookie = (await cookies()).get(LANGUAGE_COOKIE)?.value ?? null;
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    return defaultLanguage(languages);
+  }
+  return resolveLanguage({ cookie, acceptLanguage, languages });
+}
+
+export async function getRequestLabels(): Promise<Record<string, string>> {
+  return getLabels(await getRequestLanguage());
 }
 
 function validKey(key: string): boolean {

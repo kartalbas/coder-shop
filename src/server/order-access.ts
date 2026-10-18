@@ -1,8 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { canViewOrderDetails } from "@/lib/order-visibility";
+import { label } from "@/lib/i18n";
 import { OrderModel } from "@/models/order";
 import { UserModel } from "@/models/user";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 import {
   getCustomerSessionUserId,
   getSessionUserId,
@@ -107,14 +109,13 @@ function emailThrottleRecordFailure(orderNumber: string): void {
   }
 }
 
-const EMAIL_MISMATCH = "Bestellung und E-Mail-Adresse stimmen nicht überein.";
-
 export async function verifyOrderEmailCore(
   orderNumber: string,
   email: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const labels = await getRequestLabels();
   if (emailThrottleBlocked(orderNumber)) {
-    return { ok: false, error: "Zu viele Fehlversuche. Bitte später erneut versuchen." };
+    return { ok: false, error: label(labels, "shop.order.accessThrottled") };
   }
   await connectDB();
   const order = await OrderModel.findOne({ orderNumber }).select("customer.email").lean().exec();
@@ -122,7 +123,7 @@ export async function verifyOrderEmailCore(
   const provided = email.trim().toLowerCase();
   if (!expected || !provided || expected !== provided) {
     emailThrottleRecordFailure(orderNumber);
-    return { ok: false, error: EMAIL_MISMATCH };
+    return { ok: false, error: label(labels, "shop.order.accessMismatch") };
   }
   emailThrottle.delete(orderNumber);
   return { ok: true };

@@ -116,6 +116,7 @@ All optional for local development (sensible defaults / embedded database):
 | `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Optional SMTP details: port (default 587, `465` ⇒ implicit TLS) and login credentials. |
 | `CUSTOMER_REGISTER_LIMIT_PER_HOUR` | Ceiling for customer registrations per client and hour (default `5`). |
 | `CUSTOMER_RESET_LIMIT_PER_HOUR` | Ceiling for password-reset requests per client and hour (default `3`). |
+| `CHECKOUT_LIMIT_PER_10_MIN` | Ceiling for checkouts per client per 10 minutes (default `10`). |
 | `E2E_PORT` | Port for the Playwright e2e run (default `3100`). |
 
 ## Database lock recovery

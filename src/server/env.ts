@@ -32,6 +32,7 @@ const envSchema = z.object({
   SMTP_FROM: optionalNonEmpty,
   CUSTOMER_REGISTER_LIMIT_PER_HOUR: optionalPositiveInt,
   CUSTOMER_RESET_LIMIT_PER_HOUR: optionalPositiveInt,
+  CHECKOUT_LIMIT_PER_10_MIN: optionalPositiveInt,
 });
 
 const parsed = envSchema.parse(process.env);
@@ -39,6 +40,7 @@ const parsed = envSchema.parse(process.env);
 const IMAGE_API_DEFAULT_URL = "http://192.168.10.210:8080/v1/images/generations";
 const REGISTER_LIMIT_DEFAULT = 5;
 const RESET_LIMIT_DEFAULT = 3;
+const CHECKOUT_LIMIT_DEFAULT = 10;
 
 export const env = {
   MONGODB_URI: parsed.MONGODB_URI,
@@ -71,6 +73,9 @@ export const env = {
   },
   get customerResetLimitPerHour(): number {
     return parsed.CUSTOMER_RESET_LIMIT_PER_HOUR ?? RESET_LIMIT_DEFAULT;
+  },
+  get checkoutLimitPer10Min(): number {
+    return parsed.CHECKOUT_LIMIT_PER_10_MIN ?? CHECKOUT_LIMIT_DEFAULT;
   },
   // Issue #44: real delivery only when host and sender are configured;
   // otherwise every mail stays in the dev outbox.

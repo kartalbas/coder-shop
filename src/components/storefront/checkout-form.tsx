@@ -24,7 +24,7 @@ import {
 import { useShopSettings } from "@/components/shop-settings-provider";
 import { STORE } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { checkoutSchema, type CheckoutCustomer } from "@/lib/validations/checkout";
+import { createCheckoutSchema, type CheckoutCustomer } from "@/lib/validations/checkout";
 import { createOrderAction, type CheckoutActionState } from "@/server/actions/checkout";
 import { validateDiscountAction } from "@/server/actions/discounts";
 import { DiscountInput } from "@/components/storefront/discount-input";
@@ -140,6 +140,9 @@ export function CheckoutForm({
   );
   const payment = paymentOptions.find((method) => method.key === paymentKey) ?? paymentOptions[0];
   const [errors, setErrors] = useState<FieldErrors>({});
+  // #58: client-side field errors use the same table rows as the server — the schema is
+  // built from the request language's label map (text-only swap when LabelsSync lands).
+  const validationSchema = useMemo(() => createCheckoutSchema(labels), [labels]);
   // Issue #45: the reduction of the applied code, for the summary display only — the
   // server recomputes it inside the transaction.
   const [discountCents, setDiscountCents] = useState(0);
@@ -243,7 +246,7 @@ export function CheckoutForm({
       paymentMethod: payment?.key ?? "",
       ...(cart.discountCode !== undefined && { discountCode: cart.discountCode }),
     };
-    const parsed = checkoutSchema.safeParse(payload);
+    const parsed = validationSchema.safeParse(payload);
     if (!parsed.success) {
       setErrors(fieldErrorsFrom(parsed.error));
       return;

@@ -109,8 +109,11 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
         SESSION_SECRET: randomBytes(48).toString("base64"),
         NEXT_TELEMETRY_DISABLED: "1",
         // Every authenticated spec registers its own account from one IP; the
-        // production default (5/h) would throttle the suite itself.
+        // production default (5/h) would throttle the suite itself. The specs also
+        // complete more checkouts across the run than the production ceiling (10 per
+        // 10 minutes) allows.
         CUSTOMER_REGISTER_LIMIT_PER_HOUR: "60",
+        CHECKOUT_LIMIT_PER_10_MIN: "60",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },

@@ -1,6 +1,8 @@
 "use server";
 
 import { z } from "zod";
+import { label } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 import { grantOrderAccess, verifyOrderEmailCore } from "@/server/order-access";
 
 export interface OrderAccessActionState {
@@ -22,7 +24,10 @@ export async function verifyOrderEmailAction(
     email: formData.get("email"),
   });
   if (!parsed.success) {
-    return { ok: false, error: "Bitte geben Sie eine gültige E-Mail-Adresse ein." };
+    return {
+      ok: false,
+      error: label(await getRequestLabels(), "shop.action.orderAccessEmail"),
+    };
   }
   const result = await verifyOrderEmailCore(parsed.data.orderNumber, parsed.data.email);
   if (!result.ok) return { ok: false, error: result.error };

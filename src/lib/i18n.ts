@@ -1304,7 +1304,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       fr: "Navigation fil d'Ariane",
       it: "Navigazione a briciole di pane",
       rm: "Navigaziun cun brum",
-      es: "Navegación de ruta de navegación",
+      es: "Miga de pan",
     },
   },
   {
@@ -1782,8 +1782,8 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     de: "Offen: {amount}",
     texts: {
       fr: "Reste dû : {amount}",
-      it: "Aperto: {amount}",
-      rm: "Avert: {amount}",
+      it: "Resto: {amount}",
+      rm: "Restant: {amount}",
       es: "Pendiente: {amount}",
     },
   },
@@ -3189,6 +3189,381 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       rm: "{count} betg pli disponibels.",
       es: "{count} ya no disponibles.",
     },
+  },
+  // Issue #58 step 3 (server-messages slice): customer-facing validation and action
+  // messages. Every German base is byte-identical to the literal it replaced, so the
+  // German specs keep passing untouched; {min}/{max}/{seconds} values come from code.
+  {
+    key: "shop.validation.field.name",
+    area: "shop",
+    de: "Bitte Namen angeben",
+    texts: {
+      fr: "Veuillez indiquer votre nom",
+      it: "Indichi il nome",
+      rm: "Inditchez il num",
+      es: "Indique su nombre",
+    },
+  },
+  {
+    key: "shop.validation.field.email",
+    area: "shop",
+    de: "Bitte gültige E-Mail angeben",
+    texts: {
+      fr: "Veuillez indiquer un e-mail valide",
+      it: "Indichi un'e-mail valida",
+      rm: "Inditchez ina adressa e-mail valida",
+      es: "Indique un correo electrónico válido",
+    },
+  },
+  {
+    key: "shop.validation.field.phone",
+    area: "shop",
+    de: "Bitte gültige Telefonnummer angeben",
+    texts: {
+      fr: "Veuillez indiquer un numéro de téléphone valide",
+      it: "Indichi un numero di telefono valido",
+      rm: "Inditchez in numer da telefon valid",
+      es: "Indique un número de teléfono válido",
+    },
+  },
+  {
+    key: "shop.validation.field.street",
+    area: "shop",
+    de: "Bitte Strasse und Hausnummer angeben",
+    texts: {
+      fr: "Veuillez indiquer la rue et le numéro",
+      it: "Indichi via e numero civico",
+      rm: "Inditchez via e numer da chasa",
+      es: "Indique la calle y el número",
+    },
+  },
+  {
+    key: "shop.validation.field.postalCode",
+    area: "shop",
+    de: "Bitte 4-stellige PLZ angeben",
+    texts: {
+      fr: "Indiquez un NPA à 4 chiffres",
+      it: "Indichi un CAP a 4 cifre",
+      rm: "Inditchez in numer postal a 4 cifras",
+      es: "Indique un código postal de 4 dígitos",
+    },
+  },
+  {
+    key: "shop.validation.field.city",
+    area: "shop",
+    de: "Bitte Ort angeben",
+    texts: {
+      fr: "Veuillez indiquer la localité",
+      it: "Indichi la località",
+      rm: "Inditchez il lieu",
+      es: "Indique la localidad",
+    },
+  },
+  {
+    key: "shop.validation.field.cartEmpty",
+    area: "shop",
+    de: "Der Warenkorb ist leer",
+    texts: {
+      fr: "Le panier est vide",
+      it: "Il carrello è vuoto",
+      rm: "Il charret è vid",
+      es: "La cesta está vacía",
+    },
+  },
+  {
+    key: "shop.validation.field.maxQty",
+    area: "shop",
+    de: "Maximal {max} Stück pro Artikel.",
+    texts: {
+      fr: "Maximum {max} pièces par article.",
+      it: "Massimo {max} pezzi per articolo.",
+      rm: "Maximal {max} stucks per artitgel.",
+      es: "Máximo {max} unidades por artículo.",
+    },
+  },
+  {
+    key: "shop.validation.field.addressLabel",
+    area: "shop",
+    de: "Bitte Bezeichnung angeben (z. B. Zuhause)",
+    texts: {
+      fr: "Veuillez indiquer un libellé (p. ex. Domicile)",
+      it: "Indichi una denominazione (p. es. Casa)",
+      rm: "Inditchez in num (p. ex. Domicil)",
+      es: "Indique una denominación (p. ej. Casa)",
+    },
+  },
+  {
+    key: "shop.validation.field.addressId",
+    area: "shop",
+    de: "Ungültige Adresse.",
+    texts: {
+      fr: "Adresse non valide.",
+      it: "Indirizzo non valido.",
+      rm: "Adressa nun valida.",
+      es: "Dirección no válida.",
+    },
+  },
+  {
+    key: "shop.validation.field.consent",
+    area: "shop",
+    de: "Bitte akzeptieren Sie die AGB, um fortzufahren.",
+    texts: {
+      fr: "Veuillez accepter les CGV pour continuer.",
+      it: "Accetti le CGC per continuare.",
+      rm: "Acceptai las CGC per cuntinuar.",
+      es: "Acepte las condiciones para continuar.",
+    },
+  },
+  {
+    key: "shop.validation.field.loginEmail",
+    area: "shop",
+    de: "Bitte eine gültige E-Mail eingeben.",
+    texts: {
+      fr: "Veuillez saisir un e-mail valide.",
+      it: "Inserisca un'e-mail valida.",
+      rm: "Endatescha ina adressa e-mail valida.",
+      es: "Introduzca un correo electrónico válido.",
+    },
+  },
+  {
+    key: "shop.validation.field.loginPassword",
+    area: "shop",
+    de: "Bitte Passwort eingeben.",
+    texts: {
+      fr: "Veuillez saisir le mot de passe.",
+      it: "Inserisca la password.",
+      rm: "Endatescha la password.",
+      es: "Introduzca la contraseña.",
+    },
+  },
+  {
+    key: "shop.validation.field.reviewBody",
+    area: "shop",
+    de: "Bitte schreiben Sie ein paar Worte.",
+    texts: {
+      fr: "Veuillez écrire quelques mots.",
+      it: "Scriva qualche parola.",
+      rm: "Scriva in pèr pleds.",
+      es: "Escriba unas palabras.",
+    },
+  },
+  {
+    key: "shop.validation.password",
+    area: "shop",
+    de: "Das Passwort braucht mindestens {min} Zeichen, einen Buchstaben und eine Zahl.",
+    texts: {
+      fr: "Le mot de passe doit comporter au moins {min} caractères, une lettre et un chiffre.",
+      it: "La password deve contenere almeno {min} caratteri, una lettera e un numero.",
+      rm: "La password sto almain {min} caracters, in bustab ed ina cifra.",
+      es: "La contraseña debe tener al menos {min} caracteres, una letra y un número.",
+    },
+  },
+  {
+    key: "shop.validation.password.length",
+    area: "shop",
+    de: "Das Passwort braucht mindestens {min} Zeichen.",
+    texts: {
+      fr: "Le mot de passe doit comporter au moins {min} caractères.",
+      it: "La password deve contenere almeno {min} caratteri.",
+      rm: "La password sto almain {min} caracters.",
+      es: "La contraseña debe tener al menos {min} caracteres.",
+    },
+  },
+  {
+    key: "shop.validation.password.letterDigit",
+    area: "shop",
+    de: "Das Passwort braucht mindestens einen Buchstaben und eine Zahl.",
+    texts: {
+      fr: "Le mot de passe doit comporter au moins une lettre et un chiffre.",
+      it: "La password deve contenere almeno una lettera e un numero.",
+      rm: "La password sto almain in bustab ed ina cifra.",
+      es: "La contraseña debe tener al menos una letra y un número.",
+    },
+  },
+  {
+    key: "shop.action.loginRequired",
+    area: "shop",
+    de: "Bitte zuerst anmelden.",
+    texts: {
+      fr: "Veuillez d'abord vous connecter.",
+      it: "Si prega prima di accedere.",
+      rm: "Emprimamain s'annunzia.",
+      es: "Inicie sesión primero.",
+    },
+  },
+  {
+    key: "shop.action.invalidForm",
+    area: "shop",
+    de: "Ungültige Formular-Daten.",
+    texts: {
+      fr: "Données de formulaire non valides.",
+      it: "Dati del modulo non validi.",
+      rm: "Datas dal formular nun validas.",
+      es: "Datos del formulario no válidos.",
+    },
+  },
+  {
+    key: "shop.action.discountInvalid",
+    area: "shop",
+    de: "Dieser Gutscheincode ist ungültig.",
+    texts: {
+      fr: "Ce code promo est non valide.",
+      it: "Questo codice sconto non è valido.",
+      rm: "Quest code da reducziun nun è valid.",
+      es: "Este código de descuento no es válido.",
+    },
+  },
+  {
+    key: "shop.action.reviewLogin",
+    area: "shop",
+    de: "Bitte melden Sie sich an, um eine Bewertung zu schreiben.",
+    texts: {
+      fr: "Veuillez vous connecter pour écrire un avis.",
+      it: "Acceda per scrivere una recensione.",
+      rm: "S'annunzia per scriver ina evaluaziun.",
+      es: "Inicie sesión para escribir una reseña.",
+    },
+  },
+  {
+    key: "shop.action.orderAccessEmail",
+    area: "shop",
+    de: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+    texts: {
+      fr: "Veuillez saisir une adresse e-mail valide.",
+      it: "Inserisca un indirizzo e-mail valido.",
+      rm: "Endatescha ina adressa e-mail valida.",
+      es: "Introduzca una dirección de correo electrónico válida.",
+    },
+  },
+  {
+    key: "shop.discount.expired",
+    area: "shop",
+    de: "Dieser Gutscheincode ist ungültig oder abgelaufen.",
+    texts: {
+      fr: "Ce code promo est non valide ou expiré.",
+      it: "Questo codice sconto non è valido o scaduto.",
+      rm: "Quest code da reducziun nun è valid u scadì.",
+      es: "Este código de descuento no es válido o ha caducado.",
+    },
+  },
+  {
+    key: "shop.discount.minOrder",
+    area: "shop",
+    de: "Dieser Code gilt erst ab einem Warenkorb von {amount}.",
+    texts: {
+      fr: "Ce code s'applique à partir d'un panier de {amount}.",
+      it: "Questo codice vale da un carrello di {amount}.",
+      rm: "Quest code vala dapi in charret da {amount}.",
+      es: "Este código se aplica a partir de una cesta de {amount}.",
+    },
+  },
+  {
+    key: "shop.discount.exhausted",
+    area: "shop",
+    de: "Dieser Code ist bereits aufgebraucht.",
+    texts: {
+      fr: "Ce code est déjà épuisé.",
+      it: "Questo codice è già esaurito.",
+      rm: "Quest code è gia stà utilisà fin a la fin.",
+      es: "Este código ya se ha agotado.",
+    },
+  },
+  {
+    key: "shop.discount.usedAlready",
+    area: "shop",
+    de: "Sie haben diesen Code bereits verwendet.",
+    texts: {
+      fr: "Vous avez déjà utilisé ce code.",
+      it: "Ha già utilizzato questo codice.",
+      rm: "Avais gia utilisà quest code.",
+      es: "Ya ha utilizado este código.",
+    },
+  },
+  {
+    key: "shop.order.accessMismatch",
+    area: "shop",
+    de: "Bestellung und E-Mail-Adresse stimmen nicht überein.",
+    texts: {
+      fr: "La commande et l'adresse e-mail ne correspondent pas.",
+      it: "L'ordine e l'indirizzo e-mail non corrispondono.",
+      rm: "L'ordin e l'adressa e-mail nauschin.",
+      es: "El pedido y la dirección de correo electrónico no coinciden.",
+    },
+  },
+  {
+    key: "shop.order.accessThrottled",
+    area: "shop",
+    de: "Zu viele Fehlversuche. Bitte später erneut versuchen.",
+    texts: {
+      fr: "Trop de tentatives échouées. Veuillez réessayer plus tard.",
+      it: "Troppi tentativi falliti. Riprovi più tardi.",
+      rm: "Memia blers empruvaments fallids. Empruvai puspè pli tard.",
+      es: "Demasiados intentos fallidos. Inténtelo de nuevo más tarde.",
+    },
+  },
+  {
+    key: "shop.action.rateLimited",
+    area: "shop",
+    de: "Zu viele Bestellungen in kurzer Folge. Bitte in {seconds} Sekunden erneut versuchen.",
+    texts: {
+      fr: "Trop de commandes à la suite. Veuillez réessayer dans {seconds} secondes.",
+      it: "Troppi ordini a breve distanza. Riprovi tra {seconds} secondi.",
+      rm: "Memia blers ordins in suandar. Empruvai puspè en {seconds} secundas.",
+      es: "Demasiados pedidos seguidos. Inténtelo de nuevo en {seconds} segundos.",
+    },
+  },
+  {
+    key: "shop.meta.notFound.title",
+    area: "shop",
+    de: "Seite nicht gefunden",
+    texts: {
+      fr: "Page introuvable",
+      it: "Pagina non trovata",
+      rm: "Pagina betg chattada",
+      es: "Página no encontrada",
+    },
+  },
+  {
+    key: "shop.meta.notFound.description",
+    area: "shop",
+    de: "Diese Seite existiert nicht — zurück zum Start.",
+    texts: {
+      fr: "Cette page n'existe pas — retour au démarrage.",
+      it: "Questa pagina non esiste — ritorno all'avvio.",
+      rm: "Questa pagina n'existia betg — enavos a la pagina initiala.",
+      es: "Esta página no existe — volver al inicio.",
+    },
+  },
+];
+
+// Fixed machine-translation repairs (#58 review): the seed is insert-only (#14), so a
+// corrected default text would never reach a database seeded before the fix. This list
+// names exactly the (key, language) rows whose stored text still equals the flawed
+// machine translation — a text an admin has since edited is never touched. Not a
+// general update, the same discipline as RETIRED_TRANSLATION_KEYS.
+export const TRANSLATION_TEXT_REPAIRS: readonly {
+  key: string;
+  language: string;
+  from: string;
+  to: string;
+}[] = [
+  {
+    key: "shop.order.invoice.open",
+    language: "it",
+    from: "Aperto: {amount}",
+    to: "Resto: {amount}",
+  },
+  {
+    key: "shop.order.invoice.open",
+    language: "rm",
+    from: "Avert: {amount}",
+    to: "Restant: {amount}",
+  },
+  {
+    key: "shop.breadcrumbs.aria",
+    language: "es",
+    from: "Navegación de ruta de navegación",
+    to: "Miga de pan",
   },
 ];
 

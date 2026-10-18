@@ -1,70 +1,115 @@
 import { z } from "zod";
+import { interpolate, label } from "@/lib/i18n";
 import { MIN_PASSWORD_LENGTH, passwordRuleChecks } from "@/lib/password-rules";
 
 // Issue #39: customer account rules. The strength requirement is deliberately modest
 // (10 chars, letter + digit) — the rules themselves live in `src/lib/password-rules.ts`
 // so the live checklist (issue #60) and the server enforce exactly the same ones.
-export function validateCustomerPassword(password: string): string | null {
+// Issue #58 step 3 (server-messages slice): the message is a translation-table row
+// (`{min}` is MIN_PASSWORD_LENGTH), the rule stays the pure test.
+export function validateCustomerPassword(
+  password: string,
+  labels: Readonly<Record<string, string>>,
+): string | null {
   const checks = passwordRuleChecks("customer", password);
-  if (!checks.longEnough) return `Das Passwort braucht mindestens ${MIN_PASSWORD_LENGTH} Zeichen.`;
+  if (!checks.longEnough) {
+    return interpolate(label(labels, "shop.validation.password.length"), {
+      min: MIN_PASSWORD_LENGTH,
+    });
+  }
   if (!checks.hasLetter || !checks.hasDigit) {
-    return "Das Passwort braucht mindestens einen Buchstaben und eine Zahl.";
+    return interpolate(label(labels, "shop.validation.password.letterDigit"), {
+      min: MIN_PASSWORD_LENGTH,
+    });
   }
   return null;
 }
 
-export const registerFieldsSchema = z.object({
-  name: z.string().trim().min(2, "Bitte Namen angeben").max(100),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .pipe(z.email("Bitte gültige E-Mail angeben")),
-  password: z.string().refine(
-    (password) => validateCustomerPassword(password) === null,
-    "Das Passwort braucht mindestens 10 Zeichen, einen Buchstaben und eine Zahl.",
-  ),
-});
+function passwordSchema(labels: Readonly<Record<string, string>>) {
+  return z.string().refine(
+    (password) => validateCustomerPassword(password, labels) === null,
+    interpolate(label(labels, "shop.validation.password"), { min: MIN_PASSWORD_LENGTH }),
+  );
+}
+
+// The schemas are factories over the request language's label map (#58 server-messages
+// slice) — validation behaviour unchanged, only the messages follow the language. The
+// German bases are byte-identical to the literals these schemas carried.
+export function createRegisterFieldsSchema(labels: Readonly<Record<string, string>>) {
+  return z.object({
+    name: z.string().trim().min(2, label(labels, "shop.validation.field.name")).max(100),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.email(label(labels, "shop.validation.field.email"))),
+    password: passwordSchema(labels),
+  });
+}
 
 // `consent` is a real boolean — the form action converts the checkbox value before
 // handing the payload to the core.
-export const registerSchema = registerFieldsSchema.extend({
-  consent: z.literal(true, {
-    error: "Bitte akzeptieren Sie die AGB, um fortzufahren.",
-  }),
-});
+export function createRegisterSchema(labels: Readonly<Record<string, string>>) {
+  return createRegisterFieldsSchema(labels).extend({
+    consent: z.literal(true, {
+      error: label(labels, "shop.validation.field.consent"),
+    }),
+  });
+}
 
-export const customerLoginSchema = z.object({
-  email: z.email("Bitte eine gültige E-Mail eingeben."),
-  password: z.string().min(1, "Bitte Passwort eingeben."),
-});
+export function createCustomerLoginSchema(labels: Readonly<Record<string, string>>) {
+  return z.object({
+    email: z.email(label(labels, "shop.validation.field.loginEmail")),
+    password: z.string().min(1, label(labels, "shop.validation.field.loginPassword")),
+  });
+}
 
-export const passwordResetRequestSchema = z.object({
-  email: z.email("Bitte gültige E-Mail angeben"),
-});
+export function createPasswordResetRequestSchema(labels: Readonly<Record<string, string>>) {
+  return z.object({
+    email: z.email(label(labels, "shop.validation.field.email")),
+  });
+}
 
-export const passwordResetConfirmSchema = z.object({
-  token: z.string().min(10).max(200),
-  password: z.string().refine(
-    (password) => validateCustomerPassword(password) === null,
-    "Das Passwort braucht mindestens 10 Zeichen, einen Buchstaben und eine Zahl.",
-  ),
-});
+export function createPasswordResetConfirmSchema(labels: Readonly<Record<string, string>>) {
+  return z.object({
+    token: z.string().min(10).max(200),
+    password: passwordSchema(labels),
+  });
+}
 
-export const addressSchema = z.object({
-  label: z.string().trim().min(2, "Bitte Bezeichnung angeben (z. B. Zuhause)").max(60),
-  street: z.string().trim().min(3, "Bitte Strasse und Hausnummer angeben").max(120),
-  postalCode: z.string().trim().regex(/^\d{4}$/, "Bitte 4-stellige PLZ angeben"),
-  city: z.string().trim().min(2, "Bitte Ort angeben").max(80),
-  kind: z.enum(["shipping", "billing"]),
-  isDefault: z.boolean().default(false),
-});
+export function createAddressSchema(labels: Readonly<Record<string, string>>) {
+  return z.object({
+    label: z
+      .string()
+      .trim()
+      .min(2, label(labels, "shop.validation.field.addressLabel"))
+      .max(60),
+    street: z
+      .string()
+      .trim()
+      .min(3, label(labels, "shop.validation.field.street"))
+      .max(120),
+    postalCode: z
+      .string()
+      .trim()
+      .regex(/^\d{4}$/, label(labels, "shop.validation.field.postalCode")),
+    city: z.string().trim().min(2, label(labels, "shop.validation.field.city")).max(80),
+    kind: z.enum(["shipping", "billing"]),
+    isDefault: z.boolean().default(false),
+  });
+}
 
-export const addressIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "Ungültige Adresse.");
+export function createAddressIdSchema(labels: Readonly<Record<string, string>>) {
+  return z
+    .string()
+    .regex(/^[a-f\d]{24}$/i, label(labels, "shop.validation.field.addressId"));
+}
 
-export const claimOrderSchema = z.object({
-  orderNumber: z.string().trim().min(4).max(32),
-  email: z.email("Bitte gültige E-Mail angeben"),
-});
+export function createClaimOrderSchema(labels: Readonly<Record<string, string>>) {
+  return z.object({
+    orderNumber: z.string().trim().min(4).max(32),
+    email: z.email(label(labels, "shop.validation.field.email")),
+  });
+}
 
-export type AddressInput = z.infer<typeof addressSchema>;
+export type AddressInput = z.infer<ReturnType<typeof createAddressSchema>>;

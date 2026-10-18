@@ -37,7 +37,7 @@ export function DiscountInput({
     startTransition(async () => {
       const result = await validateDiscountAction(trimmed, subtotalCents);
       if (!result.ok) {
-        setError(result.error ?? "Dieser Gutscheincode ist ungültig.");
+        setError(result.error ?? label(labels, "shop.action.discountInvalid"));
         return;
       }
       setDiscountCode(trimmed);

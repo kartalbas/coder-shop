@@ -1,9 +1,11 @@
 import mongoose, { type ClientSession } from "mongoose";
 import { discountForSubtotal, isDiscountInWindow, type DiscountDef } from "@/lib/discounts";
 import { formatChf } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
 import { DiscountCodeModel, type DiscountCode } from "@/models/discount-code";
 import { DiscountUsageModel } from "@/models/discount-usage";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 
 // Discount codes at the server boundary (issue #45). The money math is pure
 // (lib/discounts); this module answers "may this code still be used" and books the
@@ -44,29 +46,37 @@ export async function checkDiscountCore(
   now = new Date(),
   session?: ClientSession,
 ): Promise<DiscountCheck> {
+  // #58: refusals are answered in the request language — the texts are table rows, the
+  // {amount} value is formatted with the base-locale formatters (invoice/admin side).
+  const labels = await getRequestLabels();
   const code = normalizeDiscountCode(rawCode);
-  const invalid = { ok: false as const, error: "Dieser Gutscheincode ist ungültig." };
+  const invalid = {
+    ok: false as const,
+    error: label(labels, "shop.action.discountInvalid"),
+  };
   if (!code) return invalid;
   const doc = await DiscountCodeModel.findOne({ code }).session(session ?? null).lean<DiscountCode>().exec();
   if (!doc || !isDiscountInWindow(doc, now)) {
-    return { ok: false, error: "Dieser Gutscheincode ist ungültig oder abgelaufen." };
+    return { ok: false, error: label(labels, "shop.discount.expired") };
   }
   const discountCents = discountForSubtotal(subtotalCents, discountDef(doc));
   if (discountCents === 0) {
     return {
       ok: false,
-      error: `Dieser Code gilt erst ab einem Warenkorb von ${formatChf(doc.minOrderCents)}.`,
+      error: interpolate(label(labels, "shop.discount.minOrder"), {
+        amount: formatChf(doc.minOrderCents),
+      }),
     };
   }
   if (doc.usageLimit !== undefined && doc.usedCount >= doc.usageLimit) {
-    return { ok: false, error: "Dieser Code ist bereits aufgebraucht." };
+    return { ok: false, error: label(labels, "shop.discount.exhausted") };
   }
   if (doc.perCustomerOnce && customerKey) {
     const used = await DiscountUsageModel.findById(`${doc.code}|${customerKey}`)
       .session(session ?? null)
       .lean()
       .exec();
-    if (used) return { ok: false, error: "Sie haben diesen Code bereits verwendet." };
+    if (used) return { ok: false, error: label(labels, "shop.discount.usedAlready") };
   }
   return { ok: true, discountCents, doc };
 }
@@ -81,6 +91,7 @@ export async function redeemDiscount(
   orderNumber: string,
   session: ClientSession,
 ): Promise<void> {
+  const labels = await getRequestLabels();
   const limitGuard =
     doc.usageLimit === undefined ? {} : { usedCount: { $lt: doc.usageLimit } };
   const inc = await DiscountCodeModel.updateOne(
@@ -89,7 +100,7 @@ export async function redeemDiscount(
     { session },
   );
   if (inc.modifiedCount === 0) {
-    throw new DiscountRejectedError("Dieser Code ist bereits aufgebraucht.");
+    throw new DiscountRejectedError(label(labels, "shop.discount.exhausted"));
   }
   if (doc.perCustomerOnce) {
     try {
@@ -107,7 +118,7 @@ export async function redeemDiscount(
       );
     } catch (error) {
       if ((error as { code?: number }).code === 11000) {
-        throw new DiscountRejectedError("Sie haben diesen Code bereits verwendet.");
+        throw new DiscountRejectedError(label(labels, "shop.discount.usedAlready"));
       }
       throw error;
     }

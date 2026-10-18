@@ -735,7 +735,9 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `server/customers.ts` now reads `CUSTOMER_REGISTER_LIMIT_PER_HOUR` (default 5) and
   `CUSTOMER_RESET_LIMIT_PER_HOUR` (default 3) — production behaviour unchanged; the
   e2e global setup raises the register limit for its own server. A ceiling the suite
-  has to budget around is a missing configuration, not a test bug.
+  has to budget around is a missing configuration, not a test bug. The checkout
+  ceiling followed the same path (`CHECKOUT_LIMIT_PER_10_MIN`, default 10) when the
+  growing number of completing specs hit it from the one suite IP.
 - **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin
   editor, step 2's routing/switcher/hreflang, step 2b's locale-parameterized formats
   and step 3's first slice (label plumbing + header/footer chrome) are done; the rest
@@ -748,3 +750,25 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   A required prop would have forced German rows through the admin or a premature
   switcher; a context would hide the data flow. The status keys are derived from the
   state-machine statuses, so a new status is a row, never a code branch.
+- **Customer-facing validation is a schema factory over the request language's label
+  map (#58 step 3, server-messages slice).** The zod schemas of the checkout and
+  account flows became pure factories (`createCheckoutSchema(labels)`, …): validation
+  behaviour unchanged, only the messages come from the table, and the German bases are
+  byte-identical to the literals they replaced. A shared mutable schema swapped per
+  request was rejected — it would race between concurrent requests; a factory keeps
+  the lib pure and the language explicit. Server actions and the cores they call
+  resolve the language through `getRequestLanguage()`/`getRequestLabels()`
+  (`server/i18n`): the `lang` cookie the proxy writes, then `Accept-Language`, then
+  the first active row — the proxy's precedence reused, not re-spelled; outside a
+  request scope (tests, scripts) the first active language answers, which keeps every
+  existing German test green. `checkout-form.tsx` builds its client-side schema from
+  the same label map the page renders, so field errors match the page language before
+  a submit. Admin validations and core error texts stay German until their slices.
+- **Corrected machine-translation rows reach old databases through a fixed seed
+  repair (#58 review).** The insert-only seed (#14) never updates an existing row, so
+  a fixed default text (the it „Aperto" → „Resto", rm „Avert" → „Restant", es
+  breadcrumbs aria) would stay wrong wherever it was seeded before the fix.
+  `TRANSLATION_TEXT_REPAIRS` lists exactly the (key, language, flawed text) triples
+  and the seed's `repairTranslationTexts` step updates a row only while its stored
+  text still equals the flawed one — an admin's edit of that row is never
+  overwritten. Same fixed-migration discipline as `RETIRED_TRANSLATION_KEYS`.
