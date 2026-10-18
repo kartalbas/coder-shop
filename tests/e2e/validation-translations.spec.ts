@@ -163,15 +163,16 @@ test("the restock form refuses an invalid e-mail in French", async ({ page }) =>
   // the test drives the action's zod refusal, so the form's native validation is
   // switched off (relaxing the input type does not hold: React restores it on the
   // next controlled render).
-  await emailInput.evaluate((el) => el.form?.setAttribute("novalidate", ""));
+  await emailInput.evaluate((el: HTMLElement) => el.closest("form")?.setAttribute("novalidate", ""));
   await emailInput.fill("pas-un-email");
   await page.getByRole("button", { name: "M'avertir" }).click();
   // The refusal arrives as a toast (same shape the #46 restock spec asserts), not an
-  // inline alert — sonner renders it in its notification region.
-  await expect(page.getByText("Veuillez indiquer une adresse e-mail valide")).toBeVisible({
+  // inline alert — asserted on the suite's established sonner toast region.
+  const toast = page.locator("[data-sonner-toast]");
+  await expect(toast.filter({ hasText: "Veuillez indiquer une adresse e-mail valide" })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText("Bitte eine gültige E-Mail-Adresse")).toHaveCount(0);
+  await expect(toast.filter({ hasText: "Bitte eine gültige E-Mail-Adresse" })).toHaveCount(0);
 });
 
 test("unmatched URLs and unknown products answer the global 404 in French", async ({
