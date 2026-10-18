@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { interpolate, label } from "@/lib/i18n";
 import { absoluteUrl } from "@/lib/site";
 import {
   createAddressSchema,
@@ -36,22 +37,29 @@ export function resetCustomerRateLimits(): void {
 
 export type CustomerAuthResult =
   | { ok: true; userId: string; email: string; name: string }
-  | { ok: false; error: string };
+  // `reason` lets callers branch on the refusal without matching its (now localized)
+  // text — the register form highlights the e-mail field on "emailTaken" (#60).
+  | { ok: false; error: string; reason?: "emailTaken" };
 
 export async function registerCustomerCore(
   input: unknown,
   opts: { ip?: string } = {},
 ): Promise<CustomerAuthResult> {
+  // #58: every refusal of this core answers in the request language — the rows are
+  // process-cached, so resolving them up front costs no I/O inside the flow.
+  const labels = await getRequestLabels();
   const limit = registerLimit.check(opts.ip ?? "local");
   if (!limit.allowed) {
     return {
       ok: false,
-      error: `Zu viele Registrierungen in kurzer Folge. Bitte in ${limit.retryInSeconds} Sekunden erneut versuchen.`,
+      error: interpolate(label(labels, "shop.account.error.registerThrottled"), {
+        seconds: limit.retryInSeconds,
+      }),
     };
   }
-  const parsed = createRegisterSchema(await getRequestLabels()).safeParse(input);
+  const parsed = createRegisterSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? label(labels, "shop.action.invalidForm") };
   }
   const email = parsed.data.email.trim().toLowerCase();
 
@@ -60,7 +68,7 @@ export async function registerCustomerCore(
   if (existing) {
     // Registration must tell the user the address is taken — that is the accepted
     // trade-off for a usable sign-up form (recorded in DECISIONS).
-    return { ok: false, error: "Diese E-Mail-Adresse ist bereits registriert." };
+    return { ok: false, error: label(labels, "shop.account.error.emailTaken"), reason: "emailTaken" };
   }
 
   let passwordHash: string;
@@ -68,7 +76,7 @@ export async function registerCustomerCore(
     passwordHash = await scryptLimiter.run(() => hashPassword(parsed.data.password));
   } catch (error) {
     if (error instanceof LimiterBusyError) {
-      return { ok: false, error: "Zu viele gleichzeitige Registrierungen. Bitte gleich erneut versuchen." };
+      return { ok: false, error: label(labels, "shop.account.error.registerBusy") };
     }
     throw error;
   }
@@ -89,19 +97,24 @@ export function hashResetToken(token: string): string {
 
 export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
-export const RESET_SENT = "Falls die Adresse registriert ist, senden wir ihr einen Link zum Passwort-Zurücksetzen.";
-
 // Always answers the same sentence — the response must not reveal whether the e-mail
 // belongs to an account.
+export function resetSentMessage(labels: Readonly<Record<string, string>>): string {
+  return label(labels, "shop.account.error.resetSent");
+}
+
 export async function requestPasswordResetCore(
   email: string,
   opts: { ip?: string } = {},
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const labels = await getRequestLabels();
   const limit = resetRequestLimit.check(opts.ip ?? "local");
   if (!limit.allowed) {
     return {
       ok: false,
-      error: `Zu viele Anfragen. Bitte in ${limit.retryInSeconds} Sekunden erneut versuchen.`,
+      error: interpolate(label(labels, "shop.account.error.resetThrottled"), {
+        seconds: limit.retryInSeconds,
+      }),
     };
   }
   await connectDB();
@@ -129,9 +142,10 @@ export async function resetPasswordCore(
   token: string,
   newPassword: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const invalid = { ok: false as const, error: "Der Link ist ungültig oder abgelaufen." };
+  const labels = await getRequestLabels();
+  const invalid = { ok: false as const, error: label(labels, "shop.account.error.resetLinkInvalid") };
   if (!token) return invalid;
-  const passwordError = validateCustomerPassword(newPassword, await getRequestLabels());
+  const passwordError = validateCustomerPassword(newPassword, labels);
   if (passwordError) return { ok: false, error: passwordError };
 
   await connectDB();
@@ -204,18 +218,25 @@ function applyDefault(addresses: CustomerAddress[], saved: CustomerAddress): voi
   }
 }
 
+// One customer carries a bounded address book; the ceiling shows up in the refusal
+// text as {max}, so the number keeps its single source here.
+const MAX_ADDRESSES_PER_CUSTOMER = 10;
+
 export async function saveAddressCore(
   userId: string,
   input: unknown,
   addressId?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const parsed = createAddressSchema(await getRequestLabels()).safeParse(input);
+  const labels = await getRequestLabels();
+  const parsed = createAddressSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? label(labels, "shop.action.invalidForm") };
   }
   await connectDB();
   const user = await UserModel.findById(userId).exec();
-  if (!user || user.role !== "customer") return { ok: false, error: "Konto nicht gefunden." };
+  if (!user || user.role !== "customer") {
+    return { ok: false, error: label(labels, "shop.account.error.notFound") };
+  }
 
   const data = normalizeAddress(parsed.data);
   const addresses = user.addresses as unknown as (CustomerAddress & {
@@ -223,11 +244,18 @@ export async function saveAddressCore(
   })[];
   if (addressId) {
     const address = addresses.find((entry) => entry._id.toString() === addressId);
-    if (!address) return { ok: false, error: "Adresse nicht gefunden." };
+    if (!address) return { ok: false, error: label(labels, "shop.account.error.addressNotFound") };
     Object.assign(address, data);
     applyDefault(addresses, address);
   } else {
-    if (addresses.length >= 10) return { ok: false, error: "Maximal 10 Adressen." };
+    if (addresses.length >= MAX_ADDRESSES_PER_CUSTOMER) {
+      return {
+        ok: false,
+        error: interpolate(label(labels, "shop.account.error.addressLimit"), {
+          max: MAX_ADDRESSES_PER_CUSTOMER,
+        }),
+      };
+    }
     addresses.push(data as (typeof addresses)[number]);
     applyDefault(addresses, addresses[addresses.length - 1]);
   }
@@ -239,13 +267,18 @@ export async function deleteAddressCore(
   userId: string,
   addressId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const labels = await getRequestLabels();
   await connectDB();
   const user = await UserModel.findById(userId).exec();
-  if (!user || user.role !== "customer") return { ok: false, error: "Konto nicht gefunden." };
+  if (!user || user.role !== "customer") {
+    return { ok: false, error: label(labels, "shop.account.error.notFound") };
+  }
   const addresses = user.addresses as unknown as { _id: { toString(): string } }[];
   const before = addresses.length;
   user.addresses = addresses.filter((address) => address._id.toString() !== addressId);
-  if (user.addresses.length === before) return { ok: false, error: "Adresse nicht gefunden." };
+  if (user.addresses.length === before) {
+    return { ok: false, error: label(labels, "shop.account.error.addressNotFound") };
+  }
   await user.save();
   return { ok: true };
 }
@@ -255,13 +288,16 @@ export async function claimOrderCore(
   userId: string,
   input: unknown,
 ): Promise<{ ok: true; orderNumber: string } | { ok: false; error: string }> {
-  const parsed = createClaimOrderSchema(await getRequestLabels()).safeParse(input);
+  const labels = await getRequestLabels();
+  const parsed = createClaimOrderSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben." };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? label(labels, "shop.action.invalidForm") };
   }
   await connectDB();
   const user = await UserModel.findById(userId).select("email role").lean().exec();
-  if (!user || user.role !== "customer") return { ok: false, error: "Konto nicht gefunden." };
+  if (!user || user.role !== "customer") {
+    return { ok: false, error: label(labels, "shop.account.error.notFound") };
+  }
 
   const order = await OrderModel.findOne({
     orderNumber: parsed.data.orderNumber.toUpperCase(),
@@ -269,13 +305,13 @@ export async function claimOrderCore(
     .select("orderNumber userId customer.email")
     .exec();
   if (!order) {
-    return { ok: false, error: "Bestellung nicht gefunden. Bitte Nummer prüfen." };
+    return { ok: false, error: label(labels, "shop.account.error.orderNotFound") };
   }
   if (order.userId && !order.userId.equals(user._id)) {
-    return { ok: false, error: "Diese Bestellung gehört bereits einem anderen Konto." };
+    return { ok: false, error: label(labels, "shop.account.error.orderClaimed") };
   }
   if (order.customer.email.trim().toLowerCase() !== user.email) {
-    return { ok: false, error: "Die E-Mail der Bestellung stimmt nicht mit Ihrem Konto überein." };
+    return { ok: false, error: label(labels, "shop.account.error.orderEmailMismatch") };
   }
   order.userId = user._id;
   await order.save();

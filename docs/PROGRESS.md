@@ -2036,3 +2036,35 @@ Done — M1–M6 + QA complete.
   core error texts, no-German-literals guard; step 4 remainder (needs-review filter,
   usage context, inline editing, change history); step 5 remainder (translatable
   catalog content + five-language demo content).
+
+## ISSUES — queue session 28 (2026-10-18)
+
+### Gate report finding — the French restock refusal never reached the server ✅ fixed
+- **Reproduced** `validation-translations.spec.ts` "the restock form refuses an
+  invalid e-mail in French": no toast ever appeared. Root cause was the test, not
+  the app — it relaxed the input to `type="text"` to bypass native e-mail
+  validation, but React restores the controlled `type` on the next render, so the
+  browser blocked the submit and the server action never ran. The spec now sets
+  `novalidate` on the form (React does not manage that attribute) and asserts the
+  refusal as the sonner toast text the form actually renders.
+- **Core-error slice (#58 step 3, the WIP the review session left uncommitted —
+  finished and committed here):** the customer-facing cores (register, reset,
+  addresses, order claim, checkout, reviews, restock) answer their refusals from
+  the translation table in the request language; German bases byte-identical.
+  The register core returns `reason: "emailTaken"` so the form highlights the
+  e-mail field without matching localized text (#60); the address ceiling became
+  `MAX_ADDRESSES_PER_CUSTOMER` with `{max}` in the text; `RESET_SENT` became
+  `resetSentMessage(labels)`. New rows `shop.account.error.*`,
+  `shop.account.claim.success`, `shop.checkout.error.*`, `shop.review.error.*`,
+  `shop.restock.error.*` in all five languages.
+- **Tests:** `tests/core-error-messages.test.ts` (integration tests: French +
+  byte-identical German refusals through the real cores, `{sku}`/`{max}`
+  interpolation, the machine-readable reason) and +2 e2e (French duplicate-
+  registration refusal, French restock toast) — all fail on the pre-change build.
+- **Gate:** `npm run build`/lint ✅, `npm test` ✅ 609, `npm run test:e2e` ✅
+  90/90; tree clean, nothing running.
+- **Left open (#58):** unchanged — admin strings + admin language switcher,
+  mail/invoice/slip/label texts in the recipient's language, no-German-literals
+  guard; step 4 remainder (needs-review filter, usage context, inline editing,
+  change history); step 5 remainder (translatable catalog content + five-language
+  demo content).

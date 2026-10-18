@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import mongoose, { type ClientSession } from "mongoose";
+import { interpolate, label } from "@/lib/i18n";
 import { DEFAULT_CREDIT_LIMIT_CENTS, invoiceDueAt, qrReferenceForOrder } from "@/lib/invoices";
 import { formatOrderNumber, formatPaymentReference } from "@/lib/numbers";
 import { transition, type OrderStatus } from "@/lib/orders/state-machine";
@@ -402,7 +403,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Waits for the winning submission to record its order; null once the claim is gone
 // (the winner failed and released it, so this call may claim and run itself).
-async function resolveExistingClaim(key: string): Promise<CreateOrderResult | null> {
+async function resolveExistingClaim(
+  key: string,
+  labels: Readonly<Record<string, string>>,
+): Promise<CreateOrderResult | null> {
   for (let poll = 0; poll < 40; poll++) {
     const claim = await CheckoutClaimModel.findById(key).lean().exec();
     if (!claim) return null;
@@ -417,7 +421,7 @@ async function resolveExistingClaim(key: string): Promise<CreateOrderResult | nu
   }
   return {
     ok: false,
-    error: "Diese Bestellung wird bereits verarbeitet. Bitte prüfen Sie Ihre Bestellungen.",
+    error: label(labels, "shop.checkout.error.inFlight"),
   };
 }
 
@@ -430,6 +434,7 @@ async function runClaimedCheckout(
   settings: ShopSettings,
   userId: string | undefined,
   discountCode: string | undefined,
+  labels: Readonly<Record<string, string>>,
 ): Promise<CreateOrderResult> {
   const release = () => CheckoutClaimModel.deleteOne({ _id: key }).catch(() => {});
 
@@ -462,7 +467,9 @@ async function runClaimedCheckout(
       if (error instanceof InsufficientStockError || error instanceof NotEnoughUnitsError) {
         return {
           ok: false,
-          error: `Nicht genügend Lager für ${error.sku}. Bitte Menge reduzieren.`,
+          error: interpolate(label(labels, "shop.checkout.error.outOfStock"), {
+            sku: error.sku,
+          }),
         };
       }
       if (error instanceof PriceChangedError) {
@@ -470,7 +477,7 @@ async function runClaimedCheckout(
           ok: false,
           reason: "price_changed",
           changed: error.changed,
-          error: "Ein Preis hat sich geändert. Bitte prüfen Sie die neue Summe und bestätigen Sie erneut.",
+          error: label(labels, "shop.checkout.error.priceChanged"),
         };
       }
       if (error instanceof InvoiceNotEligibleError) {
@@ -478,8 +485,8 @@ async function runClaimedCheckout(
           ok: false,
           error:
             error.reason === "no_account"
-              ? "Rechnung ist nur für registrierte Kunden möglich. Bitte anmelden oder eine andere Zahlungsart wählen."
-              : "Das Kreditlimit für Rechnungszahlung ist erreicht. Bitte eine andere Zahlungsart wählen.",
+              ? label(labels, "shop.checkout.error.invoiceGuestOnly")
+              : label(labels, "shop.checkout.error.invoiceCreditExhausted"),
         };
       }
       // Issue #45: a rejected code is a clean user error, not a retryable failure.
@@ -492,7 +499,7 @@ async function runClaimedCheckout(
       }
       return {
         ok: false,
-        error: "Bestellung konnte nicht erstellt werden. Bitte erneut versuchen.",
+        error: label(labels, "shop.checkout.error.failed"),
       };
     } finally {
       session.endSession();
@@ -505,10 +512,12 @@ export async function createOrderCore(
   opts: { userId?: string } = {},
 ): Promise<CreateOrderResult> {
   // #58: the payload is validated with the request language's messages (outside a
-  // request scope — tests, scripts — the first active language answers).
-  const parsed = createCheckoutSchema(await getRequestLabels()).safeParse(input);
+  // request scope — tests, scripts — the first active language answers), and every
+  // refusal below resolves through the same label map.
+  const labels = await getRequestLabels();
+  const parsed = createCheckoutSchema(labels).safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Ungültige Eingaben" };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? label(labels, "shop.action.invalidForm") };
   }
   const { lines, customer, shippingMethod, paymentMethod, discountCode } = parsed.data;
   const normalizedCode = discountCode ? normalizeDiscountCode(discountCode) : undefined;
@@ -520,17 +529,17 @@ export async function createOrderCore(
   const settings = await getShopSettings();
   const shipping = activeShippingMethods(settings).find((method) => method.key === shippingMethod);
   if (!shipping) {
-    return { ok: false, error: "Diese Versandart ist nicht mehr verfügbar. Bitte neu laden." };
+    return { ok: false, error: label(labels, "shop.checkout.error.shippingGone") };
   }
   const payment = activePaymentMethods(settings).find((method) => method.key === paymentMethod);
   if (!payment) {
-    return { ok: false, error: "Diese Zahlungsart ist nicht mehr verfügbar. Bitte neu laden." };
+    return { ok: false, error: label(labels, "shop.checkout.error.paymentGone") };
   }
   if (payment.kind === "on_pickup" && !shipping.storePickup) {
-    return { ok: false, error: "Bezahlung bei Abholung ist nur mit Abholung im Laden möglich." };
+    return { ok: false, error: label(labels, "shop.checkout.error.payAtPickupNeedsPickup") };
   }
   if (payment.kind === "invoice" && shipping.storePickup) {
-    return { ok: false, error: "Rechnung ist nur bei Lieferung möglich." };
+    return { ok: false, error: label(labels, "shop.checkout.error.invoiceNeedsDelivery") };
   }
 
   const bySku = mergeLines(lines);
@@ -550,9 +559,9 @@ export async function createOrderCore(
       await CheckoutClaimModel.create({ _id: key });
     } catch (error) {
       if (!isDuplicateKeyError(error)) {
-        return { ok: false, error: "Bestellung konnte nicht erstellt werden. Bitte erneut versuchen." };
+        return { ok: false, error: label(labels, "shop.checkout.error.failed") };
       }
-      const existing = await resolveExistingClaim(key);
+      const existing = await resolveExistingClaim(key, labels);
       if (existing) return existing;
       continue;
     }
@@ -565,10 +574,11 @@ export async function createOrderCore(
       settings,
       opts.userId,
       normalizedCode,
+      labels,
     );
   }
   return {
     ok: false,
-    error: "Diese Bestellung wird bereits verarbeitet. Bitte prüfen Sie Ihre Bestellungen.",
+    error: label(labels, "shop.checkout.error.inFlight"),
   };
 }

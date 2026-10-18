@@ -14,15 +14,15 @@ import {
   validateCustomerPassword,
 } from "@/lib/validations/account";
 import { fieldErrorsFrom } from "@/lib/validations/common";
-import { label } from "@/lib/i18n";
+import { interpolate, label } from "@/lib/i18n";
 import { getRequestLabels } from "@/server/i18n";
 import {
   claimOrderCore,
   deleteAddressCore,
   registerCustomerCore,
   requestPasswordResetCore,
-  RESET_SENT,
   resetPasswordCore,
+  resetSentMessage,
   saveAddressCore,
 } from "@/server/customers";
 import {
@@ -84,8 +84,9 @@ export async function registerAction(
     { ip: await clientIp() },
   );
   if (!result.ok) {
-    // The e-mail is the field the user can still correct here (issue #60).
-    const isEmailTaken = result.error.includes("E-Mail");
+    // The e-mail is the field the user can still correct here (issue #60) — the core
+    // says so through its machine-readable reason, not through the localized text.
+    const isEmailTaken = result.reason === "emailTaken";
     return {
       ok: false,
       error: result.error,
@@ -135,7 +136,7 @@ export async function passwordResetRequestAction(
   }
   const result = await requestPasswordResetCore(parsed.data.email, { ip: await clientIp() });
   if (!result.ok) return { ok: false, error: result.error };
-  return { ok: true, message: RESET_SENT };
+  return { ok: true, message: resetSentMessage(labels) };
 }
 
 export async function passwordResetConfirmAction(
@@ -147,7 +148,7 @@ export async function passwordResetConfirmAction(
   if (!parsed.success) return invalidForm(parsed.error, labels);
   const result = await resetPasswordCore(parsed.data.token, parsed.data.password);
   if (!result.ok) return { ok: false, error: result.error };
-  return { ok: true, message: "Das Passwort wurde geändert. Sie können sich jetzt anmelden." };
+  return { ok: true, message: label(labels, "shop.account.error.passwordChanged") };
 }
 
 export async function claimOrderAction(
@@ -163,7 +164,12 @@ export async function claimOrderAction(
   }
   const result = await claimOrderCore(userId, parsed.data);
   if (!result.ok) return { ok: false, error: result.error };
-  return { ok: true, message: `Bestellung ${result.orderNumber} wurde Ihrem Konto hinzugefügt.` };
+  return {
+    ok: true,
+    message: interpolate(label(labels, "shop.account.claim.success"), {
+      number: result.orderNumber,
+    }),
+  };
 }
 
 export async function saveAddressAction(
@@ -188,7 +194,7 @@ export async function saveAddressAction(
   }
   const result = await saveAddressCore(userId, parsed.data, addressId);
   if (!result.ok) return { ok: false, error: result.error };
-  return { ok: true, message: "Adresse gespeichert." };
+  return { ok: true, message: label(labels, "shop.account.address.saved") };
 }
 
 export async function deleteAddressAction(formData: FormData): Promise<void> {

@@ -1,8 +1,10 @@
+import { label } from "@/lib/i18n";
 import { ProductModel, type Product } from "@/models/product";
 import { RestockAlertModel } from "@/models/restock-alert";
 import { restockAlertMail } from "@/lib/mail-templates";
 import { absoluteUrl } from "@/lib/site";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 import { sendMail } from "./mail";
 
 // Back-in-stock alerts (issue #46): customers leave an e-mail for a sold-out variant;
@@ -18,14 +20,15 @@ export async function subscribeRestockAlertCore(
   sku: string,
   email: string,
 ): Promise<SubscribeResult> {
+  const labels = await getRequestLabels();
   await connectDB();
   const product = await ProductModel.findOne({ "variants.sku": sku })
     .select("slug variants")
     .lean<Product>()
     .exec();
-  if (!product) return { ok: false, error: "Artikel nicht gefunden." };
+  if (!product) return { ok: false, error: label(labels, "shop.restock.error.notFound") };
   const variant = product.variants.find((v) => v.sku === sku);
-  if (!variant) return { ok: false, error: "Artikel nicht gefunden." };
+  if (!variant) return { ok: false, error: label(labels, "shop.restock.error.notFound") };
   if (variant.stock > 0) return { ok: true, inStock: true };
 
   const normalized = email.trim().toLowerCase();

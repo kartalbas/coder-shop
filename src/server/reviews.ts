@@ -1,10 +1,12 @@
 import { Types } from "mongoose";
+import { label } from "@/lib/i18n";
 import { ProductModel } from "@/models/product";
 import { ReviewModel, type Review } from "@/models/review";
 import { UserModel } from "@/models/user";
 import { OrderModel } from "@/models/order";
 import { aggregateRating, PURCHASED_ORDER_STATUS_LIST, type ReviewStatus } from "@/lib/reviews";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 
 // Product reviews (issue #47). Only customers who bought the product may submit a
 // review (verified purchase), new reviews are `pending` until an admin moderates
@@ -87,16 +89,19 @@ export interface SubmitReviewInput {
 export async function submitReviewCore(
   input: SubmitReviewInput,
 ): Promise<ReviewResult & { slug?: string }> {
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!Types.ObjectId.isValid(input.productId)) return { ok: false, error: "Produkt nicht gefunden." };
+  if (!Types.ObjectId.isValid(input.productId)) {
+    return { ok: false, error: label(labels, "shop.review.error.productNotFound") };
+  }
   const product = await ProductModel.findById(input.productId).select("slug").lean().exec();
-  if (!product) return { ok: false, error: "Produkt nicht gefunden." };
+  if (!product) return { ok: false, error: label(labels, "shop.review.error.productNotFound") };
 
   if (!(await hasPurchasedCore(input.userId, input.productId))) {
-    return { ok: false, error: "Bewerten können nur Kundinnen und Kunden, die dieses Produkt gekauft haben." };
+    return { ok: false, error: label(labels, "shop.review.error.buyersOnly") };
   }
   const user = await UserModel.findById(input.userId).select("name").lean().exec();
-  if (!user) return { ok: false, error: "Konto nicht gefunden." };
+  if (!user) return { ok: false, error: label(labels, "shop.review.error.accountNotFound") };
 
   try {
     await ReviewModel.create({
@@ -111,7 +116,7 @@ export async function submitReviewCore(
   } catch (error) {
     // The unique (productId, userId) index makes the double-review race safe.
     if ((error as { code?: number }).code === 11000) {
-      return { ok: false, error: "Sie haben dieses Produkt bereits bewertet." };
+      return { ok: false, error: label(labels, "shop.review.error.alreadyReviewed") };
     }
     throw error;
   }

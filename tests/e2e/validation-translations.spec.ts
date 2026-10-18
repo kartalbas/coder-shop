@@ -92,6 +92,88 @@ test("the localized 404 page carries the French title", async ({ page }) => {
   );
 });
 
+test("a duplicate registration is refused in French", async ({ page }) => {
+  test.setTimeout(150_000);
+
+  // #58 core-error slice: the register core answers its refusals from the table —
+  // pre-change this was the hard-coded German "Diese E-Mail-Adresse ist bereits
+  // registriert." on every language.
+  const email = "dup.validation@example.ch";
+  await page.goto("/fr/account/register");
+  await page.fill("#name", "Léa Dup");
+  await page.fill("#email", email);
+  await page.fill("#password", "Sicheres123!");
+  await page.locator("#consent").check();
+  await page.getByRole("button", { name: "Créer un compte" }).click();
+  // The action redirect is a client-side navigation — the URL keeps the language it
+  // rendered in (html lang="fr"), the prefix itself is not re-added until the next
+  // document request; the German portal spec asserts the same shape.
+  await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
+
+  // A second, logged-out attempt with the same address gets the French refusal.
+  const other = await page.context().browser()!.newContext();
+  const foreign = await other.newPage();
+  await foreign.goto("/fr/account/register");
+  await foreign.fill("#name", "Léa Bis");
+  await foreign.fill("#email", email);
+  await foreign.fill("#password", "Sicheres123!");
+  await foreign.locator("#consent").check();
+  await foreign.getByRole("button", { name: "Créer un compte" }).click();
+  await expect(foreign.getByRole("alert").filter({ hasText: "déjà enregistrée" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(foreign.getByText("bereits registriert")).toHaveCount(0);
+  await other.close();
+});
+
+test("the restock form refuses an invalid e-mail in French", async ({ page }) => {
+  test.setTimeout(150_000);
+
+  // The back-in-stock form lives on the public product page; its zod message is a
+  // table row now (pre-change: German on every language).
+  let target: { slug: string; attributes: Record<string, string | number> } | null = null;
+  for (const type of ["smartphone", "shoes", "clothing"]) {
+    const response = await page.request.get(`/api/products?type=${type}`);
+    expect(response.ok()).toBeTruthy();
+    const body = (await response.json()) as {
+      items: { slug: string; variants: { stock: number; attributes: Record<string, string | number> }[] }[];
+    };
+    for (const item of body.items) {
+      const variant = item.variants.find((v) => v.stock === 0);
+      if (variant) {
+        target = { slug: item.slug, attributes: variant.attributes };
+        break;
+      }
+    }
+    if (target) break;
+  }
+  test.skip(target === null, "seed has no sold-out variant");
+
+  await page.goto(`/fr/products/${target!.slug}`);
+  // Variant attribute values are catalog content (step 5) — still German everywhere,
+  // so the picker buttons are addressed by their value text.
+  for (const [group, value] of Object.entries(target!.attributes)) {
+    const display = group === "storage" ? `${value} GB` : String(value);
+    await page.getByRole("button", { name: display, exact: true }).first().click();
+  }
+
+  const emailInput = page.getByLabel(/e-mail pour l'avertissement/i);
+  await expect(emailInput).toBeVisible({ timeout: 30_000 });
+  // The browser's own e-mail validation must not answer before the server action —
+  // the test drives the action's zod refusal, so the form's native validation is
+  // switched off (relaxing the input type does not hold: React restores it on the
+  // next controlled render).
+  await emailInput.evaluate((el) => el.form?.setAttribute("novalidate", ""));
+  await emailInput.fill("pas-un-email");
+  await page.getByRole("button", { name: "M'avertir" }).click();
+  // The refusal arrives as a toast (same shape the #46 restock spec asserts), not an
+  // inline alert — sonner renders it in its notification region.
+  await expect(page.getByText("Veuillez indiquer une adresse e-mail valide")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByText("Bitte eine gültige E-Mail-Adresse")).toHaveCount(0);
+});
+
 test("unmatched URLs and unknown products answer the global 404 in French", async ({
   page,
 }) => {

@@ -789,3 +789,16 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   composes the shared `TITLE_TEMPLATE` through `titled()` instead of inheriting the
   metadata template. The discount `{amount}` follows the same language's
   `intlLocale`, not the base formatters.
+- **Customer-facing core refusals answer from the table, with a machine-readable
+  reason where callers branch (#58 step 3, core-error slice).** The register, reset,
+  address, order-claim, checkout, review and restock cores resolve their refusals
+  through `getRequestLabels()`; the German bases are byte-identical to the literals
+  they replaced, so the German specs stay green. Where a caller acted on the text
+  (the register form highlighting the e-mail field on "E-Mail", #60) the core now
+  returns a machine-readable `reason: "emailTaken"` instead — localized texts must
+  never be control flow. The address ceiling moved from the literal `10` into
+  `MAX_ADDRESSES_PER_CUSTOMER` and reaches the text as `{max}`; the reset-sentence
+  constant became `resetSentMessage(labels)`. The restock form shows the refusal as
+  a sonner toast, so its e2e asserts the toast text (and switches the form to
+  `novalidate` to reach the server action — relaxing the input type does not hold,
+  React restores it on the next controlled render).
