@@ -1796,3 +1796,36 @@ Done — M1–M6 + QA complete.
   step 4 remainder (needs-review filter, usage context + preview link, keyboard-driven
   inline editing, change history), step 5 (translatable catalog content + two-language
   checkout e2e).
+
+## ISSUES — queue session 24 (2026-10-18)
+
+### #58 (review-fix slice) — plural mechanism, checkout legend nit, card toggles/tray into the table ✅ — issue stays open
+- **`plural(labels, count, key, intlLocale)` (DECISIONS):** the CLDR category of the
+  count in the language row's Intl locale picks the suffixed row (`key.one`,
+  `key.other`, …), falling back to `key.other` — a language with `two`/`few`/`many`
+  is served by adding rows, never code. Replaces the `count === 1` branches
+  (listing shell, reviews) and the fr „pièce(s)" hack; `useIntlLocale()` exposes the
+  live locale to client call sites without a prop. Unit tests: de 0→other/1→one,
+  **fr 0→one** (the exact CLDR fix), `.other` fallback, `ar` few/many rows resolved
+  from data.
+- **Count keys became families** (German bases byte-identical): `shop.listing.count.*`,
+  `shop.reviews.count.*`, `shop.stock.low.*` (fr splits into „pièce"/„pièces").
+  **Legend nit done:** `shop.checkout.shipping` → `shop.checkout.legend.shipping` +
+  `shop.checkout.summary.shipping`. The seed gains `retireTranslations` — a fixed
+  migration deleting exactly the six replaced rows (DECISIONS; insert-only #14
+  otherwise keeps them as dead data), covered by a DB test.
+- **Card toggles + tray (12 new keys, five languages):** compare-toggle (incl. the
+  English `${name} compare` #63 artifact replaced by real German „{name} vergleichen"),
+  wishlist-heart and compare-tray now read `useLabels()` + `interpolate`; title and
+  aria-label share the keys. German bases byte-identical, so the wishlist/compare/
+  a11y specs stayed green untouched.
+- **Tests:** +5 unit (plural ×4, retire ×1) — `npm test` ✅ 580; new e2e „card toggles
+  and the comparison tray speak French" + the compare spec's artifact selector —
+  **2 fail on the pre-change build** (reproduced against a stashed rebuild).
+  `npm run build`/lint/knip ✅, `npm run test:e2e` ✅ 76/76; tree clean, nothing running.
+- **Left open (#58):** step 3 remainder (home page hero/collections, account/auth
+  forms, admin strings + admin language switcher, mail/invoice/slip/label texts in the
+  recipient's language, server-side validation messages, no-German-literals guard),
+  step 4 remainder (needs-review filter, usage context + preview link, keyboard-driven
+  inline editing, change history), step 5 (translatable catalog content + two-language
+  checkout e2e).

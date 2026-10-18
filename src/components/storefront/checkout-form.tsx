@@ -289,7 +289,7 @@ export function CheckoutForm({
         <fieldset id="shipping" className="scroll-mt-24">
           <legend className="mb-4 flex items-center gap-2 text-lg font-semibold">
             <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">2</span>
-            {label(labels, "shop.checkout.shipping")}
+            {label(labels, "shop.checkout.legend.shipping")}
           </legend>
           <div className="grid gap-3 sm:grid-cols-2">
             {shippingOptions.map((option) => {
@@ -457,7 +457,7 @@ export function CheckoutForm({
                 </div>
               )}
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">{label(labels, "shop.checkout.shipping")}</dt>
+                <dt className="text-muted-foreground">{label(labels, "shop.checkout.summary.shipping")}</dt>
                 <dd className="tabular-nums">
                   {totals.shippingCents === 0 ? label(labels, "shop.checkout.free") : chf(totals.shippingCents)}
                 </dd>

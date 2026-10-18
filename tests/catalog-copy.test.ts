@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { describe as describeProduct, generateCatalog } from "../scripts/seed/catalog";
-import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, interpolate, label, labelMap } from "@/lib/i18n";
+import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, interpolate, labelMap, plural } from "@/lib/i18n";
 
 const DE = labelMap(DEFAULT_TRANSLATIONS, BASE_LANGUAGE);
 
@@ -46,7 +46,9 @@ describe("seed product descriptions (issue #28)", () => {
 describe("stock copy in the translation table (issues #28/#58)", () => {
   it("keeps the Swiss plural „Stück“ for every count", () => {
     for (const stock of [1, 3, 17]) {
-      expect(interpolate(label(DE, "shop.stock.low"), { stock })).toBe(`Nur noch ${stock} Stück`);
+      expect(interpolate(plural(DE, stock, "shop.stock.low", "de-CH"), { stock })).toBe(
+        `Nur noch ${stock} Stück`,
+      );
     }
     expect(DE["shop.stock.in"]).toBe("Sofort lieferbar");
     expect(DE["shop.state.soldOut"]).toBe("Ausverkauft");

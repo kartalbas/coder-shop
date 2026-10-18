@@ -465,7 +465,13 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     texts: { fr: "Adresse", it: "Indirizzo", rm: "Indiris", es: "Dirección" },
   },
   {
-    key: "shop.checkout.shipping",
+    key: "shop.checkout.legend.shipping",
+    area: "shop",
+    de: "Versand",
+    texts: { fr: "Livraison", it: "Spedizione", rm: "Spediziun", es: "Envío" },
+  },
+  {
+    key: "shop.checkout.summary.shipping",
     area: "shop",
     de: "Versand",
     texts: { fr: "Livraison", it: "Spedizione", rm: "Spediziun", es: "Envío" },
@@ -750,6 +756,119 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     de: "Ausverkauft",
     texts: { fr: "Épuisé", it: "Esaurito", rm: "Vendì", es: "Agotado" },
   },
+  // Card toggles and the comparison tray (#58 step 3): the German bases are the former
+  // literals — the English `${name} compare` #63 artifact is replaced by real German.
+  {
+    key: "shop.compare.add",
+    area: "shop",
+    de: "{name} vergleichen",
+    texts: {
+      fr: "Comparer {name}",
+      it: "Confronta {name}",
+      rm: "Cumparegliar {name}",
+      es: "Comparar {name}",
+    },
+  },
+  {
+    key: "shop.compare.remove",
+    area: "shop",
+    de: "{name} aus dem Vergleich entfernen",
+    texts: {
+      fr: "Retirer {name} du comparateur",
+      it: "Rimuovi {name} dal confronto",
+      rm: "Eliminescha {name} dal cumparegl",
+      es: "Quitar {name} de la comparación",
+    },
+  },
+  {
+    key: "shop.compare.addShort",
+    area: "shop",
+    de: "Vergleichen",
+    texts: { fr: "Comparer", it: "Confronta", rm: "Cumparegliar", es: "Comparar" },
+  },
+  {
+    key: "shop.compare.removeShort",
+    area: "shop",
+    de: "Aus dem Vergleich entfernen",
+    texts: {
+      fr: "Retirer du comparateur",
+      it: "Rimuovi dal confronto",
+      rm: "Eliminescha dal cumparegl",
+      es: "Quitar de la comparación",
+    },
+  },
+  {
+    key: "shop.compare.trayCount",
+    area: "shop",
+    de: "{count} im Vergleich",
+    texts: {
+      fr: "{count} dans le comparateur",
+      it: "{count} nel confronto",
+      rm: "{count} en il cumparegl",
+      es: "{count} en la comparación",
+    },
+  },
+  {
+    key: "shop.compare.action",
+    area: "shop",
+    de: "Vergleichen",
+    texts: { fr: "Comparer", it: "Confronta", rm: "Cumparegliar", es: "Comparar" },
+  },
+  {
+    key: "shop.compare.clear",
+    area: "shop",
+    de: "Vergleichsliste leeren",
+    texts: {
+      fr: "Vider la liste de comparaison",
+      it: "Svuota la lista di confronto",
+      rm: "Svidar la glista da cumparegl",
+      es: "Vaciar la lista de comparación",
+    },
+  },
+  {
+    key: "shop.wishlist.add",
+    area: "shop",
+    de: "{name} auf die Wunschliste",
+    texts: {
+      fr: "Ajouter {name} à la liste de souhaits",
+      it: "Aggiungi {name} alla lista dei desideri",
+      rm: "Agiuntar {name} sin la glista da desideris",
+      es: "Añadir {name} a la lista de deseos",
+    },
+  },
+  {
+    key: "shop.wishlist.remove",
+    area: "shop",
+    de: "{name} von der Wunschliste entfernen",
+    texts: {
+      fr: "Retirer {name} de la liste de souhaits",
+      it: "Rimuovi {name} dalla lista dei desideri",
+      rm: "Eliminescha {name} da la glista da desideris",
+      es: "Quitar {name} de la lista de deseos",
+    },
+  },
+  {
+    key: "shop.wishlist.addShort",
+    area: "shop",
+    de: "Auf die Wunschliste",
+    texts: {
+      fr: "Ajouter à la liste de souhaits",
+      it: "Aggiungi alla lista dei desideri",
+      rm: "Agiuntar sin la glista da desideris",
+      es: "Añadir a la lista de deseos",
+    },
+  },
+  {
+    key: "shop.wishlist.removeShort",
+    area: "shop",
+    de: "Von der Wunschliste entfernen",
+    texts: {
+      fr: "Retirer de la liste de souhaits",
+      it: "Rimuovi dalla lista dei desideri",
+      rm: "Eliminescha da la glista da desideris",
+      es: "Quitar de la lista de deseos",
+    },
+  },
   {
     key: "shop.product.vatNote",
     area: "shop",
@@ -818,11 +937,22 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
   },
   // Swiss German: the plural of „das Stück“ stays „Stück“ (issue #28), never „Stücke“.
   {
-    key: "shop.stock.low",
+    key: "shop.stock.low.one",
     area: "shop",
     de: "Nur noch {stock} Stück",
     texts: {
-      fr: "Plus que {stock} pièce(s)",
+      fr: "Plus que {stock} pièce",
+      it: "Solo {stock} pezzo rimasto",
+      rm: "Mo {stock} pia",
+      es: "Solo queda {stock} unidad",
+    },
+  },
+  {
+    key: "shop.stock.low.other",
+    area: "shop",
+    de: "Nur noch {stock} Stück",
+    texts: {
+      fr: "Plus que {stock} pièces",
       it: "Solo {stock} pezzi rimasti",
       rm: "Mo {stock} pias",
       es: "Solo quedan {stock} unidades",
@@ -924,7 +1054,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     texts: { fr: "Avis", it: "Recensioni", rm: "Evaluaziuns", es: "Valoraciones" },
   },
   {
-    key: "shop.reviews.countOne",
+    key: "shop.reviews.count.one",
     area: "shop",
     de: "{count} Bewertung",
     texts: {
@@ -935,7 +1065,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
-    key: "shop.reviews.countOther",
+    key: "shop.reviews.count.other",
     area: "shop",
     de: "{count} Bewertungen",
     texts: {
@@ -1240,7 +1370,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
-    key: "shop.listing.countOne",
+    key: "shop.listing.count.one",
     area: "shop",
     de: "{count} Produkt",
     texts: {
@@ -1251,7 +1381,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
-    key: "shop.listing.countOther",
+    key: "shop.listing.count.other",
     area: "shop",
     de: "{count} Produkte",
     texts: {
@@ -1507,6 +1637,18 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
   },
 ];
 
+// Code-owned keys renamed by later slices (#58): the seed is insert-only (#14), so a
+// rename would leave the old row as dead data in the one table. This fixed list is the
+// migration — the seed deletes exactly these keys, nothing else (DECISIONS).
+export const RETIRED_TRANSLATION_KEYS: readonly string[] = [
+  "shop.listing.countOne",
+  "shop.listing.countOther",
+  "shop.reviews.countOne",
+  "shop.reviews.countOther",
+  "shop.stock.low",
+  "shop.checkout.shipping",
+];
+
 export function activeLanguages(languages: LanguageConfig[]): LanguageConfig[] {
   return languages
     .filter((language) => language.active)
@@ -1632,6 +1774,20 @@ export function interpolate(
   return text.replace(/\{(\w+)\}/g, (match: string, name: string) =>
     name in vars ? String(vars[name]) : match,
   );
+}
+
+// Picks the plural form of a text family (#58 step 3): the CLDR category of the count
+// in the language's Intl locale selects the suffixed key (`key.one`, `key.two`, …), so
+// a language with more categories is served by adding rows, never by code. A missing
+// category row falls back to `key.other`; both unknown answers the key itself.
+export function plural(
+  labels: Readonly<Record<string, string>>,
+  count: number,
+  key: string,
+  intlLocale: string,
+): string {
+  const category = new Intl.PluralRules(intlLocale).select(count);
+  return labels[`${key}.${category}`] ?? label(labels, `${key}.other`);
 }
 
 // Splits a translated text around a `{name}` placeholder (#58 step 3) so a component

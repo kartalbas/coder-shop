@@ -715,6 +715,20 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **Every seeded key ships translated in every seeded language** — a unit test walks
   `DEFAULT_TRANSLATIONS` × `DEFAULT_LANGUAGES` and fails on any missing text, which
   is the #58 "missing translations fall back visibly in tests" check for seed content.
+- **Plural forms are a key family resolved through `Intl.PluralRules`, never a code
+  branch (#58 step 3).** Count texts live as suffixed rows (`key.one`, `key.other`, …)
+  and the pure `plural(labels, count, key, intlLocale)` helper picks the CLDR category
+  of the count in the language row's Intl locale, falling back to `key.other`. A
+  `count === 1` branch was tried and rejected: it is wrong for the CLDR cases where
+  fr/it select "one" for 0 and cannot serve a language with `two`/`few`/`many`
+  categories by adding rows. Client components without a locale prop read the locale
+  from `useIntlLocale()` — the same live row the formatters use.
+- **Renamed code-owned translation keys are retired by a fixed seed migration
+  (#58).** The seed is insert-only (#14), so a rename would leave the old row as dead
+  data in the one table. `RETIRED_TRANSLATION_KEYS` in `lib/i18n` lists exactly the
+  replaced keys and the seed's `retireTranslations` step deletes exactly that list —
+  a documented migration of code-owned keys, not a general delete; admin-authored
+  keys are never touched.
 - **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin
   editor, step 2's routing/switcher/hreflang, step 2b's locale-parameterized formats
   and step 3's first slice (label plumbing + header/footer chrome) are done; the rest

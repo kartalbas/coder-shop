@@ -2,7 +2,9 @@
 
 import { Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { interpolate, label } from "@/lib/i18n";
 import { toggleCompare, useCompare } from "@/stores/compare";
+import { useLabels } from "./labels";
 
 // „Vergleichen" toggle for smartphone cards and the product page (issue #48).
 export function CompareToggle({
@@ -14,14 +16,18 @@ export function CompareToggle({
   name: string;
   className?: string;
 }) {
+  const labels = useLabels();
   const { slugs } = useCompare();
   const active = slugs.includes(slug);
   return (
     <button
       type="button"
       aria-pressed={active}
-      aria-label={active ? `${name} aus dem Vergleich entfernen` : `${name} compare`}
-      title={active ? "Aus dem Vergleich entfernen" : "Vergleichen"}
+      aria-label={interpolate(
+        label(labels, active ? "shop.compare.remove" : "shop.compare.add"),
+        { name },
+      )}
+      title={label(labels, active ? "shop.compare.removeShort" : "shop.compare.addShort")}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

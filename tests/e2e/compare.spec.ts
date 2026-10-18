@@ -31,7 +31,7 @@ test("four smartphones compared side by side with differences highlighted (issue
   // Toggle „Vergleichen" on the cards of four phones.
   await page.goto("/products?type=smartphone");
   for (const phone of phones) {
-    await page.getByRole("button", { name: `${phone.name} compare` }).first().click();
+    await page.getByRole("button", { name: `${phone.name} vergleichen` }).first().click();
   }
   const tray = page.getByTestId("compare-tray");
   await expect(tray).toContainText("4 im Vergleich");

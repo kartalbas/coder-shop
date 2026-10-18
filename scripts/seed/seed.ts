@@ -7,7 +7,7 @@ import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { computeTotals } from "@/lib/pricing";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
-import { DEFAULT_LANGUAGES, DEFAULT_TRANSLATIONS } from "@/lib/i18n";
+import { DEFAULT_LANGUAGES, DEFAULT_TRANSLATIONS, RETIRED_TRANSLATION_KEYS } from "@/lib/i18n";
 import { DEFAULT_SHOP_SETTINGS, type ShopSettings } from "@/lib/shop-settings";
 import { LanguageModel } from "@/models/language";
 import { TranslationModel } from "@/models/translation";
@@ -123,6 +123,14 @@ export async function seedTranslations(): Promise<void> {
       { upsert: true },
     );
   }
+}
+
+// Renamed code-owned keys (#58): the seed is insert-only (#14), so a rename would leave
+// the old row as dead data — this documented migration deletes exactly the fixed
+// retired list, it is not a general delete.
+export async function retireTranslations(): Promise<void> {
+  if (RETIRED_TRANSLATION_KEYS.length === 0) return;
+  await TranslationModel.deleteMany({ key: { $in: [...RETIRED_TRANSLATION_KEYS] } });
 }
 
 // The denormalized `filter` block is derived data (ARCHITECTURE §3): recompute it from
@@ -412,6 +420,7 @@ async function main(): Promise<void> {
   const shopSettings = await seedShopSettings();
   await seedLanguages();
   await seedTranslations();
+  await retireTranslations();
   const productCount = await seedProducts();
   const unitCount = await seedStockUnits(types);
   if (unitCount > 0) console.log(`serial units created: ${unitCount}`);

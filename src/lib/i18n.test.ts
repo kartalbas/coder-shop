@@ -12,6 +12,7 @@ import {
   label,
   labelMap,
   parseAcceptLanguage,
+  plural,
   resolveLanguage,
   splitOnPlaceholder,
   textFor,
@@ -189,6 +190,35 @@ describe("splitOnPlaceholder (#58 step 3)", () => {
       before: "ganz der Text",
       after: "",
     });
+  });
+});
+
+describe("plural (#58 step 3 — CLDR categories from the data)", () => {
+  const labels = {
+    "shop.listing.count.one": "{count} produit",
+    "shop.listing.count.other": "{count} produits",
+    "x.few": "qalil",
+    "x.other": "akthar",
+  };
+
+  it("de-CH selects other for 0 and one for 1", () => {
+    expect(plural(labels, 0, "shop.listing.count", "de-CH")).toBe("{count} produits");
+    expect(plural(labels, 1, "shop.listing.count", "de-CH")).toBe("{count} produit");
+  });
+
+  it("fr-CH selects one for 0 — the CLDR case the count === 1 branch got wrong", () => {
+    expect(plural(labels, 0, "shop.listing.count", "fr-CH")).toBe("{count} produit");
+    expect(plural(labels, 2, "shop.listing.count", "fr-CH")).toBe("{count} produits");
+  });
+
+  it("a missing category row falls back to .other", () => {
+    expect(plural(labels, 1, "shop.reviews.count", "de-CH")).toBe("shop.reviews.count.other");
+    expect(plural({ "x.other": "only" }, 1, "x", "de-CH")).toBe("only");
+  });
+
+  it("locales with more categories resolve their rows — forms are data, never code", () => {
+    expect(plural(labels, 3, "x", "ar")).toBe("qalil");
+    expect(plural(labels, 100, "x", "ar")).toBe("akthar");
   });
 });
 

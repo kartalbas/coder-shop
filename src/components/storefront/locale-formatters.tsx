@@ -19,11 +19,13 @@ import { createFormatters, type Formatters } from "@/lib/format";
 // intlLocale, so an admin edit of a row takes effect without a deploy. Server
 // components read `getIntlLocale(lang)` and use `createFormatters` directly.
 interface LocaleContextValue {
+  intlLocale: string;
   formatters: Formatters;
   syncIntlLocale: (intlLocale: string) => void;
 }
 
 const LocaleFormattersContext = createContext<LocaleContextValue>({
+  intlLocale: intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE),
   formatters: createFormatters(intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE)),
   syncIntlLocale: () => {},
 });
@@ -41,7 +43,7 @@ export function LocaleFormattersProvider({
     [],
   );
   const value = useMemo(
-    () => ({ formatters: createFormatters(intlLocale), syncIntlLocale }),
+    () => ({ intlLocale, formatters: createFormatters(intlLocale), syncIntlLocale }),
     [intlLocale, syncIntlLocale],
   );
   return (
@@ -61,4 +63,10 @@ export function LocaleSync({ intlLocale }: { intlLocale: string }) {
 
 export function useFormatters(): Formatters {
   return useContext(LocaleFormattersContext).formatters;
+}
+
+// The live Intl locale of the request language (#58 step 3) — the same row the
+// formatters use, read by plural text lookups.
+export function useIntlLocale(): string {
+  return useContext(LocaleFormattersContext).intlLocale;
 }

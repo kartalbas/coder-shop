@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import {
   DEFAULT_LANGUAGES,
   DEFAULT_TRANSLATIONS,
+  RETIRED_TRANSLATION_KEYS,
   type TranslationEntry,
 } from "@/lib/i18n";
 import { UserModel } from "@/models/user";
@@ -18,7 +19,7 @@ import {
   saveLanguageCore,
   saveTranslationCore,
 } from "@/server/i18n";
-import { seedLanguages, seedTranslations } from "../scripts/seed/seed";
+import { retireTranslations, seedLanguages, seedTranslations } from "../scripts/seed/seed";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 // The admin editor actions read the session via next/headers and revalidate caches —
@@ -80,6 +81,20 @@ describe("seed (insert-only, #14)", () => {
     await seedTranslations();
     const cart = (await getTranslations()).find((entry) => entry.key === "shop.cart.title");
     expect(cart?.de).toBe("Einkaufswagen");
+  });
+
+  it("retires renamed code-owned keys and touches nothing else (#58)", async () => {
+    await seedTranslations();
+    // Simulate a database seeded before the renames: the old rows exist next to the new.
+    await TranslationModel.insertMany(
+      RETIRED_TRANSLATION_KEYS.map((key) => ({ key, area: "shop", de: "alt", texts: {} })),
+    );
+    await retireTranslations();
+    const keys = (await TranslationModel.find().lean().exec()).map((row) => row.key);
+    for (const retired of RETIRED_TRANSLATION_KEYS) expect(keys).not.toContain(retired);
+    expect(keys).toContain("shop.listing.count.one");
+    expect(keys).toContain("shop.checkout.legend.shipping");
+    expect(await TranslationModel.countDocuments()).toBe(DEFAULT_TRANSLATIONS.length);
   });
 });
 

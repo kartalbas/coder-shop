@@ -1,7 +1,8 @@
 "use client";
 
 import { useLabels } from "@/components/storefront/labels";
-import { interpolate, label } from "@/lib/i18n";
+import { useIntlLocale } from "@/components/storefront/locale-formatters";
+import { interpolate, label, plural } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { stockLevel, type StockLevel } from "@/lib/stock";
 
@@ -21,13 +22,14 @@ export function StockIndicator({
   restockThreshold: number;
 }) {
   const labels = useLabels();
+  const intlLocale = useIntlLocale();
   const level = stockLevel(stock, restockThreshold);
   const style = STYLES[level];
   const text =
     level === "out"
       ? label(labels, "shop.state.soldOut")
       : level === "low"
-        ? interpolate(label(labels, "shop.stock.low"), { stock })
+        ? interpolate(plural(labels, stock, "shop.stock.low", intlLocale), { stock })
         : label(labels, "shop.stock.in");
   return (
     <p className={cn("flex items-center gap-2 text-sm font-medium", style.text)}>

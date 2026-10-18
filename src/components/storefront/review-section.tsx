@@ -1,7 +1,7 @@
 import { BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { createFormatters } from "@/lib/format";
-import { interpolate, label } from "@/lib/i18n";
+import { interpolate, label, plural } from "@/lib/i18n";
 import { getProductReviewsCore, getUserReviewCore, hasPurchasedCore } from "@/server/reviews";
 import { getCustomerSessionUserId } from "@/server/session";
 import type { ProductDto } from "@/server/search";
@@ -47,10 +47,7 @@ export async function ReviewSection({
               <StarRating value={aggregate.average} size="lg" />
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {interpolate(
-                  label(
-                    labels,
-                    aggregate.count === 1 ? "shop.reviews.countOne" : "shop.reviews.countOther",
-                  ),
+                  plural(labels, aggregate.count, "shop.reviews.count", intlLocale),
                   { count: aggregate.count },
                 )}
               </p>

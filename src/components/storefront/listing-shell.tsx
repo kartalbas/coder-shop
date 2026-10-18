@@ -16,7 +16,8 @@ import { Pagination } from "./pagination";
 import { ProductGridSkeleton } from "./skeletons";
 import { EmptyState } from "./empty-state";
 import { useLabels } from "./labels";
-import { interpolate, label } from "@/lib/i18n";
+import { useIntlLocale } from "./locale-formatters";
+import { interpolate, label, plural } from "@/lib/i18n";
 
 interface Props {
   initial: ListingResult;
@@ -29,6 +30,7 @@ interface Props {
 
 export function ListingShell({ initial, categories, facetKeys }: Props) {
   const labels = useLabels();
+  const intlLocale = useIntlLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   // Issue #58: the listing URL carries the language prefix — state changes stay on the
@@ -165,10 +167,9 @@ export function ListingShell({ initial, categories, facetKeys }: Props) {
         <div>
           <div className="mb-4 flex items-center justify-between gap-3">
             <p aria-live="polite" className="text-sm text-muted-foreground">
-              {interpolate(
-                label(labels, data.total === 1 ? "shop.listing.countOne" : "shop.listing.countOther"),
-                { count: data.total },
-              )}
+              {interpolate(plural(labels, data.total, "shop.listing.count", intlLocale), {
+                count: data.total,
+              })}
             </p>
             <div className="flex items-center gap-2">
               <Sheet>

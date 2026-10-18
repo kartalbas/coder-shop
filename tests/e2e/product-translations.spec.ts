@@ -101,6 +101,27 @@ test("the French product page answers in French", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Produits similaires" })).toBeVisible();
 });
 
+test("card toggles and the comparison tray speak French", async ({ page }) => {
+  await page.goto("/fr/products?type=smartphone");
+  await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 30_000 });
+  // Heart and compare toggle carry French accessible names, no German, no #63 artifact.
+  const heart = page.locator('main button[aria-label*="liste de souhaits"]').first();
+  await expect(heart).toBeVisible();
+  await expect(page.locator('main button[aria-label*="Wunschliste"]')).toHaveCount(0);
+  const toggle = page.locator('main button[aria-label^="Comparer "]').first();
+  await expect(toggle).toBeVisible();
+  await expect(page.locator('main button[aria-label*="Vergleich"]')).toHaveCount(0);
+  await expect(page.locator('main button[aria-label*=" compare"]')).toHaveCount(0);
+  // Two toggled phones raise the French tray.
+  await toggle.click();
+  await page.locator('main button[aria-label^="Comparer "]').nth(1).click();
+  const tray = page.getByTestId("compare-tray");
+  await expect(tray).toContainText("2 dans le comparateur");
+  await expect(tray.getByRole("link", { name: "Comparer" })).toBeVisible();
+  await expect(tray.getByRole("button", { name: "Vider la liste de comparaison" })).toBeVisible();
+  await expect(tray.getByText("im Vergleich")).toHaveCount(0);
+});
+
 test("the Spanish listing and product page answer in Spanish", async ({ page }) => {
   await page.goto("/es/products");
   await expect(
