@@ -114,6 +114,8 @@ All optional for local development (sensible defaults / embedded database):
 | `IMAGE_API_URL` | Image generation endpoint for `npm run images` (defaults to `http://192.168.10.210:8080/v1/images/generations`). |
 | `SMTP_HOST` / `SMTP_FROM` | Set **both** to deliver workflow mails for real via SMTP (nodemailer); otherwise every mail stays in the dev outbox, readable under `/admin/mails`. |
 | `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` | Optional SMTP details: port (default 587, `465` ⇒ implicit TLS) and login credentials. |
+| `CUSTOMER_REGISTER_LIMIT_PER_HOUR` | Ceiling for customer registrations per client and hour (default `5`). |
+| `CUSTOMER_RESET_LIMIT_PER_HOUR` | Ceiling for password-reset requests per client and hour (default `3`). |
 | `E2E_PORT` | Port for the Playwright e2e run (default `3100`). |
 
 ## Database lock recovery

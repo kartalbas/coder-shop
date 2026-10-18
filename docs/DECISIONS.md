@@ -729,12 +729,13 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   replaced keys and the seed's `retireTranslations` step deletes exactly that list —
   a documented migration of code-owned keys, not a general delete; admin-authored
   keys are never touched.
-- **The registration rate limit is configuration (#58).** The e2e suite legitimately
+- **The customer abuse limits are configuration (#58).** The e2e suite legitimately
   registers one account per authenticated spec from a single IP, which exhausted the
   hard-coded 5/h window as soon as a new portal spec arrived. `createRateLimiter` in
-  `server/customers.ts` now reads `CUSTOMER_REGISTER_LIMIT_PER_HOUR` (default 5 —
-  production behaviour unchanged); the e2e global setup raises it for its own server.
-  A ceiling the suite has to budget around is a missing configuration, not a test bug.
+  `server/customers.ts` now reads `CUSTOMER_REGISTER_LIMIT_PER_HOUR` (default 5) and
+  `CUSTOMER_RESET_LIMIT_PER_HOUR` (default 3) — production behaviour unchanged; the
+  e2e global setup raises the register limit for its own server. A ceiling the suite
+  has to budget around is a missing configuration, not a test bug.
 - **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin
   editor, step 2's routing/switcher/hreflang, step 2b's locale-parameterized formats
   and step 3's first slice (label plumbing + header/footer chrome) are done; the rest

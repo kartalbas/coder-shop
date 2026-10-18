@@ -10,7 +10,7 @@ import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { ClaimOrderForm } from "@/components/storefront/claim-order-form";
 import { ReorderButton } from "@/components/storefront/reorder-button";
 import { createFormatters } from "@/lib/format";
-import { interpolate, label } from "@/lib/i18n";
+import { interpolate, label, plural } from "@/lib/i18n";
 import { getIntlLocale, getLabels } from "@/server/i18n";
 import { listAccountOrders } from "@/server/account";
 import { requireCustomerSession } from "@/server/session";
@@ -42,10 +42,8 @@ export default async function AccountOrdersPage({
   const lang = (await params).lang;
   const userId = await requireCustomerSession();
   // Issue #58 step 2b: dates and amounts follow the request language's Intl locale.
-  const [{ chf, date }, labels] = await Promise.all([
-    getIntlLocale(lang).then(createFormatters),
-    getLabels(lang),
-  ]);
+  const [intlLocale, labels] = await Promise.all([getIntlLocale(lang), getLabels(lang)]);
+  const { chf, date } = createFormatters(intlLocale);
   const { q } = await searchParams;
   const orders = await listAccountOrders(userId, q ?? "");
 
@@ -104,9 +102,10 @@ export default async function AccountOrdersPage({
                   </Link>
                   <p className="text-sm text-muted-foreground">
                     {date(new Date(order.createdAt))} ·{" "}
-                    {interpolate(label(labels, "shop.account.orders.items"), {
-                      count: order.itemCount,
-                    })}
+                    {interpolate(
+                      plural(labels, order.itemCount, "shop.account.orders.items", intlLocale),
+                      { count: order.itemCount },
+                    )}
                     {order.trackingNumber &&
                       ` · ${interpolate(label(labels, "shop.account.orders.shipment"), {
                         tracking: order.trackingNumber,

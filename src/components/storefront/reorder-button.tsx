@@ -5,7 +5,8 @@ import { Loader2, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { addToCart, openCartDrawer } from "@/stores/cart";
-import { interpolate, label } from "@/lib/i18n";
+import { interpolate, label, plural } from "@/lib/i18n";
+import { useIntlLocale } from "@/components/storefront/locale-formatters";
 import { useLabels } from "@/components/storefront/labels";
 import { reorderAction } from "@/server/actions/account";
 
@@ -13,6 +14,7 @@ import { reorderAction } from "@/server/actions/account";
 // puts the available ones into the cart.
 export function ReorderButton({ orderNumber }: { orderNumber: string }) {
   const labels = useLabels();
+  const intlLocale = useIntlLocale();
   const [pending, setPending] = useState(false);
 
   const handleClick = async () => {
@@ -41,11 +43,17 @@ export function ReorderButton({ orderNumber }: { orderNumber: string }) {
       }
       const skipped = lines.length - available.length;
       toast.success(
-        interpolate(label(labels, "shop.account.reorder.added"), { count: available.length }),
+        interpolate(
+          plural(labels, available.length, "shop.account.reorder.added", intlLocale),
+          { count: available.length },
+        ),
         {
           description:
             skipped > 0
-              ? interpolate(label(labels, "shop.account.reorder.skipped"), { count: skipped })
+              ? interpolate(
+                  plural(labels, skipped, "shop.account.reorder.skipped", intlLocale),
+                  { count: skipped },
+                )
               : undefined,
         },
       );

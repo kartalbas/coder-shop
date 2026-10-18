@@ -2165,6 +2165,28 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
+    key: "shop.meta.account.title",
+    area: "shop",
+    de: "Mein Konto",
+    texts: {
+      fr: "Mon compte",
+      it: "Il mio account",
+      rm: "Mes contos",
+      es: "Mi cuenta",
+    },
+  },
+  {
+    key: "shop.meta.account.description",
+    area: "shop",
+    de: "Bestellungen, Adressen und Profil — coder-shop.",
+    texts: {
+      fr: "Commandes, adresses et profil — coder-shop.",
+      it: "Ordini, indirizzi e profilo — coder-shop.",
+      rm: "Ordens, indirizzas e profil — coder-shop.",
+      es: "Pedidos, direcciones y perfil — coder-shop.",
+    },
+  },
+  {
     key: "shop.meta.accountOrders.title",
     area: "shop",
     de: "Meine Bestellungen",
@@ -2281,7 +2303,18 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
-    key: "shop.account.orders.items",
+    key: "shop.account.orders.items.one",
+    area: "shop",
+    de: "{count} Artikel",
+    texts: {
+      fr: "{count} article",
+      it: "{count} articolo",
+      rm: "{count} artitgel",
+      es: "{count} artículo",
+    },
+  },
+  {
+    key: "shop.account.orders.items.other",
     area: "shop",
     de: "{count} Artikel",
     texts: {
@@ -2728,7 +2761,18 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
-    key: "shop.account.reorder.added",
+    key: "shop.account.reorder.added.one",
+    area: "shop",
+    de: "{count} Artikel im Warenkorb",
+    texts: {
+      fr: "{count} article dans le panier",
+      it: "{count} articolo nel carrello",
+      rm: "{count} artitgel en il charret",
+      es: "{count} artículo en la cesta",
+    },
+  },
+  {
+    key: "shop.account.reorder.added.other",
     area: "shop",
     de: "{count} Artikel im Warenkorb",
     texts: {
@@ -2739,7 +2783,18 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     },
   },
   {
-    key: "shop.account.reorder.skipped",
+    key: "shop.account.reorder.skipped.one",
+    area: "shop",
+    de: "{count} nicht mehr verfügbar.",
+    texts: {
+      fr: "{count} non disponible.",
+      it: "{count} non più disponibile.",
+      rm: "{count} betg pli disponibel.",
+      es: "{count} ya no disponible.",
+    },
+  },
+  {
+    key: "shop.account.reorder.skipped.other",
     area: "shop",
     de: "{count} nicht mehr verfügbar.",
     texts: {
@@ -2761,6 +2816,9 @@ export const RETIRED_TRANSLATION_KEYS: readonly string[] = [
   "shop.reviews.countOther",
   "shop.stock.low",
   "shop.checkout.shipping",
+  "shop.account.orders.items",
+  "shop.account.reorder.added",
+  "shop.account.reorder.skipped",
 ];
 
 export function activeLanguages(languages: LanguageConfig[]): LanguageConfig[] {

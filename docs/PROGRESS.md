@@ -1864,3 +1864,33 @@ Done — M1–M6 + QA complete.
   messages, no-German-literals guard), step 4 remainder (needs-review filter, usage
   context + preview link, keyboard-driven inline editing, change history), step 5
   (translatable catalog content + two-language checkout e2e).
+
+### #58 slice — account metadata language, account plural families, reset-limit config ✅ (2026-10-18)
+
+- **Account layout metadata:** `account/layout.tsx` static German `metadata` →
+  `generateMetadata` behind `connection()` reading `shop.meta.account.title`/
+  `.description` (new rows, five languages, German base byte-identical) — the portal
+  overview inherits them, so /fr/account no longer ships a German tab/OG title;
+  the auth/portal subpages keep their own metadata.
+- **Plural families:** `shop.account.orders.items`, `shop.account.reorder.added` and
+  `shop.account.reorder.skipped` became `.one`/`.other` families (de identical, real
+  singulars in fr/it/rm/es); the bare old keys joined `RETIRED_TRANSLATION_KEYS`
+  (insert-only seed migration). Consumers switched to `plural(...)`: the orders page
+  (already loads `getIntlLocale`) and `ReorderButton` via `useIntlLocale()`.
+- **Reset limit is configuration:** `CUSTOMER_RESET_LIMIT_PER_HOUR` (default 3,
+  production unchanged) feeds `resetRequestLimit` like its register sibling;
+  README + ARCHITECTURE env notes updated.
+- **Tests:** unit — fr-CH `plural` resolves `{count} article`/`articles` and the
+  reorder toasts follow their families (fail without the rows), plus a guard that no
+  retired key ships as a live row; e2e — `account-translations.spec.ts` registers a
+  French customer, buys through the French checkout and asserts "1 commande dans votre
+  compte.", the French `<title>`, "1 article" (never "1 articles") on the orders page,
+  then a second purchase (qty 2 — the idempotent checkout #15 answers a byte-identical
+  resubmit with the same order) and "2 commandes". Fails on the pre-change build
+  (German title, single-row plurals) — reproduced. `seedCart` gained an optional
+  `qty` (matching stock filter) for repeat purchases.
+- **Gate:** `npm run build`/lint/knip ✅, `npm test` ✅ 583, `npm run test:e2e` ✅ 81/81;
+  tree clean, nothing running.
+- **Left open (#58):** unchanged from the previous slice (admin strings + switcher,
+  mail/invoice/slip/label texts, server-side validation messages, no-German-literals
+  guard; step 4 remainder; step 5).

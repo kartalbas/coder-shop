@@ -22,11 +22,11 @@ import { env } from "./env";
 const scryptLimiter = createLimiter(2, 8);
 
 // Registration and reset requests are the two places where a bot could create junk;
-// the windows are far above any real human usage. The registration ceiling is
-// configuration (CUSTOMER_REGISTER_LIMIT_PER_HOUR) so deployments and the e2e suite
-// can raise it without a code change.
+// the windows are far above any real human usage. Both ceilings are configuration
+// (CUSTOMER_REGISTER_LIMIT_PER_HOUR, CUSTOMER_RESET_LIMIT_PER_HOUR) so deployments and
+// the e2e suite can raise them without a code change.
 const registerLimit = createRateLimiter(env.customerRegisterLimitPerHour, 60 * 60 * 1000);
-const resetRequestLimit = createRateLimiter(3, 60 * 60 * 1000);
+const resetRequestLimit = createRateLimiter(env.customerResetLimitPerHour, 60 * 60 * 1000);
 
 export function resetCustomerRateLimits(): void {
   registerLimit.reset();

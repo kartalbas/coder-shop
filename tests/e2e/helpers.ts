@@ -53,7 +53,14 @@ interface ApiProduct {
 // /api/shop-settings (data, never a hard-coded price) and cheapest-first — so earlier
 // specs consuming stock can never flip a locked free-shipping bar out from under an
 // assertion. (#58: extracted from cart-translations.spec.ts for reuse.)
-export async function seedCart(page: Page, gotoPath = "/fr/products"): Promise<void> {
+// `qty` sizes the line (with matching stock) so a spec can order twice and still get
+// two distinct orders — the idempotent checkout (#15) answers identical submits with
+// the same order.
+export async function seedCart(
+  page: Page,
+  gotoPath = "/fr/products",
+  qty = 1,
+): Promise<void> {
   const settings = (await (await page.request.get("/api/shop-settings")).json()) as {
     freeShippingFromCents: number;
   };
@@ -62,7 +69,7 @@ export async function seedCart(page: Page, gotoPath = "/fr/products"): Promise<v
   const candidate = body.items
     .flatMap((item) =>
       item.variants
-        .filter((v) => v.stock > 0)
+        .filter((v) => v.stock >= qty)
         .map((variant) => ({
           product: item,
           variant,
@@ -80,7 +87,7 @@ export async function seedCart(page: Page, gotoPath = "/fr/products"): Promise<v
     variantLabel: variant.label,
     imageSrc: product.images[0]?.src ?? "",
     unitPriceCents: product.priceCents + variant.priceDeltaCents,
-    qty: 1,
+    qty,
     stock: variant.stock,
   };
   await page.goto(gotoPath);

@@ -13,6 +13,7 @@ import {
   labelMap,
   parseAcceptLanguage,
   plural,
+  RETIRED_TRANSLATION_KEYS,
   resolveLanguage,
   splitOnPlaceholder,
   textFor,
@@ -219,6 +220,32 @@ describe("plural (#58 step 3 — CLDR categories from the data)", () => {
   it("locales with more categories resolve their rows — forms are data, never code", () => {
     expect(plural(labels, 3, "x", "ar")).toBe("qalil");
     expect(plural(labels, 100, "x", "ar")).toBe("akthar");
+  });
+});
+
+describe("account plural families (#58 — count 1 stays singular in every language)", () => {
+  const fr = labelMap(DEFAULT_TRANSLATIONS, "fr");
+  const de = labelMap(DEFAULT_TRANSLATIONS, "de");
+
+  it("orders.items counts articles in the CLDR form", () => {
+    expect(plural(fr, 1, "shop.account.orders.items", "fr-CH")).toBe("{count} article");
+    expect(plural(fr, 2, "shop.account.orders.items", "fr-CH")).toBe("{count} articles");
+    expect(plural(de, 1, "shop.account.orders.items", "de-CH")).toBe("{count} Artikel");
+    expect(plural(de, 5, "shop.account.orders.items", "de-CH")).toBe("{count} Artikel");
+  });
+
+  it("the reorder toasts follow the same families", () => {
+    expect(plural(fr, 1, "shop.account.reorder.added", "fr-CH")).toBe("{count} article dans le panier");
+    expect(plural(fr, 3, "shop.account.reorder.added", "fr-CH")).toBe("{count} articles dans le panier");
+    expect(plural(fr, 1, "shop.account.reorder.skipped", "fr-CH")).toBe("{count} non disponible.");
+    expect(plural(fr, 2, "shop.account.reorder.skipped", "fr-CH")).toBe("{count} non disponibles.");
+  });
+
+  it("no retired key ships as a live row anymore", () => {
+    const keys = new Set(DEFAULT_TRANSLATIONS.map((row) => row.key));
+    for (const retired of RETIRED_TRANSLATION_KEYS) {
+      expect(keys.has(retired), `${retired} is retired but still seeded`).toBe(false);
+    }
   });
 });
 

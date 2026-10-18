@@ -280,12 +280,14 @@ src/
                             # access point to the language and translation tables, process-cached
                             # and invalidated on every write (next request, no deploy) (#58)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET,
-                            # CUSTOMER_REGISTER_LIMIT_PER_HOUR optional)
+                            # CUSTOMER_REGISTER_LIMIT_PER_HOUR,
+                            # CUSTOMER_RESET_LIMIT_PER_HOUR optional)
     numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
     session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
     session.ts              # admin + customer login/session (scrypt, throttle, scoped cookies)
     customers.ts            # register (rate limit = CUSTOMER_REGISTER_LIMIT_PER_HOUR,
-                            # default 5/h), password reset, address book, claim order (#39)
+                            # default 5/h), password reset (CUSTOMER_RESET_LIMIT_PER_HOUR,
+                            # default 3/h), address book, claim order (#39)
     customers-admin.ts      # customer list/detail, block, notes, admin password reset (#43)
     command-palette.ts      # ⌘K palette search: orders/products/customers/suppliers (#49)
     account.ts              # portal queries: order list, reorder lines (#39)
