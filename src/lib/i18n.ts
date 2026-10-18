@@ -397,6 +397,337 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       es: "Sin resultados para «{term}»",
     },
   },
+  // Checkout flow (#58 step 3 slice): guest banner, step legends, customer fields,
+  // payment hints and cards, summary and submit — every one seeded in all five
+  // languages; the German bases are byte-identical to the literals they replaced so
+  // the existing German specs stay green. {days}/{vat}/{number} are interpolated
+  // values; {link} marks where the component renders its account link.
+  {
+    key: "shop.checkout.guestQuestion",
+    area: "shop",
+    de: "Sie haben bereits ein Konto?",
+    texts: {
+      fr: "Vous avez déjà un compte ?",
+      it: "Avete già un account?",
+      rm: "Avais gia in conto?",
+      es: "¿Ya tiene una cuenta?",
+    },
+  },
+  {
+    key: "shop.action.login",
+    area: "shop",
+    de: "Anmelden",
+    texts: { fr: "Se connecter", it: "Accedi", rm: "S'annunziar", es: "Iniciar sesión" },
+  },
+  {
+    key: "shop.checkout.or",
+    area: "shop",
+    de: "oder",
+    texts: { fr: "ou", it: "o", rm: "u", es: "o" },
+  },
+  {
+    key: "shop.action.register",
+    area: "shop",
+    de: "Konto erstellen",
+    texts: {
+      fr: "Créer un compte",
+      it: "Crea un account",
+      rm: "Conto crear",
+      es: "Crear una cuenta",
+    },
+  },
+  {
+    key: "shop.checkout.guestHint",
+    area: "shop",
+    de: "— oder als Gast bestellen.",
+    texts: {
+      fr: "— ou commander en tant qu'invité.",
+      it: "— oppure ordinate come ospite.",
+      rm: "— u ordinar sco giast.",
+      es: "— o realice el pedido como invitado.",
+    },
+  },
+  {
+    key: "shop.checkout.emptyTitle",
+    area: "shop",
+    de: "Es gibt nichts zu bezahlen",
+    texts: {
+      fr: "Il n'y a rien à payer",
+      it: "Non c'è nulla da pagare",
+      rm: "I dat nagut da pajar",
+      es: "No hay nada que pagar",
+    },
+  },
+  {
+    key: "shop.checkout.legend.address",
+    area: "shop",
+    de: "Adresse",
+    texts: { fr: "Adresse", it: "Indirizzo", rm: "Indiris", es: "Dirección" },
+  },
+  {
+    key: "shop.checkout.shipping",
+    area: "shop",
+    de: "Versand",
+    texts: { fr: "Livraison", it: "Spedizione", rm: "Spediziun", es: "Envío" },
+  },
+  {
+    key: "shop.checkout.legend.payment",
+    area: "shop",
+    de: "Zahlung",
+    texts: { fr: "Paiement", it: "Pagamento", rm: "Pajament", es: "Pago" },
+  },
+  {
+    key: "shop.checkout.field.name",
+    area: "shop",
+    de: "Name, Vorname",
+    texts: { fr: "Nom, prénom", it: "Cognome, nome", rm: "Num, prenum", es: "Apellido, nombre" },
+  },
+  {
+    key: "shop.checkout.field.email",
+    area: "shop",
+    de: "E-Mail",
+    texts: { fr: "E-Mail", it: "E-mail", rm: "E-mail", es: "Correo electrónico" },
+  },
+  {
+    key: "shop.checkout.field.phone",
+    area: "shop",
+    de: "Telefon",
+    texts: { fr: "Téléphone", it: "Telefono", rm: "Telefon", es: "Teléfono" },
+  },
+  {
+    key: "shop.checkout.field.street",
+    area: "shop",
+    de: "Strasse, Hausnummer",
+    texts: {
+      fr: "Rue, numéro",
+      it: "Via, numero civico",
+      rm: "Via, numer",
+      es: "Calle, número",
+    },
+  },
+  {
+    key: "shop.checkout.field.postalCode",
+    area: "shop",
+    de: "PLZ",
+    texts: {
+      fr: "NPA",
+      it: "NAP",
+      rm: "Numier postal",
+      es: "Código postal",
+    },
+  },
+  {
+    key: "shop.checkout.field.city",
+    area: "shop",
+    de: "Ort",
+    texts: { fr: "Localité", it: "Località", rm: "Lieu", es: "Localidad" },
+  },
+  {
+    key: "shop.checkout.free",
+    area: "shop",
+    de: "Gratis",
+    texts: { fr: "Gratuit", it: "Gratis", rm: "Gratuit", es: "Gratis" },
+  },
+  {
+    key: "shop.checkout.paymentHint.invoice",
+    area: "shop",
+    de: "Zahlbar innert {days} Tagen",
+    texts: {
+      fr: "Paiable dans les {days} jours",
+      it: "Pagabile entro {days} giorni",
+      rm: "Pajabel en {days} dis",
+      es: "Pagadero en {days} días",
+    },
+  },
+  {
+    key: "shop.checkout.paymentHint.pickup",
+    area: "shop",
+    de: "Bar oder Karte vor Ort",
+    texts: {
+      fr: "Espèces ou carte sur place",
+      it: "Contanti o carta sul posto",
+      rm: "En bar u carta sin lieu",
+      es: "Efectivo o tarjeta en el lugar",
+    },
+  },
+  {
+    key: "shop.checkout.paymentHint.immediate",
+    area: "shop",
+    de: "Sofort, Demo",
+    texts: {
+      fr: "Immédiat, démo",
+      it: "Immediato, demo",
+      rm: "Immediat, demo",
+      es: "Inmediato, demo",
+    },
+  },
+  {
+    key: "shop.checkout.invoiceNote",
+    area: "shop",
+    de: "Sie erhalten eine Swiss QR-Rechnung mit Referenz und Zahlungsfrist von {days} Tagen — offen sichtbar unter {link}.",
+    texts: {
+      fr: "Vous recevrez une facture QR suisse avec référence et délai de paiement de {days} jours — visible sous {link}.",
+      it: "Riceverete una fattura QR svizzera con riferimento e termine di pagamento di {days} giorni — visibile sotto {link}.",
+      rm: "Vus receivais ina quita QR svizra cun referenza e termin da pajament da {days} dis — visibel sut {link}.",
+      es: "Recibirá una factura QR suiza con referencia y plazo de pago de {days} días — visible en {link}.",
+    },
+  },
+  {
+    key: "shop.checkout.invoiceLink",
+    area: "shop",
+    de: "Mein Konto → Rechnungen",
+    texts: {
+      fr: "Mon compte → Factures",
+      it: "Il mio account → Fatture",
+      rm: "Mes conto → Quitas",
+      es: "Mi cuenta → Facturas",
+    },
+  },
+  {
+    key: "shop.checkout.pickupNote",
+    area: "shop",
+    de: "Sie zahlen erst bei der Abholung — bar oder per Karte. Den Abholcode erhalten Sie mit der Bestellbestätigung.",
+    texts: {
+      fr: "Vous ne payez qu'au retrait — en espèces ou par carte. Vous recevrez le code de retrait avec la confirmation de commande.",
+      it: "Pagherete solo al ritiro — in contanti o con carta. Il codice di ritiro lo riceverete con la conferma d'ordine.",
+      rm: "Vus pajais pir a la retratga — en bar u cun carta. Il code da retratga survegnis cun la conferma da l'ordin.",
+      es: "Paga solo en la recogida — en efectivo o con tarjeta. El código de recogida lo recibirá con la confirmación del pedido.",
+    },
+  },
+  {
+    key: "shop.checkout.demoNotice",
+    area: "shop",
+    de: "Demo-Zahlung — es wird keine echte Karte belastet.",
+    texts: {
+      fr: "Paiement de démonstration — aucune vraie carte ne sera débitée.",
+      it: "Pagamento demo — non verrà addebitata nessuna carta reale.",
+      rm: "Pajament da demo — nagina carta vera vegn chargiada.",
+      es: "Pago de demostración: no se cargará ninguna tarjeta real.",
+    },
+  },
+  {
+    key: "shop.checkout.card.name",
+    area: "shop",
+    de: "Karteninhaber",
+    texts: {
+      fr: "Titulaire de la carte",
+      it: "Titolare della carta",
+      rm: "Titular da la carta",
+      es: "Titular de la tarjeta",
+    },
+  },
+  {
+    key: "shop.checkout.card.number",
+    area: "shop",
+    de: "Kartennummer",
+    texts: {
+      fr: "Numéro de carte",
+      it: "Numero della carta",
+      rm: "Numer da la carta",
+      es: "Número de tarjeta",
+    },
+  },
+  {
+    key: "shop.checkout.card.expiry",
+    area: "shop",
+    de: "Gültig bis",
+    texts: {
+      fr: "Valable jusqu'à",
+      it: "Valida fino a",
+      rm: "Valida fin",
+      es: "Válida hasta",
+    },
+  },
+  {
+    key: "shop.checkout.card.cvc",
+    area: "shop",
+    de: "CVC",
+    texts: { fr: "CVC", it: "CVC", rm: "CVC", es: "CVC" },
+  },
+  {
+    key: "shop.checkout.summaryTitle",
+    area: "shop",
+    de: "Bestellübersicht",
+    texts: {
+      fr: "Récapitulatif de la commande",
+      it: "Riepilogo dell'ordine",
+      rm: "Resum da l'ordin",
+      es: "Resumen del pedido",
+    },
+  },
+  {
+    key: "shop.checkout.discount",
+    area: "shop",
+    de: "Rabatt",
+    texts: { fr: "Réduction", it: "Sconto", rm: "Reducziun", es: "Descuento" },
+  },
+  {
+    key: "shop.checkout.total",
+    area: "shop",
+    de: "Gesamt",
+    texts: { fr: "Total", it: "Totale", rm: "Total", es: "Total" },
+  },
+  {
+    key: "shop.checkout.vatNote",
+    area: "shop",
+    de: "{vat} inbegriffen",
+    texts: {
+      fr: "{vat} inclus",
+      it: "{vat} inclusa",
+      rm: "{vat} inclus",
+      es: "{vat} incluido",
+    },
+  },
+  {
+    key: "shop.checkout.submit",
+    area: "shop",
+    de: "Jetzt kaufen",
+    texts: {
+      fr: "Acheter maintenant",
+      it: "Acquista ora",
+      rm: "Uss comprar",
+      es: "Comprar ahora",
+    },
+  },
+  {
+    key: "shop.checkout.submitInvoice",
+    area: "shop",
+    de: "Bestellen",
+    texts: { fr: "Commander", it: "Ordina", rm: "Ordinar", es: "Realizar pedido" },
+  },
+  {
+    key: "shop.checkout.agb",
+    area: "shop",
+    de: "Mit der Bestellung akzeptieren Sie unsere AGB (Demo).",
+    texts: {
+      fr: "En commandant, vous acceptez nos CGV (démo).",
+      it: "Effettuando l'ordine accettate le nostre CGC (demo).",
+      rm: "Cun l'ordin acceptais Vus nossas CGC (demo).",
+      es: "Al realizar el pedido acepta nuestras condiciones generales (demo).",
+    },
+  },
+  {
+    key: "shop.checkout.successTitle",
+    area: "shop",
+    de: "Bestellung aufgegeben",
+    texts: {
+      fr: "Commande passée",
+      it: "Ordine effettuato",
+      rm: "Ordin tramess",
+      es: "Pedido realizado",
+    },
+  },
+  {
+    key: "shop.checkout.successDescription",
+    area: "shop",
+    de: "Bestellung {number}",
+    texts: {
+      fr: "Commande {number}",
+      it: "Ordine {number}",
+      rm: "Ordin {number}",
+      es: "Pedido {number}",
+    },
+  },
   // Page metadata (#58 step 3): titles and descriptions per page, {placeholders} for
   // the VAT label and the order number.
   {
@@ -616,6 +947,20 @@ export function interpolate(
   return text.replace(/\{(\w+)\}/g, (match: string, name: string) =>
     name in vars ? String(vars[name]) : match,
   );
+}
+
+// Splits a translated text around a `{name}` placeholder (#58 step 3) so a component
+// can render its own element (a link) inside a whole sentence — the translator places
+// `{link}` wherever the word order of the language needs it. Without the placeholder
+// the whole text is `before` and nothing follows it.
+export function splitOnPlaceholder(
+  text: string,
+  name: string,
+): { before: string; after: string } {
+  const placeholder = `{${name}}`;
+  const index = text.indexOf(placeholder);
+  if (index === -1) return { before: text, after: "" };
+  return { before: text.slice(0, index), after: text.slice(index + placeholder.length) };
 }
 
 export interface Translator {

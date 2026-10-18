@@ -33,6 +33,63 @@ export async function addSellableVariantToCart(page: Page, type: string): Promis
   await page.getByRole("button", { name: "In den Warenkorb" }).click();
 }
 
+interface ApiVariant {
+  sku: string;
+  label: string;
+  stock: number;
+  priceDeltaCents: number;
+}
+interface ApiProduct {
+  id: string;
+  slug: string;
+  name: string;
+  priceCents: number;
+  images: { src: string }[];
+  variants: ApiVariant[];
+}
+
+// Put one cheap, sellable line into the persisted cart. Hermetic for free-shipping
+// assertions: the unit price stays below the configured threshold — read from
+// /api/shop-settings (data, never a hard-coded price) and cheapest-first — so earlier
+// specs consuming stock can never flip a locked free-shipping bar out from under an
+// assertion. (#58: extracted from cart-translations.spec.ts for reuse.)
+export async function seedCart(page: Page, gotoPath = "/fr/products"): Promise<void> {
+  const settings = (await (await page.request.get("/api/shop-settings")).json()) as {
+    freeShippingFromCents: number;
+  };
+  const response = await page.request.get("/api/products?sort=price-asc");
+  const body = (await response.json()) as { items: ApiProduct[] };
+  const candidate = body.items
+    .flatMap((item) =>
+      item.variants
+        .filter((v) => v.stock > 0)
+        .map((variant) => ({
+          product: item,
+          variant,
+          unitPriceCents: item.priceCents + variant.priceDeltaCents,
+        })),
+    )
+    .find((entry) => entry.unitPriceCents < settings.freeShippingFromCents)!;
+  const product = candidate.product;
+  const variant = candidate.variant;
+  const line = {
+    productId: product.id,
+    slug: product.slug,
+    sku: variant.sku,
+    name: product.name,
+    variantLabel: variant.label,
+    imageSrc: product.images[0]?.src ?? "",
+    unitPriceCents: product.priceCents + variant.priceDeltaCents,
+    qty: 1,
+    stock: variant.stock,
+  };
+  await page.goto(gotoPath);
+  await page.evaluate(
+    ([key, value]) => localStorage.setItem(key, value),
+    ["cart:v1", JSON.stringify({ v: 1, lines: [line] })] as const,
+  );
+}
+
 export async function readStockOfSku(page: Page, sku: string): Promise<number> {
   await page.goto(`/admin/products?q=${encodeURIComponent(sku)}`);
   // The SKU search is exact, so the single result row is the product of that SKU.

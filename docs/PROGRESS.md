@@ -1702,3 +1702,57 @@ Done — M1–M6 + QA complete.
   select's „Sortierung", account/auth forms, admin strings + admin language switcher,
   mail/invoice/slip/label texts in the recipient's language, no-German-literals guard),
   step 4 remainder, step 5, admin switcher.
+
+## ISSUES — queue session 22 (2026-10-18)
+
+### Gate report findings — no defect, re-verified ✅
+- `GET / → 307`, `GET /produkte → 308` and „no `/produkt/…` links" are the intended
+  #63/#58-step-2 behaviour (English URLs, 308 for the former German ones, 307 onto the
+  language prefix, product links `/products/…`), asserted by the green
+  `language-routing`/`english-urls` specs; the review session re-verified the gate at
+  HEAD. No code change.
+
+### #58 (step 3 slice) — the checkout body reads its texts from the translation table ✅ — issue stays open
+- **36 new keys (area `shop`, seeded in all five languages — the seed test enforces):**
+  guest banner (question, „Anmelden"/„Konto erstellen"/„oder"/guest hint), empty state
+  („Es gibt nichts zu bezahlen", reusing `shop.cart.emptyDrawer` +
+  `shop.action.continueShopping`), the three step legends, the six customer field
+  labels, „Gratis", the payment hints per configured `kind` (`{days}` from
+  `INVOICE_DUE_DAYS`), the invoice card sentence with `{days}` + `{link}` and its own
+  link-text key, the pickup note, the demo notice + the four card fields, the summary
+  („Bestellübersicht", „Rabatt", „Versand", „Gesamt", reusing `shop.cart.subtotal`),
+  the VAT note as `{vat} inbegriffen` (interpolated with the German `vatLabel` value —
+  renders exactly the old `vatInclusiveNote` output; the lib function stays for
+  server/invoice use), submit „Jetzt kaufen"/„Bestellen" (the „ — {amount}" joiner
+  stays around the already-formatted value), AGB note and the success toast with
+  `{number}`. The h1 reuses `shop.meta.checkout.title` (de base already „Kasse").
+  **Every German base is byte-identical to the literal it replaced**, so the German
+  specs that select „Kasse", `/Jetzt kaufen/` and `/8,1 % MwSt\. inbegriffen/` stay
+  green untouched.
+- **New pure helper `splitOnPlaceholder(text, name)`** (`lib/i18n.ts`): the invoice
+  sentence embeds a `<Link>`; the translator places `{link}` wherever the language's
+  word order needs it, the component renders before + link + after.
+- `CUSTOMER_FIELDS` labels became `labelKey`s resolved at render (placeholders stay —
+  sample values, not UI copy); `paymentHint` takes the labels map. No German UI
+  literal is left in the checkout page or form. Shipping/payment method labels and
+  hints stay `shop_settings` rows (configuration content is its own step); server-side
+  zod error messages stay German (recorded — server-messages slice).
+- **Review nit bundled:** `cart-translations.spec.ts` now asserts the **French theme
+  label present** („Activer le thème clair ou sombre"), not just the German one absent.
+- **e2e:** the hermetic `seedCart` moved from `cart-translations.spec.ts` into
+  `tests/e2e/helpers.ts` (shared, threshold still read from `/api/shop-settings`);
+  new `checkout-translations.spec.ts` (2: fr checkout — h1 „Caisse", guest banner,
+  legends via `#shipping`/`#payment`, field labels „Nom, prénom"/„NPA", summary,
+  submit „Acheter maintenant — … CHF", German „Jetzt kaufen"/„Bestellübersicht"/
+  „Zahlung" absent; es checkout — „Caja", „Resumen del pedido", „Comprar ahora").
+- Verified: both specs **fail on the pre-change build** (reproduced against a stashed
+  rebuild); `splitOnPlaceholder` unit tests (3) fail without the helper; seed-translation
+  test covers the 36 keys × 5 languages. `npm run build`/lint/knip ✅,
+  `npm test` ✅ 574, `npm run test:e2e` ✅ 72/72; tree clean, nothing running.
+- **Left open (#58):** step 3 remainder (product page + review strings incl. the „ab"
+  price prefix, listing/filter strings such as the sort select's „Sortierung",
+  account/auth forms, admin strings + admin language switcher, mail/invoice/slip/label
+  texts in the recipient's language, server-side validation messages,
+  no-German-literals guard), step 4 remainder (needs-review filter, usage context +
+  preview link, keyboard-driven inline editing, change history), step 5 (translatable
+  catalog content + two-language checkout e2e).

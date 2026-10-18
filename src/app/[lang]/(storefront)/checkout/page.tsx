@@ -32,7 +32,7 @@ export async function generateMetadata({
 
 export default async function CheckoutPage({ params }: PageProps<"/[lang]/checkout">) {
   await connection();
-  // Issue #58 step 3: the discount field's texts come from the translation table.
+  // Issue #58 step 3: the page's and the form's texts come from the translation table.
   const labels = await getLabels((await params).lang);
   // Issue #39: logged in? the form starts from the profile and default address.
   const userId = await getCustomerSessionUserId();
@@ -57,27 +57,29 @@ export default async function CheckoutPage({ params }: PageProps<"/[lang]/checko
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">Kasse</h1>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">
+        {label(labels, "shop.meta.checkout.title")}
+      </h1>
       {!profile && (
         <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border bg-muted/40 p-4 text-sm">
           <span className="flex items-center gap-2 font-medium">
             <UserRound className="size-4" aria-hidden />
-            Sie haben bereits ein Konto?
+            {label(labels, "shop.checkout.guestQuestion")}
           </span>
           <Link
             href="/account/login?next=%2Fcheckout"
             className="font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           >
-            Anmelden
+            {label(labels, "shop.action.login")}
           </Link>
-          <span className="text-muted-foreground">oder</span>
+          <span className="text-muted-foreground">{label(labels, "shop.checkout.or")}</span>
           <Link
             href="/account/register"
             className="font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           >
-            Konto erstellen
+            {label(labels, "shop.action.register")}
           </Link>
-          <span className="text-muted-foreground">— oder als Gast bestellen.</span>
+          <span className="text-muted-foreground">{label(labels, "shop.checkout.guestHint")}</span>
         </div>
       )}
       <CheckoutForm prefill={prefill} invoiceAvailable={invoiceAvailable} labels={labels} />

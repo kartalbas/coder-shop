@@ -13,6 +13,7 @@ import {
   labelMap,
   parseAcceptLanguage,
   resolveLanguage,
+  splitOnPlaceholder,
   textFor,
   type TranslationEntry,
 } from "./i18n";
@@ -165,6 +166,29 @@ describe("labelMap / label / interpolate (#58 step 3)", () => {
 
   it("fills {placeholder} values and leaves unknown ones standing", () => {
     expect(interpolate("Hallo {name}, {vat}", { name: "Welt" })).toBe("Hallo Welt, {vat}");
+  });
+});
+
+describe("splitOnPlaceholder (#58 step 3)", () => {
+  it("splits around the placeholder, keeping the text on both sides", () => {
+    expect(splitOnPlaceholder("sichtbar unter {link}.", "link")).toEqual({
+      before: "sichtbar unter ",
+      after: ".",
+    });
+  });
+
+  it("a text that leads with the placeholder has an empty before", () => {
+    expect(splitOnPlaceholder("{link} — offen", "link")).toEqual({
+      before: "",
+      after: " — offen",
+    });
+  });
+
+  it("without the placeholder the whole text is before", () => {
+    expect(splitOnPlaceholder("ganz der Text", "link")).toEqual({
+      before: "ganz der Text",
+      after: "",
+    });
   });
 });
 
