@@ -230,7 +230,10 @@ src/
     review.ts               # verified-buyer reviews: pending/approved/hidden (#47)
     stock-unit.ts           # unit ledger of serial-tracked types: serial unique per SKU (#62)
     language.ts             # languages as rows: code, label, intlLocale, position, active (#58)
-    translation.ts          # the one translation table: key, area, de base, texts map (#58)
+    translation.ts          # the one translation table: key, area, de base, texts map,
+                            # textUpdatedAt freshness map keyed by language code (#58)
+    translation-history.ts  # append-only change history of the table: key, language,
+                            # old → new, actor, at (#58 editor slice)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
                           # (guard test: tests/lib-purity.test.ts)
     product-types.ts        # ProductType = string — types are data now (#61), the alias only names it
@@ -300,9 +303,11 @@ src/
                             # source read by all generic catalog code (#61)
     shop-settings.ts        # getShopSettings/saveShopSettingsCore — the commerce configuration
                             # read by pricing, checkout, state machine context and admin (#64)
-    i18n.ts                 # getLanguages/getTranslations/getTranslator + save cores — the one
-                            # access point to the language and translation tables, process-cached
-                            # and invalidated on every write (next request, no deploy) (#58)
+    i18n.ts                 # getLanguages/getTranslations/getTranslator/getTranslationHistory +
+                            # save cores — the one access point to the language and translation
+                            # tables, process-cached and invalidated on every write (next
+                            # request, no deploy); saveTranslationCore stamps changed texts and
+                            # appends the history (#58, #58 editor slice)
     translations.json       # the one seed file of the translation table — one line-object per
                             # row ({ key, area, de, texts }), read only by translation-seed.ts (#58)
     translation-seed.ts     # DEFAULT_TRANSLATIONS typed from translations.json — the file's
@@ -677,6 +682,19 @@ in that file, never code (#58 user decision). `src/server/i18n.ts` is
 the only access: rows are process-cached and every write (`saveTranslationCore`,
 `saveLanguageCore`) invalidates the cache, so edits take effect on the next request
 without a deploy. Step 1 of #58; extracting the remaining UI texts into rows is step 2.
+
+**Freshness and history (#58 editor slice).** Each row carries `textUpdatedAt`: a Mixed
+map code → ISO string of the last change, `de` included — keyed by language code exactly
+like `texts`, so a new language gains freshness by being a row. `saveTranslationCore`
+compares the stored row per code and moves only the stamps of texts that actually
+changed; an unstamped legacy code falls back to the document's `createdAt` on load
+(never `updatedAt` — that moves on every save, DECISIONS), so untouched rows never
+flag. The pure `needsReview(entry, code)` marks a present text older than its German
+base, `filterTranslations({ reviewOnly, reviewFor })` filters the admin list, and the
+edit page renders the last 20 entries of **`translation_history`**
+(`{ key, language, oldValue, newValue, actor, at }`, index `{ key, at: -1 }`,
+append-only audit data like the order statusLog; actor = session admin's e-mail,
+`null` outside a request scope).
 Customer-visible order status names are rows too (`shop.status.<status>`, keys derived
 from the state-machine statuses), read by the storefront **and** by the admin's badges,
 tabs and timeline; `STATUS_LABELS` remains only as the badge's no-provider fallback and

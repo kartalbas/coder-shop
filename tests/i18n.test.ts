@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_LANGUAGES,
+  needsReview,
   RETIRED_TRANSLATION_KEYS,
   type TranslationEntry,
 } from "@/lib/i18n";
 import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { UserModel } from "@/models/user";
 import { LanguageModel } from "@/models/language";
+import { TranslationHistoryModel } from "@/models/translation-history";
 import { TranslationModel } from "@/models/translation";
 import { hashPassword } from "@/server/password";
 import { createSessionToken } from "@/server/session-token";
@@ -345,5 +347,126 @@ describe("admin editor actions (#58)", () => {
     expect(
       (await saveLanguageAction(null, translationForm({ code: "p", label: "Kurz", intlLocale: "p", position: 0, active: true }))).ok,
     ).toBe(false);
+  });
+});
+
+// #58 editor slice: per-text freshness and the change history of the one table.
+describe("translation freshness and history (#58 editor slice)", () => {
+  const sleep = () => new Promise((resolve) => setTimeout(resolve, 5));
+  const rowOf = async (key: string) => {
+    const row = (await getTranslations()).find((entry) => entry.key === key);
+    if (!row) throw new Error(`row ${key} not found`);
+    return row;
+  };
+
+  it("editing the German base marks the other languages for review, editing a text clears it", async () => {
+    await seedLanguages();
+    await seedTranslations();
+    // Rows predating the field fall back to the document's updatedAt — uniformly
+    // current, so nothing flags before an actual edit.
+    expect(needsReview(await rowOf("shop.cart.title"), "fr")).toBe(false);
+
+    expect(
+      (
+        await saveTranslationCore({
+          key: "shop.cart.title",
+          area: "shop",
+          de: "Warenkorb (überarbeitet)",
+          texts: {},
+        })
+      ).ok,
+    ).toBe(true);
+    const afterDe = await rowOf("shop.cart.title");
+    expect(needsReview(afterDe, "fr")).toBe(true);
+    expect(afterDe.textUpdatedAt?.de).not.toBe(afterDe.textUpdatedAt?.fr);
+
+    await sleep();
+    expect(
+      (
+        await saveTranslationCore({
+          key: "shop.cart.title",
+          area: "shop",
+          de: "Warenkorb (überarbeitet)",
+          texts: { fr: "Panier (révisé)" },
+        })
+      ).ok,
+    ).toBe(true);
+    const afterFr = await rowOf("shop.cart.title");
+    expect(needsReview(afterFr, "fr")).toBe(false);
+    // Untouched languages stay marked — the marker is per text, not per row.
+    expect(needsReview(afterFr, "it")).toBe(true);
+  });
+
+  it("an unchanged save moves no timestamp and writes no history", async () => {
+    await seedLanguages();
+    const row: TranslationEntry = {
+      key: "shop.fresh.unchanged",
+      area: "shop",
+      de: "Unverändert",
+      texts: { fr: "Inchangé" },
+    };
+    expect((await saveTranslationCore(row)).ok).toBe(true);
+    const created = await rowOf("shop.fresh.unchanged");
+    const stamps = { ...(created.textUpdatedAt ?? {}) };
+    // Creation records one history entry per text (de + fr).
+    expect(await TranslationHistoryModel.countDocuments({ key: row.key })).toBe(2);
+
+    await sleep();
+    expect((await saveTranslationCore(row)).ok).toBe(true);
+    const again = await rowOf("shop.fresh.unchanged");
+    expect(again.textUpdatedAt).toEqual(stamps);
+    expect(await TranslationHistoryModel.countDocuments({ key: row.key })).toBe(2);
+  });
+
+  it("history rows carry the actor and old → new; without a session the actor is null", async () => {
+    await seedLanguages();
+    const user = await UserModel.create({
+      email: "admin@codershop.ch",
+      name: "Shop Admin",
+      passwordHash: await hashPassword("I18n!2026"),
+      role: "admin",
+    });
+    store.token = createSessionToken(user._id.toString());
+
+    expect((await saveTranslationCore({ key: "shop.fresh.actor", area: "shop", de: "Alt", texts: {} })).ok).toBe(true);
+    await sleep();
+    expect((await saveTranslationCore({ key: "shop.fresh.actor", area: "shop", de: "Neu", texts: {} })).ok).toBe(true);
+    const rows = await TranslationHistoryModel.find({ key: "shop.fresh.actor" })
+      .sort({ at: 1, _id: 1 })
+      .lean()
+      .exec();
+    expect(rows.map((r) => [r.language, r.oldValue, r.newValue, r.actor])).toEqual([
+      ["de", "", "Alt", "admin@codershop.ch"],
+      ["de", "Alt", "Neu", "admin@codershop.ch"],
+    ]);
+
+    // Outside a request scope (no session cookie) the actor is null.
+    store.token = "";
+    expect((await saveTranslationCore({ key: "shop.fresh.system", area: "shop", de: "Ohne", texts: {} })).ok).toBe(true);
+    const systemRow = await TranslationHistoryModel.findOne({ key: "shop.fresh.system" }).lean().exec();
+    expect(systemRow?.actor).toBeNull();
+  });
+
+  it("a sixth language added as a row gets its own timestamps and history", async () => {
+    await seedLanguages();
+    expect(
+      (await saveLanguageCore({ code: "en", label: "English", intlLocale: "en-CH", position: 5, active: true })).ok,
+    ).toBe(true);
+    expect(
+      (await saveTranslationCore({ key: "shop.fresh.sixth", area: "shop", de: "Hallo", texts: { en: "Hello" } })).ok,
+    ).toBe(true);
+    const created = await rowOf("shop.fresh.sixth");
+    expect(created.textUpdatedAt?.en).toBeTruthy();
+    expect(needsReview(created, "en")).toBe(false);
+    expect(
+      await TranslationHistoryModel.countDocuments({ key: "shop.fresh.sixth", language: "en" }),
+    ).toBe(1);
+
+    await sleep();
+    expect(
+      (await saveTranslationCore({ key: "shop.fresh.sixth", area: "shop", de: "Hallo!", texts: {} })).ok,
+    ).toBe(true);
+    // The new language follows the same freshness rule as the seeded ones — rows only.
+    expect(needsReview(await rowOf("shop.fresh.sixth"), "en")).toBe(true);
   });
 });

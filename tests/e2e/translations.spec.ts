@@ -25,7 +25,7 @@ test("translations: edit a text, add a key, add a language", async ({ page }) =>
   ).toContainText("Panier des tests");
 
   // --- A new key: German base + one language text.
-  await page.goto("/admin/translations/neu");
+  await page.goto("/admin/translations/new");
   await page.getByLabel("Key", { exact: true }).fill("shop.e2e.greeting");
   await page.getByLabel(/Deutsch \(Basis/).fill("Hallo E2E");
   await page.getByLabel(/Italiano/).fill("Ciao E2E");
@@ -119,7 +119,7 @@ test("translations: the missing-in-language filter lists only untranslated rows"
   await loginAsAdmin(page);
 
   // A row translated in Italian only — missing in French and every other language.
-  await page.goto("/admin/translations/neu");
+  await page.goto("/admin/translations/new");
   await page.getByLabel("Key", { exact: true }).fill("shop.e2e.missing-filter");
   await page.getByLabel(/Deutsch \(Basis/).fill("Filter-Test");
   await page.getByLabel(/Italiano/).fill("Prova di filtro");
@@ -145,4 +145,73 @@ test("translations: the missing-in-language filter lists only untranslated rows"
   // outgrown the list cap and the row is no longer on the first page.
   await page.goto("/admin/translations?missing=xx&q=shop.cart.title");
   await expect(seeded.first()).toBeVisible({ timeout: 30_000 });
+});
+
+// #58 editor slice: per-text freshness — editing the German base flags every language
+// text as "needs review" (badge + review filter), editing the text clears its marker,
+// and the edit page shows the change history with the actor. Fails on the pre-fix
+// build: no marker, no filter, no history.
+test("translations: freshness marker, review filter and change history", async ({ page }) => {
+  test.setTimeout(150_000);
+  await loginAsAdmin(page);
+  try {
+    // Edit the German base of a seeded row: every existing text is now older.
+    await page.goto("/admin/translations?q=shop.cart.title");
+    const row = page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
+    await expect(row).toBeVisible({ timeout: 30_000 });
+    await row.getByRole("link", { name: "Bearbeiten" }).click();
+    await page.getByLabel(/Deutsch \(Basis/).fill("Warenkorb (Geschichte)");
+    await page.getByRole("button", { name: "Speichern" }).click();
+    await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
+
+    // The list flags the stale texts with the amber marker.
+    await page.goto("/admin/translations?q=shop.cart.title");
+    const flagged = page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
+    await expect(flagged.getByText("Prüfen").first()).toBeVisible({ timeout: 30_000 });
+
+    // The review filter finds exactly this row for French.
+    await page.goto("/admin/translations?review=fr&q=shop.cart.title");
+    await expect(flagged).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByLabel("Nach zu prüfenden Übersetzungen filtern")).toHaveValue("fr");
+
+    // Editing the French text clears its marker; the untouched languages stay flagged.
+    await flagged.getByRole("link", { name: "Bearbeiten" }).click();
+    await page.getByLabel(/Français/).fill("Panier (Geschichte)");
+    await page.getByRole("button", { name: "Speichern" }).click();
+    await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
+
+    await page.goto("/admin/translations?q=shop.cart.title");
+    const updated = page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
+    await expect(
+      updated.locator("td").filter({ hasText: "Panier (Geschichte)" }).first(),
+    ).not.toContainText("Prüfen");
+    await expect(updated.getByText("Prüfen").first()).toBeVisible();
+    await page.goto("/admin/translations?review=fr&q=shop.cart.title");
+    await expect(
+      page.locator("tbody tr").filter({ hasText: "shop.cart.title" }),
+    ).toHaveCount(0);
+
+    // The edit page shows the change history with actor and old → new.
+    await page.goto("/admin/translations?q=shop.cart.title");
+    await page
+      .locator("tbody tr")
+      .filter({ hasText: "shop.cart.title" })
+      .first()
+      .getByRole("link", { name: "Bearbeiten" })
+      .click();
+    await expect(page.getByRole("heading", { name: "Änderungsgeschichte" })).toBeVisible();
+    await expect(page.getByText("Warenkorb (Geschichte)").first()).toBeVisible();
+    await expect(page.getByText("Panier (Geschichte)").first()).toBeVisible();
+    await expect(page.getByText("von admin@codershop.ch").first()).toBeVisible();
+  } finally {
+    // Restore the German base for the specs that follow (shared server).
+    await page.goto("/admin/translations?q=shop.cart.title").catch(() => {});
+    const row = page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
+    if (await row.isVisible().catch(() => false)) {
+      await row.getByRole("link", { name: "Bearbeiten" }).click();
+      await page.getByLabel(/Deutsch \(Basis/).fill("Warenkorb");
+      await page.getByRole("button", { name: "Speichern" }).click();
+      await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
+    }
+  }
 });

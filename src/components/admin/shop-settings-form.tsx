@@ -203,7 +203,7 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
                   aria-label={interpolate(label(labels, "admin.settings.expressAria"), { name: row.key || index + 1 })}
                   title={label(labels, "admin.settings.expressTitle")}
                 />
-                Express
+                {label(labels, "admin.settings.express")}
               </label>
               <div className="flex items-center gap-2 pb-2">
                 <label className="flex items-center gap-2 text-sm">

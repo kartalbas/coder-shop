@@ -31,7 +31,7 @@ export default async function CatalogTypesPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/admin/catalog-types/neu">{label(labels, "admin.catalogTypes.new")}</Link>
+          <Link href="/admin/catalog-types/new">{label(labels, "admin.catalogTypes.new")}</Link>
         </Button>
       </div>
       <ul className="mt-6 space-y-3">

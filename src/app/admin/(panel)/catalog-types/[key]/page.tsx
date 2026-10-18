@@ -19,7 +19,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// "neu" opens the editor with an empty configuration; every other key edits the row.
+// "new" opens the editor with an empty configuration; every other key edits the row.
+// The sentinel is English (#63 machine-value rule, #58 editor slice); an old German
+// "/neu" bookmark falls to the type lookup and shows the not-found state.
 const NEW_CONFIG: CatalogTypeConfig = {
   key: "",
   label: "",
@@ -41,7 +43,7 @@ export default async function CatalogTypeEditPage({ params }: PagePropsLocal) {
   await connection();
   const { key } = await params;
   const labels = await getRequestLabels();
-  const config = key === "neu" ? NEW_CONFIG : ((await getCatalogType(key)) ?? null);
+  const config = key === "new" ? NEW_CONFIG : ((await getCatalogType(key)) ?? null);
   if (!config) {
     return (
       <div>
@@ -62,7 +64,7 @@ export default async function CatalogTypeEditPage({ params }: PagePropsLocal) {
         {label(labels, "admin.action.back")}
       </Link>
       <h1 className="mt-3 text-2xl font-bold tracking-tight">
-        {key === "neu"
+        {key === "new"
           ? label(labels, "admin.catalogTypes.newTitle")
           : interpolate(label(labels, "admin.catalogTypes.editTitle"), { name: config.label })}
       </h1>

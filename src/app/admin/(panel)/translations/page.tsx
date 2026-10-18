@@ -13,6 +13,7 @@ import {
   interpolate,
   isTranslated,
   label,
+  needsReview,
 } from "@/lib/i18n";
 import { getActiveLanguages, getRequestLabels, getTranslations } from "@/server/i18n";
 
@@ -26,30 +27,37 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 interface PagePropsLocal {
-  searchParams: Promise<{ q?: string; area?: string; missing?: string }>;
+  searchParams: Promise<{ q?: string; area?: string; missing?: string; review?: string }>;
 }
 
 const LIST_LIMIT = 200;
 
 export default async function AdminTranslationsPage({ searchParams }: PagePropsLocal) {
   await connection();
-  const { q, area, missing } = await searchParams;
+  const { q, area, missing, review } = await searchParams;
   const [entries, languages, labels] = await Promise.all([
     getTranslations(),
     getActiveLanguages(),
     getRequestLabels(),
   ]);
   // Machine values are English (#63): the "no filter" sentinel is "all". The missing
-  // filter only accepts a real active language code and the area filter only the known
-  // area enum — junk (or an old `?area=alle` bookmark) falls back to the unfiltered list.
+  // and review filters only accept a real active language code and the area filter only
+  // the known area enum — junk (or an old `?area=alle` bookmark) falls back to the
+  // unfiltered list.
   const missingFor =
     missing && missing !== "all" && languages.some((language) => language.code === missing)
       ? missing
+      : undefined;
+  const reviewFor =
+    review && review !== "all" && languages.some((language) => language.code === review)
+      ? review
       : undefined;
   const filtered = filterTranslations(entries, {
     q,
     area: area && (TRANSLATION_AREAS as readonly string[]).includes(area) ? area : undefined,
     missingFor,
+    reviewOnly: reviewFor !== undefined,
+    reviewFor,
   });
   const shown = filtered.slice(0, LIST_LIMIT);
 
@@ -70,7 +78,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/admin/translations/neu">{label(labels, "admin.translations.new")}</Link>
+            <Link href="/admin/translations/new">{label(labels, "admin.translations.new")}</Link>
           </Button>
         </div>
       </div>
@@ -109,6 +117,23 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
             .map((language) => (
               <option key={language.code} value={language.code}>
                 {interpolate(label(labels, "admin.translations.missingIn"), {
+                  language: language.label,
+                })}
+              </option>
+            ))}
+        </select>
+        <select
+          name="review"
+          defaultValue={reviewFor ?? "all"}
+          aria-label={label(labels, "admin.translations.reviewAria")}
+          className="h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <option value="all">{label(labels, "admin.translations.allReviewed")}</option>
+          {languages
+            .filter((language) => language.code !== BASE_LANGUAGE)
+            .map((language) => (
+              <option key={language.code} value={language.code}>
+                {interpolate(label(labels, "admin.translations.needsReviewIn"), {
                   language: language.label,
                 })}
               </option>
@@ -156,7 +181,14 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
                     .map((language) => (
                       <td key={language.code} className="max-w-64 px-4 py-2.5">
                         {isTranslated(entry, language.code) ? (
-                          entry.texts[language.code]
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            {entry.texts[language.code]}
+                            {needsReview(entry, language.code) && (
+                              <span className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                {label(labels, "admin.translations.needsReview")}
+                              </span>
+                            )}
+                          </span>
                         ) : (
                           <span className="text-xs italic text-amber-700 dark:text-amber-400">
                             {label(labels, "admin.translations.missing")}

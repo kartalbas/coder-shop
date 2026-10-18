@@ -10,6 +10,7 @@ import {
   isTranslated,
   label,
   labelMap,
+  needsReview,
   parseAcceptLanguage,
   plural,
   RETIRED_TRANSLATION_KEYS,
@@ -311,5 +312,94 @@ describe("filterTranslations (#58 editor)", () => {
       ["shop.cart.title"],
     );
     expect(filterTranslations(rows, { missingFor: "fr", q: "panier" })).toEqual([]);
+  });
+
+  it("keeps only rows that need review, per language or in any (#58 editor slice)", () => {
+    const fresh = "2026-10-01T10:00:00.000Z";
+    const old = "2026-09-01T10:00:00.000Z";
+    const reviewed: TranslationEntry[] = [
+      entry({
+        key: "a.stale.fr",
+        texts: { fr: "Panier", it: "Carrello" },
+        textUpdatedAt: { de: fresh, fr: old, it: fresh },
+      }),
+      entry({
+        key: "b.all.current",
+        texts: { fr: "Bestellungen", it: "Ordini" },
+        textUpdatedAt: { de: fresh, fr: fresh, it: fresh },
+      }),
+      entry({ key: "c.no.timestamps", texts: { fr: "Ordine" } }),
+      entry({ key: "d.fr.missing", texts: { it: "Ordine" }, textUpdatedAt: { de: fresh } }),
+    ];
+    // Any language: only the row with a stale French text flags — a missing text is
+    // "missing", not "stale", and rows without timestamps never flag.
+    expect(
+      filterTranslations(reviewed, { reviewOnly: true }).map((row) => row.key),
+    ).toEqual(["a.stale.fr"]);
+    // The stale language flags, the current one does not.
+    expect(
+      filterTranslations(reviewed, { reviewOnly: true, reviewFor: "fr" }).map((row) => row.key),
+    ).toEqual(["a.stale.fr"]);
+    expect(
+      filterTranslations(reviewed, { reviewOnly: true, reviewFor: "it" }).map((row) => row.key),
+    ).toEqual([]);
+    // Without reviewFor the missingFor language is reviewed (the plan's coupling).
+    expect(
+      filterTranslations(reviewed, { reviewOnly: true, missingFor: "fr" }).map((row) => row.key),
+    ).toEqual([]);
+    // Combines with the text search.
+    expect(
+      filterTranslations(reviewed, { reviewOnly: true, reviewFor: "fr", q: "panier" }).map(
+        (row) => row.key,
+      ),
+    ).toEqual(["a.stale.fr"]);
+    expect(filterTranslations(reviewed, { reviewOnly: true, reviewFor: "fr", q: "ordine" })).toEqual(
+      [],
+    );
+  });
+});
+
+describe("needsReview (#58 editor slice — texts older than their German base)", () => {
+  const fresh = "2026-10-01T10:00:00.000Z";
+  const old = "2026-09-01T10:00:00.000Z";
+
+  it("flags a text changed before the German base, not one changed after or at it", () => {
+    expect(
+      needsReview(
+        { key: "a.b", area: "shop", de: "x", texts: { fr: "y" }, textUpdatedAt: { de: fresh, fr: old } },
+        "fr",
+      ),
+    ).toBe(true);
+    expect(
+      needsReview(
+        { key: "a.b", area: "shop", de: "x", texts: { fr: "y" }, textUpdatedAt: { de: old, fr: fresh } },
+        "fr",
+      ),
+    ).toBe(false);
+    expect(
+      needsReview(
+        { key: "a.b", area: "shop", de: "x", texts: { fr: "y" }, textUpdatedAt: { de: fresh, fr: fresh } },
+        "fr",
+      ),
+    ).toBe(false);
+  });
+
+  it("a missing text is missing, not stale; no timestamps never flag; de never flags", () => {
+    expect(
+      needsReview({ key: "a.b", area: "shop", de: "x", texts: {}, textUpdatedAt: { de: fresh } }, "fr"),
+    ).toBe(false);
+    expect(needsReview({ key: "a.b", area: "shop", de: "x", texts: { fr: "y" } }, "fr")).toBe(false);
+    expect(
+      needsReview(
+        { key: "a.b", area: "shop", de: "x", texts: { fr: "y" }, textUpdatedAt: { fr: old } },
+        "fr",
+      ),
+    ).toBe(false);
+    expect(
+      needsReview(
+        { key: "a.b", area: "shop", de: "x", texts: { fr: "y" }, textUpdatedAt: { de: fresh, fr: old } },
+        "de",
+      ),
+    ).toBe(false);
   });
 });

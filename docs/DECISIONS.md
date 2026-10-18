@@ -975,3 +975,36 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   Express title) read the rows their shipping counterparts already used, and the
   compare stock value joins the plural mechanism as `shop.compare.stockValue.one/.other`
   instead of a single row that would force a „pièce(s)" hack in French.
+- **Per-text freshness rides a language-keyed map on the row (#58 editor slice).**
+  "Translation older than its German text → needs review" needs a timestamp per text,
+  so `translations` gains `textUpdatedAt` — code → ISO string, `de` included — keyed by
+  language code exactly like `texts`: a new language gets its own freshness by being a
+  row. `saveTranslationCore` compares the stored row per code and moves a stamp only
+  where the text actually changed; an unchanged save moves nothing. Rows predating the
+  field need no migration: `toTranslationEntry` answers an unstamped code with the
+  document's **createdAt**, not updatedAt — updatedAt moves on every save, so a legacy
+  row's untouched texts would never read as older than a freshly edited base (the
+  fallback the plan sketched fails its own acceptance case; recorded deviation). The
+  field stays optional on `TranslationEntry` so the seed file and its deep-equal guard
+  stay untouched.
+- **Change history is an append-only audit collection (#58 editor slice).**
+  `translation_history` (`{ key, language, oldValue, newValue, actor, at }`, index
+  `{ key, at: -1 }`) gets one entry per changed code inside `saveTranslationCore` —
+  creation records each text from "", clearing records it to "". The actor is the
+  session admin's e-mail through `getSessionUserId`/`getAdminEmail` (the order-log
+  discipline), `null` outside a request scope; `session.ts` imports `server/i18n.ts`,
+  so the helpers come in through a dynamic import (the session.ts pattern for
+  next/headers). History is unbounded audit data at demo scale — no retention code, no
+  speculative config; concurrent saves may interleave entries, acceptable for a
+  single-process demo.
+- **The review filter keeps its own machine value (#58 editor slice).** The list's
+  `?review=all|<code>` select maps to `filterTranslations({ reviewOnly, reviewFor })`;
+  `reviewFor` defaults to `missingFor` (the plan's coupling) but stays a separate value,
+  because "missing in X" and "stale in X" are mutually exclusive on the same language —
+  coupling them into one parameter could only answer the empty set.
+- **Editor sentinels are English (#58 editor slice, #63 rule).** `/admin/translations/neu`
+  and `/admin/catalog-types/neu` became `/new` — machine values in URLs are code, not
+  content. Admin-only URLs, so no 308 mapping (the #63 redirect table covers the former
+  public German URLs); an old `/neu` bookmark falls to the key/type lookup and answers
+  the not-found state. The dot-in-keys rule still keeps `new` from colliding with a
+  translation key.

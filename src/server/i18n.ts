@@ -3,6 +3,7 @@ import { createFormatters, type Formatters } from "@/lib/format";
 import { connectDB } from "./db";
 import {
   activeLanguages,
+  BASE_LANGUAGE,
   createTranslator,
   defaultLanguage,
   DEFAULT_LANGUAGES,
@@ -19,6 +20,7 @@ import {
 import { DEFAULT_TRANSLATIONS } from "./translation-seed";
 import { LANGUAGE_HEADER } from "@/lib/locale-path";
 import { LanguageModel, toLanguageConfig } from "@/models/language";
+import { TranslationHistoryModel } from "@/models/translation-history";
 import { TranslationModel, toTranslationEntry } from "@/models/translation";
 
 // Issue #58: the translation table is read dynamically per request through this single
@@ -125,6 +127,20 @@ function validKey(key: string): boolean {
   return /^[a-z][a-z0-9-]*(\.[a-zA-Z0-9-]+)+$/.test(key);
 }
 
+// The actor of a history entry (#58 editor slice): the session admin's e-mail, the
+// same discipline as the order log. `session.ts` imports this module, so the helpers
+// come in dynamically (the session.ts pattern for next/headers). Outside a request
+// scope — seed, scripts, integration tests without a cookie — the answer is null.
+async function resolveTranslationActor(): Promise<string | null> {
+  try {
+    const { getAdminEmail, getSessionUserId } = await import("./session");
+    const userId = await getSessionUserId();
+    return userId ? await getAdminEmail(userId) : null;
+  } catch {
+    return null;
+  }
+}
+
 // Creates or updates one translation row (admin editor, seed, tests). The German base
 // text is required; translations may be blank (that is "missing", not invalid) but only
 // for language codes that exist as rows — a text for an unknown language is a typo.
@@ -133,6 +149,10 @@ function validKey(key: string): boolean {
 // stays untouched. That way a partial payload (e.g. the editor showing only some
 // languages) can never destroy the texts of the languages it did not send, deactivated
 // ones included.
+// #58 editor slice: the stored row is read once and compared per code — every code
+// whose text actually changed moves its `textUpdatedAt` stamp to now and appends one
+// `translation_history` entry (old → new, actor). An unchanged save moves nothing and
+// writes no history.
 export async function saveTranslationCore(
   entry: TranslationEntry,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -154,18 +174,68 @@ export async function saveTranslationCore(
       return { ok: false, error: label(labels, "admin.translations.validation.unknownLanguage") };
     }
   }
+  await connectDB();
+  const stored = await TranslationModel.findOne({ key: entry.key }).lean().exec();
+  const storedTexts = (stored?.texts ?? {}) as Record<string, string>;
+  const at = new Date();
+  const atIso = at.toISOString();
   const set: Record<string, string> = { key: entry.key, area: entry.area, de: entry.de };
   const unset: Record<string, string> = {};
-  for (const [code, text] of Object.entries(entry.texts)) {
-    if (text.trim()) set[`texts.${code}`] = text;
-    else unset[`texts.${code}`] = "";
+  const changes: { language: string; oldValue: string; newValue: string }[] = [];
+  if (!stored || stored.de !== entry.de) {
+    changes.push({ language: BASE_LANGUAGE, oldValue: stored?.de ?? "", newValue: entry.de });
   }
+  for (const [code, text] of Object.entries(entry.texts)) {
+    const next = text.trim() ? text : null;
+    const previous = storedTexts[code];
+    if ((previous ?? null) === next) continue;
+    if (next === null) unset[`texts.${code}`] = "";
+    else set[`texts.${code}`] = next;
+    changes.push({ language: code, oldValue: previous ?? "", newValue: next ?? "" });
+  }
+  for (const change of changes) set[`textUpdatedAt.${change.language}`] = atIso;
   const update: Record<string, Record<string, string>> = { $set: set };
   if (Object.keys(unset).length > 0) update.$unset = unset;
-  await connectDB();
   await TranslationModel.updateOne({ key: entry.key }, update, { upsert: true }).exec();
+  if (changes.length > 0) {
+    const actor = await resolveTranslationActor();
+    await TranslationHistoryModel.insertMany(
+      changes.map((change) => ({ ...change, key: entry.key, actor, at })),
+    );
+  }
   invalidateI18nCache();
   return { ok: true };
+}
+
+export interface TranslationHistoryEntry {
+  id: string;
+  language: string;
+  oldValue: string;
+  newValue: string;
+  actor: string | null;
+  at: Date;
+}
+
+// The last changes of one key (#58 editor slice) — newest first, capped; the edit
+// page renders them with the request language's labels and Formatters.
+export async function getTranslationHistory(
+  key: string,
+  limit = 20,
+): Promise<TranslationHistoryEntry[]> {
+  await connectDB();
+  const docs = await TranslationHistoryModel.find({ key })
+    .sort({ at: -1, _id: -1 })
+    .limit(limit)
+    .lean()
+    .exec();
+  return docs.map((doc) => ({
+    id: doc._id.toString(),
+    language: doc.language,
+    oldValue: doc.oldValue,
+    newValue: doc.newValue,
+    actor: doc.actor ?? null,
+    at: doc.at,
+  }));
 }
 
 export async function saveLanguageCore(

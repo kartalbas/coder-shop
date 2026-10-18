@@ -36,6 +36,11 @@ export interface TranslationEntry {
   area: TranslationArea;
   de: string;
   texts: Record<string, string>;
+  // Per-text freshness (#58 editor slice): code → ISO string of the last change,
+  // `de` included. Optional so the seed file and its deep-equal guard stay untouched —
+  // rows predating the field fall back to the document's updatedAt on load, which
+  // makes them uniformly current and never flags them for review.
+  textUpdatedAt?: Record<string, string>;
 }
 
 // Fixed machine-translation repairs (#58 review): the seed is insert-only (#14), so a
@@ -163,17 +168,46 @@ export function isTranslated(entry: TranslationEntry, language: string): boolean
   return Boolean(entry.texts[language]?.trim());
 }
 
+// Freshness marker (#58 editor slice): a text needs review when it exists but was
+// last changed before the German base text — the translation has not caught up with
+// its source. ISO strings compare lexicographically; a missing text is "missing",
+// not "stale", and rows without timestamps never flag. `de` is just the base code —
+// no language branch, a sixth language is judged by the same rule.
+export function needsReview(entry: TranslationEntry, code: string): boolean {
+  if (code === BASE_LANGUAGE || !isTranslated(entry, code)) return false;
+  const textAt = entry.textUpdatedAt?.[code];
+  const baseAt = entry.textUpdatedAt?.[BASE_LANGUAGE];
+  if (!textAt || !baseAt) return false;
+  return textAt < baseAt;
+}
+
 // Admin list filter (#58 editor): free text over key, German base and every language
-// text, the area, and "missing in language X" — all optional, all combining. The
-// missing filter answers the editor's question "what still has to be translated?".
+// text, the area, "missing in language X" and "needs review" — all optional, all
+// combining. The missing filter answers "what still has to be translated?", the
+// review filter "which texts are older than their German base?" — with a language
+// given (`reviewFor`, defaulting to `missingFor`) it reviews that language only,
+// otherwise a row flags when any language needs review.
 export function filterTranslations(
   entries: readonly TranslationEntry[],
-  filter: { q?: string; area?: string; missingFor?: string },
+  filter: {
+    q?: string;
+    area?: string;
+    missingFor?: string;
+    reviewOnly?: boolean;
+    reviewFor?: string;
+  },
 ): TranslationEntry[] {
   const q = filter.q?.trim().toLowerCase() ?? "";
   return entries.filter((entry) => {
     if (filter.area && entry.area !== filter.area) return false;
     if (filter.missingFor && isTranslated(entry, filter.missingFor)) return false;
+    if (filter.reviewOnly) {
+      const code = filter.reviewFor ?? filter.missingFor;
+      const flagged = code
+        ? needsReview(entry, code)
+        : Object.keys(entry.texts).some((language) => needsReview(entry, language));
+      if (!flagged) return false;
+    }
     if (!q) return true;
     return [entry.key, entry.de, ...Object.values(entry.texts)]
       .join(" ")

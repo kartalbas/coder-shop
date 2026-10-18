@@ -2614,3 +2614,65 @@ Done — M1–M6 + QA complete.
   segments `/admin/translations/neu` and `/admin/catalog-types/neu` (#63 machine-value
   rule — same category as the `alle` sentinel fixed here); stored-data notes staying
   German remains the recorded decision the guard exempts.
+
+## ISSUES — queue session 45 (2026-10-19)
+
+### Gate report (before the queue) ✅
+- `GET /produkte → 308` and "no `/produkt/…` links" are again the intended #63 English
+  contract (former German URLs answer a permanent 308, product links are `/products/…`);
+  the `english-urls` spec is green. Tree clean at 0323a4b, no orphaned mongod, port 3100
+  free. Only #58 open; its 22:06 plan (editor freshness slice) is delivered below.
+
+### #58 (editor freshness slice) — per-text timestamps, needs-review marker, change history ✅ — issue stays open
+- **Two recorded nits first.** The settings form's literal `Express` checkbox label now
+  reads `admin.settings.express` (the row existed; the guard's word list never flagged
+  it). The German `/neu` editor sentinels became English `/new` — both
+  `/admin/translations/neu` and `/admin/catalog-types/neu` (the plan named only the
+  translations one; the same #63 rule and the same left-open record cover both —
+  recorded deviation). Admin-only URLs need no 308 mapping; old `/neu` bookmarks fall to
+  the key/type lookup and answer the not-found state.
+- **Freshness is a language-keyed map, not a schema.** `translations` gains
+  `textUpdatedAt` (code → ISO string, `de` included) — optional on `TranslationEntry`,
+  so the seed file and its deep-equal guard stay untouched. `saveTranslationCore` reads
+  the stored row once, compares per code and moves a stamp **only where the text
+  actually changed**; an unchanged save moves nothing. Migration-free fallback: an
+  unstamped code answers the document's `createdAt` — the plan's `updatedAt` fallback
+  provably fails its own acceptance case (updatedAt moves on every save, so a legacy
+  text could never read as older than a freshly edited base; DECISIONS). Pure
+  `needsReview(entry, code)`: text present AND stamp < base stamp; missing texts are
+  "missing", not stale; no timestamps never flag; `de` never flags.
+- **Change history is append-only audit data.** New `translation_history` collection
+  (`{ key, language, oldValue, newValue, actor, at }`, index `{ key, at: -1 }`): one
+  entry per changed code inside `saveTranslationCore` (creation from "", clearing to
+  ""). Actor = session admin's e-mail via `getSessionUserId`/`getAdminEmail` (order-log
+  discipline), `null` outside a request scope; resolved through a dynamic import of
+  `session.ts`, which statically imports `server/i18n.ts` (no cycle).
+- **Editor UI.** List: amber „Prüfen" badge (`admin.translations.needsReview`) on every
+  stale language cell + a `?review=all|<code>` select beside the missing filter
+  (machine values English, junk falls back like the area filter);
+  `filterTranslations` gains `reviewOnly`/`reviewFor` — `reviewFor` defaults to
+  `missingFor` (the plan's coupling) but stays separate, since "missing in X" ∧ "stale
+  in X" can only be empty. Edit page: „Änderungsgeschichte" section — last 20 history
+  rows with language label, actor (`von {actor}` / `System`), timestamp through the
+  request `Formatters` and old → new (empty side shows the existing „fehlt" marker).
+  9 new rows × 5 languages; the German bases of nothing existing moved.
+- **Verified:** unit +3 (`needsReview` older/newer/equal/missing/no-timestamps/de,
+  reviewOnly alone + per-language + missingFor coupling + combinations); integration +4
+  (edit German → fr marked, edit fr → cleared, untouched languages stay marked;
+  unchanged save moves no stamp and writes no history; history rows carry actor +
+  old → new, no session → actor null; a sixth language added as a row gets its own
+  stamps, history and freshness rule) — all fail without the change; new e2e freshness
+  spec (badge → review=fr filter → edit fr clears the cell marker and leaves the row
+  out of the fr filter → history shows both changes `von admin@codershop.ch`; restores
+  the German base in `finally` for the shared server) — verified failing on the
+  pre-change build (stashed rebuild: badge assertion red). The existing German
+  translation specs stayed green untouched.
+- **Docs:** DECISIONS (createdAt fallback rationale, append-only history, reviewFor
+  separation, English sentinels), ARCHITECTURE (§2 model/server entries, §3 freshness
+  + history paragraph).
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 676 (68 files),
+  `npm run test:e2e` ✅ 106/106; tree clean, nothing running.
+- **Left open (#58):** editor remainder (usage context + preview link, keyboard-driven
+  inline editing); translatable catalog content + admin editing + five-language demo
+  content; the per-area translation e2e deletion once the guard has survived a session
+  of real changes; stored-data notes staying German remains the recorded decision.
