@@ -7,6 +7,7 @@
 #
 #   .agent/orchestrate.sh [MILESTONE...]     default: M2 M6 M3 M4 M5
 #   RESUME=M2 RESUME_SINCE=<commit>          a session of M2 already ran: gate it first
+#   WATCH=1 .agent/orchestrate.sh ISSUES     never stop: work the issue queue, then wait for new ones
 #   DEADLINE=09:30 MAX_ATTEMPTS=4 SESSION_MIN=30 .agent/orchestrate.sh
 #
 # Log: .agent/logs/orchestrator.log (one line per step), gate details in .agent/logs/gate-*.txt.
@@ -151,9 +152,12 @@ issues_loop() {
   while :; do
     open="$(gh issue list -R "$GH_REPO" --state open --limit 200 --json number --jq length 2>/dev/null)"
     log "ISSUES: ${open:-?} open"
-    [[ "${open:-1}" == 0 ]] && { log "ISSUES: queue empty"; break; }
-    (( n >= ${ISSUE_SESSIONS:-12} )) && { log "ISSUES: session limit reached"; break; }
-    past_deadline && { log "ISSUES: deadline $DEADLINE reached"; break; }
+    if [[ "${open:-1}" == 0 ]]; then
+      [[ -n "${WATCH:-}" ]] || { log "ISSUES: queue empty"; break; }
+      sleep "${WATCH_INTERVAL:-300}"; continue          # WATCH=1: wait for new or reopened issues
+    fi
+    (( n >= ${ISSUE_SESSIONS:-12} )) && [[ -z "${WATCH:-}" ]] && { log "ISSUES: session limit reached"; break; }
+    [[ -z "${WATCH:-}" ]] && past_deadline && { log "ISSUES: deadline $DEADLINE reached"; break; }
     n=$((n + 1)); since="$(git rev-parse HEAD)"
     web_stop
     log "ISSUES round $n: plan (effort high, ≤ ${PLAN_MIN:-15} min)"
