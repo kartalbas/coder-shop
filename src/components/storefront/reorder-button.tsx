@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { addToCart, openCartDrawer } from "@/stores/cart";
 import { interpolate, label, plural } from "@/lib/i18n";
-import { useIntlLocale } from "@/components/storefront/locale-formatters";
+import { useIntlLocale } from "@/components/locale-formatters";
 import { useLabels } from "@/components/labels";
 import { reorderAction } from "@/server/actions/account";
 

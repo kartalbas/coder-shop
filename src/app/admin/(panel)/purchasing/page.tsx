@@ -6,9 +6,8 @@ import { connection } from "next/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PoCreateForm } from "@/components/admin/po-create-form";
 import { PurchaseOrderStatusBadge } from "@/components/admin/po-status-badge";
-import { formatChf, formatDate } from "@/lib/format";
 import { interpolate, label, splitOnPlaceholder } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { PO_LIST_LIMIT, listPurchaseOrders, listSuppliers } from "@/server/purchasing";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -27,6 +26,7 @@ async function PurchasingView() {
     listSuppliers(),
     getRequestLabels(),
   ]);
+  const f = await getRequestFormatters();
   const noSuppliers = splitOnPlaceholder(
     label(labels, "admin.purchasing.noSuppliers"),
     "link",
@@ -96,16 +96,16 @@ async function PurchasingView() {
                       {po.supplierName ?? label(labels, "admin.purchasing.unknownSupplier")}
                     </td>
                     <td className="py-2.5 pr-4 text-muted-foreground">
-                      {formatDate(po.createdAt)}
+                      {f.date(po.createdAt)}
                     </td>
                     <td className="py-2.5 pr-4 text-muted-foreground">
                       {po.status === "ordered" && po.expectedArrivalAt
-                        ? formatDate(po.expectedArrivalAt)
+                        ? f.date(po.expectedArrivalAt)
                         : "—"}
                     </td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">{po.lineCount}</td>
                     <td className="py-2.5 pr-4 text-right tabular-nums">
-                      {formatChf(po.totalCents)}
+                      {f.chf(po.totalCents)}
                     </td>
                     <td className="py-2.5">
                       <PurchaseOrderStatusBadge status={po.status} labels={labels} />

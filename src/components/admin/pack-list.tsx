@@ -1,16 +1,20 @@
-import { formatWeight } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import { PACKAGING_GRAMS, parcelWeightGrams } from "@/lib/shipping/weight";
 import type { Order } from "@/models/order";
 
 // Issue #58 step 2: the slip answers in the admin's request language — the page hands
 // over its label map, the packaging weight interpolates PACKAGING_GRAMS.
+// #58 admin formats slice: the weights follow the same language row via the page's
+// formatters (server→server prop, like the label map).
 export function PackList({
   order,
   labels,
+  formatters,
 }: {
   order: Order;
   labels: Record<string, string>;
+  formatters: Formatters;
 }) {
   const lines = [...order.lines].sort((a, b) => a.sku.localeCompare(b.sku));
   const weight = parcelWeightGrams(order.lines);
@@ -58,7 +62,7 @@ export function PackList({
               <td className="py-2 pr-4">{line.name}</td>
               <td className="py-2 pr-4 text-muted-foreground">{line.variantLabel}</td>
               <td className="py-2 pr-4 text-right tabular-nums">{line.qty}</td>
-              <td className="py-2 text-right tabular-nums">{formatWeight(line.weightGrams)}</td>
+              <td className="py-2 text-right tabular-nums">{formatters.weight(line.weightGrams)}</td>
             </tr>
           ))}
         </tbody>
@@ -66,11 +70,11 @@ export function PackList({
           <tr>
             <td colSpan={3} className="py-3 text-sm font-medium">
               {interpolate(label(labels, "admin.packing.slip.totalWeight"), {
-                weight: formatWeight(PACKAGING_GRAMS),
+                weight: formatters.weight(PACKAGING_GRAMS),
               })}
             </td>
             <td colSpan={2} className="py-3 text-right font-semibold tabular-nums">
-              {formatWeight(weight)}
+              {formatters.weight(weight)}
             </td>
           </tr>
         </tfoot>

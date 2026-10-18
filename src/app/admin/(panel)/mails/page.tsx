@@ -4,9 +4,8 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Mail } from "lucide-react";
 import { MailMessageModel } from "@/models/mail-message";
-import { formatDateTime } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { requireAdminSession } from "@/server/session";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,6 +29,7 @@ export default async function MailsPage() {
       .exec(),
     getRequestLabels(),
   ]);
+  const f = await getRequestFormatters();
 
   return (
     <div className="space-y-4">
@@ -54,7 +54,7 @@ export default async function MailsPage() {
                   <span className="text-muted-foreground">
                     {interpolate(label(labels, "admin.mails.to"), {
                       to: mail.to,
-                      time: formatDateTime(new Date(mail.sentAt)),
+                      time: f.dateTime(new Date(mail.sentAt)),
                     })}
                   </span>
                 </summary>

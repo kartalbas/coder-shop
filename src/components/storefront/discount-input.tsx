@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { BadgeCheck, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { label } from "@/lib/i18n";
 import { setDiscountCode, useCart } from "@/stores/cart";
 import { validateDiscountAction } from "@/server/actions/discounts";

@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { INVOICE_DUE_DAYS } from "@/lib/invoices";
 import { interpolate, label, splitOnPlaceholder } from "@/lib/i18n";
 import { computeTotals, shippingCents, subtotalCents } from "@/lib/pricing";

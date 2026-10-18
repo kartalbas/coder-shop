@@ -1,7 +1,9 @@
 import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { LanguageModel } from "@/models/language";
 import { checkDiscountCore, createDiscountCore } from "@/server/discounts";
-import { invalidateI18nCache, getRequestLanguage } from "@/server/i18n";
+import { getIntlLocale, invalidateI18nCache, getRequestFormatters, getRequestLanguage } from "@/server/i18n";
+import { createFormatters } from "@/lib/format";
+import { BASE_LANGUAGE, DEFAULT_LANGUAGES, intlLocaleOf } from "@/lib/i18n";
 import { seedLanguages } from "../scripts/seed/seed";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
@@ -104,6 +106,39 @@ describe("getRequestLanguage", () => {
   it("outside a request scope (tests, scripts) the first active language answers", async () => {
     request.outsideRequest = true;
     expect(await getRequestLanguage()).toBe("de");
+  });
+});
+
+// #58 admin formats slice: the admin's amounts, dates and weights follow the request
+// language's row too — getRequestFormatters is the single server-side entry. The
+// expected renderings are computed from the locale in the test, so no ICU vocabulary
+// is pinned.
+describe("getRequestFormatters", () => {
+  it("the cookie's language picks the formatter set", async () => {
+    request.cookie = "fr";
+    const f = await getRequestFormatters();
+    const fr = new Intl.NumberFormat("fr-CH", { style: "currency", currency: "CHF" });
+    const de = new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" });
+    const frDate = new Intl.DateTimeFormat("fr-CH", { dateStyle: "long" });
+    expect(f.chf(12345)).toBe(fr.format(123.45));
+    expect(f.chf(12345)).not.toBe(de.format(123.45));
+    const date = new Date(Date.UTC(2026, 6, 15));
+    expect(f.date(date)).toBe(frDate.format(date));
+  });
+
+  it("the set is cached — the same locale answers with the same object", async () => {
+    request.cookie = "fr";
+    expect(await getRequestFormatters()).toBe(await getRequestFormatters());
+    expect(await getRequestFormatters()).toBe(
+      createFormatters(await getIntlLocale("fr")),
+    );
+  });
+
+  it("outside a request scope the base language's set answers", async () => {
+    request.outsideRequest = true;
+    expect(await getRequestFormatters()).toBe(
+      createFormatters(intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE)),
+    );
   });
 });
 

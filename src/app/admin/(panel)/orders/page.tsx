@@ -4,11 +4,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
-import { formatChf, formatDate } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import { ORDER_STATUSES } from "@/lib/orders/state-machine";
 import { cn } from "@/lib/utils";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import {
   ORDER_LIST_LIMIT,
   countOrdersByStatus,
@@ -38,6 +37,7 @@ async function OrdersView({
 }) {
   await connection();
   const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
+  const f = await getRequestFormatters();
   const raw = typeof params.status === "string" ? params.status : undefined;
   const filter = activeFilter(raw);
   const [orders, counts] = await Promise.all([
@@ -108,12 +108,12 @@ async function OrdersView({
                     </Link>
                   </td>
                   <td className="py-2.5 pr-4 text-muted-foreground">
-                    {formatDate(order.createdAt)}
+                    {f.date(order.createdAt)}
                   </td>
                   <td className="py-2.5 pr-4">{order.customerName}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">{order.itemCount}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">
-                    {formatChf(order.totalCents)}
+                    {f.chf(order.totalCents)}
                   </td>
                   <td className="py-2.5">
                     <OrderStatusBadge status={order.status} labels={labels} />

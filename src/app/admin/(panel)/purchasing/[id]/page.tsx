@@ -11,9 +11,8 @@ import {
   ReceiveForm,
 } from "@/components/admin/po-status-actions";
 import { PurchaseOrderStatusBadge } from "@/components/admin/po-status-badge";
-import { formatChf, formatDate, formatDateTime } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { getPurchaseOrderById } from "@/server/purchasing";
 
 interface PagePropsLocal {
@@ -32,6 +31,7 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
 async function PurchaseOrderDetail({ params }: PagePropsLocal) {
   await connection();
   const [{ id }, labels] = await Promise.all([params, getRequestLabels()]);
+  const f = await getRequestFormatters();
   const detail = await getPurchaseOrderById(id);
   if (!detail) notFound();
   const { po, supplier, productNames, serialSkus } = detail;
@@ -120,10 +120,10 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
                     )}
                   </td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">
-                    {formatChf(line.unitPriceCents)}
+                    {f.chf(line.unitPriceCents)}
                   </td>
                   <td className="py-2.5 text-right tabular-nums">
-                    {formatChf(line.qty * line.unitPriceCents)}
+                    {f.chf(line.qty * line.unitPriceCents)}
                   </td>
                 </tr>
               ))}
@@ -133,7 +133,7 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
         <dl className="mt-4 space-y-1 border-t pt-4 text-sm">
           <div className="flex justify-between font-semibold">
             <dt>{label(labels, "admin.orders.column.total")}</dt>
-            <dd className="tabular-nums">{formatChf(po.totalCents)}</dd>
+            <dd className="tabular-nums">{f.chf(po.totalCents)}</dd>
           </div>
         </dl>
       </section>
@@ -146,24 +146,24 @@ async function PurchaseOrderDetail({ params }: PagePropsLocal) {
         <dl className="space-y-1">
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">{label(labels, "admin.po.created")}</dt>
-            <dd>{formatDateTime(po.createdAt)}</dd>
+            <dd>{f.dateTime(po.createdAt)}</dd>
           </div>
           {po.orderedAt && (
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">{label(labels, "admin.po.column.ordered")}</dt>
-              <dd>{formatDateTime(po.orderedAt)}</dd>
+              <dd>{f.dateTime(po.orderedAt)}</dd>
             </div>
           )}
           {po.status === "ordered" && po.expectedArrivalAt && (
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">{label(labels, "admin.po.expectedArrival")}</dt>
-              <dd>{formatDate(po.expectedArrivalAt)}</dd>
+              <dd>{f.date(po.expectedArrivalAt)}</dd>
             </div>
           )}
           {po.receivedAt && (
             <div className="flex justify-between gap-4">
               <dt className="text-muted-foreground">{label(labels, "admin.po.column.received")}</dt>
-              <dd>{formatDateTime(po.receivedAt)}</dd>
+              <dd>{f.dateTime(po.receivedAt)}</dd>
             </div>
           )}
         </dl>

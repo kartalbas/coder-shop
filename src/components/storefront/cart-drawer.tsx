@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ProductImage } from "@/components/storefront/product-image";
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import { interpolate, label } from "@/lib/i18n";
 import {

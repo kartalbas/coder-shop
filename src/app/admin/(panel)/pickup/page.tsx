@@ -5,9 +5,8 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { HandoverForm, MarkReadyForm } from "@/components/admin/pickup-actions";
-import { formatChf, formatDateTime } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { listPickupQueueCore } from "@/server/pickup";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,6 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 async function PickupView() {
   await connection();
   const [queue, labels] = await Promise.all([listPickupQueueCore(), getRequestLabels()]);
+  const f = await getRequestFormatters();
 
   return (
     <div>
@@ -54,10 +54,10 @@ async function PickupView() {
                       {order.orderNumber}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {formatDateTime(order.createdAt)}
+                      {f.dateTime(order.createdAt)}
                       {order.readyAt &&
                         ` · ${interpolate(label(labels, "admin.pickup.readyAt"), {
-                          datetime: formatDateTime(order.readyAt),
+                          datetime: f.dateTime(order.readyAt),
                         })}`}
                     </p>
                   </td>
@@ -66,7 +66,7 @@ async function PickupView() {
                     {order.code}
                   </td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">
-                    {formatChf(order.totalCents)}
+                    {f.chf(order.totalCents)}
                   </td>
                   <td className="py-2.5 pr-4">
                     <OrderStatusBadge status={order.status} labels={labels} />

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ProductImage } from "@/components/storefront/product-image";
 import { DiscountInput } from "@/components/storefront/discount-input";
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import { useShopSettings } from "@/components/shop-settings-provider";
 import { interpolate, label } from "@/lib/i18n";

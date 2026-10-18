@@ -7,10 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { PasswordForm } from "@/components/admin/password-form";
 import { RevenueSparkline } from "@/components/admin/revenue-sparkline";
-import { formatChf, formatDate } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import { getDashboardData, REVENUE_WINDOW_DAYS } from "@/server/dashboard";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
@@ -24,6 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 async function DashboardView() {
   await connection();
   const [data, labels] = await Promise.all([getDashboardData(), getRequestLabels()]);
+  const f = await getRequestFormatters();
 
   return (
     <div>
@@ -41,7 +41,7 @@ async function DashboardView() {
               })}
             </CardDescription>
             <CardTitle className="text-2xl tabular-nums">
-              {formatChf(data.revenueCents)}
+              {f.chf(data.revenueCents)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-primary">
@@ -193,10 +193,10 @@ async function DashboardView() {
                           <p className="text-xs text-muted-foreground">{order.customerName}</p>
                         </td>
                         <td className="px-4 py-2 text-muted-foreground">
-                          {formatDate(order.createdAt)}
+                          {f.date(order.createdAt)}
                         </td>
                         <td className="px-4 py-2 text-right tabular-nums">
-                          {formatChf(order.totalCents)}
+                          {f.chf(order.totalCents)}
                         </td>
                         <td className="px-4 py-2">
                           <OrderStatusBadge status={order.status} labels={labels} />

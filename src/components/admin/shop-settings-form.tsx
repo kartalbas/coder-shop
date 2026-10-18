@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLabels } from "@/components/labels";
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/locale-formatters";
 import { interpolate, label } from "@/lib/i18n";
 import type { PaymentMethodKind, ShopSettings } from "@/lib/shop-settings";
 import {
@@ -51,6 +51,7 @@ function chf(cents: number): string {
 // shipping methods and payment methods. Row order is the checkout order.
 export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
   const labels = useLabels();
+  const f = useFormatters();
   // Toast labels are read through a ref kept current by an effect so a label sync can
   // never re-fire the toast (address-book pattern).
   const labelsRef = useRef(labels);
@@ -339,7 +340,7 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
         <p className="text-sm text-muted-foreground">
           {interpolate(label(labels, "admin.settings.current"), {
             rate: String(settings.vatRatePercent).replace(".", ","),
-            amount: formatChf(settings.freeShippingFromCents),
+            amount: f.chf(settings.freeShippingFromCents),
           })}
         </p>
       </div>

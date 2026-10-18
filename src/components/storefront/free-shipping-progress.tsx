@@ -1,4 +1,4 @@
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { freeShippingProgress } from "@/lib/pricing";
 import { useShopSettings } from "@/components/shop-settings-provider";
 import { interpolate, label } from "@/lib/i18n";

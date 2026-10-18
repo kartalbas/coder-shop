@@ -7,10 +7,9 @@ import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatChf } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import { listCustomersCore } from "@/server/customers-admin";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
@@ -30,6 +29,7 @@ async function CustomersView({
 }) {
   await connection();
   const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
+  const f = await getRequestFormatters();
   const query = typeof params.q === "string" ? params.q : "";
   const customers = await listCustomersCore(query);
 
@@ -88,7 +88,7 @@ async function CustomersView({
                   <td className="px-3 py-2 text-right tabular-nums">
                     {customer.openInvoiceCents > 0 ? (
                       <span className="font-medium text-amber-700 dark:text-amber-400">
-                        {formatChf(customer.openInvoiceCents)}
+                        {f.chf(customer.openInvoiceCents)}
                       </span>
                     ) : (
                       "—"

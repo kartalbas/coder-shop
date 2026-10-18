@@ -1,7 +1,7 @@
 "use client";
 
 import { useLabels } from "@/components/labels";
-import { useIntlLocale } from "@/components/storefront/locale-formatters";
+import { useIntlLocale } from "@/components/locale-formatters";
 import { interpolate, label, plural } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { stockLevel, type StockLevel } from "@/lib/stock";

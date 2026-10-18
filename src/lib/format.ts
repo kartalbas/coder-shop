@@ -2,7 +2,8 @@
 // language row — never a hard-coded locale. `createFormatters` is the pure factory
 // (one Intl set per locale, cached); the storefront hands it the live row's locale,
 // while `formatChf`/`formatDate`/`formatDateTime`/`formatWeight` stay the base-locale
-// formatters of the German-based side (admin, mails, invoices — until #58 step 3).
+// formatters of the recipient-language boundary (#58 step 6): mails, invoice/QR PDFs,
+// label content, seed and scripts. The admin reads `getRequestFormatters()` instead.
 import { BASE_LANGUAGE, DEFAULT_LANGUAGES, intlLocaleOf } from "@/lib/i18n";
 
 export interface Formatters {

@@ -2365,3 +2365,48 @@ Done — M1–M6 + QA complete.
   no-German-literals guard; step 4 remainder (needs-review filter, usage context,
   inline editing, change history); step 5 remainder (translatable catalog content +
   five-language demo content).
+
+## ISSUES — queue session 36 (2026-10-18)
+
+### Gate recovery + #58 slice — the admin formats follow the language row ✅ — issue stays open
+- **Gate report:** `GET /produkte → 308` and „no `/produkt/…` links" are the intended
+  #63/#58 English-URL contract (asserted by the green `english-urls`/`language-routing`
+  specs in every gate run). The real findings were the delivery ones: the reviewed
+  step-5 slice (26 modified files + the untracked `admin-customers-translations` spec)
+  sat uncommitted — re-ran the full gate on that exact tree (build/lint/knip/tsc,
+  `npm test` 644, `test:e2e` 101/101, matching the 18:28 review) and delivered it as
+  one `refs #58` commit before starting new work, per the 18:33 plan on the issue.
+- **Slice (plan of 18:33):** the admin's amounts, dates and weights now follow the
+  `intlLocale` of the request language's row instead of the base locale — a French
+  admin reads „12'633.90 CHF" and „15 octobre 2026". `getRequestFormatters()`
+  (`server/i18n.ts`, mirroring `getRequestLabels()`; outside a request scope the first
+  active language answers, so scripts and integration tests stay on the base) feeds the
+  16 admin server pages behind their existing `connection()`; `PackList` and
+  `StatusTimeline` take the page's `Formatters` like they take its label map;
+  `PoCreateForm` (through a ref, keeping the #42 stable picker callbacks) and
+  `ShopSettingsForm` read `useFormatters()`. `LocaleFormattersProvider` moved from
+  `components/storefront/` to the shared `components/` root (the `labels.tsx`
+  precedent) and the admin layout wraps it + `LocaleSync` with the live row's locale —
+  the admin is fully dynamic, so no Suspense hole is needed. The named base-locale
+  exports stay for the recipient-language boundary only (mails, invoice/QR PDFs, label
+  content, seed, scripts — step 6); `format.ts` header and ARCHITECTURE corrected.
+- **Agnostic:** no locale literal anywhere — a sixth language row brings its formats
+  with no code change; de-CH through `createFormatters` is byte-identical to what the
+  named exports produced, so every German admin spec stayed green untouched and is
+  itself the regression check.
+- **Tests:** `tests/request-language.test.ts` +3 (fr cookie → the fr-CH set, computed
+  from `Intl` in the test — no ICU vocabulary pinned; cached identity; outside a
+  request the base set answers); new e2e `admin-formats.spec.ts` (switcher Français →
+  dashboard and orders list show the CHF suffix form and the lowercase French month,
+  the German forms absent; switch back in `finally` → German forms again) — verified
+  failing on the pre-change build (stash + rebuild: the `/CHF$/` assertion fails).
+- **Along the way:** the `account-translations` home test flaked 2/4 runs on a strict
+  `getByText` racing the PPR resume swap (prerendered hero shell and streamed hero
+  briefly coexist) — the two hero assertions take `.first()`; the new spec's `finally`
+  asserts the German heading of the page it is actually on (orders list).
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 647 (63 files),
+  `npm run test:e2e` ✅ 102/102 twice; tree clean, nothing running.
+- **Left open (#58):** step 6 mail/invoice/slip/label texts in the recipient's
+  language (+ UPS provider texts); step 7 no-German-literals guard; step 4 remainder
+  (needs-review filter, usage context, inline editing, change history); step 5
+  remainder (translatable catalog content + five-language demo content).

@@ -1,4 +1,5 @@
 import { cookies, headers } from "next/headers";
+import { createFormatters, type Formatters } from "@/lib/format";
 import { connectDB } from "./db";
 import {
   activeLanguages,
@@ -111,6 +112,13 @@ export async function getRequestLanguage(): Promise<string> {
 
 export async function getRequestLabels(): Promise<Record<string, string>> {
   return getLabels(await getRequestLanguage());
+}
+
+// The number, CHF and date formatters of the request language (#58 admin formats slice)
+// — the single server-side entry, mirroring getRequestLabels(); outside a request scope
+// the first active language answers, so scripts and integration tests stay on the base.
+export async function getRequestFormatters(): Promise<Formatters> {
+  return createFormatters(await getIntlLocale(await getRequestLanguage()));
 }
 
 function validKey(key: string): boolean {

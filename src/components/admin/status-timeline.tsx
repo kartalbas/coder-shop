@@ -1,4 +1,4 @@
-import { formatDateTime } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
 import { label } from "@/lib/i18n";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 import { cn } from "@/lib/utils";
@@ -15,9 +15,11 @@ export interface StatusLogEntryView {
 export function StatusTimeline({
   entries,
   labels,
+  formatters,
 }: {
   entries: StatusLogEntryView[];
   labels: Record<string, string>;
+  formatters: Formatters;
 }) {
   return (
     <ol className="space-y-3" aria-label={label(labels, "admin.orders.historyAria")}>
@@ -37,7 +39,7 @@ export function StatusTimeline({
             </div>
             <div className="pb-1">
               <p className="text-sm font-medium">{label(labels, `shop.status.${entry.status}`)}</p>
-              <p className="text-xs text-muted-foreground">{formatDateTime(at)}</p>
+              <p className="text-xs text-muted-foreground">{formatters.dateTime(at)}</p>
               {entry.note && <p className="text-xs text-muted-foreground">{entry.note}</p>}
             </div>
           </li>

@@ -10,7 +10,7 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { PackList } from "@/components/admin/pack-list";
 import { interpolate, label, splitOnPlaceholder } from "@/lib/i18n";
 import { getOrderById } from "@/server/orders-admin";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 
 interface PagePropsLocal {
   params: Promise<{ id: string }>;
@@ -29,6 +29,7 @@ async function PackingDetail({ params }: PagePropsLocal) {
   await connection();
   const { id } = await params;
   const [order, labels] = await Promise.all([getOrderById(id), getRequestLabels()]);
+  const f = await getRequestFormatters();
   if (!order) notFound();
   if (order.status !== "picking" && order.status !== "packed") notFound();
 
@@ -72,7 +73,7 @@ async function PackingDetail({ params }: PagePropsLocal) {
       </div>
 
       <div className="mt-6">
-        <PackList order={order} labels={labels} />
+        <PackList order={order} labels={labels} formatters={f} />
       </div>
     </div>
   );

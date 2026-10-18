@@ -165,6 +165,8 @@ src/
   components/
     labels.tsx              # LabelsProvider/LabelsSync/useLabels context — wrapped by both
                             # root layouts, storefront and admin (#58, #58 admin slice)
+    locale-formatters.tsx   # LocaleFormattersProvider/LocaleSync/useFormatters context —
+                            # wrapped by both root layouts (#58 step 2b, #58 admin formats)
     order-status-badge.tsx  # status badge shared by admin, confirmation page and portal;
                             # German STATUS_LABELS default, optional label map prop (#58)
     not-found-content.tsx   # 404 content shared by the per-root not-found pages, copy from
@@ -240,7 +242,8 @@ src/
                             # report, DEFAULT_LANGUAGES/DEFAULT_TRANSLATIONS seed content (#58)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # createFormatters(intlLocale): CHF, dates, weights (#58);
-                            # base-locale exports for admin formats, mails and invoices
+                            # base-locale exports for mails, invoice/QR PDFs, labels,
+                            # seed and scripts (#58 step 6 boundary)
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
     numbers.ts              # formatOrderNumber/formatPoNumber/formatPaymentReference
     password-rules.ts       # password rules per scope (customer/admin) — single source
@@ -907,8 +910,10 @@ Global: mobile-first, dark mode via the `next-themes` package (class strategy,
 German copy, CHF/dates/weights formatted with the `Intl` locale of the request's language
 row (`createFormatters(intlLocale)` in `src/lib/format.ts`, #58 step 2b) — the storefront
 reads it from the `LocaleFormatters` context (client) or `getIntlLocale(lang)` (server);
-the admin (formats; its texts follow the shared lang cookie since the #58 admin slice),
-mails and invoices use the base-locale exports.
+the admin follows the same row (`getRequestFormatters()` server-side, the shared
+`LocaleFormattersProvider` client-side — #58 admin formats slice); only the
+recipient-language boundary (mails, invoice/QR PDFs, label content, seed, scripts) still
+uses the base-locale exports (#58 step 6).
 
 **VAT rounding rule (unit-tested):** `vatCents = grossCents − round(grossCents × 100 /
 (100 + vatRatePercent))` where `grossCents` is the VAT-inclusive total and `vatRatePercent`

@@ -4,10 +4,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
-import { formatDate } from "@/lib/format";
 import { label } from "@/lib/i18n";
 import { listPackingQueue } from "@/server/orders-admin";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
@@ -21,6 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 async function PackingView() {
   await connection();
   const [queue, labels] = await Promise.all([listPackingQueue(), getRequestLabels()]);
+  const f = await getRequestFormatters();
 
   return (
     <div>
@@ -53,7 +53,7 @@ async function PackingView() {
                     </Link>
                   </td>
                   <td className="py-2.5 pr-4 text-muted-foreground">
-                    {formatDate(order.createdAt)}
+                    {f.date(order.createdAt)}
                   </td>
                   <td className="py-2.5 pr-4">{order.customerName}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">{order.itemCount}</td>

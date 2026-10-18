@@ -11,11 +11,10 @@ import {
   ResetPasswordButton,
 } from "@/components/admin/customer-actions";
 import { Badge } from "@/components/ui/badge";
-import { formatChf, formatDate } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import { DEFAULT_CREDIT_LIMIT_CENTS } from "@/lib/invoices";
 import { getCustomerDetailCore } from "@/server/customers-admin";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
   await connection();
@@ -31,6 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
 async function CustomerView({ id }: { id: string }) {
   await connection();
   const [customer, labels] = await Promise.all([getCustomerDetailCore(id), getRequestLabels()]);
+  const f = await getRequestFormatters();
   if (!customer) notFound();
 
   return (
@@ -67,8 +67,8 @@ async function CustomerView({ id }: { id: string }) {
                     {order.orderNumber}
                   </Link>
                   <OrderStatusBadge status={order.status} labels={labels} />
-                  <span className="tabular-nums">{formatChf(order.totalCents)}</span>
-                  <span className="text-muted-foreground">{formatDate(order.createdAt)}</span>
+                  <span className="tabular-nums">{f.chf(order.totalCents)}</span>
+                  <span className="text-muted-foreground">{f.date(order.createdAt)}</span>
                 </li>
               ))}
             </ul>
@@ -81,13 +81,13 @@ async function CustomerView({ id }: { id: string }) {
               {label(labels, "admin.customers.invoices.title")}
               {customer.openTotalCents > 0 && (
                 <span className="ml-2 text-base font-medium text-amber-700 dark:text-amber-400">
-                  {formatChf(customer.openTotalCents)}
+                  {f.chf(customer.openTotalCents)}
                 </span>
               )}
             </h2>
             <p className="text-sm text-muted-foreground">
               {interpolate(label(labels, "admin.customers.credit"), {
-                amount: formatChf(customer.creditLimitCents ?? DEFAULT_CREDIT_LIMIT_CENTS),
+                amount: f.chf(customer.creditLimitCents ?? DEFAULT_CREDIT_LIMIT_CENTS),
               })}{" "}
               ·{" "}
               <Link
@@ -114,10 +114,10 @@ async function CustomerView({ id }: { id: string }) {
                     {invoice.overdue && (
                       <Badge variant="destructive">{label(labels, "admin.invoices.overdue")}</Badge>
                     )}
-                    <span className="tabular-nums">{formatChf(invoice.openCents)}</span>
+                    <span className="tabular-nums">{f.chf(invoice.openCents)}</span>
                     <span className="text-muted-foreground">
                       {interpolate(label(labels, "admin.customers.invoices.due"), {
-                        date: formatDate(invoice.dueAt),
+                        date: f.date(invoice.dueAt),
                       })}
                     </span>
                   </li>

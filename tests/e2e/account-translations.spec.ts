@@ -15,8 +15,10 @@ test("the French home page — hero, categories and rails — answers in French"
       name: "Technologie, style et confort — chez vous en Suisse.",
     }),
   ).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Nouveautés chaque semaine")).toBeVisible();
-  await expect(page.getByText(/Prix équitables en CHF/)).toBeVisible();
+  // .first(): while the PPR resume swaps the prerendered hero shell for the streamed
+  // one, both copies briefly exist — the strict locator would race the swap.
+  await expect(page.getByText("Nouveautés chaque semaine").first()).toBeVisible();
+  await expect(page.getByText(/Prix équitables en CHF/).first()).toBeVisible();
   await expect(page.getByRole("link", { name: /Découvrir maintenant/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Catégories" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Produits populaires" })).toBeVisible();

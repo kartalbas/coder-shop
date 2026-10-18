@@ -7,12 +7,11 @@ import { connection } from "next/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProductSearch } from "@/components/admin/product-search";
-import { formatChf } from "@/lib/format";
 import { interpolate, label, plural } from "@/lib/i18n";
 import { adminProductsQuerySchema } from "@/lib/validations/listing";
 import { cn } from "@/lib/utils";
 import { getCatalogTypes } from "@/server/catalog-types";
-import { getIntlLocale, getRequestLabels, getRequestLanguage } from "@/server/i18n";
+import { getIntlLocale, getRequestFormatters, getRequestLabels, getRequestLanguage } from "@/server/i18n";
 import { listProductsAdmin } from "@/server/products-admin";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -35,6 +34,7 @@ async function ProductsView({
     getRequestLabels(),
     getIntlLocale(await getRequestLanguage()),
   ]);
+  const f = await getRequestFormatters();
   const { q, type, page = 1 } = adminProductsQuerySchema.parse(params);
 
   // Issue #61: the type filter and the type column follow the catalog configuration.
@@ -133,7 +133,7 @@ async function ProductsView({
                   <td className="py-2.5 pr-4 text-muted-foreground">{item.brand}</td>
                   <td className="py-2.5 pr-4 text-muted-foreground">{labelOfType(item.type)}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">
-                    {formatChf(item.priceCents)}
+                    {f.chf(item.priceCents)}
                   </td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">{item.variantCount}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">{item.totalStock}</td>

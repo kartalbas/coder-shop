@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { useLabels } from "@/components/labels";
 import { label } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";

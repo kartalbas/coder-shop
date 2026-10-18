@@ -17,7 +17,7 @@ import { getActiveLanguages, getIntlLocale, getLabels } from "@/server/i18n";
 import {
   LocaleFormattersProvider,
   LocaleSync,
-} from "@/components/storefront/locale-formatters";
+} from "@/components/locale-formatters";
 import { LabelsProvider, LabelsSync } from "@/components/labels";
 import { SkipLink } from "@/components/storefront/skip-link";
 

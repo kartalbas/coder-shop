@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ProductImage } from "@/components/storefront/product-image";
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { useDebounce } from "@/hooks/use-debounce";
 import { interpolate, label } from "@/lib/i18n";
 

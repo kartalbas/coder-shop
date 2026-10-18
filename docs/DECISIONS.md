@@ -684,10 +684,17 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   from the seed configuration of the URL's language (identical on server and client, no
   hydration flicker) and synced to the live row by a `LocaleSync` inside a dynamic hole,
   so an admin edit of `intlLocale` takes effect without a deploy; server components use
-  `getIntlLocale(lang)` + `createFormatters` directly. The named exports (`formatChf` and
-  friends) stay the **base-locale** formatters of the German-based side (admin, mails,
-  invoices) until step 3 moves their strings into the table. A per-request rewrite of the
+  `getIntlLocale(lang)` + `createFormatters` directly. A per-request rewrite of the
   formatters through module state was rejected: it would race between requests.
+  #58 admin formats slice: the **admin follows the same row** — `getRequestFormatters()`
+  (`server/i18n.ts`, mirroring `getRequestLabels()`; outside a request scope the first
+  active language answers, so scripts and integration tests stay on the base) feeds its
+  server pages, and the admin layout wraps the shared `LocaleFormattersProvider` (moved
+  from `components/storefront/` to the `components/` root, the `labels.tsx` precedent)
+  for its client components. The named exports (`formatChf` and friends) stay the
+  **base-locale** formatters of the recipient-language boundary only — mails,
+  invoice/QR PDFs, label content, seed and scripts — until step 6 renders those in the
+  recipient's language.
 - **UI texts reach components as a resolved label map, not as a live translator
   object (#58 step 3).** `getLabels(lang)` turns the whole table into one plain
   key→text map (German fallback already applied) that a server slot hands to client

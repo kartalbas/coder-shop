@@ -9,12 +9,11 @@ import { LabelButton } from "@/components/admin/label-actions";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { StatusTimeline } from "@/components/admin/status-timeline";
 import { TransitionButtons } from "@/components/admin/transition-buttons";
-import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import { allowedTransitions, flowFlagsFor } from "@/lib/orders/state-machine";
 import { paymentMethodByKey } from "@/lib/shop-settings";
 import { getOrderById } from "@/server/orders-admin";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
@@ -34,6 +33,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
   await connection();
   const { id } = await params;
   const [order, labels] = await Promise.all([getOrderById(id), getRequestLabels()]);
+  const f = await getRequestFormatters();
   if (!order) notFound();
 
   // Issue #64: labels come from the configuration; a retired method falls back to its
@@ -86,7 +86,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
             {order.shipping.parcelWeightGrams !== undefined && (
               <p className="text-muted-foreground">
                 {interpolate(label(labels, "admin.orders.parcelWeight"), {
-                  weight: formatWeight(order.shipping.parcelWeightGrams),
+                  weight: f.weight(order.shipping.parcelWeightGrams),
                 })}
               </p>
             )}
@@ -115,7 +115,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
           {order.shipping.pickup.pickedUpAt && (
             <p className="mt-1 text-sm text-muted-foreground">
               {interpolate(label(labels, "admin.orders.pickup.pickedUpAt"), {
-                date: formatDateTime(order.shipping.pickup.pickedUpAt),
+                date: f.dateTime(order.shipping.pickup.pickedUpAt),
               })}
               {order.shipping.pickup.paymentType &&
                 ` · ${interpolate(label(labels, "admin.orders.pickup.paid"), {
@@ -132,7 +132,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
       <div className="mt-6 grid gap-6 sm:grid-cols-2">
         <section className="rounded-xl border bg-card p-5" aria-label={label(labels, "admin.orders.historyAria")}>
           <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.orders.history")}</h2>
-          <StatusTimeline entries={order.statusLog} labels={labels} />
+          <StatusTimeline entries={order.statusLog} labels={labels} formatters={f} />
         </section>
 
         <section className="rounded-xl border bg-card p-5 text-sm" aria-label={label(labels, "admin.orders.customerAria")}>
@@ -161,7 +161,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
           <dl className="mt-4 space-y-1 border-t pt-4">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{label(labels, "admin.orders.totals.subtotal")}</dt>
-              <dd className="tabular-nums">{formatChf(order.totals.subtotalCents)}</dd>
+              <dd className="tabular-nums">{f.chf(order.totals.subtotalCents)}</dd>
             </div>
             {order.discount && order.discount.cents > 0 && (
               <div className="flex justify-between text-primary">
@@ -170,7 +170,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
                     code: order.discount.code,
                   })}
                 </dt>
-                <dd className="tabular-nums">−{formatChf(order.discount.cents)}</dd>
+                <dd className="tabular-nums">−{f.chf(order.discount.cents)}</dd>
               </div>
             )}
             <div className="flex justify-between">
@@ -178,12 +178,12 @@ async function OrderDetail({ params }: PagePropsLocal) {
               <dd className="tabular-nums">
                 {order.totals.shippingCents === 0
                   ? label(labels, "admin.orders.totals.free")
-                  : formatChf(order.totals.shippingCents)}
+                  : f.chf(order.totals.shippingCents)}
               </dd>
             </div>
             <div className="flex justify-between font-semibold">
               <dt>{label(labels, "admin.orders.column.total")}</dt>
-              <dd className="tabular-nums">{formatChf(order.totals.totalCents)}</dd>
+              <dd className="tabular-nums">{f.chf(order.totals.totalCents)}</dd>
             </div>
             <div className="flex justify-between border-t pt-2">
               <dt className="text-muted-foreground">{label(labels, "admin.orders.totals.payment")}</dt>
@@ -195,12 +195,12 @@ async function OrderDetail({ params }: PagePropsLocal) {
                   {order.payment.invoice.paidCents >= order.totals.totalCents
                     ? label(labels, "admin.orders.totals.invoice")
                     : interpolate(label(labels, "admin.orders.totals.invoiceOpen"), {
-                        date: formatDate(order.payment.invoice.dueAt),
+                        date: f.date(order.payment.invoice.dueAt),
                       })}
                 </dt>
                 <dd className="tabular-nums">
                   {order.totals.totalCents - order.payment.invoice.paidCents > 0
-                    ? formatChf(order.totals.totalCents - order.payment.invoice.paidCents)
+                    ? f.chf(order.totals.totalCents - order.payment.invoice.paidCents)
                     : label(labels, "admin.orders.totals.paid")}
                 </dd>
               </div>
@@ -220,7 +220,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
                   ({line.variantLabel} · {line.sku})
                 </span>
               </span>
-              <span className="shrink-0 tabular-nums">{formatChf(line.totalCents)}</span>
+              <span className="shrink-0 tabular-nums">{f.chf(line.totalCents)}</span>
             </li>
           ))}
         </ul>

@@ -1,6 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LocaleFormattersProvider } from "@/components/storefront/locale-formatters";
+import { LocaleFormattersProvider } from "@/components/locale-formatters";
 import { StarRating } from "@/components/storefront/star-rating";
 
 // Issue #58 review fix: the rating value follows the request language's Intl locale —

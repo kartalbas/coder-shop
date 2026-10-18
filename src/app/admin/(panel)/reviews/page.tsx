@@ -6,11 +6,10 @@ import { connection } from "next/server";
 import { ReviewActions } from "@/components/admin/review-actions";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/storefront/star-rating";
-import { formatDate } from "@/lib/format";
 import { label } from "@/lib/i18n";
 import { REVIEW_STATUSES, type ReviewStatus } from "@/lib/reviews";
 import { cn } from "@/lib/utils";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { listReviewsCore, type AdminReviewFilter } from "@/server/reviews";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -49,6 +48,7 @@ async function ReviewsView({
 }) {
   await connection();
   const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
+  const f = await getRequestFormatters();
   const raw = typeof params.status === "string" ? params.status : undefined;
   const filter = activeFilter(raw);
   const reviews = await listReviewsCore(filter);
@@ -100,7 +100,7 @@ async function ReviewsView({
                 >
                   {review.productName}
                 </a>{" "}
-                · {formatDate(new Date(review.createdAt))}
+                · {f.date(new Date(review.createdAt))}
               </p>
               <p className="mt-2 whitespace-pre-line text-sm">{review.body}</p>
               {review.adminReply && (

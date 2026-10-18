@@ -16,7 +16,7 @@ import { Pagination } from "./pagination";
 import { ProductGridSkeleton } from "./skeletons";
 import { EmptyState } from "./empty-state";
 import { useLabels } from "@/components/labels";
-import { useIntlLocale } from "./locale-formatters";
+import { useIntlLocale } from "@/components/locale-formatters";
 import { interpolate, label, plural } from "@/lib/i18n";
 
 interface Props {

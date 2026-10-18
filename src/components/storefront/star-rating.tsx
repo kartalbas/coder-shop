@@ -1,7 +1,7 @@
 "use client";
 
 import { Star } from "lucide-react";
-import { useFormatters } from "@/components/storefront/locale-formatters";
+import { useFormatters } from "@/components/locale-formatters";
 import { cn } from "@/lib/utils";
 
 // Star display (issue #47): `value` out of 5, halves not attempted — the average is

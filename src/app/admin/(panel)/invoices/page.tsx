@@ -5,11 +5,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { CreditLimitForm, InvoicePaymentForm, ReminderButtons } from "@/components/admin/invoice-actions";
 import { OrderStatusBadge } from "@/components/order-status-badge";
-import { formatChf, formatDate } from "@/lib/format";
 import { DEFAULT_CREDIT_LIMIT_CENTS } from "@/lib/invoices";
 import { interpolate, label } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { listInvoiceCredits, listInvoices, type InvoiceFilter } from "@/server/invoices";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -37,6 +36,7 @@ async function InvoicesView({
 }) {
   await connection();
   const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
+  const f = await getRequestFormatters();
   const raw = typeof params.filter === "string" ? params.filter : undefined;
   const filter: InvoiceFilter = TABS.some((tab) => tab.filter === raw)
     ? (raw as InvoiceFilter)
@@ -91,7 +91,7 @@ async function InvoicesView({
                     >
                       {invoice.orderNumber}
                     </Link>
-                    <p className="text-xs text-muted-foreground">{formatDate(invoice.createdAt)}</p>
+                    <p className="text-xs text-muted-foreground">{f.date(invoice.createdAt)}</p>
                   </td>
                   <td className="px-4 py-3">
                     {invoice.customerName}
@@ -108,7 +108,7 @@ async function InvoicesView({
                       <p className="mt-1 text-xs text-muted-foreground">
                         {interpolate(label(labels, "admin.invoices.reminder"), {
                           level: 1,
-                          date: formatDate(invoice.reminder1At),
+                          date: f.date(invoice.reminder1At),
                         })}
                       </p>
                     )}
@@ -116,22 +116,22 @@ async function InvoicesView({
                       <p className="mt-1 text-xs text-muted-foreground">
                         {interpolate(label(labels, "admin.invoices.reminder"), {
                           level: 2,
-                          date: formatDate(invoice.reminder2At),
+                          date: f.date(invoice.reminder2At),
                         })}
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatChf(invoice.totalCents)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{f.chf(invoice.totalCents)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {invoice.openCents > 0 ? (
                       <span className={cn(invoice.overdue && "font-semibold text-destructive")}>
-                        {formatChf(invoice.openCents)}
+                        {f.chf(invoice.openCents)}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">{formatDate(invoice.dueAt)}</td>
+                  <td className="px-4 py-3">{f.date(invoice.dueAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
                       {invoice.openCents > 0 && <InvoicePaymentForm orderId={invoice.orderId} />}
@@ -162,7 +162,7 @@ async function InvoicesView({
         <h2 className="text-lg font-semibold">{label(labels, "admin.invoices.creditAria")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {interpolate(label(labels, "admin.invoices.creditIntro"), {
-            amount: formatChf(DEFAULT_CREDIT_LIMIT_CENTS),
+            amount: f.chf(DEFAULT_CREDIT_LIMIT_CENTS),
           })}
         </p>
         {credits.length === 0 ? (
@@ -181,8 +181,8 @@ async function InvoicesView({
                   <p className="text-xs text-muted-foreground">{credit.email}</p>
                   <p className="mt-1 text-xs text-muted-foreground tabular-nums">
                     {interpolate(label(labels, "admin.invoices.used"), {
-                      used: formatChf(credit.usedCents),
-                      limit: formatChf(credit.creditLimitCents),
+                      used: f.chf(credit.usedCents),
+                      limit: f.chf(credit.creditLimitCents),
                     })}
                   </p>
                 </div>

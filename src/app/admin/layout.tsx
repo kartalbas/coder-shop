@@ -4,7 +4,8 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
 import { LabelsProvider, LabelsSync } from "@/components/labels";
-import { getLabels, getRequestLanguage } from "@/server/i18n";
+import { LocaleFormattersProvider, LocaleSync } from "@/components/locale-formatters";
+import { getIntlLocale, getLabels, getRequestLanguage } from "@/server/i18n";
 import { SITE_METADATA_BASE } from "../site-metadata";
 import { geistSans, geistMono } from "../fonts";
 import "../globals.css";
@@ -26,6 +27,9 @@ export default async function AdminRootLayout({ children }: LayoutProps<"/admin"
   await connection();
   const lang = await getRequestLanguage();
   const labels = await getLabels(lang);
+  // #58 admin formats slice: amounts, dates and weights follow the same language row —
+  // the admin is fully dynamic, so the live locale goes straight into the sync.
+  const intlLocale = await getIntlLocale(lang);
   return (
     <html
       lang={lang}
@@ -36,7 +40,10 @@ export default async function AdminRootLayout({ children }: LayoutProps<"/admin"
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LabelsProvider lang={lang}>
             <LabelsSync labels={labels} />
-            <RouteTransition>{children}</RouteTransition>
+            <LocaleFormattersProvider lang={lang}>
+              <LocaleSync intlLocale={intlLocale} />
+              <RouteTransition>{children}</RouteTransition>
+            </LocaleFormattersProvider>
           </LabelsProvider>
           <Toaster richColors position="bottom-center" />
         </ThemeProvider>

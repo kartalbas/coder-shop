@@ -5,9 +5,8 @@ import { connection } from "next/server";
 import { DiscountCreateForm, DiscountToggle } from "@/components/admin/discount-forms";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatChf, formatDate } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { listDiscountsCore } from "@/server/discounts";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,6 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 async function DiscountsView() {
   await connection();
   const [discounts, labels] = await Promise.all([listDiscountsCore(), getRequestLabels()]);
+  const f = await getRequestFormatters();
 
   return (
     <div className="space-y-6">
@@ -66,7 +66,7 @@ async function DiscountsView() {
                     {discount.minOrderCents > 0 && (
                       <p className="text-xs text-muted-foreground">
                         {interpolate(label(labels, "admin.discounts.minOrder"), {
-                          amount: formatChf(discount.minOrderCents),
+                          amount: f.chf(discount.minOrderCents),
                         })}
                       </p>
                     )}
@@ -74,11 +74,11 @@ async function DiscountsView() {
                   <td className="px-3 py-2">
                     {discount.kind === "percent"
                       ? `${discount.percent} %`
-                      : formatChf(discount.amountCents ?? 0)}
+                      : f.chf(discount.amountCents ?? 0)}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {discount.validFrom || discount.validTo
-                      ? `${discount.validFrom ? formatDate(discount.validFrom) : label(labels, "admin.discounts.valid.from")} – ${discount.validTo ? formatDate(discount.validTo) : label(labels, "admin.discounts.valid.open")}`
+                      ? `${discount.validFrom ? f.date(discount.validFrom) : label(labels, "admin.discounts.valid.from")} – ${discount.validTo ? f.date(discount.validTo) : label(labels, "admin.discounts.valid.open")}`
                       : label(labels, "admin.discounts.valid.unlimited")}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">

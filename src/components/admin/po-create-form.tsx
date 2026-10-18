@@ -4,11 +4,11 @@ import { useCallback, useEffect, useId, useRef, useState, useActionState } from 
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLabels } from "@/components/labels";
+import { useFormatters } from "@/components/locale-formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PickerDialog, type PickerItem } from "@/components/admin/picker-dialog";
-import { formatChf } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
 import {
   createPurchaseOrderAction,
@@ -37,6 +37,13 @@ export function PoCreateForm({
 }) {
   const formId = useId();
   const labels = useLabels();
+  // The formatters are read through a ref like the labels, so the stable picker
+  // callbacks (issue #42) keep their identity across a language switch.
+  const formatters = useFormatters();
+  const formattersRef = useRef(formatters);
+  useEffect(() => {
+    formattersRef.current = formatters;
+  }, [formatters]);
   // The toast fires from the action-state effect; the label is read through a ref kept
   // current by an effect so a label sync can never re-fire the toast (address-book).
   const labelsRef = useRef(labels);
@@ -82,7 +89,7 @@ export function PoCreateForm({
       })}${
         hit.lastPurchasePriceCents !== undefined
           ? ` · ${interpolate(label(labelsRef.current, "admin.poForm.metaLastPrice"), {
-              amount: formatChf(hit.lastPurchasePriceCents),
+              amount: formattersRef.current.chf(hit.lastPurchasePriceCents),
             })}`
           : ""
       }`,
@@ -264,7 +271,7 @@ export function PoCreateForm({
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
         <p className="text-sm">
           {label(labels, "admin.orders.column.total")}:{" "}
-          <span className="font-semibold tabular-nums">{formatChf(totalCents)}</span>
+          <span className="font-semibold tabular-nums">{formatters.chf(totalCents)}</span>
         </p>
         <Button type="submit" disabled={pending || lines.length === 0 || !supplierId}>
           {pending ? (

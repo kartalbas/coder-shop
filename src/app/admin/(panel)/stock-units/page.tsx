@@ -4,9 +4,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import type { StockUnitStatus } from "@/lib/stock-units";
-import { formatDateTime } from "@/lib/format";
 import { interpolate, label } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import { STOCK_UNIT_LIST_LIMIT, searchStockUnits } from "@/server/stock-units";
 
 interface PagePropsLocal {
@@ -33,6 +32,7 @@ const STATUS_STYLES: Record<StockUnitStatus, string> = {
 async function StockUnitsView({ searchParams }: PagePropsLocal) {
   await connection();
   const [{ q }, labels] = await Promise.all([searchParams, getRequestLabels()]);
+  const f = await getRequestFormatters();
   const units = await searchStockUnits(q ?? "");
 
   return (
@@ -102,7 +102,7 @@ async function StockUnitsView({ searchParams }: PagePropsLocal) {
                       {label(labels, `admin.stockUnits.status.${entry.status}`)}
                       {entry.note ? ` — ${entry.note}` : ""}
                     </span>
-                    <span className="tabular-nums">{formatDateTime(entry.at)}</span>
+                    <span className="tabular-nums">{f.dateTime(entry.at)}</span>
                   </li>
                 ))}
               </ol>
