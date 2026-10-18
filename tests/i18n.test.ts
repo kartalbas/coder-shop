@@ -362,7 +362,7 @@ describe("translation freshness and history (#58 editor slice)", () => {
   it("editing the German base marks the other languages for review, editing a text clears it", async () => {
     await seedLanguages();
     await seedTranslations();
-    // Rows predating the field fall back to the document's updatedAt — uniformly
+    // Rows predating the field fall back to the document's createdAt — uniformly
     // current, so nothing flags before an actual edit.
     expect(needsReview(await rowOf("shop.cart.title"), "fr")).toBe(false);
 
@@ -468,5 +468,125 @@ describe("translation freshness and history (#58 editor slice)", () => {
     ).toBe(true);
     // The new language follows the same freshness rule as the seeded ones — rows only.
     expect(needsReview(await rowOf("shop.fresh.sixth"), "en")).toBe(true);
+  });
+});
+
+// #58 editor inline-editing slice: the list saves one cell at a time. A language cell
+// sends exactly one code in `texts` (the German cell sends `texts: {}` with a changed
+// `de`) — the payload shape `translations-table.tsx` builds. The per-code core makes
+// these single-cell saves safe by construction; these tests pin that contract.
+describe("inline cell payloads (#58 editor inline-editing slice)", () => {
+  const sleep = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+  function translationForm(payload: unknown): FormData {
+    const formData = new FormData();
+    formData.set("payload", JSON.stringify(payload));
+    return formData;
+  }
+
+  const rowOf = async (key: string) => {
+    const row = (await getTranslations()).find((entry) => entry.key === key);
+    if (!row) throw new Error(`row ${key} not found`);
+    return row;
+  };
+
+  beforeEach(async () => {
+    const user = await UserModel.create({
+      email: "admin@codershop.ch",
+      name: "Shop Admin",
+      passwordHash: await hashPassword("I18n!2026"),
+      role: "admin",
+    });
+    store.token = createSessionToken(user._id.toString());
+    await seedLanguages();
+    await seedTranslations();
+  });
+
+  it("a single-code payload moves only that code's text, stamp and history", async () => {
+    const before = await rowOf("shop.cart.title");
+    // Rows predating the field answer the document's createdAt — uniformly current.
+    expect(new Set(Object.values(before.textUpdatedAt ?? {})).size).toBe(1);
+    await sleep();
+    expect(
+      (
+        await saveTranslationAction(
+          null,
+          translationForm({
+            key: "shop.cart.title",
+            area: "shop",
+            de: before.de,
+            texts: { fr: "Panier en ligne" },
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+    const after = await rowOf("shop.cart.title");
+    expect(after.texts.fr).toBe("Panier en ligne");
+    expect(after.texts.it).toBe("Carrello");
+    expect(after.textUpdatedAt?.fr).not.toBe(before.textUpdatedAt?.fr);
+    expect(after.textUpdatedAt?.it).toBe(before.textUpdatedAt?.it);
+    expect(after.textUpdatedAt?.de).toBe(before.textUpdatedAt?.de);
+    const history = await TranslationHistoryModel.find({ key: "shop.cart.title" })
+      .lean()
+      .exec();
+    expect(history.map((row) => [row.language, row.oldValue, row.newValue])).toEqual([
+      ["fr", "Panier", "Panier en ligne"],
+    ]);
+  });
+
+  it("a German-cell payload (empty texts) moves only de", async () => {
+    const before = await rowOf("shop.cart.title");
+    await sleep();
+    expect(
+      (
+        await saveTranslationAction(
+          null,
+          translationForm({
+            key: "shop.cart.title",
+            area: "shop",
+            de: "Warenkorb (inline)",
+            texts: {},
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+    const after = await rowOf("shop.cart.title");
+    expect(after.de).toBe("Warenkorb (inline)");
+    expect(after.texts.fr).toBe("Panier");
+    expect(after.textUpdatedAt?.de).not.toBe(before.textUpdatedAt?.de);
+    expect(after.textUpdatedAt?.fr).toBe(before.textUpdatedAt?.fr);
+    const history = await TranslationHistoryModel.find({ key: "shop.cart.title" })
+      .lean()
+      .exec();
+    expect(history.map((row) => [row.language, row.newValue])).toEqual([
+      ["de", "Warenkorb (inline)"],
+    ]);
+    // The untouched French text is now older than its base — the review marker follows.
+    expect(needsReview(after, "fr")).toBe(true);
+  });
+
+  it("clearing one language cell clears only that text", async () => {
+    expect(
+      (
+        await saveTranslationAction(
+          null,
+          translationForm({
+            key: "shop.cart.title",
+            area: "shop",
+            de: "Warenkorb",
+            texts: { fr: "" },
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+    const after = await rowOf("shop.cart.title");
+    expect(after.texts.fr).toBeUndefined();
+    expect(after.texts.it).toBe("Carrello");
+    const history = await TranslationHistoryModel.find({ key: "shop.cart.title" })
+      .lean()
+      .exec();
+    expect(history.map((row) => [row.language, row.oldValue, row.newValue])).toEqual([
+      ["fr", "Panier", ""],
+    ]);
   });
 });

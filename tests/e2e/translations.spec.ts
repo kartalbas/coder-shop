@@ -15,7 +15,7 @@ test("translations: edit a text, add a key, add a language", async ({ page }) =>
   await expect(row).toBeVisible({ timeout: 30_000 });
   await row.getByRole("link", { name: "Bearbeiten" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("shop.cart.title");
-  const french = page.getByLabel(/Français/);
+  const french = page.getByRole("textbox", { name: /Français/ });
   await french.fill("Panier des tests");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
@@ -27,8 +27,8 @@ test("translations: edit a text, add a key, add a language", async ({ page }) =>
   // --- A new key: German base + one language text.
   await page.goto("/admin/translations/new");
   await page.getByLabel("Key", { exact: true }).fill("shop.e2e.greeting");
-  await page.getByLabel(/Deutsch \(Basis/).fill("Hallo E2E");
-  await page.getByLabel(/Italiano/).fill("Ciao E2E");
+  await page.getByRole("textbox", { name: /Deutsch \(Basis/ }).fill("Hallo E2E");
+  await page.getByRole("textbox", { name: /Italiano/ }).fill("Ciao E2E");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
   await page.goto("/admin/translations?q=shop.e2e.greeting");
@@ -63,7 +63,7 @@ test("translations: a deactivated language's texts survive the next edit", async
     const row = page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
     await expect(row).toBeVisible({ timeout: 30_000 });
     await row.getByRole("link", { name: "Bearbeiten" }).click();
-    await page.getByLabel(/Français/).fill("Panier survécu");
+    await page.getByRole("textbox", { name: /Français/ }).fill("Panier survécu");
     await page.getByRole("button", { name: "Speichern" }).click();
     await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
 
@@ -82,7 +82,7 @@ test("translations: a deactivated language's texts survive the next edit", async
       .getByRole("link", { name: "Bearbeiten" })
       .click();
     await expect(page.getByText("(deaktiviert)")).toBeVisible();
-    await page.getByLabel(/Deutsch \(Basis/).fill("Warenkorb nach Deaktivierung");
+    await page.getByRole("textbox", { name: /Deutsch \(Basis/ }).fill("Warenkorb nach Deaktivierung");
     await page.getByRole("button", { name: "Speichern" }).click();
     await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
 
@@ -121,8 +121,8 @@ test("translations: the missing-in-language filter lists only untranslated rows"
   // A row translated in Italian only — missing in French and every other language.
   await page.goto("/admin/translations/new");
   await page.getByLabel("Key", { exact: true }).fill("shop.e2e.missing-filter");
-  await page.getByLabel(/Deutsch \(Basis/).fill("Filter-Test");
-  await page.getByLabel(/Italiano/).fill("Prova di filtro");
+  await page.getByRole("textbox", { name: /Deutsch \(Basis/ }).fill("Filter-Test");
+  await page.getByRole("textbox", { name: /Italiano/ }).fill("Prova di filtro");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
 
@@ -160,7 +160,7 @@ test("translations: freshness marker, review filter and change history", async (
     const row = page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
     await expect(row).toBeVisible({ timeout: 30_000 });
     await row.getByRole("link", { name: "Bearbeiten" }).click();
-    await page.getByLabel(/Deutsch \(Basis/).fill("Warenkorb (Geschichte)");
+    await page.getByRole("textbox", { name: /Deutsch \(Basis/ }).fill("Warenkorb (Geschichte)");
     await page.getByRole("button", { name: "Speichern" }).click();
     await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
 
@@ -176,7 +176,7 @@ test("translations: freshness marker, review filter and change history", async (
 
     // Editing the French text clears its marker; the untouched languages stay flagged.
     await flagged.getByRole("link", { name: "Bearbeiten" }).click();
-    await page.getByLabel(/Français/).fill("Panier (Geschichte)");
+    await page.getByRole("textbox", { name: /Français/ }).fill("Panier (Geschichte)");
     await page.getByRole("button", { name: "Speichern" }).click();
     await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
 
@@ -209,9 +209,67 @@ test("translations: freshness marker, review filter and change history", async (
     const row = page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
     if (await row.isVisible().catch(() => false)) {
       await row.getByRole("link", { name: "Bearbeiten" }).click();
-      await page.getByLabel(/Deutsch \(Basis/).fill("Warenkorb");
+      await page.getByRole("textbox", { name: /Deutsch \(Basis/ }).fill("Warenkorb");
       await page.getByRole("button", { name: "Speichern" }).click();
       await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
+    }
+  }
+});
+
+// #58 editor inline-editing slice: the list itself is editable — every text cell is a
+// button, Enter saves the cell instantly through the one core (toast + the value
+// survives a reload), Esc cancels a change, and editing the German base flags the
+// other languages for review right in the table. Fails on the pre-fix build: the cells
+// were plain text, no edit buttons existed.
+test("translations: inline editing in the list — Enter saves, Esc cancels", async ({ page }) => {
+  test.setTimeout(150_000);
+  await loginAsAdmin(page);
+  const row = () => page.locator("tbody tr").filter({ hasText: "shop.cart.title" }).first();
+  const cell = (language: string) =>
+    row().getByRole("button", { name: new RegExp(`shop\\.cart\\.title.*${language}`) });
+  const input = (language: string) =>
+    row().getByRole("textbox", { name: new RegExp(`shop\\.cart\\.title.*${language}`) });
+  const saved = () =>
+    expect(page.getByText("Übersetzung gespeichert").first()).toBeVisible({ timeout: 30_000 });
+  try {
+    await page.goto("/admin/translations?q=shop.cart.title");
+    await expect(row()).toBeVisible({ timeout: 30_000 });
+
+    // Edit the French cell inline: type + Enter saves instantly, reload keeps it.
+    await cell("Français").click();
+    await input("Français").fill("Panier en ligne");
+    await input("Français").press("Enter");
+    await saved();
+    await expect(cell("Français")).toContainText("Panier en ligne");
+    await page.goto("/admin/translations?q=shop.cart.title");
+    await expect(row()).toContainText("Panier en ligne");
+
+    // Esc cancels: the draft never reaches the row, the old text stays.
+    await cell("Italiano").click();
+    await input("Italiano").fill("Carrello cancellato");
+    await input("Italiano").press("Escape");
+    await expect(row().getByRole("textbox")).toHaveCount(0);
+    await expect(cell("Italiano")).toContainText("Carrello");
+    await expect(row()).not.toContainText("Carrello cancellato");
+
+    // Editing the German base inline flags the other languages for review.
+    await cell("Deutsch").click();
+    await input("Deutsch").fill("Warenkorb (inline)");
+    await input("Deutsch").press("Enter");
+    await saved();
+    await expect(cell("Français")).toContainText("Prüfen");
+  } finally {
+    // Restore the seeded base texts for the specs that follow (shared server).
+    await page.goto("/admin/translations?q=shop.cart.title").catch(() => {});
+    if (await row().isVisible().catch(() => false)) {
+      await cell("Deutsch").click();
+      await input("Deutsch").fill("Warenkorb");
+      await input("Deutsch").press("Enter");
+      await saved();
+      await cell("Français").click();
+      await input("Français").fill("Panier");
+      await input("Français").press("Enter");
+      await saved();
     }
   }
 });

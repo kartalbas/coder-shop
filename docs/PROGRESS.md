@@ -2676,3 +2676,39 @@ Done — M1–M6 + QA complete.
   inline editing); translatable catalog content + admin editing + five-language demo
   content; the per-area translation e2e deletion once the guard has survived a session
   of real changes; stored-data notes staying German remains the recorded decision.
+
+## ISSUES — queue session 46 (2026-10-19)
+
+### #58 (editor inline-editing slice) — the translations list edits in place ✅ — issue stays open
+- **Gate report checked first — no defect:** `GET /produkte → 308` and „no `/produkt/…`
+  links" stay the intended #63 English contract (former German URLs answer a permanent
+  308, product links are `/products/…`), asserted by the green `english-urls`/
+  `language-routing` specs in every gate run.
+- **Step 0 (the review's two nits):** the stale `updatedAt` comments in `src/lib/i18n.ts`
+  and `tests/i18n.test.ts` now name the `createdAt` fallback the code and DECISIONS use.
+- **Inline editing (`src/components/admin/translations-table.tsx`):** the list's whole
+  table moved out of the page into a client component — every text cell (German base +
+  each active language) is a button (aria from the new `admin.translations.editCellAria`
+  row × 5 languages, `{key}`/`{language}` interpolated) that turns into an input on
+  Enter/Space/click. Enter or blur commits through the existing `saveTranslationAction`
+  with a single-code payload (German cell: `texts: {}`), Esc cancels (a ref flag keeps
+  the post-Esc blur from saving), Tab walks the grid; on success the value applies
+  optimistically, the saved toast fires (address-book ref pattern) and `router.refresh()`
+  syncs badges/stamps; on refusal the localized error toasts and edit mode stays open.
+  No new write path, no core or schema change; a sixth language gains a column and
+  inline editing as rows only. The full editor page keeps key/area, deactivated
+  languages and `/new`.
+- **Tests:** +3 integration (the three inline payload shapes through the real action:
+  single-code moves only that code's text/stamp/history, `texts: {}` with a changed
+  `de` moves only de, `fr: ""` clears only fr — stamps compared against the seeded
+  uniform createdAt fallback); new e2e inline-editing spec (Enter saves + survives
+  reload, Esc leaves the old text, German-base edit flags fr with the Prüfen badge,
+  restores both texts in `finally`) — **verified failing on the stashed pre-change
+  build** (no cell buttons). The three existing translation specs disambiguated:
+  `getByLabel(/Français/)` etc. became `getByRole("textbox", …)` since the list cells
+  are now buttons whose aria-label names the language.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 679, `npm run test:e2e`
+  ✅ 107/107; tree clean, nothing running.
+- **Left open (#58):** usage context + preview link in the editor; translatable catalog
+  content + five-language demo content; the per-area e2e deletion now that the
+  no-German-literals guard has survived a session; done-when re-check.

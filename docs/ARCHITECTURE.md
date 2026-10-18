@@ -149,8 +149,8 @@ src/
         catalog-types/page.tsx, catalog-types/[key]/page.tsx  # catalog type editor:
                             # label, position, dimensions, brands, flags (#64, writes
                             # through saveCatalogTypeCore)
-        translations/page.tsx          # translation table: search + area filter, per-language
-                            # columns with a visible "fehlt" fallback marker (#58)
+        translations/page.tsx          # translation table: search + area/missing/review
+                            # filters, inline-editable cells via TranslationsTable (#58)
         translations/[key]/page.tsx    # one text: German base + every language column (#58)
         translations/languages/page.tsx # language rows editor — a new language is a form,
                             # deactivate instead of delete (#58)
@@ -217,6 +217,9 @@ src/
          shop-settings-form.tsx,     # VAT + shipping + payment method editor (#64)
          catalog-type-editor.tsx     # catalog type form: label, dimensions, brands (#64)
          translation-editor.tsx      # one text: key, area, German base, language columns (#58)
+         translations-table.tsx      # list table with keyboard inline editing per cell —
+                            # Enter/blur saves one code through saveTranslationAction,
+                            # Esc cancels (#58 editor inline-editing slice)
          languages-editor.tsx        # language rows: code, label, intlLocale, position, active (#58)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
@@ -1174,7 +1177,9 @@ Specs (the three required journeys):
   history.
 - `translations.spec.ts` (#58) — admin edits a seeded text's French column and sees it on
   reload → creates a new key (German base + one language, untranslated columns show the
-  visible „fehlt" marker) → adds a language row (Portuguese) through the languages editor.
+  visible „fehlt" marker) → adds a language row (Portuguese) through the languages editor
+  → inline editing in the list: Enter saves a cell instantly (survives reload), Esc
+  cancels, editing the German base flags the other languages for review.
 - `language-routing.spec.ts` (#58) — browser language picks the prefix and `<html lang>` →
   hreflang lists every active language + x-default for the same path → switcher keeps page,
   query and the remembered choice → every language serves the listing → unknown product

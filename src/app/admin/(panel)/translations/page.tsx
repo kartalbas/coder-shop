@@ -4,16 +4,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Globe } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { TranslationsTable } from "@/components/admin/translations-table";
 import { Button } from "@/components/ui/button";
 import {
   BASE_LANGUAGE,
   TRANSLATION_AREAS,
   filterTranslations,
   interpolate,
-  isTranslated,
   label,
-  needsReview,
 } from "@/lib/i18n";
 import { getActiveLanguages, getRequestLabels, getTranslations } from "@/server/i18n";
 
@@ -150,64 +148,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
       {shown.length === 0 ? (
         <p className="mt-6 text-sm text-muted-foreground">{label(labels, "admin.translations.empty")}</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                <th className="px-4 py-2.5 font-medium">Key</th>
-                <th className="px-4 py-2.5 font-medium">{label(labels, "admin.translations.column.de")}</th>
-                {languages
-                  .filter((language) => language.code !== BASE_LANGUAGE)
-                  .map((language) => (
-                    <th key={language.code} className="px-4 py-2.5 font-medium">
-                      {language.label}
-                    </th>
-                  ))}
-                <th className="px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((entry) => (
-                <tr key={entry.key} className="border-b last:border-0 align-top">
-                  <td className="px-4 py-2.5">
-                    <p className="font-mono text-xs font-semibold">{entry.key}</p>
-                    <Badge variant="outline" className="mt-1">
-                      {label(labels, `admin.translations.area.${entry.area}`)}
-                    </Badge>
-                  </td>
-                  <td className="max-w-64 px-4 py-2.5">{entry.de}</td>
-                  {languages
-                    .filter((language) => language.code !== BASE_LANGUAGE)
-                    .map((language) => (
-                      <td key={language.code} className="max-w-64 px-4 py-2.5">
-                        {isTranslated(entry, language.code) ? (
-                          <span className="flex flex-wrap items-center gap-1.5">
-                            {entry.texts[language.code]}
-                            {needsReview(entry, language.code) && (
-                              <span className="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                                {label(labels, "admin.translations.needsReview")}
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-xs italic text-amber-700 dark:text-amber-400">
-                            {label(labels, "admin.translations.missing")}
-                          </span>
-                        )}
-                      </td>
-                    ))}
-                  <td className="px-4 py-2.5 text-right">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/admin/translations/${encodeURIComponent(entry.key)}`}>
-                        {label(labels, "admin.action.edit")}
-                      </Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TranslationsTable entries={shown} languages={languages} />
       )}
       {filtered.length > LIST_LIMIT && (
         <p className="mt-3 text-sm text-muted-foreground">

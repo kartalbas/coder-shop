@@ -38,7 +38,7 @@ export interface TranslationEntry {
   texts: Record<string, string>;
   // Per-text freshness (#58 editor slice): code → ISO string of the last change,
   // `de` included. Optional so the seed file and its deep-equal guard stay untouched —
-  // rows predating the field fall back to the document's updatedAt on load, which
+  // rows predating the field fall back to the document's createdAt on load, which
   // makes them uniformly current and never flags them for review.
   textUpdatedAt?: Record<string, string>;
 }

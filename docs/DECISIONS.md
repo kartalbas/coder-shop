@@ -1008,3 +1008,14 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   public German URLs); an old `/neu` bookmark falls to the key/type lookup and answers
   the not-found state. The dot-in-keys rule still keeps `new` from colliding with a
   translation key.
+- **Inline cell saves are single-code payloads over the per-code core (#58 editor
+  inline-editing slice).** The translations list edits in place: every text cell is a
+  button that turns into an input; Enter or blur commits, Esc cancels (a ref flag keeps
+  the post-Esc blur from saving), Tab walks the grid (blur commits, focus moves on).
+  A language cell sends `{ key, area, de, texts: { <code>: <value> } }`, the German
+  cell `{ key, area, de: <value>, texts: {} }` — exactly the payload the page form's
+  action already validates, so there is no second write path and the review-fix
+  semantics (absent codes are untouched) make a single-cell save safe by construction.
+  The list shows active languages only; deactivated columns and key/area stay on the
+  full editor page. Saved values apply optimistically and `router.refresh()` syncs the
+  server truth (badges, stamps) — no debounce code at demo scale.
