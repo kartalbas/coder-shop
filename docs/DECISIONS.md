@@ -329,6 +329,20 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   driver-internal `new Date()` is not ours to remove — the fix is to run the query in
   the dynamic stage, where time is allowed.
 
+### Gate recovery — the build never touches the database
+- **Every API route calls `connection()` before any data access** (the #37 rule, now
+  for routes). `/api/shop-settings` lacked it, so `next build` prerendered it: the
+  settings were baked into static JSON (admin edits never reached the storefront) and
+  the prerender booted the embedded MongoDB inside a build worker. The pool kills that
+  worker without cleanup and mongodb-memory-server's killer process does not reap the
+  instance there, so the mongod was orphaned on `data/mongo` — the recurring gate
+  failure (`/api/health` 500, `DBPathInUse`, link-less listing). With the route dynamic
+  the build touches no database at all: verified by building with no mongod running and
+  seeing none left behind.
+- Guarded by `tests/api-routes-dynamic.test.ts` (static check over `src/app/**/route.ts`,
+  same style as the lib-purity guard); an intentionally static route would need an
+  explicit exception there.
+
 ### #38 — LAN run: `.env.local` + `npm run setup:lan` instead of hand-set secrets
 - Production requires `SESSION_SECRET` (#2) and the admin password is no longer a
   source-code constant (#4) — together that made the LAN shop unstartable and the

@@ -459,8 +459,9 @@ active shipping/payment method — the checkout can't be configured into a dead 
 seed inserts it **insert-only** (#14 rule). Orders store the chosen `method` key plus the
 flow data the workflow needs without the config (`shipping.storePickup`, `payment.kind`);
 a retired method falls back to its stored key in labels (DECISIONS). The storefront client
-components read it through `ShopSettingsProvider` via `GET /api/shop-settings`
-(`public, max-age=60` — a tab can lag an admin edit by up to a minute, DECISIONS).
+components read the configuration through `ShopSettingsProvider` via
+`GET /api/shop-settings` (dynamic route, `public, max-age=60` — a tab can lag an admin
+edit by up to a minute, DECISIONS).
 
 ### Order (`orders`)
 ```ts
