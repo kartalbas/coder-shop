@@ -10,11 +10,17 @@ import { connectDB } from "./db";
 // and suppliers. Pure data in, links out; the palette component turns hrefs into
 // navigation.
 
+// #58 step 5: the group is a machine key, not a German word — the palette renders the
+// row of the request language (the typed-error/emailTaken precedent). The supplier lead
+// time travels as data for the same reason.
+export type PaletteGroup = "orders" | "products" | "customers" | "suppliers";
+
 export interface PaletteHit {
   id: string;
-  group: "Bestellungen" | "Produkte" | "Kunden" | "Lieferanten";
+  group: PaletteGroup;
   primary: string;
   secondary?: string;
+  leadTimeDays?: number;
   href: string;
 }
 
@@ -52,30 +58,30 @@ export async function commandSearchCore(query: string): Promise<PaletteHit[]> {
   return [
     ...orders.map((order) => ({
       id: `order-${order._id}`,
-      group: "Bestellungen" as const,
+      group: "orders" as const,
       primary: order.orderNumber,
       secondary: `${order.customer.name} · ${order.customer.email}`,
       href: `/admin/orders/${order._id}`,
     })),
     ...products.map((product) => ({
       id: `product-${product._id}`,
-      group: "Produkte" as const,
+      group: "products" as const,
       primary: product.name,
       secondary: product.brand,
       href: `/admin/products/${product._id}`,
     })),
     ...customers.map((customer) => ({
       id: `customer-${customer._id}`,
-      group: "Kunden" as const,
+      group: "customers" as const,
       primary: customer.name,
       secondary: customer.email,
       href: `/admin/customers/${customer._id}`,
     })),
     ...suppliers.map((supplier) => ({
       id: `supplier-${supplier._id}`,
-      group: "Lieferanten" as const,
+      group: "suppliers" as const,
       primary: supplier.name,
-      secondary: `Lieferzeit ${supplier.leadTimeDays} Tage`,
+      leadTimeDays: supplier.leadTimeDays,
       href: `/admin/suppliers?edit=${supplier._id}`,
     })),
   ];

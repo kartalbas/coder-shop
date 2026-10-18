@@ -193,26 +193,29 @@ export interface CreateDiscountInput {
 
 export type DiscountActionResult = { ok: true } | { ok: false; error: string };
 
+// #58 step 5: the admin management refusals answer from the table in the request
+// language; outside a request scope the first active language (German) answers.
 export async function createDiscountCore(input: CreateDiscountInput): Promise<DiscountActionResult> {
+  const labels = await getRequestLabels();
   await connectDB();
   const code = normalizeDiscountCode(input.code);
   if (!/^[A-Z0-9-]{3,32}$/.test(code)) {
-    return { ok: false, error: "Code: 3–32 Zeichen aus Buchstaben, Zahlen und «-»." };
+    return { ok: false, error: label(labels, "admin.discounts.error.codeShape") };
   }
   if (input.kind === "percent" && (!input.percent || input.percent < 1 || input.percent > 100)) {
-    return { ok: false, error: "Rabatt in Prozent (1–100) fehlt." };
+    return { ok: false, error: label(labels, "admin.discounts.error.percentMissing") };
   }
   if (input.kind === "fixed" && (!input.amountCents || input.amountCents < 1)) {
-    return { ok: false, error: "Festbetrag fehlt." };
+    return { ok: false, error: label(labels, "admin.discounts.error.amountMissing") };
   }
   if (input.validFrom && input.validTo && input.validFrom > input.validTo) {
-    return { ok: false, error: "Gültig von muss vor gültig bis liegen." };
+    return { ok: false, error: label(labels, "admin.discounts.error.dateOrder") };
   }
   try {
     await DiscountCodeModel.create({ ...input, code });
   } catch (error) {
     if ((error as { code?: number }).code === 11000) {
-      return { ok: false, error: "Diesen Code gibt es schon." };
+      return { ok: false, error: label(labels, "admin.discounts.error.duplicate") };
     }
     throw error;
   }
@@ -223,9 +226,10 @@ export async function setDiscountActiveCore(
   id: string,
   active: boolean,
 ): Promise<DiscountActionResult> {
+  const notFound = label(await getRequestLabels(), "admin.error.codeNotFound");
   await connectDB();
-  if (!mongoose.isValidObjectId(id)) return { ok: false, error: "Code nicht gefunden." };
+  if (!mongoose.isValidObjectId(id)) return { ok: false, error: notFound };
   const updated = await DiscountCodeModel.updateOne({ _id: id }, { $set: { active } }).exec();
-  if (updated.matchedCount === 0) return { ok: false, error: "Code nicht gefunden." };
+  if (updated.matchedCount === 0) return { ok: false, error: notFound };
   return { ok: true };
 }

@@ -6,44 +6,50 @@ import { DiscountCreateForm, DiscountToggle } from "@/components/admin/discount-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatChf, formatDate } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 import { listDiscountsCore } from "@/server/discounts";
 
-export const metadata: Metadata = {
-  title: "Aktionen — Admin",
-  description: "Gutscheincodes anlegen und verwalten, mit Nutzungsstatistik.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.discounts.title"),
+    description: label(labels, "admin.meta.discounts.description"),
+  };
+}
 
 // Discount code management (issue #45): every code with its limits, window and how
 // often it was used — by orders and by distinct customers.
 async function DiscountsView() {
   await connection();
-  const discounts = await listDiscountsCore();
+  const [discounts, labels] = await Promise.all([listDiscountsCore(), getRequestLabels()]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Aktionen</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.discounts.title")}</h1>
 
       <Card>
         <CardContent className="p-5">
-          <h2 className="mb-4 font-semibold">Neuen Code anlegen</h2>
+          <h2 className="mb-4 font-semibold">{label(labels, "admin.discounts.create.title")}</h2>
           <DiscountCreateForm />
         </CardContent>
       </Card>
 
       {discounts.length === 0 ? (
         <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-          Noch keine Codes.
+          {label(labels, "admin.discounts.empty")}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="px-3 py-2 font-medium">Code</th>
-                <th className="px-3 py-2 font-medium">Rabatt</th>
-                <th className="px-3 py-2 font-medium">Gültig</th>
-                <th className="px-3 py-2 text-right font-medium">Genutzt</th>
-                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">{label(labels, "admin.discounts.column.code")}</th>
+                <th className="px-3 py-2 font-medium">{label(labels, "admin.discounts.column.discount")}</th>
+                <th className="px-3 py-2 font-medium">{label(labels, "admin.discounts.column.valid")}</th>
+                <th className="px-3 py-2 text-right font-medium">{label(labels, "admin.discounts.column.used")}</th>
+                <th className="px-3 py-2 font-medium">{label(labels, "admin.orders.column.status")}</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -53,11 +59,15 @@ async function DiscountsView() {
                   <td className="px-3 py-2">
                     <span className="font-mono font-medium">{discount.code}</span>
                     {discount.perCustomerOnce && (
-                      <span className="ml-2 text-xs text-muted-foreground">1×/Kunde</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {label(labels, "admin.discounts.perCustomer")}
+                      </span>
                     )}
                     {discount.minOrderCents > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        ab {formatChf(discount.minOrderCents)}
+                        {interpolate(label(labels, "admin.discounts.minOrder"), {
+                          amount: formatChf(discount.minOrderCents),
+                        })}
                       </p>
                     )}
                   </td>
@@ -68,24 +78,29 @@ async function DiscountsView() {
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {discount.validFrom || discount.validTo
-                      ? `${discount.validFrom ? formatDate(discount.validFrom) : "ab"} – ${discount.validTo ? formatDate(discount.validTo) : "offen"}`
-                      : "unbefristet"}
+                      ? `${discount.validFrom ? formatDate(discount.validFrom) : label(labels, "admin.discounts.valid.from")} – ${discount.validTo ? formatDate(discount.validTo) : label(labels, "admin.discounts.valid.open")}`
+                      : label(labels, "admin.discounts.valid.unlimited")}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {discount.usedCount}
                     {discount.usageLimit !== undefined && ` / ${discount.usageLimit}`}
                     <span className="ml-1 text-xs text-muted-foreground">
-                      ({discount.customerCount} Kunden)
+                      {interpolate(label(labels, "admin.discounts.customers"), {
+                        count: discount.customerCount,
+                      })}
                     </span>
                   </td>
                   <td className="px-3 py-2">
                     {discount.active ? (
-                      <Badge variant="outline" className="border-emerald-700 text-emerald-700 dark:border-emerald-400 dark:text-emerald-400">
-                        Aktiv
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-700 text-emerald-700 dark:border-emerald-400 dark:text-emerald-400"
+                      >
+                        {label(labels, "admin.discounts.status.active")}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-muted-foreground">
-                        Inaktiv
+                        {label(labels, "admin.discounts.status.inactive")}
                       </Badge>
                     )}
                   </td>

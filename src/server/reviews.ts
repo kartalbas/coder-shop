@@ -171,26 +171,30 @@ export async function listReviewsCore(filter: AdminReviewFilter): Promise<AdminR
     });
 }
 
+// #58 step 5: the admin moderation refusals answer from the table in the request
+// language; outside a request scope the first active language (German) answers.
 export async function setReviewStatusCore(
   reviewId: string,
   status: ReviewStatus,
 ): Promise<ReviewResult> {
+  const notFound = label(await getRequestLabels(), "admin.error.reviewNotFound");
   await connectDB();
-  if (!Types.ObjectId.isValid(reviewId)) return { ok: false, error: "Bewertung nicht gefunden." };
+  if (!Types.ObjectId.isValid(reviewId)) return { ok: false, error: notFound };
   const review = await ReviewModel.findById(reviewId).select("productId").lean().exec();
-  if (!review) return { ok: false, error: "Bewertung nicht gefunden." };
+  if (!review) return { ok: false, error: notFound };
   await ReviewModel.updateOne({ _id: reviewId }, { $set: { status } });
   await recomputeProductRatingCore(String(review.productId));
   return { ok: true };
 }
 
 export async function replyToReviewCore(reviewId: string, text: string): Promise<ReviewResult> {
+  const notFound = label(await getRequestLabels(), "admin.error.reviewNotFound");
   await connectDB();
-  if (!Types.ObjectId.isValid(reviewId)) return { ok: false, error: "Bewertung nicht gefunden." };
+  if (!Types.ObjectId.isValid(reviewId)) return { ok: false, error: notFound };
   const updated = await ReviewModel.updateOne(
     { _id: reviewId },
     { $set: { adminReply: text, adminRepliedAt: new Date() } },
   ).exec();
-  if (updated.matchedCount === 0) return { ok: false, error: "Bewertung nicht gefunden." };
+  if (updated.matchedCount === 0) return { ok: false, error: notFound };
   return { ok: true };
 }

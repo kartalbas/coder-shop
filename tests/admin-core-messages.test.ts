@@ -1,12 +1,22 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import mongoose from "mongoose";
 import { OrderModel } from "@/models/order";
 import { ProductModel } from "@/models/product";
 import { PurchaseOrderModel } from "@/models/purchase-order";
 import { SupplierModel } from "@/models/supplier";
 import { UserModel } from "@/models/user";
+import { createSessionToken } from "@/server/session-token";
+import { hashPassword } from "@/server/password";
+import {
+  setCustomerBlockedCore,
+  setCustomerNotesCore,
+} from "@/server/customers-admin";
+import { setReviewStatusCore } from "@/server/reviews";
+import { createDiscountCore } from "@/server/discounts";
+import { createDiscountAction } from "@/server/actions/admin/discounts";
+import { replyToReviewAction } from "@/server/actions/admin/reviews";
 import { LABELS_DIR, getLabelFileCore, createLabelCore } from "@/server/shipping/label";
 import { MockUpsProvider } from "@/server/shipping/mock";
 import { transitionOrderCore } from "@/server/orders-admin";
@@ -44,14 +54,25 @@ import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
 const request = vi.hoisted(() => ({
   cookie: undefined as string | undefined,
+  // #58 step 5: the discount/reply schemas live in server actions behind the admin
+  // session — a valid admin token plays the session cookie for those two tests.
+  session: undefined as string | undefined,
 }));
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    get: () => (request.cookie ? { value: request.cookie } : undefined),
+    get: (name: string) => {
+      if (name === "lang") return request.cookie ? { value: request.cookie } : undefined;
+      if (name === "admin_session") {
+        return request.session ? { value: request.session } : undefined;
+      }
+      return undefined;
+    },
   }),
   headers: async () => ({ get: () => null }),
 }));
+
+vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 function orderFixture(orderNumber: string, status: "paid" | "packed") {
   const now = new Date();
@@ -85,6 +106,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   request.cookie = undefined;
+  request.session = undefined;
 });
 
 afterAll(async () => {
@@ -605,5 +627,171 @@ describe("invoice core refusals follow the request language", () => {
     expect(missing.ok).toBe(false);
     if (missing.ok) return;
     expect(missing.error).toBe("Client introuvable.");
+  });
+});
+
+// ---------- #58 step 5: customers, reviews and discounts cores ----------
+
+describe("customer core refusals follow the request language", () => {
+  it("an unknown customer id is refused in French and in the German base", async () => {
+    const missingId = new mongoose.Types.ObjectId().toString();
+
+    request.cookie = "fr";
+    const french = await setCustomerBlockedCore(missingId, true);
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("Compte introuvable.");
+
+    request.cookie = undefined;
+    const german = await setCustomerBlockedCore(missingId, true);
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Konto nicht gefunden.");
+  });
+
+  it("an over-long note is refused in French with the max, German base alongside", async () => {
+    const user = await UserModel.create({
+      email: "note-core@example.ch",
+      name: "Note Core",
+      role: "customer",
+      passwordHash: "x",
+    });
+    const notes = "x".repeat(2001);
+
+    request.cookie = "fr";
+    const french = await setCustomerNotesCore(user._id.toString(), notes);
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("La note est trop longue (max. 2000 caractères).");
+
+    request.cookie = undefined;
+    const german = await setCustomerNotesCore(user._id.toString(), notes);
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Notiz ist zu lang (max. 2000 Zeichen).");
+  });
+});
+
+describe("review moderation refusals follow the request language", () => {
+  it("an unknown review id is refused in French and in the German base", async () => {
+    const missingId = new mongoose.Types.ObjectId().toString();
+
+    request.cookie = "fr";
+    const french = await setReviewStatusCore(missingId, "approved");
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("Avis introuvable.");
+
+    request.cookie = undefined;
+    const german = await setReviewStatusCore(missingId, "approved");
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Bewertung nicht gefunden.");
+  });
+});
+
+describe("discount core refusals follow the request language", () => {
+  const base = {
+    kind: "percent" as const,
+    percent: 10,
+    minOrderCents: 0,
+    perCustomerOnce: false,
+  };
+
+  it("a bad code shape is refused in French and in the German base", async () => {
+    request.cookie = "fr";
+    const french = await createDiscountCore({ ...base, code: "a!" });
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("Code : 3–32 caractères parmi lettres, chiffres et « - ».");
+
+    request.cookie = undefined;
+    const german = await createDiscountCore({ ...base, code: "a!" });
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Code: 3–32 Zeichen aus Buchstaben, Zahlen und «-».");
+  });
+
+  it("a duplicate code is refused in French with the German base alongside", async () => {
+    await createDiscountCore({ ...base, code: "DUPQUE" });
+
+    request.cookie = "fr";
+    const french = await createDiscountCore({ ...base, code: "DUPQUE" });
+    expect(french.ok).toBe(false);
+    if (french.ok) return;
+    expect(french.error).toBe("Ce code existe déjà.");
+
+    request.cookie = undefined;
+    const german = await createDiscountCore({ ...base, code: "DUPQUE" });
+    expect(german.ok).toBe(false);
+    if (german.ok) return;
+    expect(german.error).toBe("Diesen Code gibt es schon.");
+  });
+
+  it("a reversed validity window is refused in French", async () => {
+    request.cookie = "fr";
+    const result = await createDiscountCore({
+      ...base,
+      code: "DATEREV",
+      validFrom: new Date("2026-06-01"),
+      validTo: new Date("2026-05-01"),
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("La date de début doit précéder la date de fin.");
+  });
+});
+
+describe("discount and review action schemas follow the request language", () => {
+  let adminToken = "";
+
+  beforeAll(async () => {
+    const admin = await UserModel.create({
+      email: "admin-step5@example.ch",
+      name: "Step Five Admin",
+      passwordHash: await hashPassword("StepFive!2026"),
+      role: "admin",
+    });
+    adminToken = createSessionToken(admin._id.toString());
+  });
+
+  // The file-wide afterEach clears the request scope — the session is replayed here.
+  beforeEach(() => {
+    request.session = adminToken;
+  });
+
+  it("an invalid CHF amount is refused in French and in the German base", async () => {
+    const form = (amount: string) => {
+      const data = new FormData();
+      data.set("code", "CHFTEST");
+      data.set("kind", "fixed");
+      data.set("amountCents", amount);
+      return data;
+    };
+
+    request.cookie = "fr";
+    const french = await createDiscountAction(null, form("viel"));
+    expect(french.error).toBe("Veuillez indiquer un montant valide.");
+
+    request.cookie = undefined;
+    const german = await createDiscountAction(null, form("viel"));
+    expect(german.error).toBe("Bitte einen gültigen Betrag angeben.");
+  });
+
+  it("a too-short review reply is refused in French and in the German base", async () => {
+    const form = (text: string) => {
+      const data = new FormData();
+      data.set("reviewId", new mongoose.Types.ObjectId().toString());
+      data.set("text", text);
+      return data;
+    };
+
+    request.cookie = "fr";
+    const french = await replyToReviewAction(null, form("ok"));
+    expect(french.error).toBe("Veuillez écrire une réponse.");
+
+    request.cookie = undefined;
+    const german = await replyToReviewAction(null, form("ok"));
+    expect(german.error).toBe("Bitte eine Antwort schreiben.");
   });
 });

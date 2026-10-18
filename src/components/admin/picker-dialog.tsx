@@ -10,7 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useLabels } from "@/components/labels";
 import { useDebounce } from "@/hooks/use-debounce";
+import { interpolate, label } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 // Command-palette style picker (issue #42): type to search instantly, ↑/↓ through the
@@ -63,6 +65,7 @@ function PickerContent({
   minChars?: number;
 }) {
   const listId = useId();
+  const labels = useLabels();
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<{ query: string; items: PickerItem[] } | null>(null);
   const [active, setActive] = useState(0);
@@ -156,14 +159,14 @@ function PickerContent({
         {searching && (
           <li className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden />
-            Suche…
+            {label(labels, "admin.picker.searching")}
           </li>
         )}
         {!searching && options.length === 0 && (
           <li className="px-3 py-3 text-sm text-muted-foreground" role="status">
             {trimmed.length >= minChars
-              ? `Keine Treffer für „${trimmed}“.`
-              : `Mindestens ${minChars} Zeichen tippen.`}
+              ? interpolate(label(labels, "admin.picker.noHits"), { term: trimmed })
+              : interpolate(label(labels, "admin.picker.minChars"), { minChars })}
           </li>
         )}
         {options.map((item, index) => (
@@ -228,6 +231,7 @@ export function PickerDialog({
   onSelect: (item: PickerItem) => void;
   minChars?: number;
 }) {
+  const labels = useLabels();
   // Close on selection and hand control back to the caller.
   const handleSelect = useCallback(
     (item: PickerItem) => {
@@ -259,9 +263,7 @@ export function PickerDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            Tippen sucht sofort — ↑/↓ wählen, Enter übernimmt, Esc bricht ab.
-          </DialogDescription>
+          <DialogDescription>{label(labels, "admin.picker.hint")}</DialogDescription>
         </DialogHeader>
         {open && (
           <PickerContent

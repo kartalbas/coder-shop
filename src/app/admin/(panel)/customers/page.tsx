@@ -8,12 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatChf } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
 import { listCustomersCore } from "@/server/customers-admin";
+import { getRequestLabels } from "@/server/i18n";
 
-export const metadata: Metadata = {
-  title: "Kunden — Admin",
-  description: "Kundenkonten mit Bestellungen und offenen Beträgen.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.customers.title"),
+    description: label(labels, "admin.meta.customers.description"),
+  };
+}
 
 // Admin customer list (issue #43): search by name or e-mail, order count and the
 // open invoice amount per account at a glance.
@@ -23,40 +29,42 @@ async function CustomersView({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
-  const params = await searchParams;
+  const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
   const query = typeof params.q === "string" ? params.q : "";
   const customers = await listCustomersCore(query);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Kunden</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.customers.title")}</h1>
 
       <form className="mt-4 flex max-w-sm items-center gap-2" role="search">
         <Input
           type="search"
           name="q"
           defaultValue={query}
-          placeholder="Name oder E-Mail suchen"
-          aria-label="Kunden durchsuchen"
+          placeholder={label(labels, "admin.customers.search.placeholder")}
+          aria-label={label(labels, "admin.customers.search.aria")}
         />
-        <Button type="submit" variant="outline" size="icon" aria-label="Suchen">
+        <Button type="submit" variant="outline" size="icon" aria-label={label(labels, "shop.action.search")}>
           <Search className="size-4" aria-hidden />
         </Button>
       </form>
 
       {customers.length === 0 ? (
         <p className="mt-6 rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-          {query ? `Keine Kunden gefunden für „${query}“.` : "Noch keine Kundenkonten — Kunden registrieren sich im Portal."}
+          {query
+            ? interpolate(label(labels, "admin.customers.noMatch"), { q: query })
+            : label(labels, "admin.customers.empty")}
         </p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-md border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="px-3 py-2 font-medium">Name</th>
-                <th className="px-3 py-2 font-medium">E-Mail</th>
-                <th className="px-3 py-2 text-right font-medium">Bestellungen</th>
-                <th className="px-3 py-2 text-right font-medium">Offen</th>
+                <th className="px-3 py-2 font-medium">{label(labels, "admin.customers.column.name")}</th>
+                <th className="px-3 py-2 font-medium">{label(labels, "admin.customers.column.email")}</th>
+                <th className="px-3 py-2 text-right font-medium">{label(labels, "admin.customers.column.orders")}</th>
+                <th className="px-3 py-2 text-right font-medium">{label(labels, "admin.invoices.column.open")}</th>
               </tr>
             </thead>
             <tbody>
@@ -71,7 +79,7 @@ async function CustomersView({
                     </Link>
                     {customer.blocked && (
                       <Badge variant="destructive" className="ml-2">
-                        Gesperrt
+                        {label(labels, "admin.customers.blocked")}
                       </Badge>
                     )}
                   </td>

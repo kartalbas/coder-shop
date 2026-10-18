@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import { EyeOff, Loader2, Send, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLabels } from "@/components/labels";
+import { label } from "@/lib/i18n";
 import {
   replyToReviewAction,
   setReviewStatusAction,
@@ -12,6 +14,7 @@ import {
 
 // Moderation controls for one review (issue #47): approve, hide and a public answer.
 export function ReviewActions({ reviewId, status }: { reviewId: string; status: string }) {
+  const labels = useLabels();
   const [statusState, statusAction, statusPending] = useActionState<
     ReviewAdminActionState | null,
     FormData
@@ -34,7 +37,7 @@ export function ReviewActions({ reviewId, status }: { reviewId: string; status: 
               ) : (
                 <Check className="size-3.5" aria-hidden />
               )}
-              Freigeben
+              {label(labels, "admin.reviews.action.approve")}
             </Button>
           </form>
         )}
@@ -44,7 +47,7 @@ export function ReviewActions({ reviewId, status }: { reviewId: string; status: 
             <input type="hidden" name="status" value="hidden" />
             <Button type="submit" size="sm" variant="outline" disabled={statusPending}>
               <EyeOff className="size-3.5" aria-hidden />
-              Verstecken
+              {label(labels, "admin.reviews.action.hide")}
             </Button>
           </form>
         )}
@@ -58,10 +61,10 @@ export function ReviewActions({ reviewId, status }: { reviewId: string; status: 
         <input type="hidden" name="reviewId" value={reviewId} />
         <Input
           name="text"
-          placeholder="Antwort auf diese Bewertung…"
+          placeholder={label(labels, "admin.reviews.reply.placeholder")}
           maxLength={2000}
           className="h-8 w-56"
-          aria-label="Antworttext"
+          aria-label={label(labels, "admin.reviews.reply.aria")}
         />
         <Button type="submit" size="sm" variant="outline" disabled={replyPending}>
           {replyPending ? (
@@ -69,7 +72,7 @@ export function ReviewActions({ reviewId, status }: { reviewId: string; status: 
           ) : (
             <Send className="size-3.5" aria-hidden />
           )}
-          Antworten
+          {label(labels, "admin.reviews.action.reply")}
         </Button>
         {replyState?.error && (
           <p className="text-xs text-destructive" role="alert">

@@ -8,39 +8,54 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { PasswordForm } from "@/components/admin/password-form";
 import { RevenueSparkline } from "@/components/admin/revenue-sparkline";
 import { formatChf, formatDate } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
 import { getDashboardData, REVENUE_WINDOW_DAYS } from "@/server/dashboard";
+import { getRequestLabels } from "@/server/i18n";
 
-export const metadata: Metadata = {
-  title: "Dashboard — Admin",
-  description: "Umsatz, offene Bestellungen und Low-Stock-Alarme.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.dashboard.title"),
+    description: label(labels, "admin.meta.dashboard.description"),
+  };
+}
 
 async function DashboardView() {
   await connection();
-  const data = await getDashboardData();
+  const [data, labels] = await Promise.all([getDashboardData(), getRequestLabels()]);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.dashboard.title")}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Umsatz der letzten {REVENUE_WINDOW_DAYS} Tage (Status bezahlt bis zugestellt).
+        {interpolate(label(labels, "admin.dashboard.intro"), { days: REVENUE_WINDOW_DAYS })}
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardDescription>Umsatz ({REVENUE_WINDOW_DAYS} Tage)</CardDescription>
+            <CardDescription>
+              {interpolate(label(labels, "admin.dashboard.kpi.revenue"), {
+                days: REVENUE_WINDOW_DAYS,
+              })}
+            </CardDescription>
             <CardTitle className="text-2xl tabular-nums">
               {formatChf(data.revenueCents)}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-primary">
-            <RevenueSparkline values={data.revenueSeries} />
+            <RevenueSparkline
+              values={data.revenueSeries}
+              ariaLabel={interpolate(label(labels, "admin.dashboard.sparkline.aria"), {
+                count: data.revenueSeries.length,
+              })}
+            />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Offene Bestellungen</CardDescription>
+            <CardDescription>{label(labels, "admin.dashboard.kpi.openOrders")}</CardDescription>
             <CardTitle className="text-2xl tabular-nums">{data.openOrders}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -48,13 +63,13 @@ async function DashboardView() {
               href="/admin/orders"
               className="text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
             >
-              Zu den Bestellungen
+              {label(labels, "admin.dashboard.link.orders")}
             </Link>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Lieferungen ausstehend</CardDescription>
+            <CardDescription>{label(labels, "admin.dashboard.kpi.pendingShipments")}</CardDescription>
             <CardTitle className="text-2xl tabular-nums">{data.pendingShipments}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -62,13 +77,13 @@ async function DashboardView() {
               href="/admin/packing"
               className="text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
             >
-              Zur Kommissionierung
+              {label(labels, "admin.dashboard.link.packing")}
             </Link>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Abholungen bereit</CardDescription>
+            <CardDescription>{label(labels, "admin.dashboard.kpi.readyForPickup")}</CardDescription>
             <CardTitle className="text-2xl tabular-nums">{data.readyForPickup}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -76,21 +91,21 @@ async function DashboardView() {
               href="/admin/pickup"
               className="text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
             >
-              Zur Abholung
+              {label(labels, "admin.dashboard.link.pickup")}
             </Link>
           </CardContent>
         </Card>
       </div>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-2">
-        <section aria-label="Low-Stock-Alarme">
-          <h2 className="text-lg font-semibold">Low Stock</h2>
+        <section aria-label={label(labels, "admin.dashboard.lowStock.aria")}>
+          <h2 className="text-lg font-semibold">{label(labels, "admin.dashboard.lowStock.title")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Varianten mit Bestand ≤ Meldegrenze.
+            {label(labels, "admin.dashboard.lowStock.note")}
           </p>
           {data.lowStock.length === 0 ? (
             <p className="mt-4 rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-              Keine Alarme — alle Varianten über der Meldegrenze.
+              {label(labels, "admin.dashboard.lowStock.empty")}
             </p>
           ) : (
             <Card className="mt-3">
@@ -98,10 +113,18 @@ async function DashboardView() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                      <th className="px-4 py-2 font-medium">Produkt</th>
-                      <th className="px-4 py-2 font-medium">SKU</th>
-                      <th className="px-4 py-2 text-right font-medium">Bestand</th>
-                      <th className="px-4 py-2 text-right font-medium">Grenze</th>
+                      <th className="px-4 py-2 font-medium">
+                        {label(labels, "admin.dashboard.lowStock.column.product")}
+                      </th>
+                      <th className="px-4 py-2 font-medium">
+                        {label(labels, "admin.dashboard.lowStock.column.sku")}
+                      </th>
+                      <th className="px-4 py-2 text-right font-medium">
+                        {label(labels, "admin.dashboard.lowStock.column.stock")}
+                      </th>
+                      <th className="px-4 py-2 text-right font-medium">
+                        {label(labels, "admin.dashboard.lowStock.column.threshold")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -136,11 +159,11 @@ async function DashboardView() {
           )}
         </section>
 
-        <section aria-label="Letzte Bestellungen">
-          <h2 className="text-lg font-semibold">Letzte Bestellungen</h2>
+        <section aria-label={label(labels, "admin.dashboard.recent.title")}>
+          <h2 className="text-lg font-semibold">{label(labels, "admin.dashboard.recent.title")}</h2>
           {data.recentOrders.length === 0 ? (
             <p className="mt-4 rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-              Noch keine Bestellungen.
+              {label(labels, "admin.orders.none")}
             </p>
           ) : (
             <Card className="mt-3">
@@ -148,10 +171,10 @@ async function DashboardView() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                      <th className="px-4 py-2 font-medium">Bestellung</th>
-                      <th className="px-4 py-2 font-medium">Datum</th>
-                      <th className="px-4 py-2 text-right font-medium">Total</th>
-                      <th className="px-4 py-2 font-medium">Status</th>
+                      <th className="px-4 py-2 font-medium">{label(labels, "admin.orders.column.order")}</th>
+                      <th className="px-4 py-2 font-medium">{label(labels, "admin.orders.column.date")}</th>
+                      <th className="px-4 py-2 text-right font-medium">{label(labels, "admin.orders.column.total")}</th>
+                      <th className="px-4 py-2 font-medium">{label(labels, "admin.orders.column.status")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -176,7 +199,7 @@ async function DashboardView() {
                           {formatChf(order.totalCents)}
                         </td>
                         <td className="px-4 py-2">
-                          <OrderStatusBadge status={order.status} />
+                          <OrderStatusBadge status={order.status} labels={labels} />
                         </td>
                       </tr>
                     ))}
@@ -188,11 +211,9 @@ async function DashboardView() {
         </section>
       </div>
 
-      <section aria-label="Passwort ändern" className="mt-8">
-        <h2 className="text-lg font-semibold">Passwort ändern</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Das Seed-Passwort gilt nur beim ersten Anlegen — hier ändern Sie es jederzeit.
-        </p>
+      <section aria-label={label(labels, "admin.account.change")} className="mt-8">
+        <h2 className="text-lg font-semibold">{label(labels, "admin.account.change")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{label(labels, "admin.dashboard.password.hint")}</p>
         <Card className="mt-3">
           <CardContent className="p-5 sm:p-6">
             <PasswordForm />

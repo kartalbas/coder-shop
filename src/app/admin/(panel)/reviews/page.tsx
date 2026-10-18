@@ -7,18 +7,29 @@ import { ReviewActions } from "@/components/admin/review-actions";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/storefront/star-rating";
 import { formatDate } from "@/lib/format";
-import { REVIEW_STATUSES, REVIEW_STATUS_LABELS, type ReviewStatus } from "@/lib/reviews";
+import { label } from "@/lib/i18n";
+import { REVIEW_STATUSES, type ReviewStatus } from "@/lib/reviews";
 import { cn } from "@/lib/utils";
+import { getRequestLabels } from "@/server/i18n";
 import { listReviewsCore, type AdminReviewFilter } from "@/server/reviews";
 
-export const metadata: Metadata = {
-  title: "Bewertungen — Admin",
-  description: "Kundenbewertungen prüfen, freigeben, verstecken und beantworten.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.reviews.title"),
+    description: label(labels, "admin.meta.reviews.description"),
+  };
+}
 
-const TABS: { filter: AdminReviewFilter; label: string }[] = [
-  { filter: "all", label: "Alle" },
-  ...REVIEW_STATUSES.map((status) => ({ filter: status as AdminReviewFilter, label: REVIEW_STATUS_LABELS[status] })),
+// The status tabs and badges render the admin.reviews.status.* rows keyed by the
+// status (the PO_STATUS_LABELS precedent, #58 step 4) — REVIEW_STATUS_LABELS is gone.
+const TABS: { filter: AdminReviewFilter; labelKey: string }[] = [
+  { filter: "all", labelKey: "admin.action.all" },
+  ...REVIEW_STATUSES.map((status) => ({
+    filter: status as AdminReviewFilter,
+    labelKey: `admin.reviews.status.${status}`,
+  })),
 ];
 
 function activeFilter(raw: string | undefined): AdminReviewFilter {
@@ -37,17 +48,17 @@ async function ReviewsView({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
-  const params = await searchParams;
+  const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
   const raw = typeof params.status === "string" ? params.status : undefined;
   const filter = activeFilter(raw);
   const reviews = await listReviewsCore(filter);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Bewertungen</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.reviews.title")}</h1>
 
-      <nav className="mt-4 flex flex-wrap gap-1 border-b" aria-label="Statusfilter">
-        {TABS.map(({ filter: tab, label }) => (
+      <nav className="mt-4 flex flex-wrap gap-1 border-b" aria-label={label(labels, "admin.orders.statusFilterAria")}>
+        {TABS.map(({ filter: tab, labelKey }) => (
           <Link
             key={tab}
             href={tab === "all" ? "/admin/reviews" : `/admin/reviews?status=${tab}`}
@@ -59,14 +70,14 @@ async function ReviewsView({
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            {label}
+            {label(labels, labelKey)}
           </Link>
         ))}
       </nav>
 
       {reviews.length === 0 ? (
         <p className="mt-6 rounded-md border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
-          Keine Bewertungen in dieser Ansicht.
+          {label(labels, "admin.reviews.empty")}
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
@@ -76,7 +87,7 @@ async function ReviewsView({
                 <StarRating value={review.rating} />
                 {review.title && <p className="font-medium">{review.title}</p>}
                 <Badge variant="outline" className={STATUS_TONES[review.status]}>
-                  {REVIEW_STATUS_LABELS[review.status]}
+                  {label(labels, `admin.reviews.status.${review.status}`)}
                 </Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -94,7 +105,9 @@ async function ReviewsView({
               <p className="mt-2 whitespace-pre-line text-sm">{review.body}</p>
               {review.adminReply && (
                 <p className="mt-2 rounded-md border-l-2 border-primary bg-muted/40 px-3 py-2 text-sm">
-                  <span className="text-xs font-semibold">Antwort: </span>
+                  <span className="text-xs font-semibold">
+                    {label(labels, "admin.reviews.reply.prefix")}
+                  </span>{" "}
                   {review.adminReply}
                 </p>
               )}

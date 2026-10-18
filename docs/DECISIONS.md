@@ -862,3 +862,15 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   („{type} vergleichen"), and with no comparable catalog type configured the page
   renders `shop.meta.compare.title` + `shop.compare.none` instead of the former
   `?? "Produkte"` German fallback — no German literal is left in the file.
+- **Palette groups travel as machine keys (#58 step 5).** `buildPaletteHits` returns
+  `group: "orders" | "products" | "customers" | "suppliers"` instead of German words;
+  the client maps the key to the existing `admin.orders.title` / `admin.products.title`
+  / `admin.customers.title` / `admin.suppliers.title` rows. A server-rendered German
+  chip inside a French palette was the alternative and is exactly what #58 forbids;
+  the supplier lead time likewise travels as a `leadTimeDays` number and the client
+  renders it with `admin.palette.secondary.supplierLeadTime`.
+- **Optional amounts validate in one transform, not a `z.union` (#58 step 5).**
+  `z.union` reports a generic „Invalid input" when every option fails and never the
+  option's own message — the discount amount refusal text was unreachable even in the
+  German base. `createOptionalChf` now checks the pattern inside a single transform
+  with `ctx.addIssue`, so the row's text is what the admin reads.

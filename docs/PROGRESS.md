@@ -2323,3 +2323,45 @@ Done — M1–M6 + QA complete.
   language (+ UPS provider texts); step 7 no-German-literals guard; step 4 remainder
   (needs-review filter, usage context, inline editing, change history); step 5
   remainder (translatable catalog content + five-language demo content).
+
+## ISSUES — queue session 35 (2026-10-18)
+
+### #58 (step 5 slice) — dashboard, customers, reviews, discounts, mails, palette and picker answer in the request language ✅ — issue stays open
+- **Pages:** the dashboard, customers (list + detail), reviews, discounts and mails
+  pages resolve `getRequestLabels()` behind `connection()` and their static metadata
+  became `generateMetadata`; the client pieces (`customer-actions`, `review-actions`,
+  `discount-forms`, `password-form`, `picker-dialog`, `command-palette`,
+  `revenue-sparkline` via an `ariaLabel` prop) read `useLabels()` with the
+  address-book ref pattern for their toasts.
+- **Cores and actions:** the customer, review and discount cores refuse from
+  `admin.error.*` rows (byte-identical German bases — the German specs passed
+  untouched); the reply and discount zod schemas became label-map factories, and the
+  discount amount check moved out of a `z.union` into one transform so its refusal
+  row is actually shown (DECISIONS). `REVIEW_STATUS_LABELS` is deleted — the reviews
+  tabs render `admin.reviews.status.*`; the palette groups travel as machine keys and
+  the client maps them to the existing title rows (DECISIONS); the picker's hint,
+  empty and shortcut strings became `admin.picker.*` rows.
+- **Rows:** ~145 new `admin.*` rows in all five languages (the seed test enforces);
+  reused: `admin.error.invalidRequest`, `admin.action.*`, `admin.orders.column.*`,
+  `admin.orders.title`, `admin.products.title`, `admin.suppliers.title`,
+  `admin.invoices.column.*`, `shop.action.search`,
+  `admin.purchasing.error.invalidInput`.
+- **Tests:** `tests/admin-core-messages.test.ts` +8 (unknown customer, junk credit
+  limit, unknown review, unknown code, discount create/set-active refusals, invalid
+  CHF amount, reply validation — French alongside the German base; the action tests
+  replay the session cookie per test because the file-wide `afterEach` clears the
+  request scope); `tests/command-palette.test.ts` asserts the machine keys; new e2e
+  `admin-customers-translations.spec.ts` (registers one customer through the public
+  form, switches to Français: dashboard, customers list + detail, reviews, discounts,
+  mails, „?" overlay and the ⌘K palette with the French group chip; German absent;
+  switches back in `finally`) — all verified failing on the pre-change build
+  (stash + rebuild), green after.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 644 (63 files),
+  `npm run test:e2e` ✅ 101/101 twice (one cold-start flake of the untouched
+  account-translations home test on the first run, green in both full runs since);
+  tree clean, nothing running.
+- **Left open (#58):** admin formats (still base-locale); step 6 mail/invoice/slip/
+  label texts in the recipient's language (+ UPS provider texts); step 7
+  no-German-literals guard; step 4 remainder (needs-review filter, usage context,
+  inline editing, change history); step 5 remainder (translatable catalog content +
+  five-language demo content).

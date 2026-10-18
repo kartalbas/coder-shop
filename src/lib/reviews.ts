@@ -6,12 +6,6 @@ import type { OrderStatus } from "@/lib/orders/state-machine";
 export const REVIEW_STATUSES = ["pending", "approved", "hidden"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
-export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
-  pending: "In Prüfung",
-  approved: "Freigegeben",
-  hidden: "Versteckt",
-};
-
 // A review must come from a real purchase: an order that was cancelled, or one that
 // was never paid and never collected (`new`), proves nothing.
 const PURCHASED_ORDER_STATUSES: readonly OrderStatus[] = [

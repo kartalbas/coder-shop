@@ -5,39 +5,44 @@ import { connection } from "next/server";
 import { Mail } from "lucide-react";
 import { MailMessageModel } from "@/models/mail-message";
 import { formatDateTime } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 import { requireAdminSession } from "@/server/session";
 
-export const metadata: Metadata = {
-  title: "Mails",
-  description: "Dev-Outbox — coder-shop Admin.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.mails.title"),
+    description: label(labels, "admin.meta.mails.description"),
+  };
+}
 
 export default async function MailsPage() {
   await connection();
   await requireAdminSession();
-  const mails = await MailMessageModel.find()
-    .sort({ sentAt: -1 })
-    .limit(100)
-    .select("to subject text sentAt")
-    .lean()
-    .exec();
+  const [mails, labels] = await Promise.all([
+    MailMessageModel.find()
+      .sort({ sentAt: -1 })
+      .limit(100)
+      .select("to subject text sentAt")
+      .lean()
+      .exec(),
+    getRequestLabels(),
+  ]);
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Mails</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Dev-Outbox: alle E-Mails, die der Shop versendet hätte (neueste zuerst).
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.mails.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{label(labels, "admin.mails.intro")}</p>
       </div>
 
       {mails.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
           <Mail className="size-8 text-muted-foreground" aria-hidden />
-          <p className="font-medium">Noch keine Mails</p>
-          <p className="text-sm text-muted-foreground">
-            Registrierungen, Bestellungen und Passwort-Links erscheinen hier.
-          </p>
+          <p className="font-medium">{label(labels, "admin.mails.empty")}</p>
+          <p className="text-sm text-muted-foreground">{label(labels, "admin.mails.emptyNote")}</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -47,7 +52,10 @@ export default async function MailsPage() {
                 <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 text-sm">
                   <span className="font-medium">{mail.subject}</span>
                   <span className="text-muted-foreground">
-                    an {mail.to} · {formatDateTime(new Date(mail.sentAt))}
+                    {interpolate(label(labels, "admin.mails.to"), {
+                      to: mail.to,
+                      time: formatDateTime(new Date(mail.sentAt)),
+                    })}
                   </span>
                 </summary>
                 <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-muted/50 p-3 font-sans text-xs">

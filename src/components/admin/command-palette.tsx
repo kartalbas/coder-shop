@@ -13,29 +13,31 @@ import { ADMIN_NAV } from "@/components/admin/admin-nav";
 import { PickerDialog, type PickerItem } from "@/components/admin/picker-dialog";
 import { commandSearchAction } from "@/server/actions/admin/command-palette";
 import { useLabels } from "@/components/labels";
-import { label } from "@/lib/i18n";
+import { interpolate, label } from "@/lib/i18n";
+import type { PaletteGroup } from "@/server/command-palette";
 
 // Admin command palette (issue #49): ⌘K / Ctrl+K anywhere in the admin opens the
 // picker-based search over orders, products, customers and suppliers plus the pages
 // and actions themselves; "?" opens an overlay listing the shortcuts.
+// #58 step 5: the palette's own strings are rows too — kinds and groups travel as
+// machine keys and render through the label map.
 
-interface LocalCommand {
-  label: string;
-  href: string;
-  kind: "Seite" | "Aktion";
-}
-
-const LOCAL_ACTIONS: LocalCommand[] = [
-  { label: "Neue Einkaufsbestellung", href: "/admin/purchasing", kind: "Aktion" },
+// The keycap labels stay as printed keys (⌘K, ↑/↓, …) — they are keys, not texts.
+const SHORTCUTS: { keys: string; actionKey: string }[] = [
+  { keys: "⌘K / Strg+K", actionKey: "admin.palette.shortcuts.open" },
+  { keys: "?", actionKey: "admin.palette.shortcuts.help" },
+  { keys: "↑ / ↓", actionKey: "admin.palette.shortcuts.move" },
+  { keys: "Enter", actionKey: "admin.palette.shortcuts.select" },
+  { keys: "Esc", actionKey: "admin.palette.shortcuts.close" },
 ];
 
-const SHORTCUTS = [
-  { keys: "⌘K / Strg+K", action: "Befehlspalette öffnen" },
-  { keys: "?", action: "Diese Übersicht öffnen" },
-  { keys: "↑ / ↓", action: "Ergebnis wählen" },
-  { keys: "Enter", action: "Gewähltes Ergebnis öffnen" },
-  { keys: "Esc", action: "Schliessen" },
-];
+// Entity groups and local kinds map to the rows that name them.
+const GROUP_LABEL_KEYS: Record<PaletteGroup, string> = {
+  orders: "admin.orders.title",
+  products: "admin.products.title",
+  customers: "admin.customers.title",
+  suppliers: "admin.suppliers.title",
+};
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -49,16 +51,18 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export function AdminCommandPalette() {
   const router = useRouter();
-  // #58 admin slice: the page entries follow the request language through the label
-  // map; the palette's own strings are the recorded step-5 area.
   const labels = useLabels();
-  const localCommands = useMemo<LocalCommand[]>(
+  const localCommands = useMemo(
     () => [
-      ...LOCAL_ACTIONS,
+      {
+        label: label(labels, "admin.palette.action.newPurchaseOrder"),
+        href: "/admin/purchasing",
+        kindKey: "admin.palette.kind.action",
+      },
       ...ADMIN_NAV.map((entry) => ({
         label: label(labels, entry.labelKey),
         href: entry.href,
-        kind: "Seite" as const,
+        kindKey: "admin.palette.kind.page",
       })),
     ],
     [labels],
@@ -95,16 +99,21 @@ export function AdminCommandPalette() {
       ...local.map((command) => ({
         id: command.href,
         primary: command.label,
-        meta: command.kind,
+        meta: label(labels, command.kindKey),
       })),
       ...remote.map((hit) => ({
         id: hit.href,
         primary: hit.primary,
         ...(hit.secondary !== undefined && { secondary: hit.secondary }),
-        meta: hit.group,
+        ...(hit.leadTimeDays !== undefined && {
+          secondary: interpolate(label(labels, "admin.palette.supplierLeadTime"), {
+            days: hit.leadTimeDays,
+          }),
+        }),
+        meta: label(labels, GROUP_LABEL_KEYS[hit.group]),
       })),
     ];
-  }, [localCommands]);
+  }, [localCommands, labels]);
 
   function onSelect(item: PickerItem): void {
     router.push(item.id);
@@ -115,8 +124,8 @@ export function AdminCommandPalette() {
       <PickerDialog
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
-        title="Befehle"
-        placeholder="Bestellung, Produkt, Kunde, Lieferant oder Seite suchen…"
+        title={label(labels, "admin.palette.title")}
+        placeholder={label(labels, "admin.palette.placeholder")}
         search={search}
         onSelect={onSelect}
         minChars={1}
@@ -124,8 +133,8 @@ export function AdminCommandPalette() {
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent className="max-w-md" data-testid="shortcuts-overlay">
           <DialogHeader>
-            <DialogTitle>Tastaturkürzel</DialogTitle>
-            <DialogDescription>Der Admin ist komplett ohne Maus bedienbar.</DialogDescription>
+            <DialogTitle>{label(labels, "admin.palette.shortcuts.title")}</DialogTitle>
+            <DialogDescription>{label(labels, "admin.palette.shortcuts.description")}</DialogDescription>
           </DialogHeader>
           <dl className="space-y-2 text-sm">
             {SHORTCUTS.map((shortcut) => (
@@ -135,7 +144,9 @@ export function AdminCommandPalette() {
                     {shortcut.keys}
                   </kbd>
                 </dt>
-                <dd className="text-right text-muted-foreground">{shortcut.action}</dd>
+                <dd className="text-right text-muted-foreground">
+                  {label(labels, shortcut.actionKey)}
+                </dd>
               </div>
             ))}
           </dl>

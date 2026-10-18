@@ -89,20 +89,20 @@ describe("admin command palette search (issue #49)", () => {
 
   it("finds an order by its number", async () => {
     const hits = await commandSearchCore("B-2026-000042");
-    const order = hits.find((hit) => hit.group === "Bestellungen");
+    const order = hits.find((hit) => hit.group === "orders");
     expect(order).toBeDefined();
     expect(order!.primary).toBe("B-2026-000042");
     expect(order!.href).toMatch(/^\/admin\/orders\/[0-9a-f]{24}$/);
   });
 
   it("finds orders by customer name and e-mail", async () => {
-    expect((await commandSearchCore("nakamoto")).some((h) => h.group === "Bestellungen")).toBe(true);
-    expect((await commandSearchCore("nina@example")).some((h) => h.group === "Bestellungen")).toBe(true);
+    expect((await commandSearchCore("nakamoto")).some((h) => h.group === "orders")).toBe(true);
+    expect((await commandSearchCore("nina@example")).some((h) => h.group === "orders")).toBe(true);
   });
 
   it("finds products by name, brand and SKU", async () => {
     for (const query of ["iphone", "apfel", "APL-IP16"]) {
-      const hit = (await commandSearchCore(query)).find((h) => h.group === "Produkte");
+      const hit = (await commandSearchCore(query)).find((h) => h.group === "products");
       expect(hit?.primary, query).toBe("Apfel iPhone 16");
       expect(hit?.href).toMatch(/^\/admin\/products\/[0-9a-f]{24}$/);
     }
@@ -110,12 +110,12 @@ describe("admin command palette search (issue #49)", () => {
 
   it("finds customers but never admin accounts", async () => {
     const hits = await commandSearchCore("kurt");
-    expect(hits.some((h) => h.group === "Kunden" && h.primary === "Kurt Kunde")).toBe(true);
-    expect((await commandSearchCore("ada")).some((h) => h.group === "Kunden")).toBe(false);
+    expect(hits.some((h) => h.group === "customers" && h.primary === "Kurt Kunde")).toBe(true);
+    expect((await commandSearchCore("ada")).some((h) => h.group === "customers")).toBe(false);
   });
 
   it("finds suppliers and links to their edit form", async () => {
-    const hit = (await commandSearchCore("muster")).find((h) => h.group === "Lieferanten");
+    const hit = (await commandSearchCore("muster")).find((h) => h.group === "suppliers");
     expect(hit?.primary).toBe("Mustergrosshandel");
     expect(hit?.href).toMatch(/^\/admin\/suppliers\?edit=[0-9a-f]{24}$/);
   });
@@ -126,7 +126,7 @@ describe("admin command palette search (issue #49)", () => {
       await seedProduct(`limit-produkt-${i}`, `Limit Produkt ${i}`, `LIM-${i}`);
     }
     const productHits = (await commandSearchCore("Limit Produkt")).filter(
-      (hit) => hit.group === "Produkte",
+      (hit) => hit.group === "products",
     );
     expect(productHits.length).toBeGreaterThan(0);
     expect(productHits.length).toBeLessThanOrEqual(5);

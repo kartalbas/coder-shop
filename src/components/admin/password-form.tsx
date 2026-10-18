@@ -42,7 +42,7 @@ export function PasswordForm() {
     <form action={formAction} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="current">Aktuelles Passwort</Label>
+          <Label htmlFor="current">{label(labels, "admin.account.field.current")}</Label>
           <Input
             id="current"
             name="current"
@@ -60,7 +60,7 @@ export function PasswordForm() {
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="next">Neues Passwort</Label>
+          <Label htmlFor="next">{label(labels, "admin.account.field.next")}</Label>
           <Input
             id="next"
             name="next"
@@ -79,7 +79,7 @@ export function PasswordForm() {
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Neues Passwort bestätigen</Label>
+          <Label htmlFor="confirm">{label(labels, "admin.account.field.confirm")}</Label>
           <Input
             id="confirm"
             name="confirm"
@@ -100,7 +100,7 @@ export function PasswordForm() {
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending || !passwordRulesMet("admin", next)}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          Passwort ändern
+          {label(labels, "admin.account.change")}
         </Button>
       </div>
     </form>

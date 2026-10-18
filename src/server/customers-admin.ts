@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
+import { interpolate, label } from "@/lib/i18n";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 import { escapeRegex } from "@/lib/regex";
 import { absoluteUrl } from "@/lib/site";
@@ -9,8 +10,12 @@ import { PasswordResetModel } from "@/models/password-reset";
 import { UserModel, type CustomerAddress } from "@/models/user";
 import { connectDB } from "./db";
 import { hashResetToken, RESET_TOKEN_TTL_MS } from "./customers";
+import { getRequestLabels } from "./i18n";
 import { listInvoicesForUser } from "./invoices";
 import { sendMail } from "./mail";
+
+// The internal note ceiling — the action schema and the refusal text share it.
+export const MAX_CUSTOMER_NOTE_LENGTH = 2000;
 
 // Admin customer management (issue #43): the list answers "who buys here and what do
 // they still owe", the detail page collects everything about one account.
@@ -159,41 +164,56 @@ export async function getCustomerDetailCore(id: string): Promise<AdminCustomerDe
 
 export type CustomerActionResult = { ok: true } | { ok: false; error: string };
 
+// #58 step 5: refusals answer from the translation table in the request language;
+// outside a request scope the first active language (German) answers.
 export async function setCustomerBlockedCore(
   id: string,
   blocked: boolean,
 ): Promise<CustomerActionResult> {
+  const labels = await getRequestLabels();
+  const notFound = label(labels, "admin.error.customerNotFound");
   await connectDB();
-  if (!mongoose.isValidObjectId(id)) return { ok: false, error: "Konto nicht gefunden." };
+  if (!mongoose.isValidObjectId(id)) return { ok: false, error: notFound };
   const updated = await UserModel.updateOne(
     { _id: id, role: "customer" },
     { $set: { blocked } },
   ).exec();
-  if (updated.matchedCount === 0) return { ok: false, error: "Konto nicht gefunden." };
+  if (updated.matchedCount === 0) return { ok: false, error: notFound };
   // A block also signs the customer out everywhere (issue #6 mechanism).
   if (blocked) await UserModel.updateOne({ _id: id }, { $set: { sessionsInvalidBefore: new Date() } });
   return { ok: true };
 }
 
 export async function setCustomerNotesCore(id: string, notes: string): Promise<CustomerActionResult> {
+  const labels = await getRequestLabels();
+  const notFound = label(labels, "admin.error.customerNotFound");
   await connectDB();
-  if (!mongoose.isValidObjectId(id)) return { ok: false, error: "Konto nicht gefunden." };
-  if (notes.length > 2000) return { ok: false, error: "Notiz ist zu lang (max. 2000 Zeichen)." };
+  if (!mongoose.isValidObjectId(id)) return { ok: false, error: notFound };
+  if (notes.length > MAX_CUSTOMER_NOTE_LENGTH) {
+    return {
+      ok: false,
+      error: interpolate(label(labels, "admin.customers.error.noteTooLong"), {
+        max: MAX_CUSTOMER_NOTE_LENGTH,
+      }),
+    };
+  }
   const updated = await UserModel.updateOne(
     { _id: id, role: "customer" },
     { $set: { notes: notes.trim() } },
   ).exec();
-  if (updated.matchedCount === 0) return { ok: false, error: "Konto nicht gefunden." };
+  if (updated.matchedCount === 0) return { ok: false, error: notFound };
   return { ok: true };
 }
 
 // Admin-initiated password reset (issue #43): same single-use hashed token as the
 // self-service flow, mailed to the customer — the admin never sees a password.
 export async function adminResetPasswordCore(id: string): Promise<CustomerActionResult> {
+  const labels = await getRequestLabels();
+  const notFound = label(labels, "admin.error.customerNotFound");
   await connectDB();
-  if (!mongoose.isValidObjectId(id)) return { ok: false, error: "Konto nicht gefunden." };
+  if (!mongoose.isValidObjectId(id)) return { ok: false, error: notFound };
   const user = await UserModel.findById(id).select("name email role").lean().exec();
-  if (!user || user.role !== "customer") return { ok: false, error: "Konto nicht gefunden." };
+  if (!user || user.role !== "customer") return { ok: false, error: notFound };
   const token = randomBytes(32).toString("base64url");
   await PasswordResetModel.create({
     _id: hashResetToken(token),

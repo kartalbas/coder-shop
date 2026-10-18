@@ -1,4 +1,5 @@
-export function RevenueSparkline({ values }: { values: number[] }) {
+// The aria text is a translation row handed in by the page (#58 step 5).
+export function RevenueSparkline({ values, ariaLabel }: { values: number[]; ariaLabel: string }) {
   const width = 240;
   const height = 48;
   const max = Math.max(...values, 1);
@@ -18,7 +19,7 @@ export function RevenueSparkline({ values }: { values: number[] }) {
       viewBox={`0 0 ${width} ${height}`}
       className="h-12 w-full"
       role="img"
-      aria-label={`Umsatzverlauf über ${values.length} Tage`}
+      aria-label={ariaLabel}
       preserveAspectRatio="none"
     >
       <polyline
