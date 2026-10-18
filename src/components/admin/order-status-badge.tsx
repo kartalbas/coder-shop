@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { label } from "@/lib/i18n";
 import { STATUS_LABELS } from "@/lib/orders/labels";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 
@@ -15,10 +16,19 @@ const TONES: Partial<Record<OrderStatus, string>> = {
   cancelled: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+// Issue #58 step 3: storefront call sites pass their request language's label map and
+// get `shop.status.<status>` from the table; the admin (its own slice pending) renders
+// the German base STATUS_LABELS unchanged.
+export function OrderStatusBadge({
+  status,
+  labels,
+}: {
+  status: OrderStatus;
+  labels?: Record<string, string>;
+}) {
   return (
     <Badge variant="outline" className={TONES[status]}>
-      {STATUS_LABELS[status]}
+      {labels ? label(labels, `shop.status.${status}`) : STATUS_LABELS[status]}
     </Badge>
   );
 }

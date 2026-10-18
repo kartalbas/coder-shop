@@ -741,3 +741,10 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   and step 3's first slice (label plumbing + header/footer chrome) are done; the rest
   of the string extraction with the no-German-literals guard, the catalog content and
   the two-language checkout e2e follow in the remaining steps.
+- **Shared badges take an optional label map, the German base stays the admin default
+  (#58 step 3).** `OrderStatusBadge` renders `shop.status.<status>` from the table when
+  a storefront page passes its request language's labels, and `STATUS_LABELS` otherwise
+  — the seven admin call sites render unchanged until the admin's own language slice.
+  A required prop would have forced German rows through the admin or a premature
+  switcher; a context would hide the data flow. The status keys are derived from the
+  state-machine statuses, so a new status is a row, never a code branch.

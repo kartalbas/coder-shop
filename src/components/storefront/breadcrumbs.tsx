@@ -14,9 +14,10 @@ export interface Crumb {
   href?: string;
 }
 
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
+// Issue #58 step 3: the aria label is a translation-table text handed in by the page.
+export function Breadcrumbs({ items, ariaLabel }: { items: Crumb[]; ariaLabel: string }) {
   return (
-    <Breadcrumb aria-label="Brotkrumen-Navigation">
+    <Breadcrumb aria-label={ariaLabel}>
       <BreadcrumbList>
         {items.map((item, index) => (
           // Issue #26: only <li> may be a direct child of the list, and an <li> may

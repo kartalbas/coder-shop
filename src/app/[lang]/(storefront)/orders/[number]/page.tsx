@@ -12,14 +12,13 @@ import { OrderStatusChain } from "@/components/storefront/order-status-chain";
 import QRCode from "qrcode";
 import { createFormatters } from "@/lib/format";
 import { getIntlLocale, getLabels } from "@/server/i18n";
-import { interpolate, label } from "@/lib/i18n";
+import { interpolate, label, splitOnPlaceholder } from "@/lib/i18n";
 import { HAPPY_PATH, PICKUP_PATH } from "@/lib/orders/state-machine";
-import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
 import { STORE } from "@/lib/store";
 import { mayViewOrderDetails } from "@/server/order-access";
 import { getOrderByNumber } from "@/server/orders";
 import { OrderAccessForm } from "@/components/storefront/order-access-form";
-import { shippingMethodByKey, vatInclusiveNote } from "@/lib/shop-settings";
+import { shippingMethodByKey, vatLabel } from "@/lib/shop-settings";
 import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
@@ -47,6 +46,9 @@ async function OrderView({ params }: PagePropsLocal) {
   // language row's intlLocale.
   const intlLocale = await getIntlLocale(lang);
   const { chf, date, dateTime, weight } = createFormatters(intlLocale);
+  // Issue #58 step 3: every text on this page comes from the translation table of the
+  // request language; the German bases are byte-identical to the literals they replaced.
+  const labels = await getLabels(lang);
 
   // PII (address, e-mail, phone, items, tracking) is only for the buyer — the browser that
   // completed checkout (access cookie), one that verified the order's e-mail, the owning
@@ -59,7 +61,9 @@ async function OrderView({ params }: PagePropsLocal) {
   const settings = await getShopSettings();
   const shippingLabel =
     shippingMethodByKey(settings, order.shipping.method)?.label ?? order.shipping.method;
-  const vatNote = vatInclusiveNote(settings.vatRatePercent);
+  const vatNote = interpolate(label(labels, "shop.checkout.vatNote"), {
+    vat: vatLabel(settings.vatRatePercent),
+  });
 
   // Pickup QR for the counter (issue #41) — only rendered for the authorized buyer.
   const pickupQr =
@@ -70,12 +74,12 @@ async function OrderView({ params }: PagePropsLocal) {
   const header = (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p className="text-sm text-muted-foreground">Vielen Dank für Ihre Bestellung!</p>
+        <p className="text-sm text-muted-foreground">{label(labels, "shop.order.thanks")}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
-          Bestellung {order.orderNumber}
+          {interpolate(label(labels, "shop.order.heading"), { number: order.orderNumber })}
         </h1>
       </div>
-      <OrderStatusBadge status={order.status} />
+      <OrderStatusBadge status={order.status} labels={labels} />
     </div>
   );
 
@@ -99,6 +103,7 @@ async function OrderView({ params }: PagePropsLocal) {
             statusLog={order.statusLog}
             path={order.shipping.storePickup === true ? PICKUP_PATH : HAPPY_PATH}
             intlLocale={intlLocale}
+            labels={labels}
           />
 
           {order.shipping.trackingNumber && (
@@ -106,12 +111,16 @@ async function OrderView({ params }: PagePropsLocal) {
               <PackageCheck className="size-5 shrink-0 text-primary" aria-hidden />
               <div>
                 <p className="text-sm font-medium">
-                  Sendungsverfolgung: {order.shipping.trackingNumber}
+                  {interpolate(label(labels, "shop.order.tracking"), {
+                    number: order.shipping.trackingNumber,
+                  })}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {shippingLabel}
                   {order.shipping.parcelWeightGrams !== undefined &&
-                    ` · Paketgewicht ${weight(order.shipping.parcelWeightGrams)}`}
+                    ` · ${interpolate(label(labels, "shop.order.parcelWeight"), {
+                      weight: weight(order.shipping.parcelWeightGrams),
+                    })}`}
                 </p>
               </div>
             </div>
@@ -120,22 +129,25 @@ async function OrderView({ params }: PagePropsLocal) {
           {order.payment.kind === "invoice" && order.payment.invoice && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/40 p-4">
               <div>
-                <p className="text-sm font-medium">Zahlung per Rechnung</p>
-                <p className="text-xs text-muted-foreground">
-                  Zahlbar bis {date(new Date(order.payment.invoice.dueAt))} · Referenz{" "}
-                  <span className="font-mono">{order.payment.invoice.qrReference}</span>
-                </p>
+                <p className="text-sm font-medium">{label(labels, "shop.order.invoice.title")}</p>
+                <InvoiceDueLine
+                  labels={labels}
+                  dueDate={date(new Date(order.payment.invoice.dueAt))}
+                  reference={order.payment.invoice.qrReference}
+                />
                 <p className="text-xs text-muted-foreground">
                   {order.payment.invoice.openCents > 0
-                    ? `Offen: ${chf(order.payment.invoice.openCents)}`
-                    : "Rechnung bezahlt — vielen Dank."}
+                    ? interpolate(label(labels, "shop.order.invoice.open"), {
+                        amount: chf(order.payment.invoice.openCents),
+                      })
+                    : label(labels, "shop.order.invoice.paid")}
                 </p>
               </div>
               <Link
                 href={`/orders/${order.orderNumber}/invoice`}
                 className="text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
-                Rechnung als PDF
+                {label(labels, "shop.order.invoice.pdf")}
               </Link>
             </div>
           )}
@@ -143,7 +155,7 @@ async function OrderView({ params }: PagePropsLocal) {
           {order.shipping.pickup && (
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-muted/40 p-4">
               <div className="text-sm">
-                <p className="font-medium">Abholung im Laden</p>
+                <p className="font-medium">{label(labels, "shop.order.pickup.title")}</p>
                 <address className="mt-1 not-italic text-xs text-muted-foreground">
                   {STORE.name}
                   <br />
@@ -153,23 +165,28 @@ async function OrderView({ params }: PagePropsLocal) {
                 </address>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {order.status === "picked_up"
-                    ? `Abgeholt am ${
-                        order.shipping.pickup.pickedUpAt
+                    ? `${interpolate(label(labels, "shop.order.pickup.pickedUp"), {
+                        datetime: order.shipping.pickup.pickedUpAt
                           ? dateTime(new Date(order.shipping.pickup.pickedUpAt))
-                          : ""
-                      }${
+                          : "",
+                      })}${
                         order.shipping.pickup.paymentType
-                          ? ` · bezahlt (${PICKUP_PAYMENT_TYPE_LABELS[order.shipping.pickup.paymentType]})`
+                          ? ` · ${interpolate(label(labels, "shop.order.pickup.paidVia"), {
+                              type: label(
+                                labels,
+                                `shop.order.pickup.payment.${order.shipping.pickup.paymentType}`,
+                              ),
+                            })}`
                           : ""
                       }`
                     : order.status === "ready"
-                      ? "Bereit zur Abholung — Code und QR-Code an der Kasse zeigen."
-                      : "Sie erhalten den Abholcode, sobald die Bestellung bereit liegt."}
+                      ? label(labels, "shop.order.pickup.ready")
+                      : label(labels, "shop.order.pickup.waiting")}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Abholcode</p>
+                  <p className="text-xs text-muted-foreground">{label(labels, "shop.order.pickup.code")}</p>
                   <p className="font-mono text-2xl font-bold tracking-widest">
                     {order.shipping.pickup.code}
                   </p>
@@ -178,7 +195,9 @@ async function OrderView({ params }: PagePropsLocal) {
                   /* eslint-disable-next-line @next/next/no-img-element -- inline data URL, not an optimizable asset */
                   <img
                     src={pickupQr}
-                    alt={`QR-Code mit Abholcode ${order.shipping.pickup.code}`}
+                    alt={interpolate(label(labels, "shop.order.pickup.qrAlt"), {
+                      code: order.shipping.pickup.code,
+                    })}
                     width={120}
                     height={120}
                     className="rounded-lg border bg-white p-1"
@@ -206,12 +225,14 @@ async function OrderView({ params }: PagePropsLocal) {
 
           <dl className="space-y-1.5 text-sm">
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Zwischensumme</dt>
+              <dt className="text-muted-foreground">{label(labels, "shop.cart.subtotal")}</dt>
               <dd className="tabular-nums">{chf(order.totals.subtotalCents)}</dd>
             </div>
             {order.discount && order.discount.cents > 0 && (
               <div className="flex justify-between text-primary">
-                <dt>Rabatt ({order.discount.code})</dt>
+                <dt>
+                  {interpolate(label(labels, "shop.order.discount"), { code: order.discount.code })}
+                </dt>
                 <dd className="tabular-nums">−{chf(order.discount.cents)}</dd>
               </div>
             )}
@@ -221,17 +242,20 @@ async function OrderView({ params }: PagePropsLocal) {
               </dt>
               <dd className="tabular-nums">
                 {order.totals.shippingCents === 0
-                  ? "Gratis"
+                  ? label(labels, "shop.checkout.free")
                   : chf(order.totals.shippingCents)}
               </dd>
             </div>
             <div className="flex justify-between text-base font-semibold">
-              <dt>Gesamt</dt>
+              <dt>{label(labels, "shop.checkout.total")}</dt>
               <dd className="tabular-nums">{chf(order.totals.totalCents)}</dd>
             </div>
           </dl>
           <p className="text-xs text-muted-foreground">
-            {vatNote} · Zahlungsreferenz {order.payment.reference}
+            {vatNote} ·{" "}
+            {interpolate(label(labels, "shop.order.paymentReference"), {
+              reference: order.payment.reference,
+            })}
           </p>
 
           <Separator />
@@ -239,7 +263,9 @@ async function OrderView({ params }: PagePropsLocal) {
           <div className="grid gap-6 text-sm sm:grid-cols-2">
             <div>
               <h2 className="mb-1 font-medium">
-                {order.shipping.storePickup === true ? "Rechnungsadresse" : "Lieferadresse"}
+                {order.shipping.storePickup === true
+                  ? label(labels, "shop.order.addressInvoice")
+                  : label(labels, "shop.order.addressDelivery")}
               </h2>
               <address className="not-italic text-muted-foreground">
                 {order.customer.name}
@@ -252,20 +278,43 @@ async function OrderView({ params }: PagePropsLocal) {
               </address>
             </div>
             <div>
-              <h2 className="mb-1 font-medium">Kontakt</h2>
+              <h2 className="mb-1 font-medium">{label(labels, "shop.order.contact")}</h2>
               <p className="text-muted-foreground">
                 {order.customer.email}
                 <br />
                 {order.customer.phone}
               </p>
               <p className="mt-2 text-muted-foreground">
-                Bestellt am {dateTime(new Date(order.createdAt))}
+                {interpolate(label(labels, "shop.order.placedAt"), {
+                  datetime: dateTime(new Date(order.createdAt)),
+                })}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// The QR reference stays a monospace span wherever the language places it — the row
+// text is one sentence and splitOnPlaceholder puts the element at the {reference}.
+function InvoiceDueLine({
+  labels,
+  dueDate,
+  reference,
+}: {
+  labels: Record<string, string>;
+  dueDate: string;
+  reference: string;
+}) {
+  const { before, after } = splitOnPlaceholder(label(labels, "shop.order.invoice.due"), "reference");
+  return (
+    <p className="text-xs text-muted-foreground">
+      {interpolate(before, { date: dueDate })}
+      <span className="font-mono">{reference}</span>
+      {after}
+    </p>
   );
 }
 

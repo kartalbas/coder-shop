@@ -1894,3 +1894,42 @@ Done — M1–M6 + QA complete.
 - **Left open (#58):** unchanged from the previous slice (admin strings + switcher,
   mail/invoice/slip/label texts, server-side validation messages, no-German-literals
   guard; step 4 remainder; step 5).
+
+### #58 slice — the order confirmation flow reads its texts from the table ✅ (2026-10-18)
+
+- **Confirmation page** (`orders/[number]/page.tsx`): every literal became a row —
+  `shop.order.thanks`/`heading`/`tracking`/`parcelWeight`, the invoice card
+  (`invoice.title/.due/.open/.paid/.pdf` — the due line renders its monospace QR
+  reference through `splitOnPlaceholder`), the pickup card (`pickup.*` incl.
+  `payment.cash/.card` keyed by the payment type), totals (`shop.order.discount`
+  with `{code}`, reused `shop.cart.subtotal`/`shop.checkout.total`/`.free`/`.vatNote`
+  — `vatInclusiveNote` stays for the invoice PDF until the mails/PDFs slice),
+  addresses/contact/`placedAt`. German bases byte-identical, so storefront,
+  invoice-payment, admin-shipping, pickup and order-privacy specs pass untouched.
+- **Status labels:** new `shop.status.<status>` rows for all nine state-machine
+  statuses (keys derived from the statuses); `OrderStatusBadge` gained an optional
+  `labels` prop (admin renders `STATUS_LABELS` unchanged — DECISIONS), the
+  confirmation and the portal orders list pass theirs. `OrderStatusChain` takes
+  `labels`: step names, cancelled banner and the „Bestellstatus" aria come from
+  the table. `OrderAccessForm` reads `useLabels()`; its PII sentence embeds the
+  styled order number at the row's `{number}`.
+- **Per-language breadcrumbs and JSON-LD:** `Breadcrumbs` takes an `ariaLabel`
+  (`shop.breadcrumbs.aria`), `JsonLd` a `homeLabel` (`shop.breadcrumbs.start`) —
+  the BreadcrumbList now matches the visible, localized breadcrumbs.
+- **Tests:** the seed test covers every new key × five languages; new e2e
+  `confirmation-translations.spec.ts` completes a checkout on /fr (French thanks,
+  heading, chain + „Payée", „Total", „Adresse de livraison", payment reference;
+  unambiguous German absent) and shows a stranger the French access form — this
+  delivers step 5's completed two-language checkout (de: storefront.spec). Both
+  specs fail on the pre-change build (reproduced in a worktree at 20160a2).
+- **Gate:** `npm run build`/lint/knip ✅, `npm test` ✅ 583, `npm run test:e2e` ✅
+  83/83; tree clean, nothing running.
+- **Left open (#58), corrected record:** step 3 remainder — the `[lang]` not-found
+  page title (static German `metadata`; the page already resolves the language, so
+  the account-layout `generateMetadata` pattern applies), admin strings + admin
+  language switcher, mail/invoice/slip/label texts in the recipient's language,
+  server-side validation messages, no-German-literals guard; step 4 remainder
+  (needs-review filter, usage context + preview link, keyboard-driven inline
+  editing, change history); step 5 remainder: translatable catalog content + admin
+  editing + five-language demo content (the two-language completed checkout e2e
+  landed with this slice).

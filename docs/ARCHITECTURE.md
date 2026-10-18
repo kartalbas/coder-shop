@@ -635,6 +635,10 @@ back to `de` and are reported by the translator (`missingKeys()`). `src/server/i
 the only access: rows are process-cached and every write (`saveTranslationCore`,
 `saveLanguageCore`) invalidates the cache, so edits take effect on the next request
 without a deploy. Step 1 of #58; extracting the remaining UI texts into rows is step 2.
+Customer-visible order status names are rows too (`shop.status.<status>`, keys derived
+from the state-machine statuses); `STATUS_LABELS` and `PICKUP_PAYMENT_TYPE_LABELS`
+remain the German base for the admin until its own slice — storefront components take
+an optional label map and read the table when one is passed (#58 step 3).
 
 ## 4. Server functions, actions and route handlers
 
@@ -1083,6 +1087,10 @@ Specs (the three required journeys):
   hreflang lists every active language + x-default for the same path → switcher keeps page,
   query and the remembered choice → every language serves the listing → unknown product
   answers a real 404 behind the prefix.
+- `confirmation-translations.spec.ts` (#58 step 3) — a completed French checkout shows the
+  French confirmation (thanks, heading, status chain/badge, totals, addresses) → a stranger
+  opening the same URL sees the French access form, never the German one. Together with
+  `storefront.spec` this is step 5's two-language completed checkout.
 
 Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
 prerequisite; `npm test` and `npm run lint` are independent).

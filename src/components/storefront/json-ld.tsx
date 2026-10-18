@@ -8,11 +8,15 @@ export function JsonLd({
   product,
   categoryLabel,
   aggregateRating,
+  homeLabel,
 }: {
   product: ProductDto;
   // The product's category label from the catalog type configuration (issue #61).
   categoryLabel: string;
   aggregateRating?: { average: number; count: number };
+  // Issue #58 step 3: the BreadcrumbList's home entry carries the request language's
+  // "Start" text, matching the visible breadcrumbs.
+  homeLabel: string;
 }) {
   const productUrl = absoluteUrl(`/products/${product.slug}`);
   const categoryUrl = absoluteUrl(`/products?type=${product.type}`);
@@ -48,7 +52,7 @@ export function JsonLd({
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Start", item: absoluteUrl("/") },
+          { "@type": "ListItem", position: 1, name: homeLabel, item: absoluteUrl("/") },
           {
             "@type": "ListItem",
             position: 2,

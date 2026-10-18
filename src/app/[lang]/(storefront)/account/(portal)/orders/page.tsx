@@ -118,7 +118,7 @@ export default async function AccountOrdersPage({
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <OrderStatusBadge status={order.status} />
+                  <OrderStatusBadge status={order.status} labels={labels} />
                   <span className="tabular-nums font-medium">{chf(order.totalCents)}</span>
                   <ReorderButton orderNumber={order.orderNumber} />
                 </div>

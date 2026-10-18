@@ -1,6 +1,6 @@
 import { Check, Circle, X } from "lucide-react";
 import { createFormatters } from "@/lib/format";
-import { STATUS_LABELS } from "@/lib/orders/labels";
+import { interpolate, label } from "@/lib/i18n";
 import { HAPPY_PATH, type OrderStatus } from "@/lib/orders/state-machine";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,7 @@ export function OrderStatusChain({
   statusLog,
   path = HAPPY_PATH,
   intlLocale,
+  labels,
 }: {
   status: OrderStatus;
   statusLog: OrderChainEntry[];
@@ -24,6 +25,9 @@ export function OrderStatusChain({
   path?: readonly OrderStatus[];
   // Issue #58 step 2b: the timestamps follow the request language's Intl locale.
   intlLocale: string;
+  // Issue #58 step 3: the step names, the cancelled banner and the aria label come
+  // from the translation table of the request language.
+  labels: Record<string, string>;
 }) {
   const { dateTime } = createFormatters(intlLocale);
   const reached = new Set(statusLog.map((entry) => entry.status));
@@ -33,10 +37,12 @@ export function OrderStatusChain({
       <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
         <X className="size-5 shrink-0 text-destructive" aria-hidden />
         <div>
-          <p className="font-medium text-destructive">Bestellung storniert</p>
+          <p className="font-medium text-destructive">{label(labels, "shop.order.cancelled.title")}</p>
           {cancelledAt && (
             <p className="text-sm text-muted-foreground">
-              am {dateTime(new Date(cancelledAt.at))}
+              {interpolate(label(labels, "shop.order.cancelled.at"), {
+                datetime: dateTime(new Date(cancelledAt.at)),
+              })}
             </p>
           )}
         </div>
@@ -44,7 +50,7 @@ export function OrderStatusChain({
     );
   }
   return (
-    <ol className="flex flex-wrap gap-y-3" aria-label="Bestellstatus">
+    <ol className="flex flex-wrap gap-y-3" aria-label={label(labels, "shop.order.chain.aria")}>
       {path.map((step, index) => {
         const done = reached.has(step);
         const entry = statusLog.find((e) => e.status === step);
@@ -63,7 +69,7 @@ export function OrderStatusChain({
                   done ? "font-medium text-foreground" : "text-muted-foreground",
                 )}
               >
-                {STATUS_LABELS[step]}
+                {label(labels, `shop.status.${step}`)}
               </span>
               {entry && (
                 <span className="text-[10px] text-muted-foreground">

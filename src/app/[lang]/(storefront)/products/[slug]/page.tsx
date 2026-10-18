@@ -70,6 +70,7 @@ async function ProductView({ params }: PagePropsLocal) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <Breadcrumbs
+        ariaLabel={label(labels, "shop.breadcrumbs.aria")}
         items={[
           { label: label(labels, "shop.breadcrumbs.start"), href: "/" },
           { label: categoryLabel, href: `/products?type=${encodeURIComponent(product.type)}` },
@@ -117,7 +118,12 @@ async function ProductView({ params }: PagePropsLocal) {
       {/* Issue #46: remember this product, and show the rest of the history. */}
       <RecentlyViewedTracker slug={product.slug} />
       <RecentlyViewedRail excludeSlug={product.slug} />
-      <JsonLd product={product} categoryLabel={categoryLabel} aggregateRating={aggregate} />
+      <JsonLd
+        product={product}
+        categoryLabel={categoryLabel}
+        aggregateRating={aggregate}
+        homeLabel={label(labels, "shop.breadcrumbs.start")}
+      />
     </div>
   );
 }
