@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/storefront/product-card";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { label } from "@/lib/i18n";
 import { recordViewed, useRecentlyViewed } from "@/stores/recently-viewed";
 import type { ProductDto } from "@/server/search";

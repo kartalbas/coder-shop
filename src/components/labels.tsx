@@ -17,7 +17,8 @@ import { BASE_LANGUAGE, DEFAULT_TRANSLATIONS, labelMap } from "@/lib/i18n";
 // starts from the seed configuration of the URL's language (pure, identical on server
 // and client — no hydration flicker, the static shell prerenders with the right texts);
 // a `LabelsSync` inside a dynamic hole hands over the live table, so an admin edit
-// takes effect without a deploy. Outside any provider (the German admin) the context
+// takes effect without a deploy. Both roots wrap it: the `[lang]` storefront layout and
+// the prefix-free admin layout (#58 admin slice). Outside any provider the context
 // answers the base-language seed map. A context fed by an API stays rejected (DECISIONS
 // — first-paint flash); this one is fed by the server-rendered layout.
 interface LabelsContextValue {

@@ -5,7 +5,7 @@ import { Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { label, splitOnPlaceholder } from "@/lib/i18n";
 import {
   verifyOrderEmailAction,

@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { CreditLimitForm, InvoicePaymentForm, ReminderButtons } from "@/components/admin/invoice-actions";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatChf, formatDate } from "@/lib/format";
 import { DEFAULT_CREDIT_LIMIT_CENTS } from "@/lib/invoices";
 import { cn } from "@/lib/utils";

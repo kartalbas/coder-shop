@@ -5,7 +5,7 @@ import { Scale, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { interpolate, label } from "@/lib/i18n";
 import { clearCompare, useCompare } from "@/stores/compare";
-import { useLabels } from "./labels";
+import { useLabels } from "@/components/labels";
 
 // Floating comparison tray (issue #48): shows how many smartphones are selected and
 // links to the comparison page; appears only once something was picked. The link

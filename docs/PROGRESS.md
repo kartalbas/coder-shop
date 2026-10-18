@@ -2068,3 +2068,46 @@ Done — M1–M6 + QA complete.
   guard; step 4 remainder (needs-review filter, usage context, inline editing,
   change history); step 5 remainder (translatable catalog content + five-language
   demo content).
+
+## ISSUES — queue session 29 (2026-10-18)
+
+### #58 gate fix + admin language mechanism, switcher and admin chrome
+
+- **Gate fix (review BLOCKER, refs #58, pushed separately):** the restock spec's
+  `el.form` evaluate failed `next build`'s type check (TS2339 on the locator's
+  `SVGElement | HTMLElement` element type) — the form is now reached through
+  `el.closest("form")`; the refusal assertion moved to the suite's established
+  `[data-sonner-toast]` locator (review nit). The review's second nit is recorded
+  here, not in code: the 12:15 session's "all fail on the pre-change build"
+  overstated — the byte-identical-German-base test passes pre-change by design.
+- **Admin slice (#58 step 3):** the prefix-free admin follows the shared `lang`
+  cookie through `getRequestLanguage()` (DECISIONS). The admin root layout resolves
+  the language behind `connection()`, sets `<html lang>` and wraps the tree in
+  `LabelsProvider` + `LabelsSync`; `labels.tsx` and `order-status-badge.tsx` moved
+  to the shared `components/` root (review nit — both serve the storefront too).
+  New `AdminLanguageSwitcher` (one button per active row, `aria-pressed`) in the
+  sidebar footer and the mobile sheet writes the cookie through
+  `setLanguageAction` (validates against `getActiveLanguages()`, proxy's exact
+  options) and `router.refresh()`es. `ADMIN_NAV` carries `labelKey`s; sidebar,
+  mobile nav, shortcuts line and logout read the label map; the login page became
+  `generateMetadata` + labels (demo hint via `splitOnPlaceholder` `{var}`); the
+  login zod schema is a label-map factory; `session.ts` login/password refusals and
+  the admin 404 resolve through `getRequestLabels()`. 39 new `admin.*` rows in all
+  five languages, German bases byte-identical to the literals they replaced.
+- **Tests:** `tests/admin-language.test.ts` (cookie written with the proxy's
+  options; unknown and deactivated codes write nothing — fails pre-change, the
+  action does not exist) and `tests/e2e/admin-translations.spec.ts` (switcher to
+  French + reload + back; French login page via the cookie) — both verified
+  failing on the pre-change build. The switcher's `switchTo` text is a `title`, not
+  an `aria-label`, so the translations editor's `getByLabel(/<language>/)` fields
+  stay unambiguous (its three specs pass untouched).
+- **Gate:** `npm run build`/lint/knip ✅, `npm test` ✅ 612, `npm run test:e2e` ✅
+  92/92; tree clean, nothing running.
+- **Left open (#58):** step 2 orders + packing UI, step 3 products + catalog-types
+  + settings + translations-editor UI, step 4 purchasing + suppliers + stock-units
+  + pickup + invoices, step 5 customers + reviews + discounts + mails + dashboard +
+  command palette + picker (the palette's own strings included), admin formats
+  (still base-locale), step 6 mail/invoice/slip/label texts in the recipient's
+  language, step 7 no-German-literals guard; step 4 remainder (needs-review filter,
+  usage context, inline editing, change history); step 5 remainder (translatable
+  catalog content + five-language demo content).

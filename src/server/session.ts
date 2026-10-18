@@ -1,4 +1,7 @@
 import { UserModel, type UserRole } from "@/models/user";
+import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
+import { interpolate, label } from "@/lib/i18n";
+import { getRequestLabels } from "./i18n";
 import { connectDB } from "./db";
 import { env } from "./env";
 import { verifyPassword, hashPassword } from "./password";
@@ -120,9 +123,12 @@ async function authenticate(
   for (const key of keys) {
     const blocked = throttleCheck(key);
     if (blocked.blocked) {
+      const labels = await getRequestLabels();
       return {
         ok: false,
-        error: `Zu viele Fehlversuche. Bitte in ${blocked.retryInSeconds} Sekunden erneut versuchen.`,
+        error: interpolate(label(labels, "admin.auth.error.throttled"), {
+          seconds: blocked.retryInSeconds,
+        }),
       };
     }
   }
@@ -137,24 +143,21 @@ async function authenticate(
     );
   } catch (error) {
     if (error instanceof LimiterBusyError) {
-      return {
-        ok: false,
-        error: "Zu viele gleichzeitige Anmeldeversuche. Bitte gleich erneut versuchen.",
-      };
+      const labels = await getRequestLabels();
+      return { ok: false, error: label(labels, "admin.auth.error.busy") };
     }
     throw error;
   }
   if (!user || !passwordValid) {
     for (const key of keys) throttleRecordFailure(key);
-    return { ok: false, error: "E-Mail oder Passwort ist falsch." };
+    const labels = await getRequestLabels();
+    return { ok: false, error: label(labels, "admin.auth.error.wrongCredentials") };
   }
   // Issue #43: only the correct password reveals the block — unknown or wrong-credential
   // accounts keep answering the generic message.
   if (user.blocked) {
-    return {
-      ok: false,
-      error: "Ihr Konto wurde gesperrt. Bitte kontaktieren Sie den Support.",
-    };
+    const labels = await getRequestLabels();
+    return { ok: false, error: label(labels, "admin.auth.error.blocked") };
   }
 
   for (const key of keys) throttle.delete(key);
@@ -225,19 +228,26 @@ export async function changePasswordCore(
 ): Promise<
   { ok: true } | { ok: false; error: string; reason?: "new_password" | "current_password" }
 > {
-  if (newPassword.length < 10) {
+  const labels = await getRequestLabels();
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
     return {
       ok: false,
-      error: "Das neue Passwort braucht mindestens 10 Zeichen.",
+      error: interpolate(label(labels, "admin.auth.error.passwordTooShort"), {
+        min: MIN_PASSWORD_LENGTH,
+      }),
       reason: "new_password",
     };
   }
   await connectDB();
   const user = await UserModel.findById(userId).exec();
-  if (!user) return { ok: false, error: "Benutzer nicht gefunden." };
+  if (!user) return { ok: false, error: label(labels, "admin.auth.error.userNotFound") };
   const valid = await verifyPassword(currentPassword, user.passwordHash);
   if (!valid) {
-    return { ok: false, error: "Das aktuelle Passwort ist falsch.", reason: "current_password" };
+    return {
+      ok: false,
+      error: label(labels, "admin.auth.error.currentPasswordWrong"),
+      reason: "current_password",
+    };
   }
   user.passwordHash = await hashPassword(newPassword);
   // A password change also signs out every existing session.

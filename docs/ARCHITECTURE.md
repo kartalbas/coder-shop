@@ -122,7 +122,9 @@ src/
                             # invoices (offene Rechnungen mit Fälligkeit/Überfällig, #40),
                             # wishlist (gemerkte Produkte, #46)
     admin/                  # admin URLs stay English and prefix-free (internal)
-      layout.tsx            # admin root layout: same shell, <html lang="de">, noindex
+      layout.tsx            # admin root layout: same shell, noindex; resolves the
+                            # request language from the shared lang cookie and wraps
+                            # the tree in LabelsProvider + LabelsSync (#58 admin slice)
       not-found.tsx         # admin 404 boundary
       (auth)/login/page.tsx
       (panel)/              # session-guarded group (layout requires the admin session)
@@ -161,6 +163,10 @@ src/
                             # client components (cacheable 60 s, #64)
       health/route.ts       # GET { ok } — also warms DB connection
   components/
+    labels.tsx              # LabelsProvider/LabelsSync/useLabels context — wrapped by both
+                            # root layouts, storefront and admin (#58, #58 admin slice)
+    order-status-badge.tsx  # status badge shared by admin, confirmation page and portal;
+                            # German STATUS_LABELS default, optional label map prop (#58)
     not-found-content.tsx   # 404 content shared by the per-root not-found pages, copy from
                             # the label map the wrapper passes (#58, #58 review)
     password-rules-checklist.tsx  # live, aria-announced password rule checklist shared
@@ -192,7 +198,9 @@ src/
       compare-toggle.tsx, compare-tray.tsx            # smartphone comparison (#48)
     admin/
       admin-nav.ts, sidebar.tsx, mobile-nav.tsx, login-form.tsx, password-form.tsx,
-      order-status-badge.tsx, status-timeline.tsx, transition-buttons.tsx,
+      language-switcher.tsx, # admin language switcher: one button per active row,
+                            # writes the shared lang cookie (#58 admin slice)
+      status-timeline.tsx, transition-buttons.tsx,
       product-search.tsx, product-core-form.tsx, variant-editor.tsx, image-editor.tsx,
        po-create-form.tsx, picker-dialog.tsx, # PO form + keyboard picker dialog (#42)
        command-palette.tsx, # ⌘K/Ctrl+K palette + "?" shortcut overlay on the picker (#49)
@@ -232,7 +240,7 @@ src/
                             # report, DEFAULT_LANGUAGES/DEFAULT_TRANSLATIONS seed content (#58)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # createFormatters(intlLocale): CHF, dates, weights (#58);
-                            # base-locale exports for the German-based admin/mails/invoices
+                            # base-locale exports for admin formats, mails and invoices
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
     numbers.ts              # formatOrderNumber/formatPoNumber/formatPaymentReference
     password-rules.ts       # password rules per scope (customer/admin) — single source
@@ -351,6 +359,8 @@ src/
                             # receivePurchaseOrder → *Core fns (transaction);
                             # searchSku/searchSupplier actions for the picker (#42)
       admin/auth.ts         # login/logout → loginCore (testable without cookies())
+      admin/language.ts     # setLanguageAction: writes the shared lang cookie for an
+                            # active language row only (#58 admin slice)
       admin/account.ts      # changePassword → changePasswordCore
       admin/shipping.ts     # createLabel → createLabelCore
       admin/invoices.ts     # recordInvoicePayment, sendInvoiceReminder, setCreditLimit
@@ -893,7 +903,8 @@ Global: mobile-first, dark mode via the `next-themes` package (class strategy,
 German copy, CHF/dates/weights formatted with the `Intl` locale of the request's language
 row (`createFormatters(intlLocale)` in `src/lib/format.ts`, #58 step 2b) — the storefront
 reads it from the `LocaleFormatters` context (client) or `getIntlLocale(lang)` (server);
-the German-based admin, mails and invoices use the base-locale exports.
+the admin (formats; its texts follow the shared lang cookie since the #58 admin slice),
+mails and invoices use the base-locale exports.
 
 **VAT rounding rule (unit-tested):** `vatCents = grossCents − round(grossCents × 100 /
 (100 + vatRatePercent))` where `grossCents` is the VAT-inclusive total and `vatRatePercent`

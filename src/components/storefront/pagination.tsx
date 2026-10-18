@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { interpolate, label } from "@/lib/i18n";
 
 interface Props {

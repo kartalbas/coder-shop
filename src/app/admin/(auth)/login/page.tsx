@@ -1,16 +1,29 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Package } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "@/components/admin/login-form";
+import { label, splitOnPlaceholder } from "@/lib/i18n";
+import { getRequestLabels } from "@/server/i18n";
 
 export const instant = false;
 
-export const metadata: Metadata = {
-  title: "Admin-Anmeldung",
-  description: "Anmeldung für den coder-shop Admin-Bereich.",
-};
+// Issue #58 admin slice: the login answers in the remembered language (cookie >
+// browser > first active row) — generateMetadata behind connection() reads the table
+// per request, the same pattern as the account layout.
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.login.title"),
+    description: label(labels, "admin.login.description"),
+  };
+}
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  await connection();
+  const labels = await getRequestLabels();
+  const demoHint = splitOnPlaceholder(label(labels, "admin.login.demoHint"), "var");
   return (
     <Card>
       <CardHeader className="text-center">
@@ -18,14 +31,15 @@ export default function LoginPage() {
           <Package className="size-6 text-primary" aria-hidden />
         </div>
         <CardTitle>coder-shop Admin</CardTitle>
-        <CardDescription>Melden Sie sich mit Ihrem Admin-Konto an.</CardDescription>
+        <CardDescription>{label(labels, "admin.login.cardIntro")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <LoginForm />
         {process.env.NODE_ENV !== "production" && (
           <p className="rounded-lg bg-muted p-3 text-center text-xs text-muted-foreground">
-            Demo-Zugang: admin@codershop.ch — das Passwort kommt aus dem Seed
-            (<code>ADMIN_PASSWORD</code> bzw. dessen Ausgabe).
+            {demoHint.before}
+            <code>ADMIN_PASSWORD</code>
+            {demoHint.after}
           </p>
         )}
       </CardContent>

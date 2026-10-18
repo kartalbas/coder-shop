@@ -3,7 +3,7 @@ export const instant = false;
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatChf, formatDate } from "@/lib/format";
 import { ORDER_STATUSES } from "@/lib/orders/state-machine";
 import { STATUS_LABELS } from "@/lib/orders/labels";

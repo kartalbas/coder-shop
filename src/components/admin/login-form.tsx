@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, type LoginActionState } from "@/server/actions/admin/auth";
+import { useLabels } from "@/components/labels";
+import { label } from "@/lib/i18n";
 
 export function LoginForm() {
+  const labels = useLabels();
   const [state, formAction, pending] = useActionState<LoginActionState | null, FormData>(
     loginAction,
     null,
@@ -21,7 +24,7 @@ export function LoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">E-Mail</Label>
+        <Label htmlFor="email">{label(labels, "admin.login.email")}</Label>
         <Input
           id="email"
           name="email"
@@ -32,7 +35,7 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Passwort</Label>
+        <Label htmlFor="password">{label(labels, "admin.login.password")}</Label>
         <Input
           id="password"
           name="password"
@@ -44,7 +47,7 @@ export function LoginForm() {
       </div>
       <Button type="submit" className="w-full" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        Anmelden
+        {label(labels, "admin.login.submit")}
       </Button>
     </form>
   );

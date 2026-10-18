@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/storefront/product-image";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { interpolate, label } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { isPhotoSrc } from "@/lib/images";

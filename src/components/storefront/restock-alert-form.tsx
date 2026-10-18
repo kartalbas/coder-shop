@@ -5,7 +5,7 @@ import { Bell, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { interpolate, label } from "@/lib/i18n";
 import { subscribeRestockAlertAction } from "@/server/actions/restock-alerts";
 

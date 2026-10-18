@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
 import { passwordRulesMet } from "@/lib/password-rules";
 import { label } from "@/lib/i18n";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import {
   registerAction,
   type AccountActionState,

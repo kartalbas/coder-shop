@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { LabelButton, PrintButton } from "@/components/admin/label-actions";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { PackList } from "@/components/admin/pack-list";
 import { getOrderById } from "@/server/orders-admin";
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useFormatters } from "@/components/storefront/locale-formatters";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { label } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { CompareToggle } from "@/components/storefront/compare-toggle";

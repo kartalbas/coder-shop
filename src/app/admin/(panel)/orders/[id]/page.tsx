@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { LabelButton } from "@/components/admin/label-actions";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { StatusTimeline } from "@/components/admin/status-timeline";
 import { TransitionButtons } from "@/components/admin/transition-buttons";
 import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";

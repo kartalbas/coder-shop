@@ -5,7 +5,7 @@ import { Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { interpolate, label } from "@/lib/i18n";
 import { submitReviewAction, type ReviewActionState } from "@/server/actions/reviews";
 

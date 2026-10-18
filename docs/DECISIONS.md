@@ -802,3 +802,21 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   a sonner toast, so its e2e asserts the toast text (and switches the form to
   `novalidate` to reach the server action — relaxing the input type does not hold,
   React restores it on the next controlled render).
+- **The prefix-free admin follows the shared `lang` cookie; its switcher writes that
+  cookie from a server action (#58 admin slice).** Admin requests carry no
+  `x-language` header (the proxy's admin gate passes them through without one), so
+  `getRequestLanguage()` resolves cookie > Accept-Language > first active row — the
+  storefront choice is remembered in the admin with no new mechanism, and a sixth
+  language appears in the switcher by having a row. The proxy cannot be the writer
+  here (it only handles prefixed storefront document navigations), so
+  `setLanguageAction` validates the code against `getActiveLanguages()` and sets
+  `LANGUAGE_COOKIE` with the proxy's exact options — one writer per surface, so the
+  #58 prefetch-overwrite flake cannot recur. The switcher buttons carry the language
+  name as accessible name and the `admin.language.switchTo` text as `title`, not
+  `aria-label`: the translations editor's `getByLabel(/<language>/)` fields live on a
+  page that renders this sidebar, and an aria-label containing the language name
+  would make those lookups ambiguous. Login/auth refusals (wrong credentials, block,
+  throttle, scrypt busy) and the password-change messages moved into `admin.auth.error.*`
+  rows resolved through `getRequestLabels()` in `session.ts` — byte-identical German
+  bases keep the customer-portal specs green, and the customer login benefits
+  identically since it shares `loginCore`.

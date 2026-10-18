@@ -8,7 +8,7 @@ import {
   type PasswordScope,
 } from "@/lib/password-rules";
 import { interpolate, label } from "@/lib/i18n";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { cn } from "@/lib/utils";
 
 // Issue #60: every form that sets a password shows the rules live while typing —

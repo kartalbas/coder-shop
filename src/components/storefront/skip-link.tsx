@@ -1,7 +1,7 @@
 "use client";
 
 import { label } from "@/lib/i18n";
-import { useLabels } from "./labels";
+import { useLabels } from "@/components/labels";
 
 // Issue #58 step 3: the skip link is a client component so its text comes from the
 // label context — the provider's seed-config initial value keeps it in the static

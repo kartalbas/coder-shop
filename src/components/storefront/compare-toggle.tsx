@@ -4,7 +4,7 @@ import { Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, label } from "@/lib/i18n";
 import { toggleCompare, useCompare } from "@/stores/compare";
-import { useLabels } from "./labels";
+import { useLabels } from "@/components/labels";
 
 // „Vergleichen" toggle for smartphone cards and the product page (issue #48).
 export function CompareToggle({

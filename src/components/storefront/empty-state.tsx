@@ -2,7 +2,7 @@
 
 import { PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { label } from "@/lib/i18n";
 
 export function EmptyState({ onReset }: { onReset: () => void }) {

@@ -7,7 +7,7 @@ import { connection } from "next/server";
 import { PackageCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { OrderStatusChain } from "@/components/storefront/order-status-chain";
 import QRCode from "qrcode";
 import { createFormatters } from "@/lib/format";

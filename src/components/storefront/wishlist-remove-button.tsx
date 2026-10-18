@@ -6,7 +6,7 @@ import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { label } from "@/lib/i18n";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { removeWishlistItemAction } from "@/server/actions/wishlist";
 import { removeFromWishlist } from "@/stores/wishlist";
 

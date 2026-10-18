@@ -2,7 +2,7 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { interpolate, label } from "@/lib/i18n";
 import type { CatalogDimensionConfig } from "@/lib/catalog-types";
 import { isNumericFacetValue } from "@/lib/facet-order";

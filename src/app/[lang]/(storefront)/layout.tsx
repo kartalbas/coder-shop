@@ -18,7 +18,7 @@ import {
   LocaleFormattersProvider,
   LocaleSync,
 } from "@/components/storefront/locale-formatters";
-import { LabelsProvider, LabelsSync } from "@/components/storefront/labels";
+import { LabelsProvider, LabelsSync } from "@/components/labels";
 import { SkipLink } from "@/components/storefront/skip-link";
 
 // Issue #46: only a logged-in customer has an account wishlist to sync into; guests

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -12,6 +12,8 @@ import {
 import { ADMIN_NAV } from "@/components/admin/admin-nav";
 import { PickerDialog, type PickerItem } from "@/components/admin/picker-dialog";
 import { commandSearchAction } from "@/server/actions/admin/command-palette";
+import { useLabels } from "@/components/labels";
+import { label } from "@/lib/i18n";
 
 // Admin command palette (issue #49): ⌘K / Ctrl+K anywhere in the admin opens the
 // picker-based search over orders, products, customers and suppliers plus the pages
@@ -23,9 +25,8 @@ interface LocalCommand {
   kind: "Seite" | "Aktion";
 }
 
-const LOCAL_COMMANDS: LocalCommand[] = [
+const LOCAL_ACTIONS: LocalCommand[] = [
   { label: "Neue Einkaufsbestellung", href: "/admin/purchasing", kind: "Aktion" },
-  ...ADMIN_NAV.map((entry) => ({ label: entry.label, href: entry.href, kind: "Seite" as const })),
 ];
 
 const SHORTCUTS = [
@@ -48,6 +49,20 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export function AdminCommandPalette() {
   const router = useRouter();
+  // #58 admin slice: the page entries follow the request language through the label
+  // map; the palette's own strings are the recorded step-5 area.
+  const labels = useLabels();
+  const localCommands = useMemo<LocalCommand[]>(
+    () => [
+      ...LOCAL_ACTIONS,
+      ...ADMIN_NAV.map((entry) => ({
+        label: label(labels, entry.labelKey),
+        href: entry.href,
+        kind: "Seite" as const,
+      })),
+    ],
+    [labels],
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -74,7 +89,7 @@ export function AdminCommandPalette() {
   // Local pages/actions match instantly, entity hits come from the server.
   const search = useCallback(async (query: string): Promise<PickerItem[]> => {
     const q = query.trim().toLowerCase();
-    const local = LOCAL_COMMANDS.filter((command) => command.label.toLowerCase().includes(q));
+    const local = localCommands.filter((command) => command.label.toLowerCase().includes(q));
     const remote = await commandSearchAction(query);
     return [
       ...local.map((command) => ({
@@ -89,7 +104,7 @@ export function AdminCommandPalette() {
         meta: hit.group,
       })),
     ];
-  }, []);
+  }, [localCommands]);
 
   function onSelect(item: PickerItem): void {
     router.push(item.id);

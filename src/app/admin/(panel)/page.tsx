@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { PasswordForm } from "@/components/admin/password-form";
 import { RevenueSparkline } from "@/components/admin/revenue-sparkline";
 import { formatChf, formatDate } from "@/lib/format";

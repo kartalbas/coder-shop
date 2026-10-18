@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { addToCart, openCartDrawer } from "@/stores/cart";
 import { interpolate, label, plural } from "@/lib/i18n";
 import { useIntlLocale } from "@/components/storefront/locale-formatters";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { reorderAction } from "@/server/actions/account";
 
 // "Erneut bestellen": asks the server for today's prices/stock of the ordered SKUs and

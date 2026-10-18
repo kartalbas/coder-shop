@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFormatters } from "@/components/storefront/locale-formatters";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { interpolate, label } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { addToCart, openCartDrawer } from "@/stores/cart";

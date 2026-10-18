@@ -6,7 +6,7 @@ import { connection } from "next/server";
 import { PackageSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { OrderStatusBadge } from "@/components/admin/order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { ClaimOrderForm } from "@/components/storefront/claim-order-form";
 import { ReorderButton } from "@/components/storefront/reorder-button";
 import { createFormatters } from "@/lib/format";

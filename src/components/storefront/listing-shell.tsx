@@ -15,7 +15,7 @@ import { SortSelect } from "./sort-select";
 import { Pagination } from "./pagination";
 import { ProductGridSkeleton } from "./skeletons";
 import { EmptyState } from "./empty-state";
-import { useLabels } from "./labels";
+import { useLabels } from "@/components/labels";
 import { useIntlLocale } from "./locale-formatters";
 import { interpolate, label, plural } from "@/lib/i18n";
 

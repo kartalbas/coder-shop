@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { label } from "@/lib/i18n";
-import { useLabels } from "@/components/storefront/labels";
+import { useLabels } from "@/components/labels";
 import { cn } from "@/lib/utils";
 
 // Issue #58 step 3: the labels are translation-table keys, resolved per request language.

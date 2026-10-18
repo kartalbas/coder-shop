@@ -4,7 +4,7 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, label } from "@/lib/i18n";
 import { toggleWishlist, useWishlist, useWishlistHydrated } from "@/stores/wishlist";
-import { useLabels } from "./labels";
+import { useLabels } from "@/components/labels";
 
 // Heart on product cards and the product page (issue #46). The store is local; the
 // WishlistSync component mirrors it to the account while logged in.
