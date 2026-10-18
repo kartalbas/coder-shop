@@ -52,7 +52,7 @@ async function renderMockLabelPdf(request: LabelRequest, trackingNumber: string)
   );
   page.drawText(
     interpolate(t("shop.label.weight"), {
-      weight: `${(request.parcelWeightGrams / 1000).toFixed(2)} kg`,
+      weight: request.formatters.weight(request.parcelWeightGrams),
     }),
     { x: 24, y: 382, size: 10, font },
   );

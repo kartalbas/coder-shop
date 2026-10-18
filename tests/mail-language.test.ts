@@ -213,6 +213,9 @@ describe("admin-triggered mails use the stored language, not the admin's", () =>
       const text = pdfDrawnText(pdf);
       expect(text).toContain("Destinataire / Expédier à");
       expect(text).toContain("Commande : B-2026-910001");
+      // #58 review: the weight renders through the order locale's Formatters —
+      // 350 g (200 g article + packaging) in the grams branch, French wording.
+      expect(text).toContain("Poids : 350 g");
       expect(text).not.toContain("Empfänger / Ship To");
       expect(text).not.toContain("Bestellung:");
     }

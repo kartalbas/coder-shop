@@ -2525,3 +2525,19 @@ Done — M1–M6 + QA complete.
   German log line in label.ts, and the SPC payload deliberately), the editor remainder
   (needs-review filter, usage context + preview, inline editing, change history) and
   translatable catalog content + five-language demo content.
+
+### #58 (review follow-up slice) — the mock label's weight follows the order locale; stale formatChf comment gone ✅ — issue stays open
+- **Root cause (review of c4486a7):** `MockUpsProvider` built the weight string with
+  `(grams/1000).toFixed(2) + " kg"` — the last label text formatted in a fixed locale,
+  printing "1.15 kg" on French parcels. `LabelRequest` now carries the `Formatters`
+  set `createLabelCore` already resolved via `getMailContext(order.language)`, and the
+  mock renders `formatters.weight(grams)` — de-CH byte-identical ("1.15 kg"), fr-CH
+  "1,15 kg", sub-kg parcels in the grams branch ("350 g"); the real UPS provider
+  ignores the field (API JSON keeps machine formats).
+- **Stale comment:** `tests/e2e/settings.spec.ts` still named the retired `formatChf`
+  export — reworded to the request locale's Intl CHF formatter.
+- **Tests:** the French `MockUpsProvider` spec asserts "Poids : 1,15 kg" and rejects
+  "1.15 kg"; the fr-label integration spec asserts "Poids : 350 g" through
+  `createLabelCore`. Both verified failing without the fix (2 failed), the German
+  byte-identity spec untouched as the regression check.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅, `npm run test:e2e` ✅.

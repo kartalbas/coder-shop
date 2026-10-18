@@ -85,6 +85,7 @@ export async function createLabelCore(
     // too (packing slip and invoice already carry them); quantity orders have none.
     serials: order.lines.flatMap((line) => line.serials ?? []),
     labels: ctx.labels,
+    formatters: ctx.formatters,
   };
 
   const shipment = await provider.createLabel(labelRequest);

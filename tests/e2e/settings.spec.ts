@@ -27,8 +27,9 @@ test("admin edits VAT rate and a shipping price — the storefront follows (issu
     await page.goto("/products");
     await expect(page.getByText(/inklusive 7,7 % MwSt/).first()).toBeVisible();
 
-    // Cart summary: the edited standard price. formatChf renders a no-break space
-    // between "CHF" and the amount, so the regexes match any whitespace there.
+    // Cart summary: the edited standard price. The request locale's Intl CHF
+    // formatter renders a no-break space between "CHF" and the amount, so the
+    // regexes match any whitespace there.
     await addSellableVariantToCart(page, "smartphone");
     await page.goto("/cart");
     await expect(page.getByText(/Standard CHF\s5\.50/).first()).toBeVisible();

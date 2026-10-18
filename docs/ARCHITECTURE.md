@@ -273,7 +273,8 @@ src/
                             # reads the shop.status.* rows (#58 admin orders slice)
     purchasing/labels.ts    # PurchaseOrderStatus + German PO labels (#35)
     shipping/types.ts       # ShippingProvider interface, label result types; the
-                            # LabelRequest carries the order-language label map (#58 dp 3)
+                            # LabelRequest carries the order-language label map and its
+                            # Formatters (#58 dp 3, #58 review)
     shipping/label-content.ts # serial block of a label — pure, header passed in (#62, #58 dp 3)
     shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
     order-visibility.ts     # who may see full order PII (cookie/admin/owning account, #39)
@@ -693,8 +694,9 @@ it by having rows, not code. Since #58 step 6 the same rule covers the **printed
 documents**: the invoice/QR PDF renders through `getMailContext(order.language)`
 (`invoice.pdf.*` rows + the language's Intl formats; the SPC payload inside the QR
 stays German — banking interop data, not UI text), and `createLabelCore` hands the
-order-language label map to the provider (`LabelRequest.labels`, `shop.label.*` rows)
-so the parcel's label answers the customer, not the admin.
+order-language label map and its Intl set to the provider (`LabelRequest.labels` +
+`LabelRequest.formatters`, `shop.label.*` rows), so the parcel's label — texts and
+number formats like the weight — answers the customer, not the admin.
 
 ## 4. Server functions, actions and route handlers
 

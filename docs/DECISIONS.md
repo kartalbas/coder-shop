@@ -937,3 +937,10 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   partially paid invoice PDF). The lines now use `-` and are asserted through the new
   `pdfDrawnText` test helper, which inflates pdf-lib's compressed content streams and
   decodes the `<hex> Tj` operands — a raw byte search finds nothing in a pdf-lib PDF.
+- **The mock label formats its weight through the context's Formatters (#58 review).**
+  The step-6 label still built the weight with `(grams/1000).toFixed(2) + " kg"` — a
+  fixed locale printing "1.15 kg" on French parcels. `LabelRequest` now carries the
+  same `Formatters` set `getMailContext` resolved for the label map, and the mock
+  renders `formatters.weight(grams)` (fr-CH "1,15 kg", sub-kg parcels in grams); the
+  real UPS provider still ignores it — its API JSON keeps machine formats. Rendering
+  providers format through the request's Intl set, never through `toFixed`.

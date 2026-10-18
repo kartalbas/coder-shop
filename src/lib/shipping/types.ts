@@ -1,3 +1,5 @@
+import type { Formatters } from "@/lib/format";
+
 interface LabelRecipient {
   name: string;
   street: string;
@@ -20,6 +22,10 @@ export interface LabelRequest {
   // the label map and hands it along as plain data; providers that send API JSON
   // (real UPS) simply ignore it.
   labels: Readonly<Record<string, string>>;
+  // #58 review: the same Intl set the label map came from — a rendering provider
+  // formats the parcel weight through it (fr-CH prints "1,15 kg"); API-JSON
+  // providers keep machine formats and ignore it.
+  formatters: Formatters;
 }
 
 export type LabelResult =

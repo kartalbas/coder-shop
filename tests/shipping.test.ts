@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createFormatters } from "@/lib/format";
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { labelMap } from "@/lib/i18n";
 import { labelSerialLines } from "@/lib/shipping/label-content";
@@ -33,6 +34,7 @@ const REQUEST: LabelRequest = {
   // #58 decision point 3: the server hands the provider the label map of the order's
   // language; the German base is the byte-identity check for every German label spec.
   labels: labelMap(DEFAULT_TRANSLATIONS, "de"),
+  formatters: createFormatters("de-CH"),
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -103,12 +105,17 @@ describe("MockUpsProvider", () => {
     const result = await new MockUpsProvider().createLabel({
       ...REQUEST,
       labels: labelMap(DEFAULT_TRANSLATIONS, "fr"),
+      formatters: createFormatters("fr-CH"),
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const text = pdfDrawnText(result.labelPdf);
     expect(text).toContain("Destinataire / Expédier à");
     expect(text).toContain("Commande : B-2026-000001");
+    // #58 review: the weight follows the locale too — a French parcel prints the
+    // comma separator, never the fixed-locale "1.15 kg".
+    expect(text).toContain("Poids : 1,15 kg");
+    expect(text).not.toContain("1.15 kg");
     expect(text).not.toContain("Empfänger / Ship To");
     expect(text).not.toContain("Bestellung:");
   });
