@@ -63,6 +63,10 @@ export async function createLabelCore(
   }
 
   const weight = parcelWeightGrams(order.lines);
+  // #58 decision point 3: the parcel goes to the customer, so the printed label texts
+  // render from the table in the *order's* stored language — one resolution feeds the
+  // label map handed to the provider and the tracking mail below, never the admin's.
+  const ctx = await getMailContext(order.language);
   const labelRequest: LabelRequest = {
     orderNumber: order.orderNumber,
     recipient: {
@@ -80,6 +84,7 @@ export async function createLabelCore(
     // Issue #62 (#54): the serial-tracked pieces of the parcel travel on the label data
     // too (packing slip and invoice already carry them); quantity orders have none.
     serials: order.lines.flatMap((line) => line.serials ?? []),
+    labels: ctx.labels,
   };
 
   const shipment = await provider.createLabel(labelRequest);
@@ -151,10 +156,9 @@ export async function createLabelCore(
 
   // Issue #44: the tracking mail only after the order actually moved to shipped (not on
   // the idempotent early return) — and never fails the label flow. #58 decision point 3:
-  // it renders in the *order's* language, not the admin's; the carrier code rides along
-  // as data.
+  // it renders in the *order's* language (the context resolved for the label above),
+  // not the admin's; the carrier code rides along as data.
   try {
-    const ctx = await getMailContext(order.language);
     await sendMail({
       to: order.customer.email,
       ...shippedMail(ctx, {

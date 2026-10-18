@@ -243,8 +243,8 @@ src/
                             # content lives in src/server/translations.json)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # createFormatters(intlLocale): CHF, dates, weights (#58);
-                            # base-locale exports for mails, invoice/QR PDFs, labels,
-                            # seed and scripts (#58 step 6 boundary)
+                            # every consumer reads a live row or a stored language —
+                            # the base-locale named exports retired (#58 step 6)
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
     numbers.ts              # formatOrderNumber/formatPoNumber/formatPaymentReference
     password-rules.ts       # password rules per scope (customer/admin) — single source
@@ -272,7 +272,9 @@ src/
     orders/labels.ts        # German order status labels — badge fallback only, the UI
                             # reads the shop.status.* rows (#58 admin orders slice)
     purchasing/labels.ts    # PurchaseOrderStatus + German PO labels (#35)
-    shipping/types.ts       # ShippingProvider interface, label result types
+    shipping/types.ts       # ShippingProvider interface, label result types; the
+                            # LabelRequest carries the order-language label map (#58 dp 3)
+    shipping/label-content.ts # serial block of a label — pure, header passed in (#62, #58 dp 3)
     shipping/weight.ts      # parcel weight = Σ qty×weight + PACKAGING_GRAMS (150 g constant)
     order-visibility.ts     # who may see full order PII (cookie/admin/owning account, #39)
     payments.ts             # counter handover payment types (cash/card) (#41) — the payment
@@ -318,8 +320,9 @@ src/
     mail.ts                 # sendMail behind a MailTransport interface: dev outbox
                             # collection (/admin/mails) or nodemailer SMTP (#39/#44)
     mail-context.ts         # getMailContext(language?): the recipient language of a
-                            # mail resolved to its label map + Intl formatters; absent
-                            # languages fall back to the first active row (#58 dp 3)
+                            # mail or document resolved to its label map + Intl
+                            # formatters; absent languages fall back to the first
+                            # active row (#58 dp 3, documents since step 6)
     password.ts             # scrypt hash/verify (self-describing format)
     limiter.ts              # token bucket (scrypt login concurrency guard)
     rate-limit.ts           # checkout rate limit (per client)
@@ -335,7 +338,9 @@ src/
                             # getInvoiceFileCore (transaction + conditional writes, #40)
     pickup.ts               # pickup cores: code generation, queue, markPickupReadyCore,
                             # handoverPickupCore (code check + payment in one txn, #41)
-    invoices-pdf.ts         # invoice PDF with Swiss QR-bill section (pdf-lib + qrcode, #40)
+    invoices-pdf.ts         # invoice PDF with Swiss QR-bill section (pdf-lib + qrcode,
+                            # #40); texts from invoice.pdf.* rows, formats from the
+                            # order's language (#58 step 6)
     orders.ts               # customer confirmation lookup (getOrderByNumber)
     orders-admin.ts         # listOrders, transitionOrderCore (conditional write + restock)
     products-admin.ts       # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
@@ -357,7 +362,8 @@ src/
                             # answer, denormalized product rating recompute (#47)
     shipping/provider.ts    # factory (env-driven)
     shipping/ups.ts         # UpsShippingProvider (UPS REST, token cache, §4)
-    shipping/mock.ts        # MockUpsProvider (1Z…, pdf-lib label → data/labels/)
+    shipping/mock.ts        # MockUpsProvider (1Z…, pdf-lib label → data/labels/),
+                            # printed texts from shop.label.* rows in the order's language
     shipping/label.ts       # createLabelCore + getLabelFileCore (packed-only, idempotent)
     actions/
       checkout.ts           # thin action wrapper → createOrderCore (transaction, + userId #39,
@@ -683,7 +689,12 @@ and dates from the language's Intl locale, `<html lang>` and the link prefix
 reminder, admin reset) use the *stored* language, never the admin's; documents without
 the field fall back to the first active language. The templates
 (`src/lib/mail-templates.ts`) are pure over a `MailContext` — a sixth language mails in
-it by having rows, not code.
+it by having rows, not code. Since #58 step 6 the same rule covers the **printed
+documents**: the invoice/QR PDF renders through `getMailContext(order.language)`
+(`invoice.pdf.*` rows + the language's Intl formats; the SPC payload inside the QR
+stays German — banking interop data, not UI text), and `createLabelCore` hands the
+order-language label map to the provider (`LabelRequest.labels`, `shop.label.*` rows)
+so the parcel's label answers the customer, not the admin.
 
 ## 4. Server functions, actions and route handlers
 
@@ -934,10 +945,10 @@ German copy, CHF/dates/weights formatted with the `Intl` locale of the request's
 row (`createFormatters(intlLocale)` in `src/lib/format.ts`, #58 step 2b) — the storefront
 reads it from the `LocaleFormatters` context (client) or `getIntlLocale(lang)` (server);
 the admin follows the same row (`getRequestFormatters()` server-side, the shared
-`LocaleFormattersProvider` client-side — #58 admin formats slice); only the
-recipient-language boundary (mails render from the stored language since #58 decision
-point 3; invoice/QR PDFs, label content, seed and scripts) still
-uses the base-locale exports (#58 step 6).
+`LocaleFormattersProvider` client-side — #58 admin formats slice); documents render in
+their stored language through `getMailContext` (mails since #58 decision point 3,
+invoice/QR PDFs and label content since #58 step 6) — the base-locale named exports
+are retired, no consumer formats in a fixed locale anymore.
 
 **VAT rounding rule (unit-tested):** `vatCents = grossCents − round(grossCents × 100 /
 (100 + vatRatePercent))` where `grossCents` is the VAT-inclusive total and `vatRatePercent`

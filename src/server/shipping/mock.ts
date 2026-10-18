@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { interpolate, label } from "@/lib/i18n";
 import { labelSerialLines } from "@/lib/shipping/label-content";
 import type { LabelRequest, LabelResult, ShippingProvider } from "@/lib/shipping/types";
 
@@ -14,16 +15,19 @@ export function mockTrackingNumber(random: () => number = Math.random): string {
 }
 
 async function renderMockLabelPdf(request: LabelRequest, trackingNumber: string): Promise<Uint8Array> {
+  // #58 decision point 3: every printed text is a `shop.label.*` row from the label
+  // map the server resolved in the order's language; carrier names ride as data.
+  const t = (key: string) => label(request.labels, key);
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([400, 600]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
   page.drawText("UPS", { x: 24, y: 566, size: 28, font: bold, color: rgb(0.35, 0.2, 0.05) });
-  page.drawText("Mock-Versandetikett (Demo)", { x: 24, y: 544, size: 10, font });
+  page.drawText(t("shop.label.title"), { x: 24, y: 544, size: 10, font });
   page.drawRectangle({ x: 24, y: 520, width: 352, height: 2, color: rgb(0.2, 0.2, 0.2) });
 
-  page.drawText("Empfänger / Ship To", { x: 24, y: 496, size: 9, font: bold });
+  page.drawText(t("shop.label.recipient"), { x: 24, y: 496, size: 9, font: bold });
   const recipientLines = [
     request.recipient.name,
     request.recipient.street,
@@ -34,34 +38,36 @@ async function renderMockLabelPdf(request: LabelRequest, trackingNumber: string)
     page.drawText(line, { x: 24, y: 480 - index * 14, size: 11, font });
   });
 
-  page.drawText(`Bestellung: ${request.orderNumber}`, { x: 24, y: 410, size: 10, font });
-  page.drawText(`Versand: ${request.service === "express" ? "UPS Express" : "UPS Standard"}`, {
+  page.drawText(interpolate(t("shop.label.order"), { number: request.orderNumber }), {
     x: 24,
-    y: 396,
+    y: 410,
     size: 10,
     font,
   });
-  page.drawText(`Gewicht: ${(request.parcelWeightGrams / 1000).toFixed(2)} kg`, {
-    x: 24,
-    y: 382,
-    size: 10,
-    font,
-  });
+  page.drawText(
+    interpolate(t("shop.label.shipping"), {
+      service: request.service === "express" ? "UPS Express" : "UPS Standard",
+    }),
+    { x: 24, y: 396, size: 10, font },
+  );
+  page.drawText(
+    interpolate(t("shop.label.weight"), {
+      weight: `${(request.parcelWeightGrams / 1000).toFixed(2)} kg`,
+    }),
+    { x: 24, y: 382, size: 10, font },
+  );
 
   // Issue #62 (#54): the parcel's serial numbers, same copy as the packing slip.
-  const serialLines = labelSerialLines(request.serials ?? []);
+  const serialLines = labelSerialLines(request.serials ?? [], t("shop.label.serials"));
   const LABEL_SERIAL_LINES = 2;
   serialLines.slice(0, LABEL_SERIAL_LINES).forEach((line, index) => {
     page.drawText(line, { x: 24, y: 366 - index * 11, size: 8, font });
   });
   if (serialLines.length > LABEL_SERIAL_LINES) {
-    page.drawText(`+ ${serialLines.length - LABEL_SERIAL_LINES} weitere Serien`, {
-      x: 24,
-      y: 366 - LABEL_SERIAL_LINES * 11,
-      size: 8,
-      font,
-      color: rgb(0.4, 0.4, 0.4),
-    });
+    page.drawText(
+      interpolate(t("shop.label.moreSerials"), { count: serialLines.length - LABEL_SERIAL_LINES }),
+      { x: 24, y: 366 - LABEL_SERIAL_LINES * 11, size: 8, font, color: rgb(0.4, 0.4, 0.4) },
+    );
   }
 
   page.drawText("Tracking", { x: 24, y: 340, size: 9, font: bold });
@@ -73,7 +79,7 @@ async function renderMockLabelPdf(request: LabelRequest, trackingNumber: string)
     font,
   });
 
-  page.drawText("Kein echtes UPS-Etikett — nur für die lokale Demo ohne UPS-Zugang.", {
+  page.drawText(t("shop.label.demoDisclaimer"), {
     x: 24,
     y: 40,
     size: 8,

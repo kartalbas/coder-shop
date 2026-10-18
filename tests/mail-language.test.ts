@@ -1,4 +1,5 @@
 import { afterEach, afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { labelMap } from "@/lib/i18n";
 import { MailMessageModel } from "@/models/mail-message";
@@ -9,13 +10,14 @@ import { UserModel } from "@/models/user";
 import { createOrderCore } from "@/server/checkout";
 import { adminResetPasswordCore } from "@/server/customers-admin";
 import { registerCustomerCore, requestPasswordResetCore, resetCustomerRateLimits } from "@/server/customers";
-import { sendInvoiceReminderCore } from "@/server/invoices";
+import { getInvoiceFileCore, sendInvoiceReminderCore } from "@/server/invoices";
 import { markPickupReadyCore } from "@/server/pickup";
 import { notifyRestockedCore, subscribeRestockAlertCore } from "@/server/restock-alerts";
 import { createLabelCore } from "@/server/shipping/label";
 import { MockUpsProvider } from "@/server/shipping/mock";
 import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
+import { pdfDrawnText } from "@/test/pdf-text";
 import { seedUnitsForSku } from "@/test/units";
 
 // Issue #58 decision point 3: language is stored where the request happens (checkout,
@@ -146,6 +148,25 @@ describe("checkout stores the language and mails in it", () => {
     expect(mails[1]?.text).toContain(due);
     expect(mails[1]?.html).toContain("/fr/orders/");
   });
+
+  it("the invoice PDF of a French order is French (#58 step 6)", async () => {
+    const order = await OrderModel.findOne({ "customer.email": "facture@example.ch" })
+      .select("orderNumber")
+      .lean()
+      .exec();
+    expect(order).not.toBeNull();
+    const file = await getInvoiceFileCore(order!.orderNumber);
+    expect(file).not.toBeNull();
+    const text = pdfDrawnText(file!.buffer);
+    expect(text).toContain("Facture");
+    expect(text).toContain("Facturé à");
+    expect(text).toContain("Payable jusqu'au");
+    expect(text).not.toContain("Rechnungsempfänger");
+    expect(text).not.toContain("Zahlbar bis");
+    // Cached: the second call serves the same French file.
+    const cached = await getInvoiceFileCore(order!.orderNumber);
+    expect(cached!.buffer.equals(file!.buffer)).toBe(true);
+  });
 });
 
 describe("admin-triggered mails use the stored language, not the admin's", () => {
@@ -184,6 +205,17 @@ describe("admin-triggered mails use the stored language, not the admin's", () =>
     expect(mails).toHaveLength(1);
     expect(mails[0]?.subject).toBe(frLabels["mail.shipped.subject"]);
     expect(mails[0]?.html).toContain("/fr/orders/B-2026-910001");
+
+    // #58 step 6: the parcel goes to the customer, so the printed label follows the
+    // order's language too — the German admin never decides that.
+    if (label.ok) {
+      const pdf = await readFile(label.labelPath);
+      const text = pdfDrawnText(pdf);
+      expect(text).toContain("Destinataire / Expédier à");
+      expect(text).toContain("Commande : B-2026-910001");
+      expect(text).not.toContain("Empfänger / Ship To");
+      expect(text).not.toContain("Bestellung:");
+    }
   });
 
   it("pickup-ready and the invoice reminder answer in the order's language", async () => {

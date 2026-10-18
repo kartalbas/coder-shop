@@ -26,7 +26,6 @@ import {
   updateVariantCore,
 } from "@/server/products-admin";
 import { saveShopSettingsCore } from "@/server/shop-settings";
-import { formatChf } from "@/lib/format";
 import {
   createPurchaseOrderCore,
   createSupplierCore,
@@ -36,6 +35,7 @@ import { handoverPickupCore, markPickupReadyCore } from "@/server/pickup";
 import { recordInvoicePaymentCore, setCreditLimitCore } from "@/server/invoices";
 import { saveCatalogTypeCore } from "@/server/catalog-types";
 import {
+  getRequestFormatters,
   invalidateI18nCache,
   saveLanguageCore,
   saveTranslationCore,
@@ -593,14 +593,20 @@ describe("invoice core refusals follow the request language", () => {
   it("an amount over the open balance is refused in French with the amount", async () => {
     const created = await OrderModel.create(invoiceFixture("B-ADM-CORE-7"));
     request.cookie = "fr";
-    const result = await recordInvoicePaymentCore(created._id.toString(), 2000, "admin@example.ch");
+    // #58 step 6: the action passes the request's Formatters, so a French admin sees
+    // the open amount in fr-CH style, not the base locale.
+    const result = await recordInvoicePaymentCore(
+      created._id.toString(),
+      2000,
+      "admin@example.ch",
+      await getRequestFormatters(),
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    // The amount interpolates the already-formatted value (NBSP included) — the base
-    // formatter, as the admin formats are still base-locale (#58 record).
-    expect(result.error).toBe(
-      `Le montant dépasse le montant ouvert de ${formatChf(1000)}.`,
+    const amount = new Intl.NumberFormat("fr-CH", { style: "currency", currency: "CHF" }).format(
+      10,
     );
+    expect(result.error).toBe(`Le montant dépasse le montant ouvert de ${amount}.`);
   });
 
   it("a junk credit limit and an unknown customer are refused in their request language", async () => {

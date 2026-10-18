@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createFormatters } from "@/lib/format";
 import { INVOICE_DUE_DAYS, isInvoiceOverdue, qrReferenceForOrder } from "@/lib/invoices";
 import { IllegalTransitionError } from "@/lib/orders/state-machine";
 import { MailMessageModel } from "@/models/mail-message";
@@ -19,6 +20,10 @@ import {
 import { transitionOrderCore } from "@/server/orders-admin";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 import { seedUnitsForSku } from "@/test/units";
+
+// The refusal amount follows the caller's Formatters (#58 step 6); these specs only
+// assert ok/fail, so the base set stands in for the admin's request language.
+const formatters = createFormatters("de-CH");
 
 const CUSTOMER = {
   name: "Reto Invoice",
@@ -180,6 +185,7 @@ describe("invoice checkout (issue #40)", () => {
       created!._id.toString(),
       first.totals.totalCents,
       "admin@codershop.ch",
+      formatters,
     );
     expect(paid.ok).toBe(true);
     expect(await getInvoiceCreditUsageCents(user._id.toString())).toBe(0);
@@ -205,16 +211,16 @@ describe("invoice checkout (issue #40)", () => {
     const id = created!._id.toString();
     const total = result.totals.totalCents;
 
-    expect((await recordInvoicePaymentCore(id, total + 1, "admin")).ok).toBe(false);
-    expect((await recordInvoicePaymentCore(id, 0, "admin")).ok).toBe(false);
+    expect((await recordInvoicePaymentCore(id, total + 1, "admin", formatters)).ok).toBe(false);
+    expect((await recordInvoicePaymentCore(id, 0, "admin", formatters)).ok).toBe(false);
 
-    expect((await recordInvoicePaymentCore(id, 5_000, "admin")).ok).toBe(true);
+    expect((await recordInvoicePaymentCore(id, 5_000, "admin", formatters)).ok).toBe(true);
     let fresh = await order(result.orderNumber);
     expect(fresh?.payment.invoice?.paidCents).toBe(5_000);
     expect(fresh?.status).toBe("new");
     expect(fresh?.payment.paidAt).toBeUndefined();
 
-    expect((await recordInvoicePaymentCore(id, total - 5_000, "admin@x.ch")).ok).toBe(true);
+    expect((await recordInvoicePaymentCore(id, total - 5_000, "admin@x.ch", formatters)).ok).toBe(true);
     fresh = await order(result.orderNumber);
     expect(fresh?.payment.invoice?.paidCents).toBe(total);
     expect(fresh?.payment.paidAt).toBeInstanceOf(Date);

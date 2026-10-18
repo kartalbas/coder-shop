@@ -1,11 +1,9 @@
 // Issue #58 step 2b: numbers, CHF and dates follow the intlLocale of the request's
 // language row — never a hard-coded locale. `createFormatters` is the pure factory
-// (one Intl set per locale, cached); the storefront hands it the live row's locale,
-// while `formatChf`/`formatDate`/`formatDateTime`/`formatWeight` stay the base-locale
-// formatters of the remaining recipient-language boundary (#58 step 6): invoice/QR
-// PDFs, label content, seed and scripts — mails render from the order's language since
-// the #58 decision-point-3 slice. The admin reads `getRequestFormatters()` instead.
-import { BASE_LANGUAGE, DEFAULT_LANGUAGES, intlLocaleOf } from "@/lib/i18n";
+// (one Intl set per locale, cached). Since the #58 step-6 slice every consumer reads
+// the live row: the storefront and admin use `getRequestFormatters()`, documents
+// (mails, invoice/QR PDFs, label content) use the stored language's set through
+// `getMailContext` — the base-locale named exports are retired.
 
 export interface Formatters {
   chf(cents: number): string;
@@ -39,22 +37,4 @@ export function createFormatters(intlLocale: string): Formatters {
   };
   formattersByLocale.set(intlLocale, formatters);
   return formatters;
-}
-
-const baseFormatters = createFormatters(intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE));
-
-export function formatChf(cents: number): string {
-  return baseFormatters.chf(cents);
-}
-
-export function formatDate(date: Date): string {
-  return baseFormatters.date(date);
-}
-
-export function formatDateTime(date: Date): string {
-  return baseFormatters.dateTime(date);
-}
-
-export function formatWeight(grams: number): string {
-  return baseFormatters.weight(grams);
 }

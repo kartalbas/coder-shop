@@ -7,7 +7,7 @@ import {
   isInvoicePaid,
   openAmountCents,
 } from "@/lib/invoices";
-import { formatChf } from "@/lib/format";
+import type { Formatters } from "@/lib/format";
 import { invoiceReminderMail } from "@/lib/mail-templates";
 import type { OrderStatus } from "@/lib/orders/state-machine";
 import { transition } from "@/lib/orders/state-machine";
@@ -236,11 +236,13 @@ export async function listInvoiceCredits(): Promise<CustomerCreditRow[]> {
 
 // Partial payments are explicit (issue #40): every amount up to the open balance is
 // accepted; only the full amount settles the invoice and (for a still-unpaid order)
-// moves it to "paid" through the state machine.
+// moves it to "paid" through the state machine. The refusal amount renders in the
+// admin's request language — the caller passes the request's Formatters (#58 step 6).
 export async function recordInvoicePaymentCore(
   orderId: string,
   amountCents: number,
   by: string,
+  formatters: Formatters,
 ): Promise<InvoiceActionResult> {
   const labels = await getRequestLabels();
   await connectDB();
@@ -270,7 +272,7 @@ export async function recordInvoicePaymentCore(
       return {
         ok: false,
         error: interpolate(label(labels, "admin.invoices.error.amountExceeds"), {
-          amount: formatChf(open),
+          amount: formatters.chf(open),
         }),
       };
     }
@@ -390,7 +392,10 @@ export async function getInvoiceFileCore(
   } catch {
     // not generated yet — build it below
   }
-  const pdf = await buildInvoicePdf(order, (await getShopSettings()).vatRatePercent);
+  // #58 decision point 3: the document renders in the *order's* stored language —
+  // texts and formats come from the same resolver the mails use, never the requester's.
+  const context = await getMailContext(order.language);
+  const pdf = await buildInvoicePdf(order, (await getShopSettings()).vatRatePercent, context);
   await mkdir(INVOICES_DIR, { recursive: true });
   await writeFile(filePath, pdf);
   return { buffer: Buffer.from(pdf), fileName };

@@ -2483,3 +2483,45 @@ Done — M1–M6 + QA complete.
 - **Left open (#58):** invoice/QR PDF + packing slip + label content through the table
   (then the named `format.ts` exports retire), the no-German-literals guard over
   `src/` (decision point 4), the editor remainder and translatable catalog content.
+
+## ISSUES — queue session 40 (2026-10-18)
+
+### #58 (step 6 slice) — invoice/QR PDF + label content render from the table in the order's language; named format.ts exports retire ✅ — issue stays open
+- **Gate report re-checked (again):** `/produkte → 308` and no `/produkt/` links are the
+  intended #63/#65 English-URL contract, asserted by the green `english-urls` spec.
+- **Invoice PDF:** `buildInvoicePdf(order, vatRatePercent, ctx)` renders through
+  `getMailContext(order.language)` resolved in `getInvoiceFileCore` — the document
+  answers the customer, never the requester. 21 new `invoice.pdf.*` rows × 5 languages
+  carry every drawn string; the VAT line reuses `shop.checkout.vatNote` (+ `vatLabel`,
+  byte-identical to the retired `vatInclusiveNote`), the free line `shop.checkout.free`.
+  The SPC payload inside the QR stays German (banking interop data — DECISIONS).
+- **Label content:** `LabelRequest.labels` carries the order-language label map as
+  plain data (resolved once by `createLabelCore` next to the tracking mail); the mock
+  provider prints `shop.label.*` rows (8 new), `labelSerialLines` takes the header as
+  a parameter and stays text-free; the real UPS provider ignores the map (API JSON).
+- **format.ts retirement:** the named `formatChf`/`formatDate`/`formatDateTime`/
+  `formatWeight` exports and `vatInclusiveNote` are deleted — the last consumer
+  (`invoices.ts:273`) became `recordInvoicePaymentCore(..., formatters)`, fed by
+  `getRequestFormatters()` in the admin action, so the refusal amount follows the
+  admin's request language.
+- **Latent bug found and fixed:** the discount/received lines drew U+2212, which
+  pdf-lib's WinAnsi fonts cannot encode — generating such a PDF threw (never hit by
+  any test or flow before). Now an ASCII hyphen; recorded in DECISIONS.
+- **Tests:** new `src/test/pdf-text.ts` helper (pdf-lib writes hex `<…> Tj` operands
+  into Flate streams — a raw byte search finds nothing; the helper inflates and
+  decodes). New `tests/invoice-pdf-language.test.ts` (3 — German byte-identity of
+  every drawn string incl. the VAT note, French rows with German absent, Intl-derived
+  amounts/dates), +3 in `tests/shipping.test.ts` (header parameter honoured, German
+  label byte-identity, French label through the provider), +1 in
+  `tests/mail-language.test.ts` (fr order → French invoice PDF, cached; French label
+  written by `createLabelCore` under a German admin). `admin-core-messages` amount
+  test now asserts the fr-CH amount through the passed Formatters. Verified failing
+  at 72c014e: the 3 PDF tests fail there with the genuine WinAnsi crash, the label/
+  header tests with real assertion failures.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 663 (67 files),
+  `npm run test:e2e` ✅ 102/102; tree clean, nothing running.
+- **Left open (#58):** the no-German-literals guard over `src/` (decision point 4 —
+  must exempt stored-data notes: statusLog notes, `CANCEL_NOTE`, unit-move notes, the
+  German log line in label.ts, and the SPC payload deliberately), the editor remainder
+  (needs-review filter, usage context + preview, inline editing, change history) and
+  translatable catalog content + five-language demo content.

@@ -912,3 +912,28 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   in the templates are gone — the invoice mail's due date now follows the mail
   language (visible change: German mails show the long date form). The carrier in the
   tracking mail travels as data (the stored carrier code), not a literal.
+- **Documents render in the stored language; the named base-locale formatters retire
+  (#58 step 6).** The rule of decision point 3 extends from mails to the invoice/QR PDF
+  and the shipping label: `getInvoiceFileCore` builds the PDF through
+  `getMailContext(order.language)` (the resolver now serves documents too — name kept,
+  one resolver for texts + formats), and `createLabelCore` resolves the same context and
+  hands its label map to the provider as plain data on `LabelRequest.labels` — the
+  parcel goes to the customer, so the customer's language decides the printed label,
+  never the admin's; the real UPS provider ignores the map (its payload is API JSON).
+  `labelSerialLines` takes the header text as a parameter and stays text-free. Every
+  drawn invoice/label string is an `invoice.pdf.*` / `shop.label.*` row; the VAT line
+  reuses `shop.checkout.vatNote` and the free-shipping line `shop.checkout.free`
+  instead of duplicating. With the last consumers converted, the named `formatChf`/
+  `formatDate`/`formatDateTime`/`formatWeight` exports and `vatInclusiveNote` are
+  deleted — every formatter now comes from a live row (`getRequestFormatters()`) or a
+  stored language (`getMailContext`). `recordInvoicePaymentCore` takes the caller's
+  `Formatters` so the admin's refusal amount follows the admin's request language.
+- **The SPC payload inside the QR stays German (#58 step 6).** The Swiss-payment-
+  standards `additionalInformation` („Bestellung …") is banking interop data a clearing
+  system reads, not UI text; only the labels drawn around the QR translate.
+- **pdf-lib cannot encode U+2212; invoice minus signs are ASCII hyphens (#58 step 6).**
+  The discount and received lines drew `− …` (U+2212), which WinAnsi cannot encode —
+  generating such a PDF threw (latent bug: no test or flow ever hit a discounted or
+  partially paid invoice PDF). The lines now use `-` and are asserted through the new
+  `pdfDrawnText` test helper, which inflates pdf-lib's compressed content streams and
+  decodes the `<hex> Tj` operands — a raw byte search finds nothing in a pdf-lib PDF.

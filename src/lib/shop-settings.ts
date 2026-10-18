@@ -109,11 +109,8 @@ export function paymentMethodsForShipping(
 }
 
 // The German-formatted VAT wording ("8,1 % MwSt.") — every UI note about VAT comes from
-// here, so changing the configured rate changes the copy too (issues #30/#64).
+// here, so changing the configured rate changes the copy too (issues #30/#64). The
+// surrounding sentence is a translation row (e.g. shop.checkout.vatNote, #58).
 export function vatLabel(vatRatePercent: number): string {
   return `${vatRatePercent.toFixed(1).replace(".", ",")} % MwSt.`;
-}
-
-export function vatInclusiveNote(vatRatePercent: number): string {
-  return `${vatLabel(vatRatePercent)} inbegriffen`;
 }

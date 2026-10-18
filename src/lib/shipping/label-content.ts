@@ -1,6 +1,12 @@
 // Issue #62 (#54): the serial block of a shipping label — one pure source for every
-// provider. Empty for quantity orders, so they render no block at all.
-export function labelSerialLines(serials: readonly string[], maxLineLength = 52): string[] {
+// provider. Empty for quantity orders, so they render no block at all. The header is
+// passed in (#58 decision point 3): the caller resolves it from the translation table
+// in the order's language, this module stays text-free.
+export function labelSerialLines(
+  serials: readonly string[],
+  header: string,
+  maxLineLength = 52,
+): string[] {
   if (serials.length === 0) return [];
   const lines: string[] = [];
   let current = "";
@@ -14,5 +20,5 @@ export function labelSerialLines(serials: readonly string[], maxLineLength = 52)
     }
   }
   if (current) lines.push(current);
-  return ["Seriennummern:", ...lines];
+  return [header, ...lines];
 }

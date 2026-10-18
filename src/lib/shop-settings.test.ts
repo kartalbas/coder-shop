@@ -6,7 +6,6 @@ import {
   paymentMethodByKey,
   paymentMethodsForShipping,
   shippingMethodByKey,
-  vatInclusiveNote,
   vatLabel,
   type ShopSettings,
 } from "./shop-settings";
@@ -75,9 +74,8 @@ describe("payment methods follow the shipping method (issues #41/#64)", () => {
 });
 
 describe("VAT copy from the configured rate (issues #30/#64)", () => {
-  it("formats with a German comma and derives the note", () => {
+  it("formats with a German comma", () => {
     expect(vatLabel(8.1)).toBe("8,1 % MwSt.");
     expect(vatLabel(0)).toBe("0,0 % MwSt.");
-    expect(vatInclusiveNote(7.7)).toBe("7,7 % MwSt. inbegriffen");
   });
 });

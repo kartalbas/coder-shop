@@ -7,12 +7,7 @@ import {
   subtotalCents,
   vatFromGross,
 } from "./pricing";
-import {
-  DEFAULT_SHOP_SETTINGS,
-  vatInclusiveNote,
-  vatLabel,
-  type ShopSettings,
-} from "./shop-settings";
+import { DEFAULT_SHOP_SETTINGS, vatLabel, type ShopSettings } from "./shop-settings";
 
 // Issue #64: every rule below is applied over an injected configuration — the same
 // settings object the server loads from `shop_settings`.
@@ -128,7 +123,6 @@ describe("computeTotals", () => {
 describe("VAT and free-shipping copy come from the configuration (issues #30/#64)", () => {
   it("vatLabel formats the configured rate with a German comma", () => {
     expect(vatLabel(8.1)).toBe("8,1 % MwSt.");
-    expect(vatInclusiveNote(8.1)).toBe("8,1 % MwSt. inbegriffen");
     expect(vatLabel(10)).toBe("10,0 % MwSt.");
   });
 

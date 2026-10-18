@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { label } from "@/lib/i18n";
 import { objectIdSchema } from "@/lib/validations/common";
-import { getRequestLabels } from "@/server/i18n";
+import { getRequestFormatters, getRequestLabels } from "@/server/i18n";
 import {
   recordInvoicePaymentCore,
   sendInvoiceReminderCore,
@@ -43,7 +43,13 @@ export async function recordInvoicePaymentAction(
     });
   if (!parsed.success) return { error: label(labels, "admin.error.invalidRequest") };
 
-  const result = await recordInvoicePaymentCore(parsed.data.orderId, parsed.data.amountCents, adminEmail);
+  const result = await recordInvoicePaymentCore(
+    parsed.data.orderId,
+    parsed.data.amountCents,
+    adminEmail,
+    // #58 step 6: the refusal amount follows the admin's request language.
+    await getRequestFormatters(),
+  );
   if (!result.ok) return { error: result.error };
 
   revalidatePath("/admin/invoices");

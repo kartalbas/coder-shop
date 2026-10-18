@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
+import { labelMap } from "@/lib/i18n";
 import { labelSerialLines } from "@/lib/shipping/label-content";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
@@ -9,6 +10,8 @@ import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
 const MOCK_TRACKING_PATTERN = /^1Z[0-9A-Z]{15,16}$/;
 import { OrderModel, type Order, type OrderStatus } from "@/models/order";
 import { MockUpsProvider } from "@/server/shipping/mock";
+import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
+import { pdfDrawnText } from "@/test/pdf-text";
 import { LABELS_DIR, createLabelCore, getLabelFileCore } from "@/server/shipping/label";
 import { UpsShippingProvider } from "@/server/shipping/ups";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
@@ -27,6 +30,9 @@ const REQUEST: LabelRequest = {
   },
   parcelWeightGrams: 1150,
   service: "standard",
+  // #58 decision point 3: the server hands the provider the label map of the order's
+  // language; the German base is the byte-identity check for every German label spec.
+  labels: labelMap(DEFAULT_TRANSLATIONS, "de"),
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -56,14 +62,19 @@ function upsShipReply(trackingNumber: string): unknown {
 
 describe("labelSerialLines (issue #62 review)", () => {
   it("renders nothing for a quantity order", () => {
-    expect(labelSerialLines([])).toEqual([]);
+    expect(labelSerialLines([], "Seriennummern:")).toEqual([]);
   });
 
   it("names the header and wraps long serial lists at the line limit", () => {
-    const lines = labelSerialLines(["SERIAL-AAAAAAAAAA", "SERIAL-BBBBBBBBBB", "SERIAL-CCCCCCCCCC"], 30);
+    const lines = labelSerialLines(["SERIAL-AAAAAAAAAA", "SERIAL-BBBBBBBBBB", "SERIAL-CCCCCCCCCC"], "Seriennummern:", 30);
     expect(lines[0]).toBe("Seriennummern:");
     expect(lines.slice(1).every((line) => line.length <= 30)).toBe(true);
     expect(lines.slice(1).join(" ")).toContain("SERIAL-CCCCCCCCCC");
+  });
+
+  it("honours a header from another language (#58 step 6)", () => {
+    const lines = labelSerialLines(["SERIAL-AAAAAAAAAA"], "Numéros de série :");
+    expect(lines[0]).toBe("Numéros de série :");
   });
 });
 
@@ -76,6 +87,32 @@ describe("MockUpsProvider", () => {
     expect(Buffer.from(result.labelPdf.slice(0, 5)).toString("ascii")).toBe("%PDF-");
   });
 
+  it("prints the German label texts byte-identically (#58 step 6)", async () => {
+    const result = await new MockUpsProvider().createLabel(REQUEST);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const text = pdfDrawnText(result.labelPdf);
+    expect(text).toContain("Empfänger / Ship To");
+    expect(text).toContain("Bestellung: B-2026-000001");
+    expect(text).toContain("Versand: UPS Standard");
+    expect(text).toContain("Gewicht: 1.15 kg");
+    expect(text).toContain("Mock-Versandetikett (Demo)");
+  });
+
+  it("prints the label in the language of the passed label map (#58 step 6)", async () => {
+    const result = await new MockUpsProvider().createLabel({
+      ...REQUEST,
+      labels: labelMap(DEFAULT_TRANSLATIONS, "fr"),
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const text = pdfDrawnText(result.labelPdf);
+    expect(text).toContain("Destinataire / Expédier à");
+    expect(text).toContain("Commande : B-2026-000001");
+    expect(text).not.toContain("Empfänger / Ship To");
+    expect(text).not.toContain("Bestellung:");
+  });
+
   it("renders the serial block on the label for serial orders (#62 review)", async () => {
     const result = await new MockUpsProvider().createLabel({
       ...REQUEST,
@@ -84,6 +121,7 @@ describe("MockUpsProvider", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Buffer.from(result.labelPdf.slice(0, 5)).toString("ascii")).toBe("%PDF-");
+    expect(pdfDrawnText(result.labelPdf)).toContain("Seriennummern:");
   });
 });
 
