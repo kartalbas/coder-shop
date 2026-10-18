@@ -1,4 +1,5 @@
 import mongoose, { type ClientSession } from "mongoose";
+import { label } from "@/lib/i18n";
 import {
   flowFlagsFor,
   ORDER_STATUSES,
@@ -10,6 +11,7 @@ import { unitMoveForOrderStatus } from "@/lib/stock-units";
 import { OrderModel, type Order, type OrderDocument, type OrderLine } from "@/models/order";
 import { ProductModel } from "@/models/product";
 import { connectDB } from "./db";
+import { getRequestLabels } from "./i18n";
 import { notifyRestockedCore } from "./restock-alerts";
 import { advanceUnitsForOrder, releaseUnitsForOrder } from "./stock-units";
 
@@ -114,8 +116,13 @@ export async function transitionOrderCore(
   to: OrderStatus,
   opts: { note?: string; by?: string } = {},
 ): Promise<TransitionOrderResult> {
+  // Issue #58 step 2: refusals answer in the request language (outside a request the
+  // first active language does — the German base every script and test relies on).
+  const labels = await getRequestLabels();
   await connectDB();
-  if (!mongoose.isValidObjectId(orderId)) return { ok: false, error: "Bestellung nicht gefunden." };
+  if (!mongoose.isValidObjectId(orderId)) {
+    return { ok: false, error: label(labels, "admin.error.orderNotFound") };
+  }
 
   const session = await mongoose.startSession();
   try {
@@ -123,7 +130,7 @@ export async function transitionOrderCore(
     const order = await OrderModel.findById(orderId).session(session).exec();
     if (!order) {
       await session.abortTransaction();
-      return { ok: false, error: "Bestellung nicht gefunden." };
+      return { ok: false, error: label(labels, "admin.error.orderNotFound") };
     }
 
     const from = order.status;
@@ -143,10 +150,7 @@ export async function transitionOrderCore(
     );
     if (moved.matchedCount === 0) {
       await session.abortTransaction();
-      return {
-        ok: false,
-        error: "Die Bestellung wurde zwischenzeitlich geändert. Bitte erneut versuchen.",
-      };
+      return { ok: false, error: label(labels, "admin.orders.error.conflict") };
     }
 
     const restock = transitionsWithRestock(from, to);

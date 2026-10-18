@@ -4,13 +4,16 @@ import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { ExternalLink, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { useLabels } from "@/components/labels";
 import { Button } from "@/components/ui/button";
+import { interpolate, label } from "@/lib/i18n";
 import {
   createLabelAction,
   type CreateLabelActionState,
 } from "@/server/actions/admin/shipping";
 
 export function LabelButton({ orderId }: { orderId: string }) {
+  const labels = useLabels();
   const [state, formAction, pending] = useActionState<CreateLabelActionState | null, FormData>(
     createLabelAction,
     null,
@@ -18,7 +21,11 @@ export function LabelButton({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     if (state?.error) toast.error(state.error);
-    if (state?.ok) toast.success(`Etikett erstellt — Sendung ${state.trackingNumber}`);
+    if (state?.ok) {
+      toast.success(
+        interpolate(label(labels, "admin.label.created"), { tracking: state.trackingNumber ?? "" }),
+      );
+    }
   }, [state]);
 
   return (
@@ -26,17 +33,20 @@ export function LabelButton({ orderId }: { orderId: string }) {
       <input type="hidden" name="orderId" value={orderId} />
       <Button type="submit" size="sm" disabled={pending}>
         {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-        UPS-Etikett erstellen
+        {label(labels, "admin.label.create")}
       </Button>
       {state?.ok && (
         <span className="text-sm text-muted-foreground">
-          Sendung {state.trackingNumber} ·{" "}
+          {interpolate(label(labels, "admin.label.shipment"), {
+            tracking: state.trackingNumber ?? "",
+          })}{" "}
+          ·{" "}
           <Link
             href={`/admin/labels/${orderId}`}
             target="_blank"
             className="inline-flex items-center gap-1 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
           >
-            Etikett öffnen <ExternalLink className="size-3" aria-hidden />
+            {label(labels, "admin.label.open")} <ExternalLink className="size-3" aria-hidden />
           </Link>
         </span>
       )}
@@ -45,10 +55,11 @@ export function LabelButton({ orderId }: { orderId: string }) {
 }
 
 export function PrintButton() {
+  const labels = useLabels();
   return (
     <Button type="button" size="sm" variant="outline" onClick={() => window.print()}>
       <Printer className="size-4" aria-hidden />
-      Drucken
+      {label(labels, "admin.action.print")}
     </Button>
   );
 }

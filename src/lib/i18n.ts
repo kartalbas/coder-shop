@@ -1660,8 +1660,8 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
   // Order confirmation flow (#58 step 3 slice): the customer-visible status labels
   // (`shop.status.<status>`, keys derived from the state-machine statuses) and every
   // text of the confirmation page, the status chain and the access form. The German
-  // bases are byte-identical to the literals they replaced; STATUS_LABELS and
-  // PICKUP_PAYMENT_TYPE_LABELS stay as the German base for the admin (admin slice).
+  // bases are byte-identical to the literals they replaced; STATUS_LABELS stays as the
+  // badge's no-provider fallback, the admin reads these rows too (#58 step 2).
   {
     key: "shop.status.new",
     area: "shop",
@@ -4510,7 +4510,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     de: "Offen (fällig {date})",
     texts: {
       fr: "Ouverte (échéance {date})",
-      it: "Aperto (scadenza {date})",
+      it: "Aperta (scadenza {date})",
       rm: "Avert (scadenza {date})",
       es: "Pendiente (vencimiento {date})",
     },
@@ -4519,7 +4519,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     key: "admin.orders.totals.paid",
     area: "admin",
     de: "bezahlt",
-    texts: { fr: "payée", it: "pagato", rm: "pajà", es: "pagado" },
+    texts: { fr: "payée", it: "pagata", rm: "pajà", es: "pagada" },
   },
   {
     key: "admin.orders.statusUpdated",
@@ -4576,7 +4576,7 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
     area: "admin",
     de: "Die Bestellung wurde zwischenzeitlich geändert. Bitte erneut versuchen.",
     texts: {
-      fr: "La commande a été modée-temps modifiée entre-temps. Veuillez réessayer.",
+      fr: "La commande a été modifiée entre-temps. Veuillez réessayer.",
       it: "L'ordine è stato modificato nel frattempo. Riprovare.",
       rm: "L'ordre è vegnì midà tranterin. Empruvai anc ina giada.",
       es: "El pedido se ha modificado entretanto. Inténtelo de nuevo.",
@@ -4825,9 +4825,8 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       fr: "Mot de passe modifié.",
       it: "Password modificata.",
       rm: "Contrasenda midada.",
-      rm2: undefined as never,
       es: "Contraseña cambiada.",
-    } as Record<string, string>,
+    },
   },
 ];
 

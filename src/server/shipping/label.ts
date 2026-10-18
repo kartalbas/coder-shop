@@ -6,8 +6,10 @@ import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
 import { transition } from "@/lib/orders/state-machine";
 import { shippedMail } from "@/lib/mail-templates";
 import { absoluteUrl } from "@/lib/site";
+import { label } from "@/lib/i18n";
 import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "../db";
+import { getRequestLabels } from "../i18n";
 import { sendMail } from "../mail";
 import { advanceUnitsForOrder } from "../stock-units";
 import { resolveInsideDir } from "../secure-path";
@@ -30,13 +32,18 @@ export async function createLabelCore(
   orderId: string,
   provider: ShippingProvider = getShippingProvider(),
 ): Promise<CreateLabelResult> {
+  // Issue #58 step 2: refusals answer in the request language; the stored statusLog
+  // notes ("UPS-Sendung …", "Etikett erstellt") stay German — stored data, recorded.
+  const labels = await getRequestLabels();
   await connectDB();
   if (!mongoose.isValidObjectId(orderId)) {
-    return { ok: false, reason: "not_found", error: "Bestellung nicht gefunden." };
+    return { ok: false, reason: "not_found", error: label(labels, "admin.error.orderNotFound") };
   }
 
   const order = await OrderModel.findById(orderId).lean<Order>().exec();
-  if (!order) return { ok: false, reason: "not_found", error: "Bestellung nicht gefunden." };
+  if (!order) {
+    return { ok: false, reason: "not_found", error: label(labels, "admin.error.orderNotFound") };
+  }
 
   if (order.status === "shipped" && order.shipping.trackingNumber && order.shipping.labelPath) {
     return {
@@ -49,7 +56,7 @@ export async function createLabelCore(
     return {
       ok: false,
       reason: "not_packed",
-      error: "Ein Etikett kann nur für gepackte Bestellungen erstellt werden.",
+      error: label(labels, "admin.label.error.notPacked"),
     };
   }
 
@@ -73,11 +80,11 @@ export async function createLabelCore(
     serials: order.lines.flatMap((line) => line.serials ?? []),
   };
 
-  const label = await provider.createLabel(labelRequest);
-  if (!label.ok) return { ok: false, reason: "provider_error", error: label.error };
+  const shipment = await provider.createLabel(labelRequest);
+  if (!shipment.ok) return { ok: false, reason: "provider_error", error: shipment.error };
 
   const updated = transition({ status: order.status, statusLog: order.statusLog }, "shipped", {
-    note: `UPS-Sendung ${label.trackingNumber}`,
+    note: `UPS-Sendung ${shipment.trackingNumber}`,
     by: provider.name,
     viaLabel: true,
   });
@@ -88,12 +95,12 @@ export async function createLabelCore(
   const labelPath = path.join(LABELS_DIR, `${order.orderNumber}.pdf`);
   try {
     await fs.mkdir(path.resolve(LABELS_DIR), { recursive: true });
-    await fs.writeFile(path.resolve(labelPath), label.labelPdf);
+    await fs.writeFile(path.resolve(labelPath), shipment.labelPdf);
   } catch {
     return {
       ok: false,
       reason: "storage_error",
-      error: "Das Etikett konnte nicht gespeichert werden. Die Bestellung bleibt «gepackt» — bitte erneut versuchen.",
+      error: label(labels, "admin.label.error.storage"),
     };
   }
 
@@ -107,7 +114,7 @@ export async function createLabelCore(
           method: order.shipping.method,
           expressService: order.shipping.expressService,
           carrier: "ups" as const,
-          trackingNumber: label.trackingNumber,
+          trackingNumber: shipment.trackingNumber,
           labelPath,
           parcelWeightGrams: weight,
         },
@@ -132,7 +139,7 @@ export async function createLabelCore(
     return {
       ok: false,
       reason: "conflict",
-      error: "Etikett konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      error: label(labels, "admin.label.error.conflict"),
     };
   }
 
@@ -148,7 +155,7 @@ export async function createLabelCore(
       ...shippedMail({
         name: order.customer.name,
         orderNumber: order.orderNumber,
-        trackingNumber: label.trackingNumber,
+        trackingNumber: shipment.trackingNumber,
         link: absoluteUrl(`/orders/${order.orderNumber}`),
       }),
     });
@@ -156,7 +163,7 @@ export async function createLabelCore(
     console.error(`Bestellung ${order.orderNumber}: Versand-Mail fehlgeschlagen`, error);
   }
 
-  return { ok: true, trackingNumber: label.trackingNumber, labelPath };
+  return { ok: true, trackingNumber: shipment.trackingNumber, labelPath };
 }
 
 export type LabelFileResult =
@@ -166,8 +173,9 @@ export type LabelFileResult =
 // Data access for the admin label download route (issue #32): the route keeps only the
 // session guard and the response mapping; look-up, path containment and file read live here.
 export async function getLabelFileCore(orderId: string): Promise<LabelFileResult> {
+  const labels = await getRequestLabels();
   if (!mongoose.isValidObjectId(orderId)) {
-    return { ok: false, status: 404, error: "Bestellung nicht gefunden." };
+    return { ok: false, status: 404, error: label(labels, "admin.error.orderNotFound") };
   }
   await connectDB();
   const order = await OrderModel.findById(orderId)
@@ -175,15 +183,15 @@ export async function getLabelFileCore(orderId: string): Promise<LabelFileResult
     .lean()
     .exec();
   if (!order?.shipping.labelPath) {
-    return { ok: false, status: 404, error: "Kein Etikett vorhanden." };
+    return { ok: false, status: 404, error: label(labels, "admin.label.error.missing") };
   }
   const file = resolveInsideDir(LABELS_DIR, order.shipping.labelPath);
   if (!file) {
-    return { ok: false, status: 400, error: "Ungültiger Etiketten-Pfad." };
+    return { ok: false, status: 400, error: label(labels, "admin.label.error.invalidPath") };
   }
   try {
     return { ok: true, orderNumber: order.orderNumber, pdf: await fs.readFile(file) };
   } catch {
-    return { ok: false, status: 404, error: "Etikettdatei fehlt auf dem Server." };
+    return { ok: false, status: 404, error: label(labels, "admin.label.error.fileMissing") };
   }
 }

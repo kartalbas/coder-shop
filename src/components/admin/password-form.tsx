@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordRulesChecklist } from "@/components/password-rules-checklist";
+import { useLabels } from "@/components/labels";
+import { label } from "@/lib/i18n";
 import { passwordRulesMet } from "@/lib/password-rules";
 import {
   changePasswordAction,
@@ -16,6 +18,7 @@ import {
 // Issue #60: controlled inputs keep the values through a failed submit; the new
 // password shows its rules live and every error sits at its field.
 export function PasswordForm() {
+  const labels = useLabels();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -25,7 +28,7 @@ export function PasswordForm() {
   );
 
   useEffect(() => {
-    if (state?.ok) toast.success("Passwort geändert.");
+    if (state?.ok) toast.success(label(labels, "admin.account.passwordChanged"));
     else if (state?.error) toast.error(state.error);
   }, [state]);
 

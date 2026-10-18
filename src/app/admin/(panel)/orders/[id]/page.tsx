@@ -10,10 +10,11 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { StatusTimeline } from "@/components/admin/status-timeline";
 import { TransitionButtons } from "@/components/admin/transition-buttons";
 import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";
-import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
+import { interpolate, label } from "@/lib/i18n";
 import { allowedTransitions, flowFlagsFor } from "@/lib/orders/state-machine";
 import { paymentMethodByKey } from "@/lib/shop-settings";
 import { getOrderById } from "@/server/orders-admin";
+import { getRequestLabels } from "@/server/i18n";
 import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
@@ -21,14 +22,18 @@ interface PagePropsLocal {
 }
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Bestellung ${id}`, description: "Bestelldetails und Statuswechsel." };
+  await connection();
+  const [{ id }, labels] = await Promise.all([params, getRequestLabels()]);
+  return {
+    title: interpolate(label(labels, "admin.orders.heading"), { number: id }),
+    description: label(labels, "admin.meta.orderDetail.description"),
+  };
 }
 
 async function OrderDetail({ params }: PagePropsLocal) {
   await connection();
   const { id } = await params;
-  const order = await getOrderById(id);
+  const [order, labels] = await Promise.all([getOrderById(id), getRequestLabels()]);
   if (!order) notFound();
 
   // Issue #64: labels come from the configuration; a retired method falls back to its
@@ -53,32 +58,36 @@ async function OrderDetail({ params }: PagePropsLocal) {
         className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Zurück zur Übersicht
+        {label(labels, "admin.orders.back")}
       </Link>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Bestellung {order.orderNumber}</h1>
-        <OrderStatusBadge status={order.status} />
+        <h1 className="text-2xl font-bold tracking-tight">
+          {interpolate(label(labels, "admin.orders.heading"), { number: order.orderNumber })}
+        </h1>
+        <OrderStatusBadge status={order.status} labels={labels} />
       </div>
 
-      <section className="mt-6 rounded-xl border bg-card p-5" aria-label="Statuswechsel">
-        <h2 className="mb-3 text-sm font-semibold">Statuswechsel</h2>
+      <section className="mt-6 rounded-xl border bg-card p-5" aria-label={label(labels, "admin.orders.transitions")}>
+        <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.orders.transitions")}</h2>
         <TransitionButtons orderId={order._id.toString()} targets={targets} />
         {canCreateLabel && (
           <div className="mt-4 border-t pt-4">
-            <h3 className="mb-2 text-sm font-semibold">Versand</h3>
+            <h3 className="mb-2 text-sm font-semibold">{label(labels, "admin.orders.shipping")}</h3>
             <LabelButton orderId={order._id.toString()} />
           </div>
         )}
         {shipped && order.shipping.trackingNumber && (
           <div className="mt-4 border-t pt-4 text-sm">
             <p>
-              Sendungsverfolgung:{" "}
+              {label(labels, "admin.orders.tracking")}{" "}
               <span className="font-mono font-medium">{order.shipping.trackingNumber}</span>
             </p>
             {order.shipping.parcelWeightGrams !== undefined && (
               <p className="text-muted-foreground">
-                Paketgewicht {formatWeight(order.shipping.parcelWeightGrams)}
+                {interpolate(label(labels, "admin.orders.parcelWeight"), {
+                  weight: formatWeight(order.shipping.parcelWeightGrams),
+                })}
               </p>
             )}
             {order.shipping.labelPath && (
@@ -88,7 +97,7 @@ async function OrderDetail({ params }: PagePropsLocal) {
                   target="_blank"
                   className="inline-flex items-center gap-1 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
                 >
-                  Etikett öffnen <ExternalLink className="size-3" aria-hidden />
+                  {label(labels, "admin.label.open")} <ExternalLink className="size-3" aria-hidden />
                 </Link>
               </p>
             )}
@@ -97,32 +106,37 @@ async function OrderDetail({ params }: PagePropsLocal) {
       </section>
 
       {order.shipping.pickup && (
-        <section className="mt-6 rounded-xl border bg-card p-5" aria-label="Abholung">
-          <h2 className="mb-2 text-sm font-semibold">Abholung im Laden</h2>
+        <section className="mt-6 rounded-xl border bg-card p-5" aria-label={label(labels, "admin.orders.pickupAria")}>
+          <h2 className="mb-2 text-sm font-semibold">{label(labels, "admin.orders.pickup.title")}</h2>
           <p className="text-sm">
-            Abholcode: <span className="font-mono font-semibold tracking-wider">{order.shipping.pickup.code}</span>
+            {label(labels, "admin.orders.pickup.code")}{" "}
+            <span className="font-mono font-semibold tracking-wider">{order.shipping.pickup.code}</span>
           </p>
           {order.shipping.pickup.pickedUpAt && (
             <p className="mt-1 text-sm text-muted-foreground">
-              Abgeholt am {formatDateTime(order.shipping.pickup.pickedUpAt)}
+              {interpolate(label(labels, "admin.orders.pickup.pickedUpAt"), {
+                date: formatDateTime(order.shipping.pickup.pickedUpAt),
+              })}
               {order.shipping.pickup.paymentType &&
-                ` · bezahlt (${PICKUP_PAYMENT_TYPE_LABELS[order.shipping.pickup.paymentType]})`}
+                ` · ${interpolate(label(labels, "admin.orders.pickup.paid"), {
+                  type: label(labels, `admin.pickup.paymentType.${order.shipping.pickup.paymentType}`),
+                })}`}
             </p>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
-            Bereitstellen und Übergabe laufen über die Abholungs-Queue.
+            {label(labels, "admin.orders.pickup.hint")}
           </p>
         </section>
       )}
 
       <div className="mt-6 grid gap-6 sm:grid-cols-2">
-        <section className="rounded-xl border bg-card p-5" aria-label="Statusverlauf">
-          <h2 className="mb-3 text-sm font-semibold">Verlauf</h2>
-          <StatusTimeline entries={order.statusLog} />
+        <section className="rounded-xl border bg-card p-5" aria-label={label(labels, "admin.orders.historyAria")}>
+          <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.orders.history")}</h2>
+          <StatusTimeline entries={order.statusLog} labels={labels} />
         </section>
 
-        <section className="rounded-xl border bg-card p-5 text-sm" aria-label="Kunde und Total">
-          <h2 className="mb-3 text-sm font-semibold">Kunde</h2>
+        <section className="rounded-xl border bg-card p-5 text-sm" aria-label={label(labels, "admin.orders.customerAria")}>
+          <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.orders.column.customer")}</h2>
           <address className="not-italic text-muted-foreground">
             {order.customer.name}
             <br />
@@ -141,47 +155,53 @@ async function OrderDetail({ params }: PagePropsLocal) {
               href={`/admin/customers/${order.userId}`}
               className="mt-2 inline-block text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
             >
-              Kundenkonto öffnen
+              {label(labels, "admin.orders.openCustomer")}
             </Link>
           )}
           <dl className="mt-4 space-y-1 border-t pt-4">
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Zwischensumme</dt>
+              <dt className="text-muted-foreground">{label(labels, "admin.orders.totals.subtotal")}</dt>
               <dd className="tabular-nums">{formatChf(order.totals.subtotalCents)}</dd>
             </div>
             {order.discount && order.discount.cents > 0 && (
               <div className="flex justify-between text-primary">
-                <dt>Rabatt ({order.discount.code})</dt>
+                <dt>
+                  {interpolate(label(labels, "admin.orders.totals.discount"), {
+                    code: order.discount.code,
+                  })}
+                </dt>
                 <dd className="tabular-nums">−{formatChf(order.discount.cents)}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Versand</dt>
+              <dt className="text-muted-foreground">{label(labels, "admin.orders.shipping")}</dt>
               <dd className="tabular-nums">
                 {order.totals.shippingCents === 0
-                  ? "Gratis"
+                  ? label(labels, "admin.orders.totals.free")
                   : formatChf(order.totals.shippingCents)}
               </dd>
             </div>
             <div className="flex justify-between font-semibold">
-              <dt>Total</dt>
+              <dt>{label(labels, "admin.orders.column.total")}</dt>
               <dd className="tabular-nums">{formatChf(order.totals.totalCents)}</dd>
             </div>
             <div className="flex justify-between border-t pt-2">
-              <dt className="text-muted-foreground">Zahlung</dt>
+              <dt className="text-muted-foreground">{label(labels, "admin.orders.totals.payment")}</dt>
               <dd>{paymentLabel}</dd>
             </div>
             {order.payment.invoice && (
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">
                   {order.payment.invoice.paidCents >= order.totals.totalCents
-                    ? "Rechnung"
-                    : "Offen (fällig " + formatDate(order.payment.invoice.dueAt) + ")"}
+                    ? label(labels, "admin.orders.totals.invoice")
+                    : interpolate(label(labels, "admin.orders.totals.invoiceOpen"), {
+                        date: formatDate(order.payment.invoice.dueAt),
+                      })}
                 </dt>
                 <dd className="tabular-nums">
                   {order.totals.totalCents - order.payment.invoice.paidCents > 0
                     ? formatChf(order.totals.totalCents - order.payment.invoice.paidCents)
-                    : "bezahlt"}
+                    : label(labels, "admin.orders.totals.paid")}
                 </dd>
               </div>
             )}
@@ -189,8 +209,8 @@ async function OrderDetail({ params }: PagePropsLocal) {
         </section>
       </div>
 
-      <section className="mt-6 rounded-xl border bg-card p-5" aria-label="Positionen">
-        <h2 className="mb-3 text-sm font-semibold">Positionen</h2>
+      <section className="mt-6 rounded-xl border bg-card p-5" aria-label={label(labels, "admin.orders.column.items")}>
+        <h2 className="mb-3 text-sm font-semibold">{label(labels, "admin.orders.column.items")}</h2>
         <ul className="space-y-2 text-sm">
           {order.lines.map((line) => (
             <li key={line.sku} className="flex justify-between gap-4">

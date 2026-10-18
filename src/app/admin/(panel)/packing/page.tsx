@@ -5,38 +5,40 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatDate } from "@/lib/format";
+import { label } from "@/lib/i18n";
 import { listPackingQueue } from "@/server/orders-admin";
+import { getRequestLabels } from "@/server/i18n";
 
-export const metadata: Metadata = {
-  title: "Kommissionierung — Admin",
-  description: "Offene Picklisten und Pakete.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.packing.title"),
+    description: label(labels, "admin.meta.packing.description"),
+  };
+}
 
 async function PackingView() {
   await connection();
-  const queue = await listPackingQueue();
+  const [queue, labels] = await Promise.all([listPackingQueue(), getRequestLabels()]);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Kommissionierung</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Bestellungen in Kommission oder verpackt — bereit für Pickliste und Etikett.
-      </p>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.packing.title")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{label(labels, "admin.packing.intro")}</p>
 
       {queue.length === 0 ? (
-        <p className="mt-8 text-sm text-muted-foreground">
-          Keine offenen Sendungen. Alles versandt.
-        </p>
+        <p className="mt-8 text-sm text-muted-foreground">{label(labels, "admin.packing.empty")}</p>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Bestellung</th>
-                <th className="py-2 pr-4 font-medium">Datum</th>
-                <th className="py-2 pr-4 font-medium">Kunde</th>
-                <th className="py-2 pr-4 text-right font-medium">Positionen</th>
-                <th className="py-2 font-medium">Status</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.order")}</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.date")}</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.customer")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.orders.column.items")}</th>
+                <th className="py-2 font-medium">{label(labels, "admin.orders.column.status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -56,7 +58,7 @@ async function PackingView() {
                   <td className="py-2.5 pr-4">{order.customerName}</td>
                   <td className="py-2.5 pr-4 text-right tabular-nums">{order.itemCount}</td>
                   <td className="py-2.5">
-                    <OrderStatusBadge status={order.status} />
+                    <OrderStatusBadge status={order.status} labels={labels} />
                   </td>
                 </tr>
               ))}

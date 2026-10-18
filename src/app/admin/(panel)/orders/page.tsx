@@ -5,9 +5,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatChf, formatDate } from "@/lib/format";
+import { interpolate, label } from "@/lib/i18n";
 import { ORDER_STATUSES } from "@/lib/orders/state-machine";
-import { STATUS_LABELS } from "@/lib/orders/labels";
 import { cn } from "@/lib/utils";
+import { getRequestLabels } from "@/server/i18n";
 import {
   ORDER_LIST_LIMIT,
   countOrdersByStatus,
@@ -15,18 +16,19 @@ import {
   type OrderFilter,
 } from "@/server/orders-admin";
 
-export const metadata: Metadata = {
-  title: "Bestellungen — Admin",
-  description: "Bestellungen mit Statusfilter und Übergängen.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const labels = await getRequestLabels();
+  return {
+    title: label(labels, "admin.meta.orders.title"),
+    description: label(labels, "admin.meta.orders.description"),
+  };
+}
 
-const TABS: { filter: OrderFilter; label: string }[] = [
-  { filter: "all", label: "Alle" },
-  ...ORDER_STATUSES.map((status) => ({ filter: status as OrderFilter, label: STATUS_LABELS[status] })),
-];
+const TABS: OrderFilter[] = ["all", ...ORDER_STATUSES];
 
 function activeFilter(raw: string | undefined): OrderFilter {
-  return TABS.some((tab) => tab.filter === raw) ? (raw as OrderFilter) : "all";
+  return TABS.includes(raw as OrderFilter) ? (raw as OrderFilter) : "all";
 }
 
 async function OrdersView({
@@ -35,7 +37,7 @@ async function OrdersView({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
-  const params = await searchParams;
+  const [params, labels] = await Promise.all([searchParams, getRequestLabels()]);
   const raw = typeof params.status === "string" ? params.status : undefined;
   const filter = activeFilter(raw);
   const [orders, counts] = await Promise.all([
@@ -45,15 +47,19 @@ async function OrdersView({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Bestellungen</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{label(labels, "admin.orders.title")}</h1>
 
       <nav
         className="mt-4 flex flex-wrap gap-1 border-b"
-        aria-label="Statusfilter"
+        aria-label={label(labels, "admin.orders.statusFilterAria")}
       >
-        {TABS.map(({ filter: tab, label }) => {
+        {TABS.map((tab) => {
           const count = tab === "all" ? counts.all : counts.byStatus[tab];
           const active = tab === filter;
+          const text =
+            tab === "all"
+              ? label(labels, "admin.action.all")
+              : label(labels, `shop.status.${tab}`);
           return (
             <Link
               key={tab}
@@ -66,7 +72,7 @@ async function OrdersView({
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              {label}
+              {text}
               <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs tabular-nums">
                 {count}
               </span>
@@ -76,18 +82,18 @@ async function OrdersView({
       </nav>
 
       {orders.length === 0 ? (
-        <p className="mt-8 text-sm text-muted-foreground">Keine Bestellungen in diesem Status.</p>
+        <p className="mt-8 text-sm text-muted-foreground">{label(labels, "admin.orders.empty")}</p>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Bestellung</th>
-                <th className="py-2 pr-4 font-medium">Datum</th>
-                <th className="py-2 pr-4 font-medium">Kunde</th>
-                <th className="py-2 pr-4 text-right font-medium">Positionen</th>
-                <th className="py-2 pr-4 text-right font-medium">Total</th>
-                <th className="py-2 font-medium">Status</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.order")}</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.date")}</th>
+                <th className="py-2 pr-4 font-medium">{label(labels, "admin.orders.column.customer")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.orders.column.items")}</th>
+                <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.orders.column.total")}</th>
+                <th className="py-2 font-medium">{label(labels, "admin.orders.column.status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -110,7 +116,7 @@ async function OrdersView({
                     {formatChf(order.totalCents)}
                   </td>
                   <td className="py-2.5">
-                    <OrderStatusBadge status={order.status} />
+                    <OrderStatusBadge status={order.status} labels={labels} />
                   </td>
                 </tr>
               ))}
@@ -120,7 +126,7 @@ async function OrdersView({
       )}
       {orders.length >= ORDER_LIST_LIMIT && (
         <p className="mt-3 text-sm text-muted-foreground">
-          Es werden die neuesten {ORDER_LIST_LIMIT} Bestellungen angezeigt.
+          {interpolate(label(labels, "admin.orders.cap"), { limit: ORDER_LIST_LIMIT })}
         </p>
       )}
     </div>

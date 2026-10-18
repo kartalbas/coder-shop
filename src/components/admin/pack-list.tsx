@@ -1,8 +1,17 @@
 import { formatWeight } from "@/lib/format";
-import { parcelWeightGrams } from "@/lib/shipping/weight";
+import { interpolate, label } from "@/lib/i18n";
+import { PACKAGING_GRAMS, parcelWeightGrams } from "@/lib/shipping/weight";
 import type { Order } from "@/models/order";
 
-export function PackList({ order }: { order: Order }) {
+// Issue #58 step 2: the slip answers in the admin's request language — the page hands
+// over its label map, the packaging weight interpolates PACKAGING_GRAMS.
+export function PackList({
+  order,
+  labels,
+}: {
+  order: Order;
+  labels: Record<string, string>;
+}) {
   const lines = [...order.lines].sort((a, b) => a.sku.localeCompare(b.sku));
   const weight = parcelWeightGrams(order.lines);
 
@@ -10,8 +19,10 @@ export function PackList({ order }: { order: Order }) {
     <div className="print-slip rounded-xl border bg-card p-6 text-card-foreground">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold">Lieferschein / Packliste</h2>
-          <p className="text-sm text-muted-foreground">Bestellung {order.orderNumber}</p>
+          <h2 className="text-lg font-bold">{label(labels, "admin.packing.slip.title")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {interpolate(label(labels, "admin.orders.heading"), { number: order.orderNumber })}
+          </p>
         </div>
         <div className="text-right text-sm">
           <p className="font-medium">{order.customer.name}</p>
@@ -26,10 +37,10 @@ export function PackList({ order }: { order: Order }) {
         <thead>
           <tr className="border-b text-left text-xs uppercase text-muted-foreground">
             <th className="py-2 pr-4 font-medium">SKU</th>
-            <th className="py-2 pr-4 font-medium">Artikel</th>
-            <th className="py-2 pr-4 font-medium">Variante</th>
-            <th className="py-2 pr-4 text-right font-medium">Menge</th>
-            <th className="py-2 text-right font-medium">Gewicht</th>
+            <th className="py-2 pr-4 font-medium">{label(labels, "admin.packing.slip.article")}</th>
+            <th className="py-2 pr-4 font-medium">{label(labels, "admin.packing.slip.variant")}</th>
+            <th className="py-2 pr-4 text-right font-medium">{label(labels, "admin.packing.slip.quantity")}</th>
+            <th className="py-2 text-right font-medium">{label(labels, "admin.packing.slip.weight")}</th>
           </tr>
         </thead>
         <tbody>
@@ -54,7 +65,9 @@ export function PackList({ order }: { order: Order }) {
         <tfoot>
           <tr>
             <td colSpan={3} className="py-3 text-sm font-medium">
-              Paketgewicht (inkl. {"150 g"} Verpackung)
+              {interpolate(label(labels, "admin.packing.slip.totalWeight"), {
+                weight: formatWeight(PACKAGING_GRAMS),
+              })}
             </td>
             <td colSpan={2} className="py-3 text-right font-semibold tabular-nums">
               {formatWeight(weight)}

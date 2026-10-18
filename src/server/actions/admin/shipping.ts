@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { label } from "@/lib/i18n";
 import { objectIdSchema } from "@/lib/validations/common";
+import { getRequestLabels } from "@/server/i18n";
 import { createLabelCore } from "@/server/shipping/label";
 import { requireAdminSession } from "@/server/session";
 
@@ -18,7 +20,9 @@ export async function createLabelAction(
   await requireAdminSession();
 
   const orderId = objectIdSchema.safeParse(formData.get("orderId"));
-  if (!orderId.success) return { error: "Ungültige Anfrage." };
+  if (!orderId.success) {
+    return { error: label(await getRequestLabels(), "admin.error.invalidRequest") };
+  }
 
   const result = await createLabelCore(orderId.data);
   if (!result.ok) return { error: result.error };

@@ -44,12 +44,12 @@ web_deploy() {  # web_deploy [COMMIT] — default HEAD
     npm ci --no-audit --no-fund >"$LOGS/live-install.log" 2>&1 \
       && npx next build >"$LOGS/live-build.log" 2>&1 \
       && { if [[ -f .env.local ]]; then npm run seed; else npm run setup:lan; fi; } >"$LOGS/live-seed.log" 2>&1 \
-      && npm run images >"$LOGS/live-images.log" 2>&1 ) \
+      && { npm run images >"$LOGS/live-images.log" 2>&1 || true; } ) \
     || { log "live: update to ${rev:0:7} failed (live-*.log) — the running shop stays"; return 1; }
   systemctl --user stop coder-shop-web 2>/dev/null || true
   systemd-run --user --unit=coder-shop-web --collect -p WorkingDirectory="$LIVE" -E PATH="$PATH" \
     npx next start -H 0.0.0.0 -p 4000 >/dev/null 2>&1
-  log "live: shop on :4000 now runs ${rev:0:7}"
+  log "live: shop on :4000 now runs ${rev:0:7}$(grep -q 'cannot call the image API' "$LOGS/live-images.log" 2>/dev/null && echo ' (some products have no photo yet)')"
 }
 web_start() { :; }
 
