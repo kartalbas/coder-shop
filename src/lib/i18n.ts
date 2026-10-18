@@ -134,14 +134,16 @@ export function isTranslated(entry: TranslationEntry, language: string): boolean
 }
 
 // Admin list filter (#58 editor): free text over key, German base and every language
-// text, plus the area; both filters are optional and combine.
+// text, the area, and "missing in language X" — all optional, all combining. The
+// missing filter answers the editor's question "what still has to be translated?".
 export function filterTranslations(
   entries: readonly TranslationEntry[],
-  filter: { q?: string; area?: string },
+  filter: { q?: string; area?: string; missingFor?: string },
 ): TranslationEntry[] {
   const q = filter.q?.trim().toLowerCase() ?? "";
   return entries.filter((entry) => {
     if (filter.area && entry.area !== filter.area) return false;
+    if (filter.missingFor && isTranslated(entry, filter.missingFor)) return false;
     if (!q) return true;
     return [entry.key, entry.de, ...Object.values(entry.texts)]
       .join(" ")

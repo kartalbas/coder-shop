@@ -23,18 +23,24 @@ const AREA_LABELS: Record<TranslationArea, string> = {
 };
 
 interface PagePropsLocal {
-  searchParams: Promise<{ q?: string; area?: string }>;
+  searchParams: Promise<{ q?: string; area?: string; missing?: string }>;
 }
 
 const LIST_LIMIT = 200;
 
 export default async function AdminTranslationsPage({ searchParams }: PagePropsLocal) {
   await connection();
-  const { q, area } = await searchParams;
+  const { q, area, missing } = await searchParams;
   const [entries, languages] = await Promise.all([getTranslations(), getActiveLanguages()]);
+  // The missing filter only accepts a real active language code — junk falls back to off.
+  const missingFor =
+    missing && missing !== "alle" && languages.some((language) => language.code === missing)
+      ? missing
+      : undefined;
   const filtered = filterTranslations(entries, {
     q,
     area: area && area !== "alle" ? area : undefined,
+    missingFor,
   });
   const shown = filtered.slice(0, LIST_LIMIT);
 
@@ -83,6 +89,21 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
               {label}
             </option>
           ))}
+        </select>
+        <select
+          name="missing"
+          defaultValue={missingFor ?? "alle"}
+          aria-label="Nach fehlender Übersetzung filtern"
+          className="h-9 rounded-md border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <option value="alle">Alle Sprachen vollständig</option>
+          {languages
+            .filter((language) => language.code !== "de")
+            .map((language) => (
+              <option key={language.code} value={language.code}>
+                Fehlt in: {language.label}
+              </option>
+            ))}
         </select>
         <button
           type="submit"

@@ -146,4 +146,27 @@ describe("filterTranslations (#58 editor)", () => {
     ]);
     expect(filterTranslations(rows, { area: "admin", q: "panier" })).toEqual([]);
   });
+
+  it("keeps only rows missing a text in the chosen language, combined with the rest", () => {
+    // fr: only shop.cart.title has it → the other two are missing.
+    expect(filterTranslations(rows, { missingFor: "fr" }).map((r) => r.key)).toEqual([
+      "admin.nav.orders",
+      "mail.order.subject",
+    ]);
+    // it: only mail.order.subject has it.
+    expect(filterTranslations(rows, { missingFor: "it" }).map((r) => r.key)).toEqual([
+      "shop.cart.title",
+      "admin.nav.orders",
+    ]);
+    // German is the base — nothing is ever missing in it.
+    expect(filterTranslations(rows, { missingFor: "de" })).toEqual([]);
+    // combines with area and text search.
+    expect(
+      filterTranslations(rows, { missingFor: "fr", area: "admin" }).map((r) => r.key),
+    ).toEqual(["admin.nav.orders"]);
+    expect(filterTranslations(rows, { missingFor: "it", q: "panier" }).map((r) => r.key)).toEqual(
+      ["shop.cart.title"],
+    );
+    expect(filterTranslations(rows, { missingFor: "fr", q: "panier" })).toEqual([]);
+  });
 });

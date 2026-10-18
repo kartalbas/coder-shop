@@ -108,3 +108,40 @@ test("translations: a deactivated language's texts survive the next edit", async
     }
   }
 });
+
+// #58 step 4: the "missing in language X" filter — the editor's answer to "what still
+// has to be translated?". Fails on the pre-fix build, where the `missing` parameter was
+// ignored and every row stayed listed.
+test("translations: the missing-in-language filter lists only untranslated rows", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await loginAsAdmin(page);
+
+  // A row translated in Italian only — missing in French and every other language.
+  await page.goto("/admin/translations/neu");
+  await page.getByLabel("Key", { exact: true }).fill("shop.e2e.missing-filter");
+  await page.getByLabel(/Deutsch \(Basis/).fill("Filter-Test");
+  await page.getByLabel(/Italiano/).fill("Prova di filtro");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page).toHaveURL(/\/admin\/translations(\?.*)?$/, { timeout: 30_000 });
+
+  const row = page.locator("tbody tr").filter({ hasText: "shop.e2e.missing-filter" });
+  const seeded = page.locator("tbody tr").filter({ hasText: "shop.cart.title" });
+
+  // Missing in French: the new row is listed, the fully translated seeded row is not.
+  await page.goto("/admin/translations?missing=fr");
+  await expect(row.first()).toBeVisible({ timeout: 30_000 });
+  await expect(seeded).toHaveCount(0);
+  await expect(page.getByLabel("Nach fehlender Übersetzung filtern")).toHaveValue("fr");
+
+  // Missing in Italian: the new row has an Italian text, so nothing is left —
+  // every seeded row is translated in Italian.
+  await page.goto("/admin/translations?missing=it");
+  await expect(row).toHaveCount(0);
+  await expect(page.getByText("Keine Texte gefunden.")).toBeVisible();
+
+  // Junk values fall back to the unfiltered list.
+  await page.goto("/admin/translations?missing=xx");
+  await expect(seeded.first()).toBeVisible({ timeout: 30_000 });
+});

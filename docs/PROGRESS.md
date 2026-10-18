@@ -1538,3 +1538,21 @@ Done — M1–M6 + QA complete.
   `language-routing.spec.ts` × 5 repeats → 25/25 (was 9/10 failures on the switcher
   test alone); `npm run build`/lint/knip ✅, `npm test` ✅ 556,
   `npm run test:e2e` ✅ 60/60.
+
+### #58 (step 4 slice) — missing-translations filter ✅ — issue stays open
+- `filterTranslations` gained `missingFor`: only rows without a text in that language
+  remain (German as base is never missing); it combines with the text search and the
+  area filter. `/admin/translations` shows a „Fehlt in:" select built from the active
+  language rows (a new language appears in it without a code change); junk or
+  deactivated codes fall back to the unfiltered list.
+- Verified: `src/lib/i18n.test.ts` +1 (per-language missing sets, de base, combinations
+  — fails without the filter); e2e `translations.spec.ts` +1 (a row translated in
+  Italian only is listed under „Fehlt in: Français" while the fully translated seeded
+  row is not; under Italian nothing remains; `?missing=xx` is ignored) — fails on the
+  pre-fix build, where the parameter was ignored.
+  `npm run build`/lint/knip ✅, `npm test` ✅ 557, `npm run test:e2e` ✅ 61/61.
+- **Left open (#58):** step 2b locale-parameterized formats; step 3 string extraction
+  + no-German-literals guard + translated metadata; step 4 remainder (needs-review
+  filter, usage context + preview link, keyboard-driven inline editing, change
+  history); step 5 translatable catalog content + two-language checkout e2e; admin
+  language switcher.
