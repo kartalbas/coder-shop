@@ -129,6 +129,23 @@ export function isTranslated(entry: TranslationEntry, language: string): boolean
   return Boolean(entry.texts[language]?.trim());
 }
 
+// Admin list filter (#58 editor): free text over key, German base and every language
+// text, plus the area; both filters are optional and combine.
+export function filterTranslations(
+  entries: readonly TranslationEntry[],
+  filter: { q?: string; area?: string },
+): TranslationEntry[] {
+  const q = filter.q?.trim().toLowerCase() ?? "";
+  return entries.filter((entry) => {
+    if (filter.area && entry.area !== filter.area) return false;
+    if (!q) return true;
+    return [entry.key, entry.de, ...Object.values(entry.texts)]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+  });
+}
+
 export interface Translator {
   t(key: string): string;
   missingKeys(): string[];

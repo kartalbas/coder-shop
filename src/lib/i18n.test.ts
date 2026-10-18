@@ -4,6 +4,7 @@ import {
   createTranslator,
   defaultLanguage,
   DEFAULT_LANGUAGES,
+  filterTranslations,
   isTranslated,
   parseAcceptLanguage,
   resolveLanguage,
@@ -115,5 +116,34 @@ describe("DEFAULT_LANGUAGES", () => {
     expect(DEFAULT_LANGUAGES.find((language) => language.code === "de")?.intlLocale).toBe("de-CH");
     expect(DEFAULT_LANGUAGES.find((language) => language.code === "rm")?.intlLocale).toBe("rm-CH");
     expect(DEFAULT_LANGUAGES.find((language) => language.code === "es")?.intlLocale).toBe("es");
+  });
+});
+
+describe("filterTranslations (#58 editor)", () => {
+  const rows: TranslationEntry[] = [
+    entry({ key: "shop.cart.title", de: "Warenkorb", texts: { fr: "Panier" } }),
+    entry({ key: "admin.nav.orders", area: "admin", de: "Bestellungen", texts: {} }),
+    entry({ key: "mail.order.subject", area: "mail", de: "Ihre Bestellung", texts: { it: "Il tuo ordine" } }),
+  ];
+
+  it("returns everything with no filter", () => {
+    expect(filterTranslations(rows, {})).toHaveLength(3);
+  });
+
+  it("matches key, German base and any language text", () => {
+    expect(filterTranslations(rows, { q: "cart" }).map((r) => r.key)).toEqual(["shop.cart.title"]);
+    expect(filterTranslations(rows, { q: "bestell" }).map((r) => r.key)).toEqual([
+      "admin.nav.orders",
+      "mail.order.subject",
+    ]);
+    expect(filterTranslations(rows, { q: "panier" }).map((r) => r.key)).toEqual(["shop.cart.title"]);
+  });
+
+  it("filters by area and combines with the text search", () => {
+    expect(filterTranslations(rows, { area: "mail" }).map((r) => r.key)).toEqual(["mail.order.subject"]);
+    expect(filterTranslations(rows, { area: "shop", q: "warenkorb" }).map((r) => r.key)).toEqual([
+      "shop.cart.title",
+    ]);
+    expect(filterTranslations(rows, { area: "admin", q: "panier" })).toEqual([]);
   });
 });

@@ -622,6 +622,11 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
 - **Rows are process-cached and invalidated on write** (`saveTranslationCore` /
   `saveLanguageCore`), so an edit is live on the next request without a deploy while reads
   stay one DB round-trip per process, not per request.
-- **Step 1 of 5 only:** the tables, the resolver, the loader and the seed exist; the
+- **Language rows are deactivated, never deleted** (same discipline as suppliers): a row
+  with `active: false` stops answering the resolver and leaves the switcher, but its
+  `texts` entries survive, so re-activating a language restores every text at once. The
+  admin languages editor exposes `active` as a checkbox and gives a row no delete.
+- **Steps:** step 1 (tables, resolver, cached loader, insert-only seed) and the admin
+  editor (translation table + languages, behind the validated cores) are done; the
   language-prefix routing, the switcher, the string extraction, the catalog content and
-  the admin editor follow in the remaining steps.
+  the two-language checkout e2e follow in the remaining steps.

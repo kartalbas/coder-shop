@@ -126,6 +126,11 @@ src/
         catalog-types/page.tsx, catalog-types/[key]/page.tsx  # catalog type editor:
                             # label, position, dimensions, brands, flags (#64, writes
                             # through saveCatalogTypeCore)
+        translations/page.tsx          # translation table: search + area filter, per-language
+                            # columns with a visible "fehlt" fallback marker (#58)
+        translations/[key]/page.tsx    # one text: German base + every language column (#58)
+        translations/languages/page.tsx # language rows editor — a new language is a form,
+                            # deactivate instead of delete (#58)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
       invoices/[orderId]/route.ts  # GET invoice PDF (session-guarded, §4, #40)
     api/
@@ -176,6 +181,8 @@ src/
          review-actions.tsx,         # approve / hide / answer a review (#47)
          shop-settings-form.tsx,     # VAT + shipping + payment method editor (#64)
          catalog-type-editor.tsx     # catalog type form: label, dimensions, brands (#64)
+         translation-editor.tsx      # one text: key, area, German base, language columns (#58)
+         languages-editor.tsx        # language rows: code, label, intlLocale, position, active (#58)
   models/                   # mongoose schemas (pure shapes re-exported from src/lib, §2 purity)
     product.ts order.ts checkout-claim.ts user.ts supplier.ts purchase-order.ts counter.ts
     product-type-config.ts  # product types, variant dimensions, facets as data (#61, §3)
@@ -321,6 +328,8 @@ src/
       admin/reviews.ts      # setReviewStatus, replyToReview → *Core fns (#47)
       admin/settings.ts     # saveShopSettings → saveShopSettingsCore (#64)
       admin/catalog-types.ts # saveCatalogType → saveCatalogTypeCore (#64)
+      admin/translations.ts # saveTranslation → saveTranslationCore, saveLanguage →
+                            # saveLanguageCore (#58)
       admin/command-palette.ts # commandSearch action for the ⌘K palette (#49)
       wishlist.ts           # syncWishlistAction (merge/replace), removeWishlistItemAction (#46)
       restock-alerts.ts     # subscribeRestockAlertAction (#46)
@@ -1028,6 +1037,9 @@ Specs (the three required journeys):
   reserved unit with its serial bound to the order → picking/packed (serial on the packing
   slip) → label → shipped → delivered → the same serial reads „Verkauft" with the full
   history.
+- `translations.spec.ts` (#58) — admin edits a seeded text's French column and sees it on
+  reload → creates a new key (German base + one language, untranslated columns show the
+  visible „fehlt" marker) → adds a language row (Portuguese) through the languages editor.
 
 Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
 prerequisite; `npm test` and `npm run lint` are independent).

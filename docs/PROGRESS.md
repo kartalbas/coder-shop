@@ -1413,3 +1413,29 @@ Done — M1–M6 + QA complete.
   e2e `purchasing.spec.ts` asserts the ledger shows the received serial's PO number linking to
   the PO detail with the `Wareneingang E-…` note — all fail on the pre-fix build.
   `npm run build`/lint/knip ✅, `npm test` ✅ 520, `npm run test:e2e` ✅ 53/53.
+
+### #58 (step 4 slice) — admin translation + language editor ✅ — issue stays open
+- **`/admin/translations`** — the one translation table as an editable list: free-text
+  search over key/German/every language + area filter (`filterTranslations`, pure), a
+  column per active language with a visible amber „fehlt" marker where a text falls back
+  to German, capped at 200 rows with a narrow-the-search hint. `/admin/translations/[key]`
+  edits one row (key fixed, area select, required German base, one input per language —
+  blank = missing); `/admin/translations/neu` adds a key.
+- **`/admin/translations/languages`** — the language rows as forms: code (fixed once
+  created), label, intlLocale, position, `active`. A new language is a form, not a deploy
+  (the #58 done-when, operable); rows deactivate instead of delete so their texts survive.
+- **Writes go through the existing validated cores** (`saveTranslationCore`/
+  `saveLanguageCore`) behind two zod-guarded admin actions (`saveTranslationAction`/
+  `saveLanguageAction`) — no new write path, cache invalidated on every save, nav entry
+  „Übersetzungen".
+- Verified: `src/lib/i18n.test.ts` +3 (`filterTranslations` text/area/combined);
+  `tests/i18n.test.ts` +3 (action round-trip: save → translator answers it; junk key /
+  missing German / unknown language code refused with nothing written; a new language row
+  via the action); new e2e `translations.spec.ts` (edit a French text → reload shows it;
+  new key with the „fehlt" marker; add Portuguese) — fails on the pre-fix build.
+  `npm run build`/lint/knip ✅, `npm test` ✅ 526, `npm run test:e2e` ✅ 54/54.
+- **Left open:** step 2 language-prefix routing + switcher + hreflang (design decided:
+  `app/[lang]/…` nesting per the Next 16 i18n guide — a proxy rewrite would make the root
+  layout dynamic and kill the PPR shell), step 3 extracting every remaining UI/mail/PDF
+  string into rows (the missing-key check fails on untranslated keys), step 4 remainder
+  (translation history), step 5 translatable catalog content + two-language checkout e2e.

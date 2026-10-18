@@ -1,5 +1,6 @@
 import {
   Boxes,
+  Languages,
   LayoutDashboard,
   Layers,
   Mail,
@@ -31,5 +32,6 @@ export const ADMIN_NAV = [
   { href: "/admin/suppliers", label: "Lieferanten", icon: Users },
   { href: "/admin/mails", label: "Mails", icon: Mail },
   { href: "/admin/catalog-types", label: "Katalogtypen", icon: Layers },
+  { href: "/admin/translations", label: "Übersetzungen", icon: Languages },
   { href: "/admin/settings", label: "Einstellungen", icon: Settings },
 ] as const;
