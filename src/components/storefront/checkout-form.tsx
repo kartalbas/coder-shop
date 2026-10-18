@@ -85,9 +85,12 @@ export interface CheckoutPrefill {
 export function CheckoutForm({
   prefill,
   invoiceAvailable = false,
+  labels,
 }: {
   prefill?: CheckoutPrefill;
   invoiceAvailable?: boolean;
+  // Issue #58 step 3: translation-table labels for the discount field.
+  labels: Record<string, string>;
 }) {
   const { chf } = useFormatters();
   const router = useRouter();
@@ -417,6 +420,7 @@ export function CheckoutForm({
             <Separator />
             <DiscountInput
               subtotalCents={totals.subtotalCents}
+              labels={labels}
               onDiscountChange={setDiscountCents}
             />
             <dl className="space-y-1.5 text-sm">

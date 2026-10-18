@@ -5,7 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
 import { getLanguages } from "@/server/i18n";
-import { BASE_LANGUAGE, DEFAULT_LANGUAGES } from "@/lib/i18n";
+import { BASE_LANGUAGE, DEFAULT_LANGUAGES, intlLocaleOf } from "@/lib/i18n";
 import { LOCALIZED_PATH_HEADER, localizedPath, splitLanguagePrefix } from "@/lib/locale-path";
 import { absoluteUrl } from "@/lib/site";
 import { SITE_METADATA_BASE } from "../site-metadata";
@@ -41,7 +41,10 @@ export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Prom
     ...SITE_METADATA_BASE,
     openGraph: {
       ...SITE_METADATA_BASE.openGraph,
-      locale: (current?.intlLocale ?? "de-CH").replace("-", "_"),
+      locale: (current?.intlLocale ?? intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE)).replace(
+        "-",
+        "_",
+      ),
     },
     alternates: {
       canonical: absoluteUrl(localizedPath(lang, rest)),

@@ -1629,3 +1629,44 @@ Done — M1–M6 + QA complete.
   `npm test` ✅ 569, `npm run test:e2e` ✅ 67/67.
 - **Left open (#58):** step 3 remainder (remaining storefront/admin/mail/invoice body
   strings + no-German-literals guard), step 4 remainder, step 5, admin switcher.
+
+## ISSUES — queue session 21 (2026-10-18)
+
+### Gate report findings — no defect, re-verified ✅
+- `GET / → 307`, `GET /produkte → 308` and „no `/produkt/…` links" are the intended
+  #63/#58-step-2 behaviour, re-verified live against a fresh seed: `/` → 307 → `/de`,
+  `/produkte` → 308 → `/products` → 307 → `/de/products` (200, 24 product links on the
+  English `/products/<slug>` paths), health 200. Server + mongod stopped again.
+
+### #58 (review fixes + step 3 slice) — cart flow texts + the four review findings ✅ — issue stays open
+- **Review fixes (from the review of 8d6ab34/1130315):** `StarRating` and the
+  `ReviewSection` average no longer call `toLocaleString("de-CH")` — the star is a
+  client component reading `useFormatters().number` (its context default keeps the
+  admin `/admin/reviews` usage on the base locale), the section formats with the
+  request language's `createFormatters`; the `[lang]` layout's Open Graph fallback is
+  `intlLocaleOf(DEFAULT_LANGUAGES, BASE_LANGUAGE)` instead of the literal `"de-CH"`;
+  the pinned `"schaner"` in `format.test.ts` became an equality check against
+  `new Intl.DateTimeFormat("rm-CH", …)` computed in the test (locale-driven, no ICU
+  vocabulary pinned); the order-confirmation `generateMetadata` got the `connection()`
+  guard the other four metadata functions have (#37 rule).
+- **Cart flow into the table (area `shop`, 13 new keys seeded in all five languages —
+  the seed test enforces):** empty page/drawer texts, „Weiter einkaufen", summary,
+  subtotal, „Zur Kasse", the remove/decrease/increase aria labels (`{name}`), the
+  free-shipping sentence (`{amount}` interpolated **already formatted**, so value and
+  locale stay in one place) with its unlocked variant and progress aria-label, and the
+  discount field label. Plumbing is the established prop pattern: the storefront layout
+  hands the drawer its labels in a new `CartDrawerSlot` (dynamic hole, fallback null —
+  the closed drawer occupies no space, the static shell survives), the cart page passes
+  them to `CartPageView`, the checkout page through `CheckoutForm` to `DiscountInput`.
+- Verified: new `star-rating.test.tsx` (2 via `renderToString`: es writes „4,5", de
+  „4.5", provider-less admin stays base — **fails on the pre-fix component**,
+  reproduced); new e2e `cart-translations.spec.ts` (3: empty fr cart page, filled fr
+  cart page with „Retirer :" present and „Entfernen:" absent + „Code promo" + French
+  free-shipping sentence, fr drawer) — fails on the pre-change build where all of it
+  was hard-coded German; the changed format test and the seed-translation test cover
+  fixes 2–3. `npm run build`/lint/knip ✅, `npm test` ✅ 571,
+  `npm run test:e2e` ✅ 70/70.
+- **Left open (#58):** step 3 remainder (checkout body, product page + review strings,
+  account/auth forms, listing/filter, admin strings + admin language switcher,
+  mail/invoice/slip/label texts in the recipient's language, no-German-literals guard),
+  step 4 remainder, step 5, admin switcher.

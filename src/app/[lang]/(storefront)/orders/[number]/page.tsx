@@ -29,6 +29,7 @@ interface PagePropsLocal {
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
   const { number, lang } = await params;
   // Issue #58 step 3: metadata texts from the translation table, order number interpolated.
+  await connection();
   const labels = await getLabels(lang);
   return {
     title: interpolate(label(labels, "shop.meta.order.title"), { number }),

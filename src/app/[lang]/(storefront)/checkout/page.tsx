@@ -30,8 +30,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function CheckoutPage() {
+export default async function CheckoutPage({ params }: PageProps<"/[lang]/checkout">) {
   await connection();
+  // Issue #58 step 3: the discount field's texts come from the translation table.
+  const labels = await getLabels((await params).lang);
   // Issue #39: logged in? the form starts from the profile and default address.
   const userId = await getCustomerSessionUserId();
   const profile = userId ? await getCustomerProfile(userId) : null;
@@ -78,7 +80,7 @@ export default async function CheckoutPage() {
           <span className="text-muted-foreground">— oder als Gast bestellen.</span>
         </div>
       )}
-      <CheckoutForm prefill={prefill} invoiceAvailable={invoiceAvailable} />
+      <CheckoutForm prefill={prefill} invoiceAvailable={invoiceAvailable} labels={labels} />
     </div>
   );
 }

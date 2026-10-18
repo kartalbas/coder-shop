@@ -18,7 +18,7 @@ export async function ReviewSection({
   // Issue #58 step 2b: review dates follow the request language's Intl locale.
   intlLocale: string;
 }) {
-  const { date } = createFormatters(intlLocale);
+  const { date, number } = createFormatters(intlLocale);
   const { aggregate, reviews } = await getProductReviewsCore(product.id);
   const userId = await getCustomerSessionUserId();
   const [ownReview, purchased] = userId
@@ -37,7 +37,7 @@ export async function ReviewSection({
       {aggregate.count > 0 && (
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex items-center gap-3">
-            <p className="text-4xl font-bold">{aggregate.average.toLocaleString("de-CH")}</p>
+            <p className="text-4xl font-bold">{number(aggregate.average)}</p>
             <div>
               <StarRating value={aggregate.average} size="lg" />
               <p className="mt-0.5 text-sm text-muted-foreground">

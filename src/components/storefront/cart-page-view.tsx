@@ -10,6 +10,7 @@ import { DiscountInput } from "@/components/storefront/discount-input";
 import { useFormatters } from "@/components/storefront/locale-formatters";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import { useShopSettings } from "@/components/shop-settings-provider";
+import { interpolate, label } from "@/lib/i18n";
 import { activeShippingMethods, vatLabel } from "@/lib/shop-settings";
 import {
   cartSubtotalCents,
@@ -19,7 +20,9 @@ import {
   useCartHydrated,
 } from "@/stores/cart";
 
-export function CartPageView() {
+// Issue #58 step 3: the cart page's texts come from the translation table, handed down
+// by the page as a plain label map resolved to the request language.
+export function CartPageView({ labels }: { labels: Record<string, string> }) {
   const { chf } = useFormatters();
   const cart = useCart();
   const hydrated = useCartHydrated();
@@ -44,12 +47,12 @@ export function CartPageView() {
     return (
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-24 text-center">
         <ShoppingBag className="size-12 text-muted-foreground" aria-hidden />
-        <h1 className="text-2xl font-bold">Ihr Warenkorb ist leer</h1>
+        <h1 className="text-2xl font-bold">{label(labels, "shop.cart.emptyPage")}</h1>
         <p className="text-muted-foreground">
           Entdecken Sie unser Sortiment an Smartphones, Schuhen und Kleidung.
         </p>
         <Button asChild size="lg">
-          <Link href="/products">Weiter einkaufen</Link>
+          <Link href="/products">{label(labels, "shop.action.continueShopping")}</Link>
         </Button>
       </div>
     );
@@ -57,7 +60,9 @@ export function CartPageView() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Warenkorb</h1>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        {label(labels, "shop.cart.title")}
+      </h1>
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_360px]">
         <ul className="space-y-4">
           {cart.lines.map((line) => (
@@ -86,7 +91,9 @@ export function CartPageView() {
                         variant="ghost"
                         size="icon"
                         className="size-8 shrink-0 text-muted-foreground"
-                        aria-label={`Entfernen: ${line.name}`}
+                          aria-label={interpolate(label(labels, "shop.cart.remove"), {
+                            name: line.name,
+                          })}
                         onClick={() => removeLine(line.sku)}
                       >
                         <Trash2 className="size-4" />
@@ -98,7 +105,9 @@ export function CartPageView() {
                           variant="ghost"
                           size="icon"
                           className="size-8"
-                          aria-label={`Menge verringern: ${line.name}`}
+                          aria-label={interpolate(label(labels, "shop.cart.decrease"), {
+                            name: line.name,
+                          })}
                           onClick={() => updateQty(line.sku, line.qty - 1)}
                         >
                           <Minus className="size-3.5" />
@@ -110,7 +119,9 @@ export function CartPageView() {
                           variant="ghost"
                           size="icon"
                           className="size-8"
-                          aria-label={`Menge erhöhen: ${line.name}`}
+                          aria-label={interpolate(label(labels, "shop.cart.increase"), {
+                            name: line.name,
+                          })}
                           disabled={line.qty >= line.stock}
                           onClick={() => updateQty(line.sku, line.qty + 1)}
                         >
@@ -136,15 +147,15 @@ export function CartPageView() {
         <aside>
           <Card className="lg:sticky lg:top-24">
             <CardContent className="space-y-4 p-5">
-              <h2 className="font-semibold">Zusammenfassung</h2>
-              <FreeShippingProgress subtotalCents={subtotal} />
+              <h2 className="font-semibold">{label(labels, "shop.cart.summary")}</h2>
+              <FreeShippingProgress subtotalCents={subtotal} labels={labels} />
               <Separator />
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Zwischensumme</span>
+                <span className="text-muted-foreground">{label(labels, "shop.cart.subtotal")}</span>
                 <span className="text-lg font-semibold">{chf(subtotal)}</span>
               </div>
               {/* Issue #45: the code is remembered here and applied in the checkout. */}
-              <DiscountInput subtotalCents={subtotal} />
+              <DiscountInput subtotalCents={subtotal} labels={labels} />
               <p className="text-xs text-muted-foreground">
                 {activeShippingMethods(settings)
                   .filter((method) => !method.storePickup)
@@ -154,10 +165,10 @@ export function CartPageView() {
                 {vatLabel(settings.vatRatePercent)}.
               </p>
               <Button asChild size="lg" className="w-full">
-                <Link href="/checkout">Zur Kasse</Link>
+                <Link href="/checkout">{label(labels, "shop.action.checkout")}</Link>
               </Button>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/products">Weiter einkaufen</Link>
+                <Link href="/products">{label(labels, "shop.action.continueShopping")}</Link>
               </Button>
             </CardContent>
           </Card>

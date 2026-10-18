@@ -70,6 +70,14 @@ async function LocaleSlot({ lang }: { lang: string }) {
   return <LocaleSync intlLocale={await getIntlLocale(lang)} />;
 }
 
+// Issue #58 step 3: the drawer's texts come from the translation table too. It sits in
+// a dynamic hole (fallback null — the closed drawer occupies no space, so no shift) so
+// the static shell of every storefront page survives.
+async function CartDrawerSlot({ lang }: { lang: string }) {
+  await connection();
+  return <CartDrawer labels={await getLabels(lang)} />;
+}
+
 async function FooterSlot({ lang }: { lang: string }) {
   await connection();
   const [types, settings, labels] = await Promise.all([
@@ -123,7 +131,9 @@ export default async function StorefrontLayout({
       <Suspense fallback={<HeaderSkeleton />}>
         <HeaderSlot lang={lang} />
       </Suspense>
-      <CartDrawer />
+      <Suspense fallback={null}>
+        <CartDrawerSlot lang={lang} />
+      </Suspense>
       <main id="main" className="flex-1">
         {children}
       </main>

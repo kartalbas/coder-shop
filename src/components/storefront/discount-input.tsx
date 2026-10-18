@@ -5,17 +5,21 @@ import { BadgeCheck, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFormatters } from "@/components/storefront/locale-formatters";
+import { label } from "@/lib/i18n";
 import { setDiscountCode, useCart } from "@/stores/cart";
 import { validateDiscountAction } from "@/server/actions/discounts";
 
 // Discount code field for cart and checkout (issue #45): "Einlösen" validates against
 // the server with clear German feedback; the applied code shows its reduction and can
-// be removed again. The server re-checks everything at order time regardless.
+// be removed again. The server re-checks everything at order time regardless. The
+// field's own text is a translation-table label (#58 step 3).
 export function DiscountInput({
   subtotalCents,
+  labels,
   onDiscountChange,
 }: {
   subtotalCents: number;
+  labels: Record<string, string>;
   onDiscountChange?: (discountCents: number) => void;
 }) {
   const { chf } = useFormatters();
@@ -78,8 +82,8 @@ export function DiscountInput({
         <Input
           value={code}
           onChange={(event) => setCode(event.target.value)}
-          placeholder="Gutscheincode"
-          aria-label="Gutscheincode"
+          placeholder={label(labels, "shop.discount.code")}
+          aria-label={label(labels, "shop.discount.code")}
           aria-invalid={error !== null}
           autoComplete="off"
           className="h-8 text-sm"

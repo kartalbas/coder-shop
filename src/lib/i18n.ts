@@ -161,6 +161,141 @@ export const DEFAULT_TRANSLATIONS: TranslationEntry[] = [
       es: "coder-shop — tienda de demostración",
     },
   },
+  // Cart flow (#58 step 3 slice): drawer, page, free-shipping bar and discount field,
+  // every one seeded in all five languages; {name}/{amount} are interpolated values.
+  {
+    key: "shop.cart.emptyPage",
+    area: "shop",
+    de: "Ihr Warenkorb ist leer",
+    texts: {
+      fr: "Votre panier est vide",
+      it: "Il vostro carrello è vuoto",
+      rm: "Voss charret è vid",
+      es: "Su cesta está vacía",
+    },
+  },
+  {
+    key: "shop.cart.emptyDrawer",
+    area: "shop",
+    de: "Ihr Warenkorb ist leer.",
+    texts: {
+      fr: "Votre panier est vide.",
+      it: "Il vostro carrello è vuoto.",
+      rm: "Voss charret è vid.",
+      es: "Su cesta está vacía.",
+    },
+  },
+  {
+    key: "shop.action.continueShopping",
+    area: "shop",
+    de: "Weiter einkaufen",
+    texts: {
+      fr: "Continuer vos achats",
+      it: "Continua gli acquisti",
+      rm: "Cuntinuar a comprar",
+      es: "Seguir comprando",
+    },
+  },
+  {
+    key: "shop.cart.summary",
+    area: "shop",
+    de: "Zusammenfassung",
+    texts: { fr: "Résumé", it: "Riepilogo", rm: "Resum", es: "Resumen" },
+  },
+  {
+    key: "shop.cart.subtotal",
+    area: "shop",
+    de: "Zwischensumme",
+    texts: { fr: "Sous-total", it: "Subtotale", rm: "Subtotal", es: "Subtotal" },
+  },
+  {
+    key: "shop.action.checkout",
+    area: "shop",
+    de: "Zur Kasse",
+    texts: {
+      fr: "Passer à la caisse",
+      it: "Vai alla cassa",
+      rm: "A la cassa",
+      es: "Tramitar pedido",
+    },
+  },
+  {
+    key: "shop.cart.remove",
+    area: "shop",
+    de: "Entfernen: {name}",
+    texts: {
+      fr: "Retirer : {name}",
+      it: "Rimuovi: {name}",
+      rm: "Eliminar: {name}",
+      es: "Quitar: {name}",
+    },
+  },
+  {
+    key: "shop.cart.decrease",
+    area: "shop",
+    de: "Menge verringern: {name}",
+    texts: {
+      fr: "Diminuer la quantité : {name}",
+      it: "Riduci quantità: {name}",
+      rm: "Quantitad reducer: {name}",
+      es: "Reducir cantidad: {name}",
+    },
+  },
+  {
+    key: "shop.cart.increase",
+    area: "shop",
+    de: "Menge erhöhen: {name}",
+    texts: {
+      fr: "Augmenter la quantité : {name}",
+      it: "Aumenta quantità: {name}",
+      rm: "Quantitad augmentar: {name}",
+      es: "Aumentar cantidad: {name}",
+    },
+  },
+  {
+    key: "shop.cart.freeShipping",
+    area: "shop",
+    de: "Noch {amount} bis zum kostenlosen Versand",
+    texts: {
+      fr: "Encore {amount} pour la livraison gratuite",
+      it: "Ancora {amount} per la spedizione gratuita",
+      rm: "Anc {amount} fin a la spedition gratuita",
+      es: "Faltan {amount} para el envío gratuito",
+    },
+  },
+  {
+    key: "shop.cart.freeShippingUnlocked",
+    area: "shop",
+    de: "Kostenloser Versand gesichert",
+    texts: {
+      fr: "Livraison gratuite garantie",
+      it: "Spedizione gratuita garantita",
+      rm: "Spedition gratuita segirada",
+      es: "Envío gratuito garantizado",
+    },
+  },
+  {
+    key: "shop.cart.freeShippingProgress",
+    area: "shop",
+    de: "Fortschritt bis zum kostenlosen Versand",
+    texts: {
+      fr: "Progression vers la livraison gratuite",
+      it: "Avanzamento verso la spedizione gratuita",
+      rm: "Progress vers la spedition gratuita",
+      es: "Progreso hacia el envío gratuito",
+    },
+  },
+  {
+    key: "shop.discount.code",
+    area: "shop",
+    de: "Gutscheincode",
+    texts: {
+      fr: "Code promo",
+      it: "Codice sconto",
+      rm: "Code da reducziun",
+      es: "Código de descuento",
+    },
+  },
   // Page metadata (#58 step 3): titles and descriptions per page, {placeholders} for
   // the VAT label and the order number.
   {

@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ProductImage } from "@/components/storefront/product-image";
 import { useFormatters } from "@/components/storefront/locale-formatters";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
+import { interpolate, label } from "@/lib/i18n";
 import {
   cartSubtotalCents,
   closeCartDrawer,
@@ -17,7 +18,9 @@ import {
   useCartDrawerOpen,
 } from "@/stores/cart";
 
-export function CartDrawer() {
+// Issue #58 step 3: the drawer's texts come from the translation table, handed down by
+// the storefront layout as a plain label map resolved to the request language.
+export function CartDrawer({ labels }: { labels: Record<string, string> }) {
   const { chf } = useFormatters();
   const open = useCartDrawerOpen();
   const cart = useCart();
@@ -27,13 +30,15 @@ export function CartDrawer() {
     <Sheet open={open} onOpenChange={(next) => (next ? undefined : closeCartDrawer())}>
       <SheetContent side="right" className="flex w-full flex-col gap-0 sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Warenkorb</SheetTitle>
+          <SheetTitle>{label(labels, "shop.cart.title")}</SheetTitle>
         </SheetHeader>
         {cart.lines.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <p className="text-muted-foreground">Ihr Warenkorb ist leer.</p>
+            <p className="text-muted-foreground">{label(labels, "shop.cart.emptyDrawer")}</p>
             <Button asChild variant="outline">
-              <Link href="/products" onClick={closeCartDrawer}>Weiter einkaufen</Link>
+              <Link href="/products" onClick={closeCartDrawer}>
+                {label(labels, "shop.action.continueShopping")}
+              </Link>
             </Button>
           </div>
         ) : (
@@ -61,7 +66,9 @@ export function CartDrawer() {
                           variant="ghost"
                           size="icon"
                           className="size-7"
-                          aria-label={`Menge verringern: ${line.name}`}
+                          aria-label={interpolate(label(labels, "shop.cart.decrease"), {
+                            name: line.name,
+                          })}
                           onClick={() => updateQty(line.sku, line.qty - 1)}
                         >
                           <Minus className="size-3" />
@@ -71,7 +78,9 @@ export function CartDrawer() {
                           variant="ghost"
                           size="icon"
                           className="size-7"
-                          aria-label={`Menge erhöhen: ${line.name}`}
+                          aria-label={interpolate(label(labels, "shop.cart.increase"), {
+                            name: line.name,
+                          })}
                           disabled={line.qty >= line.stock}
                           onClick={() => updateQty(line.sku, line.qty + 1)}
                         >
@@ -85,7 +94,9 @@ export function CartDrawer() {
                     variant="ghost"
                     size="icon"
                     className="size-8 shrink-0 self-start text-muted-foreground"
-                    aria-label={`Entfernen: ${line.name}`}
+                      aria-label={interpolate(label(labels, "shop.cart.remove"), {
+                        name: line.name,
+                      })}
                     onClick={() => removeLine(line.sku)}
                   >
                     <Trash2 className="size-4" />
@@ -95,15 +106,19 @@ export function CartDrawer() {
             </ul>
             <div className="border-t p-4">
               <div className="mb-3">
-                <FreeShippingProgress subtotalCents={subtotal} />
+                <FreeShippingProgress subtotalCents={subtotal} labels={labels} />
               </div>
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Zwischensumme</span>
+                <span className="text-sm text-muted-foreground">
+                  {label(labels, "shop.cart.subtotal")}
+                </span>
                 <span className="text-lg font-semibold">{chf(subtotal)}</span>
               </div>
               <Separator className="mb-3" />
               <Button asChild className="w-full" size="lg">
-                <Link href="/checkout" onClick={closeCartDrawer}>Zur Kasse</Link>
+                <Link href="/checkout" onClick={closeCartDrawer}>
+                  {label(labels, "shop.action.checkout")}
+                </Link>
               </Button>
             </div>
           </>

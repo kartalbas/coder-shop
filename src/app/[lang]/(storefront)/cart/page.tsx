@@ -25,6 +25,10 @@ export async function generateMetadata({
   };
 }
 
-export default function CartPage() {
-  return <CartPageView />;
+export default async function CartPage({ params }: PageProps<"/[lang]/cart">) {
+  // Issue #58 step 3: the view's texts come from the translation table (the page is
+  // dynamic anyway — behind `connection()` per the #37 rule).
+  await connection();
+  const labels = await getLabels((await params).lang);
+  return <CartPageView labels={labels} />;
 }

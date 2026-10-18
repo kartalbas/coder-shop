@@ -1,4 +1,7 @@
+"use client";
+
 import { Star } from "lucide-react";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { cn } from "@/lib/utils";
 
 // Star display (issue #47): `value` out of 5, halves not attempted — the average is
@@ -12,12 +15,13 @@ export function StarRating({
   size?: "sm" | "lg";
   className?: string;
 }) {
+  const { number } = useFormatters();
   const starClass = size === "lg" ? "size-5" : "size-4";
   return (
     <span
       className={cn("inline-flex items-center gap-0.5", className)}
       role="img"
-      aria-label={`${value.toLocaleString("de-CH")} von 5 Sternen`}
+      aria-label={`${number(value)} von 5 Sternen`}
     >
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
