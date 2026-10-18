@@ -7,7 +7,10 @@ import { HAPPY_PATH } from "@/lib/orders/state-machine";
 import { computeTotals } from "@/lib/pricing";
 import { parcelWeightGrams } from "@/lib/shipping/weight";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
+import { DEFAULT_LANGUAGES, DEFAULT_TRANSLATIONS } from "@/lib/i18n";
 import { DEFAULT_SHOP_SETTINGS, type ShopSettings } from "@/lib/shop-settings";
+import { LanguageModel } from "@/models/language";
+import { TranslationModel } from "@/models/translation";
 import { deriveFilter } from "@/lib/facets";
 import { CounterModel } from "@/models/counter";
 import { OrderModel, type OrderStatus, type StatusLogEntry } from "@/models/order";
@@ -98,6 +101,28 @@ export async function seedShopSettings(): Promise<ShopSettings> {
   );
   const doc = await ShopSettingsModel.findOne({ key: "shop" }).lean().exec();
   return doc ? toShopSettings(doc) : structuredClone(DEFAULT_SHOP_SETTINGS);
+}
+
+// Issue #58: the shop's languages and the single translation table are configuration
+// rows, seeded insert-only (#14) so admin edits and added languages survive a re-seed.
+export async function seedLanguages(): Promise<void> {
+  for (const language of DEFAULT_LANGUAGES) {
+    await LanguageModel.updateOne(
+      { code: language.code },
+      { $setOnInsert: { ...language } },
+      { upsert: true },
+    );
+  }
+}
+
+export async function seedTranslations(): Promise<void> {
+  for (const entry of DEFAULT_TRANSLATIONS) {
+    await TranslationModel.updateOne(
+      { key: entry.key },
+      { $setOnInsert: { ...entry } },
+      { upsert: true },
+    );
+  }
 }
 
 // The denormalized `filter` block is derived data (ARCHITECTURE §3): recompute it from
@@ -374,6 +399,8 @@ async function main(): Promise<void> {
   const rng = mulberry32(987654321);
   const types = await seedCatalogTypes();
   const shopSettings = await seedShopSettings();
+  await seedLanguages();
+  await seedTranslations();
   const productCount = await seedProducts();
   const unitCount = await seedStockUnits(types);
   if (unitCount > 0) console.log(`serial units created: ${unitCount}`);

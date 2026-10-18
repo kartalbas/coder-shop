@@ -1314,3 +1314,65 @@ Done — M1–M6 + QA complete.
   (buy → reserved unit → slip serial → ship → delivered → "Verkauft" with history) and
   reworked `incoming-stock.spec.ts` — both fail on the pre-#62 build.
   `npm run build`/lint/knip ✅, `npm test` ✅ 495, `npm run test:e2e` ✅ 53/53.
+
+## ISSUES — queue session 16 (2026-10-18)
+
+### Gate recovery (before the queue) ✅
+- The gate's `/api/health` 500 and link-less `/produkte` were again an orphaned
+  `next-server` (spinning at 100 % CPU) plus its mongod holding the `data/mongo`
+  lock; both killed, nothing left running. The 48 uncommitted files were the
+  finished #62 work and `a8b465f` the unpushed #63 DECISIONS entry — both delivered
+  below after re-running the full gate on this tree.
+
+### #63 (second reopen) — DECISIONS wording, then pushed ✅
+- The reopened finding was two wording points in the #63 DECISIONS entry: the
+  missing note that **#58 prefixes the language in front of the English paths**
+  (`/fr/account/profile` — the path stays English in every language), and an
+  overstated e2e claim. The entry now says what `english-urls.spec.ts` actually
+  asserts: every former German URL answers `308` with its exact English target in
+  `Location` (query preserved, redirects not followed), `200` checked directly on
+  `/products`, guest `/account` a `307` to `/account/login`. Docs-only, staged as
+  the #63 hunk alone so the #62 DECISIONS hunk stayed for its own commit.
+- Verified: `git push` (with `a8b465f`) closed #63; issue state `CLOSED`.
+
+### #62 — serial-number stock and derived incoming stock ✅
+- The whole implementation was finished and gate-recorded in queue session 15 but
+  never committed. Re-verified on this tree before committing: lint, knip, build,
+  `npm test` ✅ 495 and `npm run test:e2e` ✅ 53/53 (throw-away replica set, port
+  3100 verified free first) — including the new `tests/stock-units.test.ts` (11),
+  the incoming-stock pure tests and the `serial-stock`/`incoming-stock` e2e specs,
+  all of which fail on the pre-#62 build.
+- Design as built (DECISIONS): `stock_units` is the ledger for types whose config
+  says `stockTracking: "serial"`, `variant.stock` stays the derived count;
+  reservation lives inside the checkout transaction and units travel with the order;
+  incoming stock is derived per SKU from `ordered` PO lines, never stored twice.
+- Verified: committed as one commit (`fixes #62`) and pushed; issue state `CLOSED`,
+  tree clean.
+
+### #58 — translation foundation (step 1 of 5) ✅ — issue stays open
+- **`languages` + `translations` are the two new configuration collections** (§3):
+  a language is a row (`code`, `label`, `intlLocale`, `position`, `active`; seed de,
+  fr, it, rm, es with `de-CH|fr-CH|it-CH|rm-CH|es`), a text is a row with the
+  required German `de` base and a `texts` map keyed by language code — a new
+  language is a new map key plus a row, never a schema or code change.
+- **Pure layer `src/lib/i18n.ts`:** `resolveLanguage` (URL prefix → remembered
+  cookie → `Accept-Language` with q-values and region stripped → first active
+  language; values outside the active set never answer), `textFor`/`isTranslated`
+  (missing or blank falls back to German) and `createTranslator`, whose
+  `missingKeys()` report is the test hook and the future admin missing-view source.
+- **`src/server/i18n.ts` is the only access:** rows are process-cached and every
+  write (`saveTranslationCore`, `saveLanguageCore`) invalidates the cache, so an
+  edit is live on the next request without a deploy; both cores validate
+  (key shape, area enum, non-empty German, texts only for known language codes).
+  Seed `seedLanguages`/`seedTranslations` are insert-only (#14).
+- Verified: `src/lib/i18n.test.ts` (10: precedence incl. deactivated/unknown
+  values, Accept-Language q-order and dedup, fallback, missing report, the five
+  languages with Swiss locales) and `tests/i18n.test.ts` (4: insert-only seed
+  survives an edit, cache serves until a write invalidates it, defaults while
+  empty, validation refusals write nothing, a new language added as a row works
+  end to end) — both fail without the change. `npm run build`/lint/knip ✅,
+  `npm test` ✅ 513, `npm run test:e2e` ✅ 53/53.
+- **Left open (steps 2–5):** language-prefix routing + switcher + hreflang,
+  extracting every remaining UI/mail/PDF string into rows, translatable catalog
+  content with admin editing, the admin translation editor with history, and the
+  two-language checkout e2e.

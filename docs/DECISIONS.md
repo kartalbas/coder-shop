@@ -601,3 +601,22 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   the remainder *is* the incoming quantity. The shop copy ("N Stk. bestellt, Ankunft
   ca. in 2 Wochen") comes from one pure formatter with coarse day/week buckets, since
   a lead time deserves no more precision than that.
+
+### #58 — one translation table, German base, texts as a language-keyed map
+- **`translations` is the single source for every text** (UI, errors, mails, invoices,
+  catalog content): one row per key with the required German `de` base and a `texts` map
+  keyed by language code. A map, not fixed `fr`/`it`/`rm`/`es` fields, so a sixth language
+  is a new map key and a new `languages` row — never a schema or code change.
+- **`languages` is data too** (`code`, `label`, `intlLocale`, `position`, `active`); the
+  resolver, the switcher and the editor iterate it. `resolveLanguage` precedence is
+  URL prefix → remembered cookie → `Accept-Language` (q-values, region stripped) → first
+  active language, and values outside the active set never answer.
+- **Missing translations fall back to German and are reported**, never hidden: the
+  translator collects every key that fell back (or was unknown) into `missingKeys()`,
+  which is both the test hook and the admin missing-view source.
+- **Rows are process-cached and invalidated on write** (`saveTranslationCore` /
+  `saveLanguageCore`), so an edit is live on the next request without a deploy while reads
+  stay one DB round-trip per process, not per request.
+- **Step 1 of 5 only:** the tables, the resolver, the loader and the seed exist; the
+  language-prefix routing, the switcher, the string extraction, the catalog content and
+  the admin editor follow in the remaining steps.

@@ -186,6 +186,8 @@ src/
     restock-alert.ts        # (sku, e-mail) back-in-stock subscriptions, notify-once (#46)
     review.ts               # verified-buyer reviews: pending/approved/hidden (#47)
     stock-unit.ts           # unit ledger of serial-tracked types: serial unique per SKU (#62)
+    language.ts             # languages as rows: code, label, intlLocale, position, active (#58)
+    translation.ts          # the one translation table: key, area, de base, texts map (#58)
   lib/                    # PURE domain logic — no I/O, no mongoose, no fs, no fetch
                           # (guard test: tests/lib-purity.test.ts)
     product-types.ts        # ProductType = string — types are data now (#61), the alias only names it
@@ -193,6 +195,9 @@ src/
                             # (seed content only) + pure dimension/facet helpers (#61)
     shop-settings.ts        # ShopSettings shape (VAT, shipping + payment methods) +
                             # DEFAULT_SHOP_SETTINGS (seed content only) + VAT copy helpers (#64)
+    i18n.ts                 # languages + translation entries as data, resolveLanguage precedence
+                            # (prefix > cookie > browser > default), German fallback + missing
+                            # report, DEFAULT_LANGUAGES/DEFAULT_TRANSLATIONS seed content (#58)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # CHF de-CH, dates, weights
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
@@ -241,6 +246,9 @@ src/
                             # source read by all generic catalog code (#61)
     shop-settings.ts        # getShopSettings/saveShopSettingsCore — the commerce configuration
                             # read by pricing, checkout, state machine context and admin (#64)
+    i18n.ts                 # getLanguages/getTranslations/getTranslator + save cores — the one
+                            # access point to the language and translation tables, process-cached
+                            # and invalidated on every write (next request, no deploy) (#58)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET optional)
     numbers.ts              # mintNumber(counterId, format) — shared order/PO number minting
     session-token.ts        # pure HMAC cookie sign/verify (scope: admin | customer, #39)
@@ -569,6 +577,21 @@ One document per (code, customer) redemption: `_id` is `code|customerKey`
 (customerKey = userId or lower-case e-mail), so the unique `_id` enforces
 "once per customer" inside the transaction; the collection doubles as the
 per-code usage statistic (distinct customers on the admin page).
+
+### Language (`languages`, #58)
+`{ code (unique, 2–3 letters), label, intlLocale, position, active }` — the shop's
+languages are rows (seed: de, fr, it, rm, es with `de-CH|fr-CH|it-CH|rm-CH|es`); the
+switcher, the resolver and the editor iterate this collection, so a new language is one
+row. `activeLanguages` (position order) is what every reader sees.
+
+### Translation (`translations`, #58)
+The **single translation table**: `{ key (unique), area: 'shop'|'admin'|'mail'|'invoice'|
+'catalog', de (required base text), texts: Mixed map keyed by language code }`. The map —
+not fixed fields — is what makes a new language a data change. Missing or blank texts fall
+back to `de` and are reported by the translator (`missingKeys()`). `src/server/i18n.ts` is
+the only access: rows are process-cached and every write (`saveTranslationCore`,
+`saveLanguageCore`) invalidates the cache, so edits take effect on the next request
+without a deploy. Step 1 of #58; extracting the remaining UI texts into rows is step 2.
 
 ## 4. Server functions, actions and route handlers
 
