@@ -28,7 +28,7 @@ BATCH_END="${BATCH_END:-10:15}"
 
 log() { printf '%s %s\n' "$(date +%T)" "$*" | tee -a "$LOGS/orchestrator.log"; }
 past_deadline() { [[ "$(date +%H:%M)" > "$DEADLINE" ]]; }
-# The shop the user sees runs from its own worktree (LIVE, default ~/repos/coder-shop-live) with
+# The shop the user sees (updated on every commit by .agent/live-sync.sh) runs from its own worktree (LIVE, default ~/repos/coder-shop-live) with
 # its own build and database, so the coder's builds never touch it. It is updated only to a
 # commit whose gate is green: install, build, seed (idempotent), repair photo paths, then the
 # server restarts. A failed update leaves the running shop as it was.
@@ -147,7 +147,7 @@ milestone() {
     gatef="$LOGS/gate-$m-$attempt.txt"
     if gate "$m" "$gatef" "$since"; then
       log "$m attempt $attempt: GATE GREEN"
-      web_deploy; return 0
+      return 0
     fi
     log "$m attempt $attempt: gate red — $(grep -c . "$gatef") report line(s) go to the next session"
     web_start
@@ -184,7 +184,7 @@ issues_loop() {
     log "ISSUES round $n: build (effort medium, ≤ ${SESSION_MIN} min)"
     session medium "ISSUES-$n" "$prompt" "$SESSION_MIN"
     gatef="$LOGS/gate-ISSUES-$n.txt"
-    if gate ISSUES "$gatef" "$since"; then log "ISSUES round $n: GATE GREEN"; : >"$gatef"; web_deploy
+    if gate ISSUES "$gatef" "$since"; then log "ISSUES round $n: GATE GREEN"; : >"$gatef"
     else log "ISSUES round $n: gate red — $(grep -c . "$gatef") report line(s) go to the next build"; fi
     sed "s|{{SINCE}}|$since|g" "$REPO/.agent/prompts/issues-review.md" >"$LOGS/ISSUES-$n-review-prompt.md"
     log "ISSUES round $n: review (effort high, ≤ ${REVIEW_MIN:-15} min)"
