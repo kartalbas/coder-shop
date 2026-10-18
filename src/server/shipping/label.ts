@@ -6,7 +6,7 @@ import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
 import { transition } from "@/lib/orders/state-machine";
 import { shippedMail } from "@/lib/mail-templates";
 import { absoluteUrl } from "@/lib/site";
-import { OrderModel } from "@/models/order";
+import { OrderModel, type Order } from "@/models/order";
 import { connectDB } from "../db";
 import { sendMail } from "../mail";
 import { advanceUnitsForOrder } from "../stock-units";
@@ -35,7 +35,7 @@ export async function createLabelCore(
     return { ok: false, reason: "not_found", error: "Bestellung nicht gefunden." };
   }
 
-  const order = await OrderModel.findById(orderId).lean().exec();
+  const order = await OrderModel.findById(orderId).lean<Order>().exec();
   if (!order) return { ok: false, reason: "not_found", error: "Bestellung nicht gefunden." };
 
   if (order.status === "shipped" && order.shipping.trackingNumber && order.shipping.labelPath) {
@@ -65,7 +65,11 @@ export async function createLabelCore(
       phone: order.customer.phone,
     },
     parcelWeightGrams: weight,
-    service: order.shipping.method,
+    // The UPS service level follows the configured method key (express ships express).
+    service: order.shipping.method === "express" ? "express" : "standard",
+    // Issue #62 (#54): the serial-tracked pieces of the parcel travel on the label data
+    // too (packing slip and invoice already carry them); quantity orders have none.
+    serials: order.lines.flatMap((line) => line.serials ?? []),
   };
 
   const label = await provider.createLabel(labelRequest);

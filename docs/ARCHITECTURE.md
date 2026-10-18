@@ -113,7 +113,8 @@ src/
         packing/page.tsx, packing/[id]/page.tsx (+ print view)
         purchasing/page.tsx, purchasing/[id]/page.tsx, suppliers/page.tsx
         stock-units/page.tsx  # serial ledger (#62): every unit of a serial-tracked type —
-                            # serial, status, order, per-unit history; search by serial or SKU
+                            # serial, status, order, PO number linking to the purchase
+                            # order, per-unit history; search by serial or SKU
         mails/page.tsx      # dev outbox: every mail the shop would have sent (#39/#44)
         invoices/page.tsx   # invoice list + filters (offen/überfällig/bezahlt), payment +
                             # reminder + credit-limit actions (#40)
@@ -278,13 +279,15 @@ src/
     orders.ts               # customer confirmation lookup (getOrderByNumber)
     orders-admin.ts         # listOrders, transitionOrderCore (conditional write + restock)
     products-admin.ts       # updateProductCore/updateVariantCore/toggleFeaturedCore (§3 rule)
-    purchasing.ts           # supplier + PO cores (create/markOrdered/receive — partial +
-                            # serial registration, transaction), expected arrival (editable),
+    purchasing.ts           # supplier + PO cores (create/markOrdered (atomic draft guard,
+                            # #62)/receive — partial + serial registration, transaction),
+                            # expected arrival (editable),
                             # getIncomingBySkuCore (open PO lines → per-SKU incoming),
                             # picker searches: variants by sku/name/brand + suppliers (#42, #62)
     stock-units.ts          # unit-ledger data access for serial-tracked types: goods-receipt
-                            # registration (duplicate serials refused), reservation inside the
-                            # checkout txn, advance/release with the order, ledger search (#62)
+                            # registration (duplicate serials refused, history note names the
+                            # PO), reservation inside the checkout txn, advance/release with
+                            # the order, ledger search with PO numbers (#62)
     dashboard.ts            # revenue series, open counts, low stock, recent orders
     search.ts               # Mongo query/aggregate builders + toProductDto() shared DTO mapper
     wishlist.ts             # account wishlist: sync (merge/replace), list, remove (#46)
@@ -633,7 +636,9 @@ results and are covered by Vitest integration tests against the real replica set
   unit move): `packed`/`shipped` advance them (the label route moves `shipped`),
   `delivered`/`picked_up` sell them, a restocking cancel releases them back to
   `in_stock` — always in the same transaction as the order move. Serials print on the
-  packing slip and the invoice PDF; they are admin-only (customer-linked, like the ledger).
+  packing slip, the label data (`LabelRequest.serials`, rendered by the mock label and
+  sent to UPS as `Shipment.ShipperReferences`) and the invoice PDF; they are admin-only
+  (customer-linked, like the ledger).
 - Pickup cores (issue #41, `src/server/pickup.ts`): `markPickupReadyCore(orderId, by)` —
   `new`/`picking → ready` (conditional on the loaded status, stamps `pickup.readyAt`);
   `handoverPickupCore(orderId, code, paymentType, by)` — the code the customer shows must
@@ -673,7 +678,9 @@ results and are covered by Vitest integration tests against the real replica set
   **before** the order moves to `shipped`; on provider failure the order stays `packed`
   (explicit test). Writes the PDF to `data/labels/<orderNumber>.pdf` (outside the web root —
   labels contain customer PII and must never sit under `public/`), stores `labelPath` +
-  tracking, transitions to `shipped`.
+  tracking, transitions to `shipped`. The `LabelRequest` carries the order's serial numbers
+  (`serials`, from the order lines) so the label data names the exact devices (#62 review);
+  quantity orders send none.
 
 Route handlers (all `export const runtime = 'nodejs'`, §6 deployment decision):
 - `GET /api/search?q=` → ≤8 hits `{ slug, name, type, priceCents, image, variantHint }`
@@ -923,7 +930,9 @@ deterministic IMEI-shaped serial (skipped while `stock_units` is not empty, idem
 The seed records 1–5 image slots per product with their final photo paths
 (`/products/<slug>-<n>.webp`) but writes no image files itself — the photo pipeline (§11)
 owns `public/products/` (issue #29). Also seeds admin user, 3 suppliers, sample POs and ~15
-orders across all statuses so admin screens are alive.
+orders across all statuses so admin screens are alive. The `ordered` sample PO carries one
+serial-tracked line (chosen by the type configs' `stockTracking`, not a hard-coded type) so
+goods-receipt-by-serial and the serial → PO ledger trace are demonstrable end to end (#62).
 
 - **Clock-relative timestamps:** seeded order/PO dates are generated **relative to seed time**
   (spread over the last 14 days) — deterministic in content/quantities, only the clock anchor
@@ -1009,7 +1018,9 @@ Specs (the three required journeys):
 - `purchasing.spec.ts` — open the seeded `ordered` PO → read its lines → type one serial
   per received piece on serial-tracked lines (#62) → "Wareneingang" → every line's variant
   stock increased by exactly the ordered quantity (stock read through the admin product
-  search page).
+  search page) → the serial ledger (`/admin/stock-units?q=<serial>`) shows the received unit
+  with its PO number linking to the purchase-order detail and the receipt history note
+  naming that PO (#62 review: the serial → PO trace is proven in the admin UI).
 - `incoming-stock.spec.ts` (#62) — create + order a PO for a quantity-tracked variant →
   expected arrival visible → admin variant and shop product page show „N Stk. bestellt,
   Ankunft ca. …" on the sold-out variant → goods receipt grows stock and shrinks the note.

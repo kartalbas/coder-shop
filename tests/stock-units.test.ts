@@ -20,6 +20,7 @@ import {
 } from "@/server/purchasing";
 import { MockUpsProvider } from "@/server/shipping/mock";
 import { createLabelCore } from "@/server/shipping/label";
+import { searchStockUnits } from "@/server/stock-units";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 import { seedUnitsForSku } from "@/test/units";
 
@@ -166,7 +167,10 @@ describe("serial stock (issue #62/#54)", () => {
     const units = await unitsOf("SU-REC");
     expect(units.map((u) => u.serial)).toEqual(["SU-REC-001", "SU-REC-002", "SU-REC-003"]);
     expect(units.every((u) => u.status === "in_stock")).toBe(true);
-    expect(units[0]?.history[0]).toMatchObject({ status: "in_stock", note: "Wareneingang" });
+    expect(units[0]?.history[0]).toMatchObject({
+      status: "in_stock",
+      note: `Wareneingang ${created.poNumber}`,
+    });
     expect(units[0]?.purchaseOrderId?.toString()).toBe(created.poId);
 
     // A serial already on the ledger is refused, even from another PO.
@@ -289,6 +293,12 @@ describe("serial stock (issue #62/#54)", () => {
     expect(unit?.orderNumber).toBe(result.orderNumber);
     const po = await PurchaseOrderModel.findById(created.poId).lean().exec();
     expect(po?.lines[0]?.sku).toBe("SU-TRACE");
+
+    // #62 review: the admin ledger view itself carries the trace — PO number in the
+    // search result and in the receipt history note, not just the raw id in the DB.
+    const [listed] = await searchStockUnits("IMEI-TRACE-1");
+    expect(listed?.purchaseOrderNumber).toBe(created.poNumber);
+    expect(listed?.history[0]?.note).toBe(`Wareneingang ${created.poNumber}`);
   });
 
   it("refuses a sale whose units are missing and writes nothing", async () => {

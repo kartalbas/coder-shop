@@ -297,6 +297,7 @@ async function seedPurchaseOrders(
   rng: () => number,
   suppliers: Map<string, mongoose.Types.ObjectId>,
   now: Date,
+  types: CatalogTypeConfig[],
 ): Promise<void> {
   if ((await PurchaseOrderModel.countDocuments()) > 0) {
     console.log("purchase_orders collection not empty — skipping sample POs (idempotent)");
@@ -306,12 +307,21 @@ async function seedPurchaseOrders(
   const statuses = ["draft", "ordered", "received"] as const;
   const supplierNames = [...suppliers.keys()];
   const year = swissYear(now);
+  // Issue #62 review: the ordered sample PO carries one serial-tracked line (per the
+  // type configs' stockTracking) so goods receipt by serial is demonstrable end to end.
+  const serialTypes = new Set(
+    types.filter((type) => type.stockTracking === "serial").map((type) => type.key),
+  );
+  const serialProduct = products.find((product) => serialTypes.has(product.type));
   const pos = [];
   for (let i = 0; i < statuses.length; i++) {
     const status = statuses[i];
     const lines = [];
     for (let l = 0; l < 2; l++) {
-      const product = products[(i * 7 + l * 13) % products.length];
+      const product =
+        status === "ordered" && l === 0 && serialProduct
+          ? serialProduct
+          : products[(i * 7 + l * 13) % products.length];
       const variant = product.variants[0];
       const qty = 10 + Math.floor(rng() * 20);
       lines.push({
@@ -416,7 +426,7 @@ async function main(): Promise<void> {
   }
   const suppliers = await seedSuppliers();
   await seedOrders(rng, now, shopSettings);
-  await seedPurchaseOrders(rng, suppliers, now);
+  await seedPurchaseOrders(rng, suppliers, now, types);
   const counts = {
     products: await ProductModel.countDocuments(),
     orders: await OrderModel.countDocuments(),

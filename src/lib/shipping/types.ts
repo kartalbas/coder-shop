@@ -12,6 +12,9 @@ export interface LabelRequest {
   recipient: LabelRecipient;
   parcelWeightGrams: number;
   service: "standard" | "express";
+  // Issue #62 (#54): the exact serial numbers of the parcel's serial-tracked pieces
+  // (packing slip, label data and invoice all carry them); quantity orders have none.
+  serials?: string[];
 }
 
 export type LabelResult =

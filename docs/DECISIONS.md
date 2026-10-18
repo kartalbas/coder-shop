@@ -80,6 +80,11 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   actively maintained Karrio UPS connector (`karrioapi/karrio` main branch,
   `modules/connectors/ups`) and public code matches for the token endpoint — not guessed.
   Service codes: standard → `11` (UPS Standard), express → `14`; weights in KGS.
+- **Serial numbers ride the UPS payload as `Shipment.ShipperReferences` (#62 review):**
+  `[{ Tag: "SERIAL", Value: <serials joined, ≤ 35 chars> }]` — the documented free
+  reference slot of the same pinned v2409 ship resource; the mock label renders the same
+  serial block from the pure `labelSerialLines` (`src/lib/shipping/label-content.ts`).
+  Same caveat as the endpoints: exercised for real only once UPS credentials exist.
 - **Admin guard lives in `src/proxy.ts` (Next 16 Proxy, Node.js runtime), not only in the
   layout:** with `cacheComponents` the route shell is prerendered, so a `redirect()` thrown
   while rendering the dynamic part streams a client-side `NEXT_REDIRECT` under HTTP 200 —

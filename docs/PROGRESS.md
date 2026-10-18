@@ -1376,3 +1376,40 @@ Done — M1–M6 + QA complete.
   extracting every remaining UI/mail/PDF string into rows, translatable catalog
   content with admin editing, the admin translation editor with history, and the
   two-language checkout e2e.
+
+## ISSUES — queue session 17 (2026-10-18)
+
+### Gate recovery (before the queue) ✅
+- The gate's `/api/health` 500 and the MongoMemoryServer `DBPathInUse` errors were again
+  an orphaned mongod holding the `data/mongo` lock; killed. The gate's `/produkte → 308`
+  and "no `/produkt/…` links" are the intended #63 behaviour (former German URLs answer a
+  permanent 308 to their English counterpart, and product links are now `/products/…`) —
+  verified live: `/produkte` → 308 → `/products`, `/products` 200 with 24 product links,
+  `/api/health` 200. Server + mongod stopped again.
+
+### #62 (reopened) — serials on the label, PO trace in the ledger, atomic markOrdered ✅
+- **Serials on the label data** (issue text: "serial on packing slip, label data and
+  invoice" — only the label was missing): `LabelRequest.serials` (`src/lib/shipping/types.ts`),
+  filled in `createLabelCore` from `order.lines[].serials`; one pure source for the block,
+  `labelSerialLines` (`src/lib/shipping/label-content.ts`); the mock label renders it and the
+  UPS provider sends it as `Shipment.ShipperReferences` (`Tag: "SERIAL"`, ≤ 35 chars —
+  DECISIONS). Quantity orders carry none.
+- **Serial → purchase-order trace in the admin UI** (done-when: "trace any serial to its
+  purchase order"): `searchStockUnits` batch-resolves the units' `purchaseOrderId`s to their
+  `poNumber` (`StockUnitListItem.purchaseOrderNumber`); `/admin/stock-units` renders a link
+  to `/admin/purchasing/<id>` with the `E-…` number instead of the static "· aus
+  Wareneingang"; the goods-receipt history note now names the PO (`Wareneingang E-…`).
+- **Atomic `markPurchaseOrderOrderedCore`** (regression from #62): restored the conditional
+  `findOneAndUpdate({ _id, status: "draft" })` after computing the ETA — two concurrent
+  "Bestellen" clicks can no longer both move the PO (same discipline as `transitionOrderCore`).
+- **Seed:** the `ordered` sample PO now carries one serial-tracked line (chosen by the type
+  configs' `stockTracking`, not a hard-coded type) so the receipt + ledger trace is
+  demonstrable end to end.
+- Verified: `tests/shipping.test.ts` +4 (pure `labelSerialLines`; mock renders the block;
+  UPS `ShipperReferences` present for serials / absent for quantity; `createLabelCore` passes
+  the order's serials to the provider and none for quantity); `tests/stock-units.test.ts`
+  trace test extended (`searchStockUnits` returns `purchaseOrderNumber` + the receipt note
+  names the PO); `tests/purchasing.test.ts` +1 (two concurrent orderings → exactly one wins);
+  e2e `purchasing.spec.ts` asserts the ledger shows the received serial's PO number linking to
+  the PO detail with the `Wareneingang E-…` note — all fail on the pre-fix build.
+  `npm run build`/lint/knip ✅, `npm test` ✅ 520, `npm run test:e2e` ✅ 53/53.

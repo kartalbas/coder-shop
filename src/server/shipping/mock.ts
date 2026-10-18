@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { labelSerialLines } from "@/lib/shipping/label-content";
 import type { LabelRequest, LabelResult, ShippingProvider } from "@/lib/shipping/types";
 
 const TRACKING_ALPHABET = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -46,6 +47,22 @@ async function renderMockLabelPdf(request: LabelRequest, trackingNumber: string)
     size: 10,
     font,
   });
+
+  // Issue #62 (#54): the parcel's serial numbers, same copy as the packing slip.
+  const serialLines = labelSerialLines(request.serials ?? []);
+  const LABEL_SERIAL_LINES = 2;
+  serialLines.slice(0, LABEL_SERIAL_LINES).forEach((line, index) => {
+    page.drawText(line, { x: 24, y: 366 - index * 11, size: 8, font });
+  });
+  if (serialLines.length > LABEL_SERIAL_LINES) {
+    page.drawText(`+ ${serialLines.length - LABEL_SERIAL_LINES} weitere Serien`, {
+      x: 24,
+      y: 366 - LABEL_SERIAL_LINES * 11,
+      size: 8,
+      font,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+  }
 
   page.drawText("Tracking", { x: 24, y: 340, size: 9, font: bold });
   page.drawText(trackingNumber, { x: 24, y: 318, size: 20, font: bold });

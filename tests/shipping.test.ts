@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { HAPPY_PATH } from "@/lib/orders/state-machine";
+import { labelSerialLines } from "@/lib/shipping/label-content";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { LabelRequest, ShippingProvider } from "@/lib/shipping/types";
 
@@ -53,12 +54,35 @@ function upsShipReply(trackingNumber: string): unknown {
   };
 }
 
+describe("labelSerialLines (issue #62 review)", () => {
+  it("renders nothing for a quantity order", () => {
+    expect(labelSerialLines([])).toEqual([]);
+  });
+
+  it("names the header and wraps long serial lists at the line limit", () => {
+    const lines = labelSerialLines(["SERIAL-AAAAAAAAAA", "SERIAL-BBBBBBBBBB", "SERIAL-CCCCCCCCCC"], 30);
+    expect(lines[0]).toBe("Seriennummern:");
+    expect(lines.slice(1).every((line) => line.length <= 30)).toBe(true);
+    expect(lines.slice(1).join(" ")).toContain("SERIAL-CCCCCCCCCC");
+  });
+});
+
 describe("MockUpsProvider", () => {
   it("returns a 1Z tracking number and a real PDF label", async () => {
     const result = await new MockUpsProvider().createLabel(REQUEST);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.trackingNumber).toMatch(MOCK_TRACKING_PATTERN);
+    expect(Buffer.from(result.labelPdf.slice(0, 5)).toString("ascii")).toBe("%PDF-");
+  });
+
+  it("renders the serial block on the label for serial orders (#62 review)", async () => {
+    const result = await new MockUpsProvider().createLabel({
+      ...REQUEST,
+      serials: ["IMEI-MOCK-0001", "IMEI-MOCK-0002"],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
     expect(Buffer.from(result.labelPdf.slice(0, 5)).toString("ascii")).toBe("%PDF-");
   });
 });
@@ -141,6 +165,28 @@ describe("UpsShippingProvider (fetch mocked)", () => {
     expect(Buffer.from(result.labelPdf).equals(FAKE_PDF)).toBe(true);
   });
 
+  it("sends the parcel serials as shipper references, and none for quantity orders (#62 review)", async () => {
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) =>
+      String(url).includes("/oauth/token")
+        ? jsonResponse({ access_token: "token-6", expires_in: 1800 })
+        : jsonResponse(upsShipReply("1ZTESTTRACKING06")),
+    );
+    const provider = makeProvider(fetchMock as unknown as typeof fetch);
+
+    await provider.createLabel({ ...REQUEST, serials: ["IMEI-AAA-111", "IMEI-BBB-222"] });
+    await provider.createLabel(REQUEST);
+
+    const shipBodies = fetchMock.mock.calls
+      .filter(([url]) => String(url).includes("/ship"))
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)) as {
+        ShipmentRequest: { Shipment: Record<string, unknown> };
+      });
+    expect(shipBodies[0]?.ShipmentRequest.Shipment.ShipperReferences).toEqual([
+      { Tag: "SERIAL", Value: "IMEI-AAA-111,IMEI-BBB-222" },
+    ]);
+    expect(shipBodies[1]?.ShipmentRequest.Shipment.ShipperReferences).toBeUndefined();
+  });
+
   it("maps UPS API errors to a typed failure", async () => {
     const fetchMock = vi.fn(async (url: RequestInfo | URL) =>
       String(url).includes("/oauth/token")
@@ -206,7 +252,7 @@ describe("shipping provider factory", () => {
   });
 });
 
-async function seedOrder(status: OrderStatus, tag: string) {
+async function seedOrder(status: OrderStatus, tag: string, serials?: string[]) {
   const statusLog = HAPPY_PATH.slice(0, HAPPY_PATH.indexOf(status) + 1).map((step, index) => ({
     status: step,
     at: new Date(Date.now() - (HAPPY_PATH.indexOf(status) - index) * 60_000),
@@ -244,6 +290,7 @@ async function seedOrder(status: OrderStatus, tag: string) {
         unitPriceCents: 4900,
         totalCents: 4900,
         weightGrams: 200,
+        ...(serials ? { serials } : {}),
       },
     ],
     totals: { subtotalCents: 24700, shippingCents: 0, totalCents: 24700, vatCents: 1850 },
@@ -258,6 +305,16 @@ const failingProvider: ShippingProvider = {
     return { ok: false, error: "UPS nicht erreichbar (Test)" };
   },
 };
+
+function recordingProvider(captured: LabelRequest[]): ShippingProvider {
+  return {
+    name: "ups",
+    async createLabel(request) {
+      captured.push(request);
+      return { ok: true, trackingNumber: "1ZRECORDED0000001", labelPdf: FAKE_PDF };
+    },
+  };
+}
 
 describe("createLabelCore", () => {
   const writtenFiles: string[] = [];
@@ -292,6 +349,28 @@ describe("createLabelCore", () => {
     expect(fresh?.shipping.trackingNumber).toBe(result.trackingNumber);
     expect(fresh?.shipping.parcelWeightGrams).toBe(2 * 300 + 1 * 200 + 150);
     expect(fresh?.statusLog.at(-1)?.status).toBe("shipped");
+  });
+
+  it("passes the order's serials to the provider, none for quantity orders (#62 review)", async () => {
+    const withSerials = await seedOrder("packed", "0006", ["IMEI-LABEL-1", "IMEI-LABEL-2"]);
+    const capturedSerial: LabelRequest[] = [];
+    const serialResult = await createLabelCore(
+      withSerials._id.toString(),
+      recordingProvider(capturedSerial),
+    );
+    expect(serialResult.ok).toBe(true);
+    expect(capturedSerial[0]?.serials).toEqual(["IMEI-LABEL-1", "IMEI-LABEL-2"]);
+    if (serialResult.ok) writtenFiles.push(path.resolve(serialResult.labelPath));
+
+    const quantity = await seedOrder("packed", "0007");
+    const capturedQuantity: LabelRequest[] = [];
+    const quantityResult = await createLabelCore(
+      quantity._id.toString(),
+      recordingProvider(capturedQuantity),
+    );
+    expect(quantityResult.ok).toBe(true);
+    expect(capturedQuantity[0]?.serials ?? []).toEqual([]);
+    if (quantityResult.ok) writtenFiles.push(path.resolve(quantityResult.labelPath));
   });
 
   it("is idempotent: a second call returns the same tracking and label", async () => {

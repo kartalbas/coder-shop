@@ -139,6 +139,11 @@ export class UpsShippingProvider implements ShippingProvider {
               BillShipper: { AccountNumber: this.accountNumber },
             },
           },
+          // Issue #62 (#54): the serial-tracked pieces ride along in the documented
+          // free shipper-reference slot (Value is limited to 35 characters by the API).
+          ...(request.serials && request.serials.length > 0
+            ? { ShipperReferences: [{ Tag: "SERIAL", Value: request.serials.join(",").slice(0, 35) }] }
+            : {}),
           ShipmentRatingOptions: { NegotiatedRatesIndicator: "Y" },
           Package: {
             Description: `Paket ${request.orderNumber}`,

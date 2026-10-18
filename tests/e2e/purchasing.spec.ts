@@ -12,6 +12,10 @@ test("purchasing: receiving an ordered PO increases variant stock", async ({ pag
   await orderedRow.locator('a[href^="/admin/purchasing/"]').first().click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/^Bestellung E-\d{4}-\d{6}$/);
   const poUrl = page.url();
+  const poNumber = (await page.getByRole("heading", { level: 1 }).innerText()).replace(
+    "Bestellung ",
+    "",
+  );
 
   // Collect the PO lines (SKU + ordered quantity).
   const lineRows = page.locator('section[aria-label="Positionen"] tbody tr');
@@ -34,13 +38,14 @@ test("purchasing: receiving an ordered PO increases variant stock", async ({ pag
   // Wareneingang: ordered → received. Serial-tracked lines (issue #62) register each
   // piece — type one unique serial per received piece before submitting.
   await page.goto(poUrl);
+  let firstSerial = "";
   for (const line of lines) {
     const serials = page.getByLabel(`Seriennummern ${line.sku}`);
     if ((await serials.count()) > 0) {
       const stamp = Date.now();
-      await serials.fill(
-        Array.from({ length: line.qty }, (_, i) => `E2E-${stamp}-${line.sku}-${i}`).join("\n"),
-      );
+      const entered = Array.from({ length: line.qty }, (_, i) => `E2E-${stamp}-${line.sku}-${i}`);
+      if (!firstSerial) firstSerial = entered[0]!;
+      await serials.fill(entered.join("\n"));
     }
   }
   await page.getByRole("button", { name: "Wareneingang" }).click();
@@ -53,4 +58,15 @@ test("purchasing: receiving an ordered PO increases variant stock", async ({ pag
     const stockAfter = await readStockOfSku(page, line.sku);
     expect(stockAfter, `stock for ${line.sku}`).toBe((stockBefore.get(line.sku) ?? 0) + line.qty);
   }
+
+  // #62 review: the admin ledger traces a received serial back to its purchase order —
+  // the seeded ordered PO carries a serial-tracked line, so a serial always exists.
+  expect(firstSerial).not.toBe("");
+  await page.goto(`/admin/stock-units?q=${encodeURIComponent(firstSerial)}`);
+  const unitCard = page.locator("article").filter({ hasText: firstSerial }).first();
+  await expect(unitCard).toBeVisible({ timeout: 30_000 });
+  const poLink = unitCard.getByRole("link", { name: poNumber });
+  await expect(poLink).toBeVisible();
+  expect(await poLink.getAttribute("href")).toBe(new URL(poUrl).pathname);
+  await expect(unitCard.getByText(`Wareneingang ${poNumber}`).first()).toBeVisible();
 });

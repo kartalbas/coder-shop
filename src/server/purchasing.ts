@@ -233,15 +233,19 @@ export async function markPurchaseOrderOrderedCore(poId: string): Promise<Purcha
   await connectDB();
   if (!mongoose.isValidObjectId(poId)) return { ok: false, error: "Bestellung nicht gefunden." };
   const po = await PurchaseOrderModel.findById(poId).exec();
-  if (!po || po.status !== "draft") return { ok: false, error: "Nur Entwürfe können bestellt werden." };
+  if (!po) return { ok: false, error: "Nur Entwürfe können bestellt werden." };
   const supplier = await SupplierModel.findById(po.supplierId).exec();
   // Issue #62 (#55): the expected arrival comes from the supplier's lead time; the
   // admin can adjust it per PO afterwards.
   const orderedAt = new Date();
-  po.status = "ordered";
-  po.orderedAt = orderedAt;
-  po.expectedArrivalAt = expectedArrival(orderedAt, supplier?.leadTimeDays ?? 0);
-  await po.save();
+  const expectedArrivalAt = expectedArrival(orderedAt, supplier?.leadTimeDays ?? 0);
+  // #62 review: conditional write on the validated status — two concurrent
+  // "Bestellen" clicks cannot both move the PO (same discipline as transitionOrderCore).
+  const updated = await PurchaseOrderModel.findOneAndUpdate(
+    { _id: poId, status: "draft" },
+    { $set: { status: "ordered" as PurchaseOrderStatus, orderedAt, expectedArrivalAt } },
+  ).exec();
+  if (!updated) return { ok: false, error: "Nur Entwürfe können bestellt werden." };
   return { ok: true };
 }
 
@@ -332,7 +336,13 @@ export async function receivePurchaseOrderCore(
           };
         }
         try {
-          await createReceivedUnits(line.sku, lineSerials, po._id.toString(), session);
+          await createReceivedUnits(
+            line.sku,
+            lineSerials,
+            po._id.toString(),
+            po.poNumber,
+            session,
+          );
         } catch (error) {
           await session.abortTransaction();
           if (error instanceof DuplicateSerialError) {

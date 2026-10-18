@@ -1,6 +1,7 @@
 export const instant = false;
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 import { STOCK_UNIT_STATUS_LABELS, type StockUnitStatus } from "@/lib/stock-units";
 import { formatDateTime } from "@/lib/format";
@@ -73,7 +74,19 @@ async function StockUnitsView({ searchParams }: PagePropsLocal) {
               <p className="mt-1 text-xs text-muted-foreground">
                 SKU {unit.sku}
                 {unit.orderNumber ? ` · Bestellung ${unit.orderNumber}` : ""}
-                {unit.purchaseOrderId ? " · aus Wareneingang" : ""}
+                {unit.purchaseOrderId && unit.purchaseOrderNumber ? (
+                  <>
+                    {" · "}
+                    <Link
+                      href={`/admin/purchasing/${unit.purchaseOrderId}`}
+                      className="underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      {unit.purchaseOrderNumber}
+                    </Link>
+                  </>
+                ) : (
+                  ""
+                )}
               </p>
               <ol className="mt-3 space-y-1 border-t pt-3 text-xs text-muted-foreground">
                 {unit.history.map((entry, index) => (

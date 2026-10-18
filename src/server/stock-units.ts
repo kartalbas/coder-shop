@@ -1,5 +1,6 @@
-import type { ClientSession } from "mongoose";
+import mongoose, { type ClientSession } from "mongoose";
 import { normalizeSerial, unitSourcesFor, type StockUnitStatus } from "@/lib/stock-units";
+import { PurchaseOrderModel } from "@/models/purchase-order";
 import { StockUnitModel, type StockUnit } from "@/models/stock-unit";
 import { getCatalogTypes } from "./catalog-types";
 import { connectDB } from "./db";
@@ -32,11 +33,13 @@ function isDuplicateKeyError(error: unknown): boolean {
 }
 
 // Goods receipt of a serial line: every received piece is registered by serial.
-// Duplicates (in this batch or against the ledger) are refused.
+// Duplicates (in this batch or against the ledger) are refused. The history note
+// names the purchase order (issue #62 review: the trace must be readable per unit).
 export async function createReceivedUnits(
   sku: string,
   serials: readonly string[],
   purchaseOrderId: string,
+  purchaseOrderNumber: string,
   session: ClientSession,
 ): Promise<void> {
   const normalized: string[] = [];
@@ -54,7 +57,13 @@ export async function createReceivedUnits(
         serial,
         status: "in_stock" as StockUnitStatus,
         purchaseOrderId,
-        history: [{ status: "in_stock" as StockUnitStatus, at: now, note: "Wareneingang" }],
+        history: [
+          {
+            status: "in_stock" as StockUnitStatus,
+            at: now,
+            note: `Wareneingang ${purchaseOrderNumber}`,
+          },
+        ],
       })),
       { session, ordered: true },
     );
@@ -151,10 +160,13 @@ export interface StockUnitListItem {
   status: StockUnitStatus;
   orderNumber?: string;
   purchaseOrderId?: string;
+  // Issue #62 review: the PO number makes the serial → purchase-order trace
+  // clickable in the admin ledger, not just a raw id.
+  purchaseOrderNumber?: string;
   history: { status: StockUnitStatus; at: Date; note?: string }[];
 }
 
-function toListItem(unit: StockUnit): StockUnitListItem {
+function toListItem(unit: StockUnit, purchaseOrderNumber?: string): StockUnitListItem {
   return {
     id: unit._id.toString(),
     sku: unit.sku,
@@ -162,6 +174,7 @@ function toListItem(unit: StockUnit): StockUnitListItem {
     status: unit.status,
     ...(unit.orderNumber !== undefined && { orderNumber: unit.orderNumber }),
     ...(unit.purchaseOrderId !== undefined && { purchaseOrderId: unit.purchaseOrderId.toString() }),
+    ...(purchaseOrderNumber !== undefined && { purchaseOrderNumber }),
     history: unit.history,
   };
 }
@@ -182,5 +195,16 @@ export async function searchStockUnits(query: string): Promise<StockUnitListItem
     .limit(STOCK_UNIT_LIST_LIMIT)
     .lean<StockUnit[]>()
     .exec();
-  return units.map(toListItem);
+  const poIds = [...new Set(units.map((unit) => unit.purchaseOrderId?.toString()).filter((id): id is string => Boolean(id)))];
+  const poNumbers = new Map<string, string>();
+  if (poIds.length > 0) {
+    const pos = await PurchaseOrderModel.find({ _id: { $in: poIds } })
+      .select("poNumber")
+      .lean<{ _id: mongoose.Types.ObjectId; poNumber: string }[]>()
+      .exec();
+    for (const po of pos) poNumbers.set(po._id.toString(), po.poNumber);
+  }
+  return units.map((unit) =>
+    toListItem(unit, unit.purchaseOrderId ? poNumbers.get(unit.purchaseOrderId.toString()) : undefined),
+  );
 }

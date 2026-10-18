@@ -173,6 +173,31 @@ describe("purchase order core", () => {
     expect(noSupplier).toEqual({ ok: false, error: "Lieferant nicht gefunden." });
   });
 
+  it("two concurrent orderings of one draft: exactly one wins (#62 review)", async () => {
+    await seedProduct("race-order", ["PO-R1"], 5);
+    const supplier = await seedSupplier("Race Lieferant");
+    const created = await createPurchaseOrderCore({
+      supplierId: supplier._id.toString(),
+      lines: [{ sku: "PO-R1", qty: 2, unitPriceCents: 5000 }],
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const results = await Promise.all([
+      markPurchaseOrderOrderedCore(created.poId),
+      markPurchaseOrderOrderedCore(created.poId),
+    ]);
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+
+    const po = await PurchaseOrderModel.findById(created.poId).lean<PurchaseOrder>().exec();
+    expect(po?.status).toBe("ordered");
+    expect(po?.orderedAt).toBeInstanceOf(Date);
+    // The loser must not have re-stamped the PO: orderedAt equals expectedArrivalAt's
+    // base — a second write would have moved orderedAt to a later timestamp.
+    const orderedAt = po?.orderedAt?.getTime() ?? 0;
+    expect(po?.expectedArrivalAt?.getTime()).toBeGreaterThan(orderedAt);
+  });
+
   it("walks draft → ordered → received and increments variant stock exactly by the ordered qty", async () => {
     await seedProduct("receive", ["PO-B1", "PO-B2"], 4);
     const supplier = await seedSupplier("Receive Lieferant");
