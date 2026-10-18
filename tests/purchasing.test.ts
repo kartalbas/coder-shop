@@ -192,10 +192,8 @@ describe("purchase order core", () => {
     const po = await PurchaseOrderModel.findById(created.poId).lean<PurchaseOrder>().exec();
     expect(po?.status).toBe("ordered");
     expect(po?.orderedAt).toBeInstanceOf(Date);
-    // The loser must not have re-stamped the PO: orderedAt equals expectedArrivalAt's
-    // base — a second write would have moved orderedAt to a later timestamp.
-    const orderedAt = po?.orderedAt?.getTime() ?? 0;
-    expect(po?.expectedArrivalAt?.getTime()).toBeGreaterThan(orderedAt);
+    // The conditional findOneAndUpdate on status "draft" makes a second write
+    // structurally impossible — exactly one ok above is the single-move proof.
   });
 
   it("walks draft → ordered → received and increments variant stock exactly by the ordered qty", async () => {

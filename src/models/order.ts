@@ -59,6 +59,9 @@ interface OrderShipping {
   // flag stored at checkout so the state machine and the queues never need the config.
   method: string;
   storePickup?: boolean;
+  // #62 review: same discipline for the carrier service level — the flag stored at
+  // checkout decides standard/express on the label, never a comparison of the key.
+  expressService?: boolean;
   carrier?: "ups";
   trackingNumber?: string;
   labelPath?: string;
@@ -169,6 +172,7 @@ const shippingSchema = new Schema<OrderShipping>(
   {
     method: { type: String, required: true },
     storePickup: { type: Boolean },
+    expressService: { type: Boolean },
     carrier: { type: String, enum: ["ups"] },
     trackingNumber: { type: String },
     labelPath: { type: String },

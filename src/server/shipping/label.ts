@@ -65,8 +65,9 @@ export async function createLabelCore(
       phone: order.customer.phone,
     },
     parcelWeightGrams: weight,
-    // The UPS service level follows the configured method key (express ships express).
-    service: order.shipping.method === "express" ? "express" : "standard",
+    // #62 review: the UPS service level follows the behavior flag stored on the order
+    // at checkout (like storePickup) — a method key never appears in the label path.
+    service: order.shipping.expressService === true ? "express" : "standard",
     // Issue #62 (#54): the serial-tracked pieces of the parcel travel on the label data
     // too (packing slip and invoice already carry them); quantity orders have none.
     serials: order.lines.flatMap((line) => line.serials ?? []),
@@ -104,6 +105,7 @@ export async function createLabelCore(
         statusLog: updated.statusLog,
         shipping: {
           method: order.shipping.method,
+          expressService: order.shipping.expressService,
           carrier: "ups" as const,
           trackingNumber: label.trackingNumber,
           labelPath,

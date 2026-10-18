@@ -28,6 +28,7 @@ interface ShippingRow {
   priceChf: string;
   hint: string;
   storePickup: boolean;
+  expressService: boolean;
   active: boolean;
 }
 
@@ -63,6 +64,7 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
         priceChf: chf(method.priceCents),
         hint: method.hint,
         storePickup: method.storePickup,
+        expressService: method.expressService,
         active: method.active,
       })),
   );
@@ -131,7 +133,7 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
         <CardContent className="space-y-3 p-5">
           <h2 className="font-semibold">Versandarten</h2>
           {shipping.map((row, index) => (
-            <div key={index} className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_110px_1fr_auto_auto]">
+            <div key={index} className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_110px_1fr_auto_auto_auto]">
               <div className="space-y-1">
                 <Label className="text-xs">Key</Label>
                 <Input
@@ -184,6 +186,19 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
                 />
                 Laden
               </label>
+              <label className="flex items-center gap-2 pb-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={row.expressService}
+                  onChange={(event) =>
+                    setShipping((rows) => rows.map((r, i) => (i === index ? { ...r, expressService: event.target.checked } : r)))
+                  }
+                  className="size-4 accent-primary"
+                  aria-label={`Express-Versanddienst ${row.key || index + 1}`}
+                  title="Express-Versanddienst"
+                />
+                Express
+              </label>
               <div className="flex items-center gap-2 pb-2">
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -215,7 +230,7 @@ export function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
             onClick={() =>
               setShipping((rows) => [
                 ...rows,
-                { key: "", label: "", priceChf: "0.00", hint: "", storePickup: false, active: true },
+                { key: "", label: "", priceChf: "0.00", hint: "", storePickup: false, expressService: false, active: true },
               ])
             }
           >

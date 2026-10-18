@@ -151,6 +151,45 @@ describe("shop settings (issue #64)", () => {
     expect(await OrderModel.countDocuments()).toBe(2);
   });
 
+  it("the expressService flag round-trips and is stored on the order at checkout (#62 review)", async () => {
+    await seedProduct("overnight");
+    const withOvernight = baseSettings();
+    withOvernight.shippingMethods = [
+      ...withOvernight.shippingMethods,
+      {
+        key: "overnight",
+        label: "Overnight",
+        priceCents: 2990,
+        position: 4,
+        active: true,
+        storePickup: false,
+        expressService: true,
+        hint: "über Nacht",
+      },
+    ];
+    expect((await saveShopSettingsCore(withOvernight)).ok).toBe(true);
+    const stored = await getShopSettings();
+    expect(stored.shippingMethods.find((m) => m.key === "overnight")?.expressService).toBe(true);
+    expect(stored.shippingMethods.find((m) => m.key === "standard")?.expressService).toBe(false);
+
+    const flagged = await checkout("overnight", "overnight", "mock");
+    expect(flagged.ok).toBe(true);
+    if (!flagged.ok) return;
+    const flaggedOrder = await OrderModel.findOne({ orderNumber: flagged.orderNumber })
+      .lean<Order>()
+      .exec();
+    expect(flaggedOrder?.shipping.method).toBe("overnight");
+    expect(flaggedOrder?.shipping.expressService).toBe(true);
+
+    const plain = await checkout("overnight", "standard", "mock");
+    expect(plain.ok).toBe(true);
+    if (!plain.ok) return;
+    const plainOrder = await OrderModel.findOne({ orderNumber: plain.orderNumber })
+      .lean<Order>()
+      .exec();
+    expect(plainOrder?.shipping.expressService).toBe(false);
+  });
+
   it("kind rules hold server-side: on_pickup needs store pickup, invoice needs delivery", async () => {
     await seedProduct("kinds");
     await saveShopSettingsCore(baseSettings());

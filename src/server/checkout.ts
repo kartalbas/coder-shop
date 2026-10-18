@@ -312,6 +312,8 @@ async function runCheckout(
         shipping: {
           method: shipping.key,
           storePickup: shipping.storePickup,
+          // #62 review: the carrier service level rides along as a stored behavior flag.
+          expressService: shipping.expressService,
           // Pickup orders carry the handover code from the start (issue #41).
           ...(shipping.storePickup && { pickup: { code: generatePickupCode() } }),
         },

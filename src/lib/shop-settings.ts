@@ -18,6 +18,12 @@ export interface ShippingMethodConfig {
   active: boolean;
   /** Collected in the store: free, no parcel chain, handover code (issue #41). */
   storePickup: boolean;
+  /**
+   * Requests the express service level from the carrier on the label (#62 review):
+   * a behavior flag like storePickup — the label builder reads the flag stored on
+   * the order at checkout, never the method key.
+   */
+  expressService: boolean;
   /** Delivery-time hint under the label in the checkout list (UI copy). */
   hint: string;
 }
@@ -49,9 +55,9 @@ export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
   vatRatePercent: 8.1,
   freeShippingFromCents: 10000,
   shippingMethods: [
-    { key: "standard", label: "Standard", priceCents: 490, position: 1, active: true, storePickup: false, hint: "2–4 Werktage" },
-    { key: "express", label: "Express", priceCents: 1290, position: 2, active: true, storePickup: false, hint: "nächster Werktag" },
-    { key: "pickup", label: "Abholung im Laden", priceCents: 0, position: 3, active: true, storePickup: true, hint: "kostenlos abholen" },
+    { key: "standard", label: "Standard", priceCents: 490, position: 1, active: true, storePickup: false, expressService: false, hint: "2–4 Werktage" },
+    { key: "express", label: "Express", priceCents: 1290, position: 2, active: true, storePickup: false, expressService: true, hint: "nächster Werktag" },
+    { key: "pickup", label: "Abholung im Laden", priceCents: 0, position: 3, active: true, storePickup: true, expressService: false, hint: "kostenlos abholen" },
   ],
   paymentMethods: [
     { key: "mock", label: "Kreditkarte (Demo)", position: 1, active: true, kind: "immediate" },

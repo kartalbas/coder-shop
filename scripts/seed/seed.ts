@@ -265,6 +265,7 @@ async function seedOrders(rng: () => number, now: Date, settings: ShopSettings):
       shipping: {
         method: method.key,
         storePickup: method.storePickup,
+        expressService: method.expressService,
         ...(shipped
           ? {
               carrier: "ups" as const,

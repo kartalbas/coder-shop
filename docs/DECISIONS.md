@@ -547,6 +547,14 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   machine reasons about *behavior* (`storePickup`, `processBeforePayment`, `payAtHandover`)
   and never needs the configuration — a method retired later still transitions its old
   orders correctly. Labels for a retired method fall back to the stored key.
+- **The carrier service level is a behavior flag too (#62 review).** The shipping-method
+  config row gained `expressService` (checkbox in the settings editor, like `storePickup`);
+  checkout stores it on the order (`shipping.expressService`) and `createLabelCore` picks
+  `express`/`standard` from that stored flag — a method key never appears in the label
+  path, so a renamed or newly configured express-like method ships express without a code
+  change. Orders (and `shop_settings` documents) written before the flag existed read
+  back as `false` and ship standard, exactly like today's non-express orders; the demo
+  express row gets the box ticked via the seed content or a `--fresh` seed.
 - **The storefront reads the settings client-side** through `ShopSettingsProvider`
   (`GET /api/shop-settings`, `public, max-age=60`) so the static shell survives
   `cacheComponents`; a browsing tab can therefore lag an admin edit by up to a minute —

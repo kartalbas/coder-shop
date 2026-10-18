@@ -36,6 +36,7 @@ const shopSettingsSchema = z.object({
         priceChf: chfToCents,
         hint: z.string().trim().max(80),
         storePickup: z.boolean(),
+        expressService: z.boolean(),
         active: z.boolean(),
       }),
     )
@@ -78,6 +79,7 @@ export async function saveShopSettingsAction(
       position: index + 1,
       active: method.active,
       storePickup: method.storePickup,
+      expressService: method.expressService,
       hint: method.hint,
     })),
     paymentMethods: parsed.data.paymentMethods.map((method, index) => ({

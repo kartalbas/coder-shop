@@ -252,7 +252,12 @@ describe("shipping provider factory", () => {
   });
 });
 
-async function seedOrder(status: OrderStatus, tag: string, serials?: string[]) {
+async function seedOrder(
+  status: OrderStatus,
+  tag: string,
+  serials?: string[],
+  shipping: { method: string; expressService?: boolean } = { method: "standard" },
+) {
   const statusLog = HAPPY_PATH.slice(0, HAPPY_PATH.indexOf(status) + 1).map((step, index) => ({
     status: step,
     at: new Date(Date.now() - (HAPPY_PATH.indexOf(status) - index) * 60_000),
@@ -294,7 +299,7 @@ async function seedOrder(status: OrderStatus, tag: string, serials?: string[]) {
       },
     ],
     totals: { subtotalCents: 24700, shippingCents: 0, totalCents: 24700, vatCents: 1850 },
-    shipping: { method: "standard" },
+    shipping,
     payment: { method: "mock", kind: "immediate" as const, reference: "P-LABEL" },
   });
 }
@@ -371,6 +376,31 @@ describe("createLabelCore", () => {
     expect(quantityResult.ok).toBe(true);
     expect(capturedQuantity[0]?.serials ?? []).toEqual([]);
     if (quantityResult.ok) writtenFiles.push(path.resolve(quantityResult.labelPath));
+  });
+
+  it("service follows the stored expressService flag, never the method key (#62 review)", async () => {
+    const flagged = await seedOrder("packed", "0008", undefined, {
+      method: "overnight",
+      expressService: true,
+    });
+    const capturedFlagged: LabelRequest[] = [];
+    const flaggedResult = await createLabelCore(
+      flagged._id.toString(),
+      recordingProvider(capturedFlagged),
+    );
+    expect(flaggedResult.ok).toBe(true);
+    expect(capturedFlagged[0]?.service).toBe("express");
+    if (flaggedResult.ok) writtenFiles.push(path.resolve(flaggedResult.labelPath));
+
+    const unflagged = await seedOrder("packed", "0009", undefined, { method: "express" });
+    const capturedUnflagged: LabelRequest[] = [];
+    const unflaggedResult = await createLabelCore(
+      unflagged._id.toString(),
+      recordingProvider(capturedUnflagged),
+    );
+    expect(unflaggedResult.ok).toBe(true);
+    expect(capturedUnflagged[0]?.service).toBe("standard");
+    if (unflaggedResult.ok) writtenFiles.push(path.resolve(unflaggedResult.labelPath));
   });
 
   it("is idempotent: a second call returns the same tracking and label", async () => {

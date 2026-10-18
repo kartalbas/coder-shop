@@ -27,6 +27,7 @@ const shippingMethodSchema = new Schema<ShippingMethodConfig>(
     position: { type: Number, required: true, default: 0 },
     active: { type: Boolean, required: true, default: true },
     storePickup: { type: Boolean, required: true, default: false },
+    expressService: { type: Boolean, required: true, default: false },
     hint: { type: String, default: "" },
   },
   { _id: false },
@@ -67,7 +68,11 @@ export function toShopSettings(doc: ShopSettingsDocument): ShopSettings {
   return {
     vatRatePercent: doc.vatRatePercent,
     freeShippingFromCents: doc.freeShippingFromCents,
-    shippingMethods: doc.shippingMethods.map((method) => ({ ...method })),
+    // Documents written before the expressService flag existed read back as false.
+    shippingMethods: doc.shippingMethods.map((method) => ({
+      ...method,
+      expressService: method.expressService === true,
+    })),
     paymentMethods: doc.paymentMethods.map((method) => ({
       key: method.key,
       label: method.label,
