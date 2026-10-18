@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { ClaimOrderForm } from "@/components/storefront/claim-order-form";
 import { ReorderButton } from "@/components/storefront/reorder-button";
-import { formatChf, formatDate } from "@/lib/format";
+import { createFormatters } from "@/lib/format";
+import { getIntlLocale } from "@/server/i18n";
 import { listAccountOrders } from "@/server/account";
 import { requireCustomerSession } from "@/server/session";
 
@@ -20,12 +21,15 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
+  params: Promise<{ lang: string }>;
   searchParams: Promise<{ q?: string }>;
 }
 
-export default async function AccountOrdersPage({ searchParams }: PageProps) {
+export default async function AccountOrdersPage({ params, searchParams }: PageProps) {
   await connection();
   const userId = await requireCustomerSession();
+  // Issue #58 step 2b: dates and amounts follow the request language's Intl locale.
+  const { chf, date } = createFormatters(await getIntlLocale((await params).lang));
   const { q } = await searchParams;
   const orders = await listAccountOrders(userId, q ?? "");
 
@@ -81,7 +85,7 @@ export default async function AccountOrdersPage({ searchParams }: PageProps) {
                     {order.orderNumber}
                   </Link>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(new Date(order.createdAt))} · {order.itemCount}{" "}
+                    {date(new Date(order.createdAt))} · {order.itemCount}{" "}
                     {order.itemCount === 1 ? "Artikel" : "Artikel"}
                     {order.trackingNumber && ` · Sendung ${order.trackingNumber}`}
                     {/* Issue #41: the pickup code belongs to the order, not the parcel. */}
@@ -91,7 +95,7 @@ export default async function AccountOrdersPage({ searchParams }: PageProps) {
                 <div className="flex items-center gap-3">
                   <OrderStatusBadge status={order.status} />
                   <span className="tabular-nums font-medium">
-                    {formatChf(order.totalCents)}
+                    {chf(order.totalCents)}
                   </span>
                   <ReorderButton orderNumber={order.orderNumber} />
                 </div>

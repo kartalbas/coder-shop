@@ -12,7 +12,7 @@ export interface LanguageConfig {
   active: boolean;
 }
 
-const BASE_LANGUAGE = "de";
+export const BASE_LANGUAGE = "de";
 
 // Issue #58 step 2: the proxy writes this cookie whenever a request arrives with a
 // language prefix, so the choice is remembered for prefix-free links and the next visit.
@@ -74,6 +74,18 @@ export function activeLanguages(languages: LanguageConfig[]): LanguageConfig[] {
 
 export function defaultLanguage(languages: LanguageConfig[]): string {
   return activeLanguages(languages)[0]?.code ?? BASE_LANGUAGE;
+}
+
+// The Intl locale of a language (#58 step 2b): the row's own `intlLocale` wins, even
+// when the row is deactivated (its texts survive, so its formats may still be needed);
+// otherwise the first active row, and as a last stand the base language code itself —
+// a valid Intl locale that merely formats in the base language.
+export function intlLocaleOf(languages: readonly LanguageConfig[], code: string): string {
+  return (
+    languages.find((language) => language.code === code)?.intlLocale ??
+    activeLanguages([...languages])[0]?.intlLocale ??
+    BASE_LANGUAGE
+  );
 }
 
 function normalizeCode(value: string | null | undefined): string | null {

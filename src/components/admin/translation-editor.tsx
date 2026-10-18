@@ -16,7 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { TRANSLATION_AREAS, type LanguageConfig, type TranslationArea, type TranslationEntry } from "@/lib/i18n";
+import {
+  BASE_LANGUAGE,
+  TRANSLATION_AREAS,
+  type LanguageConfig,
+  type TranslationArea,
+  type TranslationEntry,
+} from "@/lib/i18n";
 import {
   saveTranslationAction,
   type TranslationActionState,
@@ -73,7 +79,7 @@ export function TranslationEditor({
   const handleSubmit = (formData: FormData) => {
     const payloadTexts: Record<string, string> = {};
     for (const [code, text] of Object.entries(texts)) {
-      if (code !== "de") payloadTexts[code] = text;
+      if (code !== BASE_LANGUAGE) payloadTexts[code] = text;
     }
     formData.set(
       "payload",
@@ -144,7 +150,7 @@ export function TranslationEditor({
             bis er übersetzt ist.
           </p>
           {languages
-            .filter((language) => language.code !== "de")
+            .filter((language) => language.code !== BASE_LANGUAGE)
             .map((language) => (
               <div key={language.code} className="space-y-1.5">
                 <Label htmlFor={`translation-${language.code}`}>

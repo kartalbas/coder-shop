@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ProductImage } from "@/components/storefront/product-image";
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { useDebounce } from "@/hooks/use-debounce";
 
 interface SearchHit {
@@ -19,6 +19,7 @@ interface SearchHit {
 }
 
 export function SearchInstant() {
+  const { chf } = useFormatters();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -163,7 +164,7 @@ export function SearchInstant() {
                   {hit.priceFrom && (
                     <span className="font-normal text-muted-foreground">ab </span>
                   )}
-                  {formatChf(hit.priceCents)}
+                  {chf(hit.priceCents)}
                 </span>
               </button>
             </li>

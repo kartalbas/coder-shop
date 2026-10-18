@@ -1,6 +1,7 @@
 import type { CatalogDimensionConfig } from "@/lib/catalog-types";
 import { formatDimensionValue } from "@/lib/catalog-types";
 import type { ProductDto } from "@/lib/dto";
+import { createFormatters } from "@/lib/format";
 
 // Comparison table rules (issue #48) — pure: which products can be compared, the
 // row values, and which rows differ (those are the ones highlighted on the page).
@@ -34,10 +35,11 @@ function maxWeight(product: ProductDto): number {
   return Math.max(...product.variants.map((variant) => variant.weightGrams));
 }
 
-function formatWeight(product: ProductDto): string {
+function formatWeight(product: ProductDto, intlLocale: string): string {
+  const { weight, number } = createFormatters(intlLocale);
   const min = minWeight(product);
   const max = maxWeight(product);
-  return min === max ? `${min} g` : `${min}–${max} g`;
+  return min === max ? weight(min) : `${number(min)}–${number(max)} g`;
 }
 
 function formatDimension(dimension: CatalogDimensionConfig, product: ProductDto): string {
@@ -46,11 +48,8 @@ function formatDimension(dimension: CatalogDimensionConfig, product: ProductDto)
     .join(", ");
 }
 
-function formatPrice(product: ProductDto): string {
-  const price = (product.minPriceCents / 100).toLocaleString("de-CH", {
-    style: "currency",
-    currency: "CHF",
-  });
+function formatPrice(product: ProductDto, intlLocale: string): string {
+  const price = createFormatters(intlLocale).chf(product.minPriceCents);
   return product.priceFrom ? `ab ${price}` : price;
 }
 
@@ -59,18 +58,20 @@ function formatStock(product: ProductDto): string {
   return total === 0 ? "Ausverkauft" : `${total} Stück`;
 }
 
+// Issue #58 step 2b: prices and weights follow the request language's Intl locale.
 export function buildComparisonRows(
   products: ProductDto[],
   dimensions: readonly CatalogDimensionConfig[],
+  intlLocale: string,
 ): ComparisonRow[] {
   const definitions: { label: string; value: (product: ProductDto) => string }[] = [
-    { label: "Preis", value: formatPrice },
+    { label: "Preis", value: (product) => formatPrice(product, intlLocale) },
     { label: "Marke", value: (product) => product.brand },
     ...dimensions.map((dimension) => ({
       label: dimension.label,
       value: (product: ProductDto) => formatDimension(dimension, product),
     })),
-    { label: "Gewicht", value: formatWeight },
+    { label: "Gewicht", value: (product) => formatWeight(product, intlLocale) },
     { label: "Varianten", value: (product) => `${product.variants.length}` },
     { label: "Verfügbar", value: formatStock },
   ];

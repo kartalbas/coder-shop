@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ProductImage } from "@/components/storefront/product-image";
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import {
   cartSubtotalCents,
@@ -18,6 +18,7 @@ import {
 } from "@/stores/cart";
 
 export function CartDrawer() {
+  const { chf } = useFormatters();
   const open = useCartDrawerOpen();
   const cart = useCart();
   const subtotal = cartSubtotalCents(cart);
@@ -77,7 +78,7 @@ export function CartDrawer() {
                           <Plus className="size-3" />
                         </Button>
                       </div>
-                      <span className="text-sm font-semibold">{formatChf(line.unitPriceCents * line.qty)}</span>
+                      <span className="text-sm font-semibold">{chf(line.unitPriceCents * line.qty)}</span>
                     </div>
                   </div>
                   <Button
@@ -98,7 +99,7 @@ export function CartDrawer() {
               </div>
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Zwischensumme</span>
-                <span className="text-lg font-semibold">{formatChf(subtotal)}</span>
+                <span className="text-lg font-semibold">{chf(subtotal)}</span>
               </div>
               <Separator className="mb-3" />
               <Button asChild className="w-full" size="lg">

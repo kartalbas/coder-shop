@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { FileText, ReceiptText } from "lucide-react";
-import { formatChf, formatDate } from "@/lib/format";
+import { createFormatters } from "@/lib/format";
+import { getIntlLocale } from "@/server/i18n";
 import { listInvoicesForUser } from "@/server/invoices";
 import { requireCustomerSession } from "@/server/session";
 import { cn } from "@/lib/utils";
@@ -15,9 +16,11 @@ export const metadata: Metadata = {
 };
 
 // "Offene Rechnungen" of the portal (issue #40): amount, due date, overdue marker, PDF.
-export default async function RechnungenPage() {
+export default async function RechnungenPage({ params }: { params: Promise<{ lang: string }> }) {
   await connection();
   const userId = await requireCustomerSession();
+  // Issue #58 step 2b: dates and amounts follow the request language's Intl locale.
+  const { chf, date } = createFormatters(await getIntlLocale((await params).lang));
   const invoices = await listInvoicesForUser(userId);
 
   if (invoices.length === 0) {
@@ -52,8 +55,8 @@ export default async function RechnungenPage() {
               </p>
               <p className="text-sm text-muted-foreground">
                 {invoice.paid
-                  ? `Bezahlt · Total ${formatChf(invoice.totalCents)}`
-                  : `Offen ${formatChf(invoice.openCents)} · zahlbar bis ${formatDate(invoice.dueAt)}`}
+                  ? `Bezahlt · Total ${chf(invoice.totalCents)}`
+                  : `Offen ${chf(invoice.openCents)} · zahlbar bis ${date(invoice.dueAt)}`}
               </p>
               {invoice.overdue && (
                 <p className="mt-1 text-xs font-semibold text-destructive">Überfällig</p>

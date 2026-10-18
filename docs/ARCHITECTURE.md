@@ -226,7 +226,8 @@ src/
                             # (prefix > cookie > browser > default), German fallback + missing
                             # report, DEFAULT_LANGUAGES/DEFAULT_TRANSLATIONS seed content (#58)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
-    format.ts               # CHF de-CH, dates, weights
+    format.ts               # createFormatters(intlLocale): CHF, dates, weights (#58);
+                            # base-locale exports for the German-based admin/mails/invoices
     dates.ts                # Swiss calendar days (Europe/Zurich): day keys, DST-safe bounds
     numbers.ts              # formatOrderNumber/formatPoNumber/formatPaymentReference
     password-rules.ts       # password rules per scope (customer/admin) — single source
@@ -874,7 +875,10 @@ all use **`MongoMemoryReplSet` (single-node)** — no compensation scheme anywhe
 
 Global: mobile-first, dark mode via the `next-themes` package (class strategy,
 `prefers-color-scheme` default, toggle in header), visible focus rings, semantic landmarks,
-German copy, CHF formatted `Intl.NumberFormat('de-CH', { style:'currency', currency:'CHF' })`.
+German copy, CHF/dates/weights formatted with the `Intl` locale of the request's language
+row (`createFormatters(intlLocale)` in `src/lib/format.ts`, #58 step 2b) — the storefront
+reads it from the `LocaleFormatters` context (client) or `getIntlLocale(lang)` (server);
+the German-based admin, mails and invoices use the base-locale exports.
 
 **VAT rounding rule (unit-tested):** `vatCents = grossCents − round(grossCents × 100 /
 (100 + vatRatePercent))` where `grossCents` is the VAT-inclusive total and `vatRatePercent`

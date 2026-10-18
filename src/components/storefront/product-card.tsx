@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { Badge } from "@/components/ui/badge";
 import { CompareToggle } from "@/components/storefront/compare-toggle";
 import { ProductImage } from "@/components/storefront/product-image";
@@ -8,6 +10,7 @@ import { WishlistHeart } from "@/components/storefront/wishlist-heart";
 import type { ProductDto } from "@/server/search";
 
 export function ProductCard({ product }: { product: ProductDto }) {
+  const { chf, number } = useFormatters();
   const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md">
@@ -42,7 +45,7 @@ export function ProductCard({ product }: { product: ProductDto }) {
           {product.rating.count > 0 && (
             <p className="flex items-center gap-1 text-xs text-muted-foreground">
               <StarRating value={product.rating.average} />
-              {product.rating.average.toLocaleString("de-CH")}
+              {number(product.rating.average)}
               <span>({product.rating.count})</span>
             </p>
           )}
@@ -50,7 +53,7 @@ export function ProductCard({ product }: { product: ProductDto }) {
             {product.priceFrom && (
               <span className="font-normal text-muted-foreground">ab </span>
             )}
-            {formatChf(product.minPriceCents)}
+            {chf(product.minPriceCents)}
           </p>
         </div>
       </Link>

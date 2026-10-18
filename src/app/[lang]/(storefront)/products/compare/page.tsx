@@ -12,6 +12,7 @@ import { dimensionsForTypes } from "@/lib/catalog-types";
 import { cn } from "@/lib/utils";
 import { getCatalogTypes } from "@/server/catalog-types";
 import { getProductsBySlugs } from "@/server/search";
+import { getIntlLocale } from "@/server/i18n";
 
 export const metadata: Metadata = {
   title: "Produkte compare",
@@ -35,13 +36,16 @@ function parseSlugs(raw: string | undefined): string[] {
 // shareable; rows where the products differ are highlighted. Issue #61: which types are
 // comparable and which attribute rows appear come from the catalog configuration.
 export default async function ComparePage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ lang: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
-  const params = await searchParams;
-  const raw = typeof params.slugs === "string" ? params.slugs : undefined;
+  const { lang } = await params;
+  const query = await searchParams;
+  const raw = typeof query.slugs === "string" ? query.slugs : undefined;
   if (!raw) notFound();
   const types = await getCatalogTypes();
   const comparableTypes = types.filter((type) => type.comparable);
@@ -76,6 +80,8 @@ export default async function ComparePage({
       types,
       [...new Set(products.map((product) => product.type))],
     ),
+    // Issue #58 step 2b: prices and weights follow the request language's Intl locale.
+    await getIntlLocale(lang),
   );
 
   return (

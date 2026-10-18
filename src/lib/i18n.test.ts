@@ -5,6 +5,7 @@ import {
   defaultLanguage,
   DEFAULT_LANGUAGES,
   filterTranslations,
+  intlLocaleOf,
   isTranslated,
   parseAcceptLanguage,
   resolveLanguage,
@@ -116,6 +117,30 @@ describe("DEFAULT_LANGUAGES", () => {
     expect(DEFAULT_LANGUAGES.find((language) => language.code === "de")?.intlLocale).toBe("de-CH");
     expect(DEFAULT_LANGUAGES.find((language) => language.code === "rm")?.intlLocale).toBe("rm-CH");
     expect(DEFAULT_LANGUAGES.find((language) => language.code === "es")?.intlLocale).toBe("es");
+  });
+});
+
+describe("intlLocaleOf (#58 step 2b)", () => {
+  const languages = [
+    { code: "de", label: "Deutsch", intlLocale: "de-CH", position: 0, active: true },
+    { code: "fr", label: "Français", intlLocale: "fr-CH", position: 1, active: true },
+    { code: "rm", label: "Rumantsch", intlLocale: "rm-CH", position: 2, active: false },
+  ];
+
+  it("answers the row's own intlLocale", () => {
+    expect(intlLocaleOf(languages, "fr")).toBe("fr-CH");
+  });
+
+  it("answers a deactivated row — its formats survive like its texts", () => {
+    expect(intlLocaleOf(languages, "rm")).toBe("rm-CH");
+  });
+
+  it("an unknown code falls back to the first active row", () => {
+    expect(intlLocaleOf(languages, "en")).toBe("de-CH");
+  });
+
+  it("an empty table falls back to the base language code", () => {
+    expect(intlLocaleOf([], "fr")).toBe("de");
   });
 });
 

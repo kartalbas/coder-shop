@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
+import { BASE_LANGUAGE } from "@/lib/i18n";
 import { SITE_METADATA_BASE } from "../site-metadata";
 import { geistSans, geistMono } from "../fonts";
 import "../globals.css";
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
   return (
     <html
-      lang="de"
+      lang={BASE_LANGUAGE}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >

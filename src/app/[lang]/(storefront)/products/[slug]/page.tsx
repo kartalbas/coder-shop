@@ -15,6 +15,7 @@ import { ProductDetail } from "@/components/storefront/product-detail";
 import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefront/recently-viewed";
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { ReviewSection } from "@/components/storefront/review-section";
+import { getIntlLocale } from "@/server/i18n";
 import { getCatalogType } from "@/server/catalog-types";
 import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
@@ -23,7 +24,7 @@ import { vatLabel } from "@/lib/shop-settings";
 import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string; lang: string }>;
 }
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
 
 async function ProductView({ params }: PagePropsLocal) {
   await connection();
-  const { slug } = await params;
+  const { slug, lang } = await params;
   const product = await getProductBySlug(slug);
   // Issue #28: this runs before any Suspense fallback can start the stream, so
   // unknown slugs answer with a real HTTP 404 (see docs: loading.md "Status codes").
@@ -106,7 +107,7 @@ async function ProductView({ params }: PagePropsLocal) {
       <div className="mt-12" />
       <RelatedProducts products={related} />
       {/* Issue #47: reviews from verified buyers, with average and distribution. */}
-      <ReviewSection product={product} />
+      <ReviewSection product={product} intlLocale={await getIntlLocale(lang)} />
       {/* Issue #46: remember this product, and show the rest of the history. */}
       <RecentlyViewedTracker slug={product.slug} />
       <RecentlyViewedRail excludeSlug={product.slug} />

@@ -1,6 +1,6 @@
 import { BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/format";
+import { createFormatters } from "@/lib/format";
 import { getProductReviewsCore, getUserReviewCore, hasPurchasedCore } from "@/server/reviews";
 import { getCustomerSessionUserId } from "@/server/session";
 import type { ProductDto } from "@/server/search";
@@ -10,7 +10,15 @@ import { StarRating } from "./star-rating";
 // Reviews section on the product page (issue #47): average + distribution over the
 // approved reviews, the reviews themselves (every one a verified purchase), and — for
 // a logged-in buyer who has not reviewed yet — the submission form.
-export async function ReviewSection({ product }: { product: ProductDto }) {
+export async function ReviewSection({
+  product,
+  intlLocale,
+}: {
+  product: ProductDto;
+  // Issue #58 step 2b: review dates follow the request language's Intl locale.
+  intlLocale: string;
+}) {
+  const { date } = createFormatters(intlLocale);
   const { aggregate, reviews } = await getProductReviewsCore(product.id);
   const userId = await getCustomerSessionUserId();
   const [ownReview, purchased] = userId
@@ -78,7 +86,7 @@ export async function ReviewSection({ product }: { product: ProductDto }) {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              {review.authorName}, {formatDate(new Date(review.createdAt))}
+              {review.authorName}, {date(new Date(review.createdAt))}
             </p>
             <p className="whitespace-pre-line text-sm leading-relaxed">{review.body}</p>
             {review.adminReply && (

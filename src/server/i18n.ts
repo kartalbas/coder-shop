@@ -3,6 +3,7 @@ import {
   activeLanguages,
   createTranslator,
   DEFAULT_LANGUAGES,
+  intlLocaleOf,
   DEFAULT_TRANSLATIONS,
   type LanguageConfig,
   type Translator,
@@ -44,6 +45,13 @@ export async function getLanguages(): Promise<LanguageConfig[]> {
 
 export async function getActiveLanguages(): Promise<LanguageConfig[]> {
   return activeLanguages(await getLanguages());
+}
+
+// The Intl locale of a language code (#58 step 2b) — the number, CHF and date formats
+// of every storefront render follow the language row, so a new language brings its
+// formats without a code change.
+export async function getIntlLocale(code: string): Promise<string> {
+  return intlLocaleOf(await getLanguages(), code);
 }
 
 export async function getTranslations(): Promise<TranslationEntry[]> {

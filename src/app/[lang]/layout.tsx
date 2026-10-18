@@ -5,7 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteTransition } from "@/components/storefront/route-transition";
 import { getLanguages } from "@/server/i18n";
-import { DEFAULT_LANGUAGES } from "@/lib/i18n";
+import { BASE_LANGUAGE, DEFAULT_LANGUAGES } from "@/lib/i18n";
 import { LOCALIZED_PATH_HEADER, localizedPath, splitLanguagePrefix } from "@/lib/locale-path";
 import { absoluteUrl } from "@/lib/site";
 import { SITE_METADATA_BASE } from "../site-metadata";
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Prom
     headerList.get(LOCALIZED_PATH_HEADER) ?? "/",
     active.map((language) => language.code),
   );
-  const fallback = active[0]?.code ?? "de";
+  const fallback = active[0]?.code ?? BASE_LANGUAGE;
   return {
     ...SITE_METADATA_BASE,
     openGraph: {

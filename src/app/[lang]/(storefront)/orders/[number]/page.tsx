@@ -10,7 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@/components/admin/order-status-badge";
 import { OrderStatusChain } from "@/components/storefront/order-status-chain";
 import QRCode from "qrcode";
-import { formatChf, formatDate, formatDateTime, formatWeight } from "@/lib/format";
+import { createFormatters } from "@/lib/format";
+import { getIntlLocale } from "@/server/i18n";
 import { HAPPY_PATH, PICKUP_PATH } from "@/lib/orders/state-machine";
 import { PICKUP_PAYMENT_TYPE_LABELS } from "@/lib/payments";
 import { STORE } from "@/lib/store";
@@ -21,7 +22,7 @@ import { shippingMethodByKey, vatInclusiveNote } from "@/lib/shop-settings";
 import { getShopSettings } from "@/server/shop-settings";
 
 interface PagePropsLocal {
-  params: Promise<{ number: string }>;
+  params: Promise<{ number: string; lang: string }>;
 }
 
 export async function generateMetadata({ params }: PagePropsLocal): Promise<Metadata> {
@@ -34,9 +35,14 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
 
 async function OrderView({ params }: PagePropsLocal) {
   await connection();
-  const { number } = await params;
+  const { number, lang } = await params;
   const order = await getOrderByNumber(number);
   if (!order) notFound();
+
+  // Issue #58 step 2b: every number, date and weight on this page follows the
+  // language row's intlLocale.
+  const intlLocale = await getIntlLocale(lang);
+  const { chf, date, dateTime, weight } = createFormatters(intlLocale);
 
   // PII (address, e-mail, phone, items, tracking) is only for the buyer — the browser that
   // completed checkout (access cookie), one that verified the order's e-mail, the owning
@@ -88,6 +94,7 @@ async function OrderView({ params }: PagePropsLocal) {
             status={order.status}
             statusLog={order.statusLog}
             path={order.shipping.storePickup === true ? PICKUP_PATH : HAPPY_PATH}
+            intlLocale={intlLocale}
           />
 
           {order.shipping.trackingNumber && (
@@ -100,7 +107,7 @@ async function OrderView({ params }: PagePropsLocal) {
                 <p className="text-xs text-muted-foreground">
                   {shippingLabel}
                   {order.shipping.parcelWeightGrams !== undefined &&
-                    ` · Paketgewicht ${formatWeight(order.shipping.parcelWeightGrams)}`}
+                    ` · Paketgewicht ${weight(order.shipping.parcelWeightGrams)}`}
                 </p>
               </div>
             </div>
@@ -111,12 +118,12 @@ async function OrderView({ params }: PagePropsLocal) {
               <div>
                 <p className="text-sm font-medium">Zahlung per Rechnung</p>
                 <p className="text-xs text-muted-foreground">
-                  Zahlbar bis {formatDate(new Date(order.payment.invoice.dueAt))} · Referenz{" "}
+                  Zahlbar bis {date(new Date(order.payment.invoice.dueAt))} · Referenz{" "}
                   <span className="font-mono">{order.payment.invoice.qrReference}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {order.payment.invoice.openCents > 0
-                    ? `Offen: ${formatChf(order.payment.invoice.openCents)}`
+                    ? `Offen: ${chf(order.payment.invoice.openCents)}`
                     : "Rechnung bezahlt — vielen Dank."}
                 </p>
               </div>
@@ -144,7 +151,7 @@ async function OrderView({ params }: PagePropsLocal) {
                   {order.status === "picked_up"
                     ? `Abgeholt am ${
                         order.shipping.pickup.pickedUpAt
-                          ? formatDateTime(new Date(order.shipping.pickup.pickedUpAt))
+                          ? dateTime(new Date(order.shipping.pickup.pickedUpAt))
                           : ""
                       }${
                         order.shipping.pickup.paymentType
@@ -186,7 +193,7 @@ async function OrderView({ params }: PagePropsLocal) {
                   <span className="font-medium">{line.qty}×</span> {line.name}{" "}
                   <span className="text-muted-foreground">({line.variantLabel})</span>
                 </span>
-                <span className="shrink-0 tabular-nums">{formatChf(line.totalCents)}</span>
+                <span className="shrink-0 tabular-nums">{chf(line.totalCents)}</span>
               </li>
             ))}
           </ul>
@@ -196,12 +203,12 @@ async function OrderView({ params }: PagePropsLocal) {
           <dl className="space-y-1.5 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Zwischensumme</dt>
-              <dd className="tabular-nums">{formatChf(order.totals.subtotalCents)}</dd>
+              <dd className="tabular-nums">{chf(order.totals.subtotalCents)}</dd>
             </div>
             {order.discount && order.discount.cents > 0 && (
               <div className="flex justify-between text-primary">
                 <dt>Rabatt ({order.discount.code})</dt>
-                <dd className="tabular-nums">−{formatChf(order.discount.cents)}</dd>
+                <dd className="tabular-nums">−{chf(order.discount.cents)}</dd>
               </div>
             )}
             <div className="flex justify-between">
@@ -211,12 +218,12 @@ async function OrderView({ params }: PagePropsLocal) {
               <dd className="tabular-nums">
                 {order.totals.shippingCents === 0
                   ? "Gratis"
-                  : formatChf(order.totals.shippingCents)}
+                  : chf(order.totals.shippingCents)}
               </dd>
             </div>
             <div className="flex justify-between text-base font-semibold">
               <dt>Gesamt</dt>
-              <dd className="tabular-nums">{formatChf(order.totals.totalCents)}</dd>
+              <dd className="tabular-nums">{chf(order.totals.totalCents)}</dd>
             </div>
           </dl>
           <p className="text-xs text-muted-foreground">
@@ -248,7 +255,7 @@ async function OrderView({ params }: PagePropsLocal) {
                 {order.customer.phone}
               </p>
               <p className="mt-2 text-muted-foreground">
-                Bestellt am {formatDateTime(new Date(order.createdAt))}
+                Bestellt am {dateTime(new Date(order.createdAt))}
               </p>
             </div>
           </div>

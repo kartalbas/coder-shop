@@ -1,5 +1,6 @@
 // German e-mail templates (issue #39/#44) — pure functions so tests can assert the
 // content; the shop's look is inlined because e-mail clients strip stylesheets.
+import { BASE_LANGUAGE } from "@/lib/i18n";
 import { formatChf } from "@/lib/format";
 
 export interface MailContent {
@@ -9,7 +10,7 @@ export interface MailContent {
 }
 
 function layout(title: string, bodyHtml: string, bodyText: string, cta?: { label: string; url: string }): MailContent {
-  const html = `<!doctype html><html lang="de"><body style="margin:0;background:#f4f4f5;padding:24px;font-family:ui-sans-serif,system-ui,sans-serif;color:#18181b">
+  const html = `<!doctype html><html lang="${BASE_LANGUAGE}"><body style="margin:0;background:#f4f4f5;padding:24px;font-family:ui-sans-serif,system-ui,sans-serif;color:#18181b">
 <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px">
 <p style="margin:0 0 16px;font-weight:700;font-size:18px">coder-shop</p>
 <h1 style="margin:0 0 16px;font-size:20px">${title}</h1>

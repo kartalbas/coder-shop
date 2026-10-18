@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { INVOICE_DUE_DAYS } from "@/lib/invoices";
 import { computeTotals, shippingCents, subtotalCents } from "@/lib/pricing";
 import {
@@ -89,6 +89,7 @@ export function CheckoutForm({
   prefill?: CheckoutPrefill;
   invoiceAvailable?: boolean;
 }) {
+  const { chf } = useFormatters();
   const router = useRouter();
   const cart = useCart();
   const hydrated = useCartHydrated();
@@ -286,7 +287,7 @@ export function CheckoutForm({
                     </span>
                   </span>
                   <span className="text-sm font-semibold">
-                    {price === 0 ? "Gratis" : formatChf(price)}
+                    {price === 0 ? "Gratis" : chf(price)}
                   </span>
                 </label>
               );
@@ -409,7 +410,7 @@ export function CheckoutForm({
                   <span className="min-w-0 truncate text-muted-foreground">
                     {line.qty}× {line.name} <span className="text-xs">({line.variantLabel})</span>
                   </span>
-                  <span className="shrink-0 tabular-nums">{formatChf(line.unitPriceCents * line.qty)}</span>
+                  <span className="shrink-0 tabular-nums">{chf(line.unitPriceCents * line.qty)}</span>
                 </li>
               ))}
             </ul>
@@ -421,23 +422,23 @@ export function CheckoutForm({
             <dl className="space-y-1.5 text-sm">
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Zwischensumme</dt>
-                <dd className="tabular-nums">{formatChf(totals.subtotalCents)}</dd>
+                <dd className="tabular-nums">{chf(totals.subtotalCents)}</dd>
               </div>
               {totals.discountCents > 0 && (
                 <div className="flex justify-between text-primary">
                   <dt>Rabatt{cart.discountCode ? ` (${cart.discountCode})` : ""}</dt>
-                  <dd className="tabular-nums">−{formatChf(totals.discountCents)}</dd>
+                  <dd className="tabular-nums">−{chf(totals.discountCents)}</dd>
                 </div>
               )}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Versand</dt>
                 <dd className="tabular-nums">
-                  {totals.shippingCents === 0 ? "Gratis" : formatChf(totals.shippingCents)}
+                  {totals.shippingCents === 0 ? "Gratis" : chf(totals.shippingCents)}
                 </dd>
               </div>
               <div className="flex justify-between text-base font-semibold">
                 <dt>Gesamt</dt>
-                <dd className="tabular-nums">{formatChf(totals.totalCents)}</dd>
+                <dd className="tabular-nums">{chf(totals.totalCents)}</dd>
               </div>
             </dl>
             <p className="text-xs text-muted-foreground">{vatInclusiveNote(settings.vatRatePercent)}</p>
@@ -448,7 +449,7 @@ export function CheckoutForm({
                 <Check className="size-4" aria-hidden />
               )}
               {payment?.kind === "invoice" ? "Bestellen" : "Jetzt kaufen"} —{" "}
-              {formatChf(totals.totalCents)}
+              {chf(totals.totalCents)}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
               Mit der Bestellung akzeptieren Sie unsere AGB (Demo).

@@ -63,7 +63,7 @@ describe("comparison rows (issue #48/#61)", () => {
       minPriceCents: 90_000,
       filter: { color: ["weiss"], storage: ["256"] },
     });
-    const rows = buildComparisonRows([a, b], SMARTPHONE_DIMENSIONS);
+    const rows = buildComparisonRows([a, b], SMARTPHONE_DIMENSIONS, "de-CH");
     const byLabel = new Map(rows.map((row) => [row.label, row]));
     expect(byLabel.get("Marke")?.differs).toBe(true);
     expect(byLabel.get("Preis")?.differs).toBe(true);
@@ -82,7 +82,7 @@ describe("comparison rows (issue #48/#61)", () => {
     const heavy = phone("heavy", {
       variants: [variant({ weightGrams: 180 }), variant({ weightGrams: 240 })],
     });
-    const rows = buildComparisonRows([cheap, soldOut, heavy], SMARTPHONE_DIMENSIONS);
+    const rows = buildComparisonRows([cheap, soldOut, heavy], SMARTPHONE_DIMENSIONS, "de-CH");
     const byLabel = new Map(rows.map((row) => [row.label, row]));
     expect(byLabel.get("Preis")?.values[0]).toMatch(/^ab CHF\s?500/);
     expect(byLabel.get("Verfügbar")?.values).toEqual(["3 Stück", "Ausverkauft", "6 Stück"]);

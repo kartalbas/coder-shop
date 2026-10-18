@@ -659,8 +659,9 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   storefront routes moved under `app/[lang]` (`/de/products`, `/fr/account/profile` — the
   path itself stays English in every language, #63); the proxy resolves the language
   (prefix > `lang` cookie > `Accept-Language` > first active row), 307-redirects prefix-free
-  paths with the query preserved and refreshes the cookie on prefixed requests, so the
-  choice is remembered. A proxy *rewrite* was rejected: it would make the root layout
+  paths with the query preserved and refreshes the cookie on prefixed **document
+  navigations** (`Accept: text/html`) — late RSC prefetch responses of stale prefixes must
+  not overwrite a fresh choice — so the choice is remembered. A proxy *rewrite* was rejected: it would make the root layout
   dynamic and kill the PPR shell. Two root layouts replace the single one (`app/[lang]`
   storefront with `<html lang>` + `generateStaticParams` from the seeded language codes,
   `app/admin` prefix-free with `<html lang="de">` and noindex); the admin gets its language
@@ -674,7 +675,20 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `connection()` — the shell stays static and the metadata streams. Rendering the links
   from a client component was tried and rejected: they only reach the flight payload, not
   the crawler-visible HTML.
-- **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin editor
-  and step 2's routing/switcher/hreflang are done; the locale-parameterized formats, the
-  string extraction, the catalog content and the two-language checkout e2e follow in the
-  remaining steps.
+- **Formats are the language row's `intlLocale`, not a code constant (#58 step 2b).**
+  `src/lib/format.ts` is a pure factory: `createFormatters(intlLocale)` builds one cached
+  `Intl` set (CHF currency, long dates, date+time, weight, plain number) per locale, so
+  every storefront render writes amounts and dates the way its language writes them
+  (de-CH "CHF 1'234.50", fr-CH "1'234.50 CHF", es "1234,50 CHF"). Client components read
+  the formatters from a `LocaleFormattersProvider` in the storefront layout — initialised
+  from the seed configuration of the URL's language (identical on server and client, no
+  hydration flicker) and synced to the live row by a `LocaleSync` inside a dynamic hole,
+  so an admin edit of `intlLocale` takes effect without a deploy; server components use
+  `getIntlLocale(lang)` + `createFormatters` directly. The named exports (`formatChf` and
+  friends) stay the **base-locale** formatters of the German-based side (admin, mails,
+  invoices) until step 3 moves their strings into the table. A per-request rewrite of the
+  formatters through module state was rejected: it would race between requests.
+- **Steps:** step 1 (tables, resolver, cached loader, insert-only seed), the admin editor,
+  step 2's routing/switcher/hreflang and step 2b's locale-parameterized formats are done;
+  the string extraction, the catalog content and the two-language checkout e2e follow in
+  the remaining steps.

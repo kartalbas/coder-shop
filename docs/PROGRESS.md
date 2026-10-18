@@ -1556,3 +1556,43 @@ Done — M1–M6 + QA complete.
   filter, usage context + preview link, keyboard-driven inline editing, change
   history); step 5 translatable catalog content + two-language checkout e2e; admin
   language switcher.
+
+## ISSUES — queue session 20 (2026-10-18)
+
+### Gate report findings — no defect, re-verified ✅
+- `GET / → 307`, `GET /produkte → 308` and „no `/produkt/…` links" are the intended
+  #63/#58-step-2 behaviour, re-verified live against a fresh seed: `/` → 307 → `/de`,
+  `/produkte` → 308 → `/products` → 307 → `/de/products` (200, product links present),
+  health 200. The gate's German-URL expectations predate #63 (English public URLs).
+
+### #58 (review follow-ups) — stale cookie sentence, exported BASE_LANGUAGE ✅
+- DECISIONS #58 step 2 now says the proxy refreshes the `lang` cookie on prefixed
+  **document navigations** only (matches the switcher-flake fix).
+- `BASE_LANGUAGE` is exported from `src/lib/i18n.ts`; the literal `"de"` in the
+  translation editor, the translations list, the `[lang]` metadata fallback, the admin
+  root layout and the mail layout now reads it. Sort collations (`localeCompare(…,
+  "de")`) stay — they are a collation locale, not the base-language code.
+
+### #58 (step 2b slice) — formats follow the language row ✅ — issue stays open
+- **`createFormatters(intlLocale)`** in `src/lib/format.ts`: one cached `Intl` set per
+  locale (CHF, long date, date+time, weight, plain number); the named exports stay the
+  base-locale formatters of the German-based admin/mails/invoices (until step 3).
+  `intlLocaleOf` (pure, `lib/i18n.ts`) + `getIntlLocale` (server) resolve the locale
+  from the language rows — a new language brings its formats with no code change.
+- **Storefront:** client components (product card incl. rating, product detail, cart
+  drawer/page, checkout, discount, search, free-shipping) read the formatters from the
+  new `LocaleFormattersProvider` (seed-config initial value, `LocaleSync` dynamic hole
+  syncs the live row); server pieces (order confirmation, account orders/invoices,
+  review dates, status chain, comparison rows) take `intlLocale` from `params.lang`.
+  The comparison page's own `toLocaleString("de-CH")` and raw gram strings are gone.
+- Verified: `format.test.ts` +4 (per-locale CHF placement/separators, month names in
+  fr/it/rm/es/de, weight + number separators, cache identity — fail without the
+  factory), `i18n.test.ts` +4 (`intlLocaleOf` row/deactivated/unknown/empty),
+  `compare.test.ts` adapted; new e2e `locale-formats.spec.ts` (2: de lists „CHF …",
+  fr/es list „… CHF"; same product same amount both languages — fails on the
+  pre-change build where every language rendered de-CH).
+  `npm run build`/lint/knip ✅, `npm test` ✅ 565, `npm run test:e2e` ✅ 63/63.
+- **Left open (#58):** step 3 string extraction + no-German-literals guard + translated
+  metadata; step 4 remainder (needs-review filter, usage context + preview link,
+  keyboard-driven inline editing, change history); step 5 translatable catalog content
+  + two-language checkout e2e; admin language switcher.

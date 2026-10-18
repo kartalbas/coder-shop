@@ -6,7 +6,12 @@ import { connection } from "next/server";
 import { Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { filterTranslations, isTranslated, type TranslationArea } from "@/lib/i18n";
+import {
+  BASE_LANGUAGE,
+  filterTranslations,
+  isTranslated,
+  type TranslationArea,
+} from "@/lib/i18n";
 import { getActiveLanguages, getTranslations } from "@/server/i18n";
 
 export const metadata: Metadata = {
@@ -98,7 +103,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
         >
           <option value="alle">Alle Sprachen vollständig</option>
           {languages
-            .filter((language) => language.code !== "de")
+            .filter((language) => language.code !== BASE_LANGUAGE)
             .map((language) => (
               <option key={language.code} value={language.code}>
                 Fehlt in: {language.label}
@@ -123,7 +128,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
                 <th className="px-4 py-2.5 font-medium">Key</th>
                 <th className="px-4 py-2.5 font-medium">Deutsch</th>
                 {languages
-                  .filter((language) => language.code !== "de")
+                  .filter((language) => language.code !== BASE_LANGUAGE)
                   .map((language) => (
                     <th key={language.code} className="px-4 py-2.5 font-medium">
                       {language.label}
@@ -143,7 +148,7 @@ export default async function AdminTranslationsPage({ searchParams }: PagePropsL
                   </td>
                   <td className="max-w-64 px-4 py-2.5">{entry.de}</td>
                   {languages
-                    .filter((language) => language.code !== "de")
+                    .filter((language) => language.code !== BASE_LANGUAGE)
                     .map((language) => (
                       <td key={language.code} className="max-w-64 px-4 py-2.5">
                         {isTranslated(entry, language.code) ? (

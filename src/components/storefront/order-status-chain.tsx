@@ -1,5 +1,5 @@
 import { Check, Circle, X } from "lucide-react";
-import { formatDateTime } from "@/lib/format";
+import { createFormatters } from "@/lib/format";
 import { STATUS_LABELS } from "@/lib/orders/labels";
 import { HAPPY_PATH, type OrderStatus } from "@/lib/orders/state-machine";
 import { cn } from "@/lib/utils";
@@ -15,13 +15,17 @@ export function OrderStatusChain({
   status,
   statusLog,
   path = HAPPY_PATH,
+  intlLocale,
 }: {
   status: OrderStatus;
   statusLog: OrderChainEntry[];
   // The milestone chain to render — HAPPY_PATH for parcels, PICKUP_PATH for store
   // collection (issue #41).
   path?: readonly OrderStatus[];
+  // Issue #58 step 2b: the timestamps follow the request language's Intl locale.
+  intlLocale: string;
 }) {
+  const { dateTime } = createFormatters(intlLocale);
   const reached = new Set(statusLog.map((entry) => entry.status));
   if (status === "cancelled") {
     const cancelledAt = statusLog.find((entry) => entry.status === "cancelled");
@@ -32,7 +36,7 @@ export function OrderStatusChain({
           <p className="font-medium text-destructive">Bestellung storniert</p>
           {cancelledAt && (
             <p className="text-sm text-muted-foreground">
-              am {formatDateTime(new Date(cancelledAt.at))}
+              am {dateTime(new Date(cancelledAt.at))}
             </p>
           )}
         </div>
@@ -63,7 +67,7 @@ export function OrderStatusChain({
               </span>
               {entry && (
                 <span className="text-[10px] text-muted-foreground">
-                  {formatDateTime(new Date(entry.at))}
+                  {dateTime(new Date(entry.at))}
                 </span>
               )}
             </div>

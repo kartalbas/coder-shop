@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatChf, formatWeight } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { cn } from "@/lib/utils";
 import { addToCart, openCartDrawer } from "@/stores/cart";
 import type { ProductDto } from "@/server/search";
@@ -44,6 +44,7 @@ export function ProductDetail({
   typeDimensions: readonly CatalogDimensionConfig[];
   incomingBySku: IncomingBySku;
 }) {
+  const { chf, weight } = useFormatters();
   const dimensions = useMemo(
     () => dimensionsOf(product, typeDimensions),
     [product, typeDimensions],
@@ -154,7 +155,7 @@ export function ProductDetail({
           {price.from && (
             <span className="text-base font-normal text-muted-foreground">ab </span>
           )}
-          {formatChf(price.priceCents)}
+          {chf(price.priceCents)}
           <span className="ml-2 text-sm font-normal text-muted-foreground">inkl. {vatLabel(settings.vatRatePercent)}.</span>
         </motion.p>
 
@@ -259,7 +260,7 @@ export function ProductDetail({
 
         {variant && (
           <p className="text-sm text-muted-foreground">
-            Variante: {variant.label} · Gewicht: {formatWeight(variant.weightGrams)} · Art.-Nr.{" "}
+            Variante: {variant.label} · Gewicht: {weight(variant.weightGrams)} · Art.-Nr.{" "}
             {variant.sku}
           </p>
         )}

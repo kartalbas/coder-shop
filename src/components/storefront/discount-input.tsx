@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { BadgeCheck, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { setDiscountCode, useCart } from "@/stores/cart";
 import { validateDiscountAction } from "@/server/actions/discounts";
 
@@ -18,6 +18,7 @@ export function DiscountInput({
   subtotalCents: number;
   onDiscountChange?: (discountCents: number) => void;
 }) {
+  const { chf } = useFormatters();
   const cart = useCart();
   const applied = cart.discountCode;
   const [code, setCode] = useState("");
@@ -49,7 +50,7 @@ export function DiscountInput({
           <BadgeCheck className="size-4 shrink-0 text-primary" aria-hidden />
           <span className="truncate font-medium">{applied}</span>
           {appliedCents !== null && (
-            <span className="shrink-0 text-muted-foreground">−{formatChf(appliedCents)}</span>
+            <span className="shrink-0 text-muted-foreground">−{chf(appliedCents)}</span>
           )}
         </span>
         <Button

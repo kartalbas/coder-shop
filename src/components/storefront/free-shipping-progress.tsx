@@ -1,4 +1,4 @@
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { freeShippingProgress } from "@/lib/pricing";
 import { useShopSettings } from "@/components/shop-settings-provider";
 
@@ -7,12 +7,13 @@ import { useShopSettings } from "@/components/shop-settings-provider";
 // threshold (issue #64).
 export function FreeShippingProgress({ subtotalCents }: { subtotalCents: number }) {
   const settings = useShopSettings();
+  const { chf } = useFormatters();
   const { remainingCents, percent } = freeShippingProgress(subtotalCents, settings);
   return (
     <div>
       {remainingCents > 0 ? (
         <p className="mb-1.5 text-sm text-muted-foreground">
-          Noch {formatChf(remainingCents)} bis zum kostenlosen Versand
+          Noch {chf(remainingCents)} bis zum kostenlosen Versand
         </p>
       ) : (
         <p className="mb-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">

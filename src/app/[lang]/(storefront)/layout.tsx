@@ -13,7 +13,11 @@ import { LocalStoreHydrator } from "@/components/storefront/local-store-hydrator
 import { CompareTray } from "@/components/storefront/compare-tray";
 import { WishlistSync } from "@/components/storefront/wishlist-sync";
 import { getCustomerSessionUserId } from "@/server/session";
-import { getActiveLanguages } from "@/server/i18n";
+import { getActiveLanguages, getIntlLocale } from "@/server/i18n";
+import {
+  LocaleFormattersProvider,
+  LocaleSync,
+} from "@/components/storefront/locale-formatters";
 
 // Issue #46: only a logged-in customer has an account wishlist to sync into; guests
 // keep the browser list. The session check is a dynamic hole inside Suspense so the
@@ -50,6 +54,14 @@ function HeaderSkeleton() {
   );
 }
 
+// Issue #58 step 2b: the live language row carries the Intl locale for numbers, CHF
+// and dates. The provider above it already formats correctly from the seed
+// configuration; this dynamic hole only syncs in an admin-edited intlLocale.
+async function LocaleSlot({ lang }: { lang: string }) {
+  await connection();
+  return <LocaleSync intlLocale={await getIntlLocale(lang)} />;
+}
+
 async function FooterSlot() {
   await connection();
   const [types, settings] = await Promise.all([getCatalogTypes(), getShopSettings()]);
@@ -67,11 +79,19 @@ function FooterSkeleton() {
   );
 }
 
-export default function StorefrontLayout({ children }: { children: React.ReactNode }) {
+export default async function StorefrontLayout({
+  children,
+  params,
+}: LayoutProps<"/[lang]">) {
+  const { lang } = await params;
   return (
+    <LocaleFormattersProvider lang={lang}>
     <ShopSettingsProvider>
     <CartProvider>
       <LocalStoreHydrator />
+      <Suspense fallback={null}>
+        <LocaleSlot lang={lang} />
+      </Suspense>
       <CompareTray />
       <Suspense fallback={null}>
         <WishlistSyncGate />
@@ -94,5 +114,6 @@ export default function StorefrontLayout({ children }: { children: React.ReactNo
       </Suspense>
     </CartProvider>
     </ShopSettingsProvider>
+    </LocaleFormattersProvider>
   );
 }

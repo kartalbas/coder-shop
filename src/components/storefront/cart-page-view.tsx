@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ProductImage } from "@/components/storefront/product-image";
 import { DiscountInput } from "@/components/storefront/discount-input";
-import { formatChf } from "@/lib/format";
+import { useFormatters } from "@/components/storefront/locale-formatters";
 import { FreeShippingProgress } from "@/components/storefront/free-shipping-progress";
 import { useShopSettings } from "@/components/shop-settings-provider";
 import { activeShippingMethods, vatLabel } from "@/lib/shop-settings";
@@ -20,6 +20,7 @@ import {
 } from "@/stores/cart";
 
 export function CartPageView() {
+  const { chf } = useFormatters();
   const cart = useCart();
   const hydrated = useCartHydrated();
   const settings = useShopSettings();
@@ -117,7 +118,7 @@ export function CartPageView() {
                         </Button>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">{formatChf(line.unitPriceCents * line.qty)}</p>
+                        <p className="font-semibold">{chf(line.unitPriceCents * line.qty)}</p>
                         {line.qty >= line.stock && (
                           <p className="text-xs text-destructive">
                             Maximal {line.stock} an Lager
@@ -140,16 +141,16 @@ export function CartPageView() {
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Zwischensumme</span>
-                <span className="text-lg font-semibold">{formatChf(subtotal)}</span>
+                <span className="text-lg font-semibold">{chf(subtotal)}</span>
               </div>
               {/* Issue #45: the code is remembered here and applied in the checkout. */}
               <DiscountInput subtotalCents={subtotal} />
               <p className="text-xs text-muted-foreground">
                 {activeShippingMethods(settings)
                   .filter((method) => !method.storePickup)
-                  .map((method) => `${method.label} ${formatChf(method.priceCents)}`)
+                  .map((method) => `${method.label} ${chf(method.priceCents)}`)
                   .join(", ")}{" "}
-                — ab {formatChf(settings.freeShippingFromCents)} kostenlos. Preise inkl.{" "}
+                — ab {chf(settings.freeShippingFromCents)} kostenlos. Preise inkl.{" "}
                 {vatLabel(settings.vatRatePercent)}.
               </p>
               <Button asChild size="lg" className="w-full">
