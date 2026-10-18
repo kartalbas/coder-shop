@@ -49,6 +49,9 @@ function EditableCell({ entry, code, value, deValue, languageName, onSaved }: Ce
   const [saving, setSaving] = useState(false);
   // Esc exits edit mode; the input's blur that follows must not commit the draft.
   const cancelling = useRef(false);
+  // While editing the button is unmounted, so focus can only be restored after the
+  // unmount — the flag is consumed by the effect below once editing flipped to false.
+  const pendingFocus = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -56,6 +59,9 @@ function EditableCell({ entry, code, value, deValue, languageName, onSaved }: Ce
     if (editing) {
       inputRef.current?.focus();
       inputRef.current?.select();
+    } else if (pendingFocus.current) {
+      pendingFocus.current = false;
+      buttonRef.current?.focus();
     }
   }, [editing]);
 
@@ -84,9 +90,9 @@ function EditableCell({ entry, code, value, deValue, languageName, onSaved }: Ce
     if (result.ok) {
       toast.success(label(labelsRef.current, "admin.translations.saved"));
       onSaved(entry.key, code, draft);
+      pendingFocus.current = refocus;
       setEditing(false);
       router.refresh();
-      if (refocus) buttonRef.current?.focus();
     } else if (result.error) {
       toast.error(result.error);
       inputRef.current?.focus();
@@ -95,8 +101,8 @@ function EditableCell({ entry, code, value, deValue, languageName, onSaved }: Ce
 
   const cancel = () => {
     cancelling.current = true;
+    pendingFocus.current = true;
     setEditing(false);
-    buttonRef.current?.focus();
   };
 
   if (editing) {

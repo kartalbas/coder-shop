@@ -2712,3 +2712,45 @@ Done — M1–M6 + QA complete.
 - **Left open (#58):** usage context + preview link in the editor; translatable catalog
   content + five-language demo content; the per-area e2e deletion now that the
   no-German-literals guard has survived a session; done-when re-check.
+## ISSUES — queue session 47 (2026-10-19)
+
+### Gate report ✅ no defect + #58 (editor usage slice) — usage context, preview links, e2e pruning, inline focus fix ✅ — issue stays open
+- **Gate report:** `GET /produkte → 308` and „no `/produkt/…` links" are again the
+  intended #63/#65 English-URL contract (former German URLs answer a permanent 308,
+  product links are `/products/…`), asserted by the green `english-urls` spec — the
+  review session closed #63 with no action. Nothing to fix.
+- **Step 0 (plan of 23:21) — e2e pruning:** the eleven per-area translation specs that
+  only re-checked literals the no-German-literals guard enforces statically were
+  deleted (chrome/cart/checkout/product/account/menu-compare/remaining-literals +
+  admin-orders/settings/purchasing/customers); the flow specs the done-when names stay
+  (storefront + confirmation two-language checkout, validation, routing, formats,
+  switcher, editor). Gate e2e drops from 107 to the remaining suite.
+- **Review defect (23:15) fixed:** the inline cell lost keyboard focus after Enter-save
+  and Esc-cancel (the button is unmounted while editing, so `buttonRef.current?.focus()`
+  was dead code). A `pendingFocus` ref is consumed by the editing effect once the button
+  remounts; the inline e2e spec now asserts `toBeFocused` after Enter and after Esc —
+  verified failing on the stashed pre-change build (focus lands on body).
+- **Usage as extracted data (A1):** the guard's AST walk moved to `src/test/ast-texts.ts`
+  (shared, behavior unchanged); new `tests/translation-usage.test.ts` extracts every
+  key-shaped literal and template head into the checked-in
+  `src/server/translation-usage.json` (1117 entries; template heads → `…​.*` prefixes,
+  plural bases cover their family rows) and pins resolution through the pure
+  `usageFilesFor` (exact, prefix, family, none). Snapshot compared as a serialized
+  string so the file stays strict JSON (DECISIONS).
+- **Previews as data (A2):** `src/server/translation-previews.json` (namespace → route
+  template) + pure `previewTemplateFor`/`previewPathFor` (longest prefix, admin nav
+  fallback, `{slug}`/`{number}` from live queries — first product by slug, newest
+  order); the `[key]` page renders a „Verwendung" section above the history: usage
+  files in mono (or the `.none` row) and one `target="_blank"` preview link per active
+  language via `localizedPath` (admin keys: one prefix-free link). 4 new rows × 5
+  languages.
+- **Tests:** new `tests/translation-previews.test.ts` (5 — longest prefix, samples
+  present/absent, admin nav fallback + table precedence, no-page keys, real table),
+  `tests/translation-usage.test.ts` (2 — snapshot equals a fresh extraction, resolution
+  matrix), new e2e `translation-usage.spec.ts` (cart title: usage files + French
+  `/fr/cart` link + one link per language; admin key previews `/admin/products`;
+  unused key states so) — verified failing on the pre-change build (no usage section).
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 688 (70 files),
+  `npm run test:e2e` ✅ 80/80; tree clean, nothing running.
+- **Left open (#58):** translatable catalog content + admin editing + five-language
+  demo content (plan sessions B1–B3), then the done-when re-check and closing.

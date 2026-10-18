@@ -1,7 +1,7 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import ts from "typescript";
+import { productionFiles, textsOf, SRC } from "@/test/ast-texts";
 
 // Issue #58 step 3 (decision point 4): the no-German-literals guard. Every UI text is
 // a row of the one translation table, read dynamically per request — German is content,
@@ -15,8 +15,6 @@ import ts from "typescript";
 // it belongs to (stored data, banking interop, seed content, developer logs, machine
 // payloads). Exemptions are exact: changing such a text re-flags it, and a stale
 // exemption fails the second test, so the registry cannot silently rot.
-
-const SRC = path.join(__dirname, "..", "src");
 
 // German markers: the letters and quotes that cannot appear in English text, plus a
 // conservative list of unmistakably German words (no articles or other words that
@@ -179,57 +177,6 @@ const EXEMPTIONS: Exemption[] = [
   // through the table before this line can answer).
   { file: "server/checkout.ts", text: "Ungültiger Code.", reason: "unreachable fallback behind the table-driven refusals" },
 ];
-
-function productionFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const full = path.join(dir, entry);
-    if (statSync(full).isDirectory()) return productionFiles(full);
-    if (!/\.tsx?$/.test(entry) || /\.test\./.test(entry)) return [];
-    // The seed file's typed reader holds the migration lists (retired keys, repairs) —
-    // migrations, not content (DECISIONS); translations.json is not a .ts file at all.
-    if (entry === "translation-seed.ts") return [];
-    return [full];
-  });
-}
-
-interface FoundText {
-  file: string;
-  line: number;
-  text: string;
-}
-
-function textsOf(file: string): FoundText[] {
-  const sourceText = readFileSync(file, "utf8");
-  const source = ts.createSourceFile(
-    file,
-    sourceText,
-    ts.ScriptTarget.Latest,
-    true,
-    file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
-  const found: FoundText[] = [];
-  const record = (node: ts.Node, text: string) => {
-    found.push({
-      file: path.relative(SRC, file).split(path.sep).join("/"),
-      line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
-      text,
-    });
-  };
-  const visit = (node: ts.Node): void => {
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      record(node, node.text);
-    } else if (ts.isTemplateExpression(node)) {
-      record(node, node.head.text);
-      for (const span of node.templateSpans) record(node, span.literal.text);
-    } else if (ts.isJsxText(node)) {
-      const trimmed = node.text.trim();
-      if (trimmed) record(node, trimmed);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return found;
-}
 
 describe("no German literals in code (#58 step 3)", () => {
   const violations = productionFiles(SRC)

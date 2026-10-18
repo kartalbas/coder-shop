@@ -1,0 +1,19 @@
+{
+  "shop.cart": "/cart",
+  "shop.checkout": "/checkout",
+  "shop.product": "/products/{slug}",
+  "shop.review": "/products/{slug}",
+  "shop.reviews": "/products/{slug}",
+  "shop.restock": "/products/{slug}",
+  "shop.order": "/orders/{number}",
+  "shop.status": "/orders/{number}",
+  "shop.invoice": "/orders/{number}",
+  "shop.listing": "/products",
+  "shop.menu": "/products",
+  "shop.compare": "/products",
+  "shop.meta": "/products",
+  "shop.home": "/",
+  "shop.account": "/account/login",
+  "shop.auth": "/account/login",
+  "shop.password": "/account/login"
+}

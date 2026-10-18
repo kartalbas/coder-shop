@@ -1019,3 +1019,30 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   The list shows active languages only; deactivated columns and key/area stay on the
   full editor page. Saved values apply optimistically and `router.refresh()` syncs the
   server truth (badges, stamps) — no debounce code at demo scale.
+- **Usage context is extracted from the code, previews come from a route table (#58
+  editor usage slice).** The editor must show where a text is used and preview it in
+  each language without hard-coding either. Usage: `tests/translation-usage.test.ts`
+  walks the production files with the guard's shared AST helper (`src/test/ast-texts.ts`)
+  and writes the key-shaped literals and template heads into the checked-in
+  `src/server/translation-usage.json` — a file snapshot refreshed with `vitest -u`, so a
+  moved usage turns the test red and the editor can never drift from reality. Template
+  heads become prefix entries (`shop.status.*`), plural bases cover their `.one/.other`
+  family rows. Previews: `src/server/translation-previews.json` maps key namespaces to
+  route templates; `previewPathFor` is pure (longest prefix wins, `admin.*` without a
+  table entry derives its own nav page from `ADMIN_NAV`, unknown → no link); `{slug}`
+  and `{number}` are queries (first product by slug, newest order), never constants —
+  an empty collection simply yields no link. Storefront previews exist per active
+  language row via `localizedPath`; admin URLs are prefix-free and follow the language
+  cookie, so an admin preview is one link.
+- **The usage snapshot is compared as a serialized string (#58 editor usage slice).**
+  Vitest 5 writes object file snapshots for `.json` targets with trailing commas, which
+  the runtime reader could not import; the test therefore snapshots
+  `JSON.stringify(…, null, 2)` so `translation-usage.json` stays strict JSON while
+  keeping the `vitest -u` update discipline.
+- **Per-area translation e2e specs retire in favour of the guard (#58).** The specs
+  that only re-checked literals the no-German-literals guard now enforces statically
+  every run (chrome/cart/checkout/product/account/menu-compare/remaining-literals and
+  the admin per-area specs) were deleted; kept are the flow specs the done-when names
+  (two-language checkout, localized server refusals, routing, formats, switcher,
+  editor). The guard plus the byte-identity German specs cover what they proved, in
+  milliseconds instead of browser minutes.

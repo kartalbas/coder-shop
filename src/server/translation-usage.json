@@ -1,0 +1,3560 @@
+{
+  "admin.account.change": [
+    "app/admin/(panel)/page.tsx",
+    "components/admin/password-form.tsx"
+  ],
+  "admin.account.currentRequired": [
+    "server/actions/admin/account.ts"
+  ],
+  "admin.account.field.confirm": [
+    "components/admin/password-form.tsx"
+  ],
+  "admin.account.field.current": [
+    "components/admin/password-form.tsx"
+  ],
+  "admin.account.field.next": [
+    "components/admin/password-form.tsx"
+  ],
+  "admin.account.passwordChanged": [
+    "components/admin/password-form.tsx"
+  ],
+  "admin.account.passwordMismatch": [
+    "server/actions/admin/account.ts"
+  ],
+  "admin.action.all": [
+    "app/admin/(panel)/invoices/page.tsx",
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/products/page.tsx",
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.action.back": [
+    "app/admin/(panel)/catalog-types/[key]/page.tsx",
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.action.cancel": [
+    "components/admin/translation-editor.tsx"
+  ],
+  "admin.action.edit": [
+    "app/admin/(panel)/catalog-types/page.tsx",
+    "app/admin/(panel)/products/page.tsx",
+    "components/admin/translations-table.tsx"
+  ],
+  "admin.action.logout": [
+    "components/admin/mobile-nav.tsx",
+    "components/admin/sidebar.tsx"
+  ],
+  "admin.action.print": [
+    "components/admin/label-actions.tsx"
+  ],
+  "admin.action.save": [
+    "components/admin/catalog-type-editor.tsx",
+    "components/admin/languages-editor.tsx",
+    "components/admin/po-status-actions.tsx",
+    "components/admin/product-core-form.tsx",
+    "components/admin/shop-settings-form.tsx",
+    "components/admin/supplier-form.tsx",
+    "components/admin/translation-editor.tsx",
+    "components/admin/variant-editor.tsx"
+  ],
+  "admin.auth.error.blocked": [
+    "server/session.ts"
+  ],
+  "admin.auth.error.busy": [
+    "server/session.ts"
+  ],
+  "admin.auth.error.currentPasswordWrong": [
+    "server/session.ts"
+  ],
+  "admin.auth.error.passwordTooShort": [
+    "server/actions/admin/account.ts",
+    "server/session.ts"
+  ],
+  "admin.auth.error.throttled": [
+    "server/session.ts"
+  ],
+  "admin.auth.error.userNotFound": [
+    "server/session.ts"
+  ],
+  "admin.auth.error.wrongCredentials": [
+    "server/session.ts"
+  ],
+  "admin.catalogTypes.addDimension": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.column.facet": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.column.order": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.column.position": [
+    "components/admin/catalog-type-editor.tsx",
+    "components/admin/languages-editor.tsx"
+  ],
+  "admin.catalogTypes.column.unit": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.comparable": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.comparableBadge": [
+    "app/admin/(panel)/catalog-types/page.tsx"
+  ],
+  "admin.catalogTypes.dimensionKeyAria": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.dimensionNameAria": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.dimensionOrderAria": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.dimensionRemoveAria": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.dimensionsTitle": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.dimensionUnitAria": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.editTitle": [
+    "app/admin/(panel)/catalog-types/[key]/page.tsx"
+  ],
+  "admin.catalogTypes.error.dimensionKeys": [
+    "server/catalog-types.ts"
+  ],
+  "admin.catalogTypes.error.dimensionKeyShape": [
+    "server/catalog-types.ts"
+  ],
+  "admin.catalogTypes.error.dimensionNameMissing": [
+    "server/catalog-types.ts"
+  ],
+  "admin.catalogTypes.error.dimensionsRequired": [
+    "server/catalog-types.ts"
+  ],
+  "admin.catalogTypes.error.keyShape": [
+    "server/catalog-types.ts"
+  ],
+  "admin.catalogTypes.error.nameMissing": [
+    "server/catalog-types.ts"
+  ],
+  "admin.catalogTypes.error.photoNounMissing": [
+    "server/catalog-types.ts"
+  ],
+  "admin.catalogTypes.field.brands": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.field.key": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.field.photoNoun": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.field.stockTracking": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.intro": [
+    "app/admin/(panel)/catalog-types/page.tsx"
+  ],
+  "admin.catalogTypes.new": [
+    "app/admin/(panel)/catalog-types/page.tsx"
+  ],
+  "admin.catalogTypes.newTitle": [
+    "app/admin/(panel)/catalog-types/[key]/page.tsx"
+  ],
+  "admin.catalogTypes.notFound": [
+    "app/admin/(panel)/catalog-types/[key]/page.tsx"
+  ],
+  "admin.catalogTypes.order.*": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.positionBadge": [
+    "app/admin/(panel)/catalog-types/page.tsx"
+  ],
+  "admin.catalogTypes.saved": [
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.stockTracking.quantity": [
+    "app/admin/(panel)/catalog-types/page.tsx",
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.stockTracking.serial": [
+    "app/admin/(panel)/catalog-types/page.tsx",
+    "components/admin/catalog-type-editor.tsx"
+  ],
+  "admin.catalogTypes.title": [
+    "app/admin/(panel)/catalog-types/page.tsx"
+  ],
+  "admin.catalogTypes.validation.dimensionKeyShape": [
+    "server/actions/admin/catalog-types.ts"
+  ],
+  "admin.catalogTypes.validation.dimensionNameMissing": [
+    "server/actions/admin/catalog-types.ts"
+  ],
+  "admin.catalogTypes.validation.dimensionsRequired": [
+    "server/actions/admin/catalog-types.ts"
+  ],
+  "admin.catalogTypes.validation.keyShape": [
+    "server/actions/admin/catalog-types.ts"
+  ],
+  "admin.catalogTypes.validation.photoNounMissing": [
+    "server/actions/admin/catalog-types.ts"
+  ],
+  "admin.customers.action.block": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.action.resetPassword": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.action.unblock": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.address.default": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.address.kind.billing": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.address.kind.shipping": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.addresses.empty": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.addresses.title": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.back": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.blocked": [
+    "app/admin/(panel)/customers/[id]/page.tsx",
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.column.email": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.column.name": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.column.orders": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.credit": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.empty": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.error.noteTooLong": [
+    "server/customers-admin.ts"
+  ],
+  "admin.customers.invoices.due": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.invoices.empty": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.invoices.link": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.invoices.title": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.manage.note": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.manage.title": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.customers.noMatch": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.notes.placeholder": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.notes.save": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.notes.title": [
+    "app/admin/(panel)/customers/[id]/page.tsx",
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.search.aria": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.search.placeholder": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.customers.title": [
+    "app/admin/(panel)/customers/page.tsx",
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.customers.toast.blocked": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.toast.notesSaved": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.toast.resetSent": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.customers.toast.unblocked": [
+    "components/admin/customer-actions.tsx"
+  ],
+  "admin.dashboard.intro": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.kpi.openOrders": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.kpi.pendingShipments": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.kpi.readyForPickup": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.kpi.revenue": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.link.orders": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.link.packing": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.link.pickup": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.aria": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.column.product": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.column.sku": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.column.stock": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.column.threshold": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.empty": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.note": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.lowStock.title": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.password.hint": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.recent.title": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.sparkline.aria": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.dashboard.title": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.discounts.action.activate": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.action.deactivate": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.column.code": [
+    "app/admin/(panel)/discounts/page.tsx",
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.column.discount": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.column.used": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.column.valid": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.create.submit": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.create.title": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.customers": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.empty": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.error.amountInvalid": [
+    "server/actions/admin/discounts.ts"
+  ],
+  "admin.discounts.error.amountMissing": [
+    "server/discounts.ts"
+  ],
+  "admin.discounts.error.codeShape": [
+    "server/discounts.ts"
+  ],
+  "admin.discounts.error.dateOrder": [
+    "server/discounts.ts"
+  ],
+  "admin.discounts.error.duplicate": [
+    "server/discounts.ts"
+  ],
+  "admin.discounts.error.percentMissing": [
+    "server/discounts.ts"
+  ],
+  "admin.discounts.field.amount": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.description": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.kind": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.minOrder": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.percent": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.perCustomerOnce": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.usageLimit": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.usageLimitPlaceholder": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.validFrom": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.field.validTo": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.kind.fixed": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.kind.percent": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.minOrder": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.perCustomer": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.status.active": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.status.inactive": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.title": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.toast.activated": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.toast.created": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.toast.deactivated": [
+    "components/admin/discount-forms.tsx"
+  ],
+  "admin.discounts.valid.from": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.valid.open": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.discounts.valid.unlimited": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.error.codeNotFound": [
+    "server/discounts.ts"
+  ],
+  "admin.error.customerNotFound": [
+    "server/customers-admin.ts"
+  ],
+  "admin.error.invalidRequest": [
+    "server/actions/admin/catalog-types.ts",
+    "server/actions/admin/customers.ts",
+    "server/actions/admin/discounts.ts",
+    "server/actions/admin/invoices.ts",
+    "server/actions/admin/orders.ts",
+    "server/actions/admin/pickup.ts",
+    "server/actions/admin/products.ts",
+    "server/actions/admin/purchasing.ts",
+    "server/actions/admin/reviews.ts",
+    "server/actions/admin/settings.ts",
+    "server/actions/admin/shipping.ts",
+    "server/actions/admin/translations.ts",
+    "server/products-admin.ts"
+  ],
+  "admin.error.orderNotFound": [
+    "server/orders-admin.ts",
+    "server/pickup.ts",
+    "server/purchasing.ts",
+    "server/shipping/label.ts"
+  ],
+  "admin.error.productNotFound": [
+    "server/products-admin.ts"
+  ],
+  "admin.error.reviewNotFound": [
+    "server/reviews.ts"
+  ],
+  "admin.field.active": [
+    "components/admin/languages-editor.tsx",
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.field.key": [
+    "components/admin/catalog-type-editor.tsx",
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.field.name": [
+    "components/admin/catalog-type-editor.tsx",
+    "components/admin/languages-editor.tsx",
+    "components/admin/product-core-form.tsx",
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.images.add": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.altAria": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.altLabel": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.altPlaceholder": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.moveDown": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.moveUp": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.note": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.pathAria": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.pathLabel": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.preview": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.remove": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.save": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.saved": [
+    "components/admin/image-editor.tsx"
+  ],
+  "admin.images.validation.altRequired": [
+    "lib/validations/product.ts"
+  ],
+  "admin.images.validation.max": [
+    "lib/validations/product.ts"
+  ],
+  "admin.images.validation.min": [
+    "lib/validations/product.ts"
+  ],
+  "admin.images.validation.pathRequired": [
+    "lib/validations/product.ts"
+  ],
+  "admin.images.validation.pathShape": [
+    "lib/validations/product.ts"
+  ],
+  "admin.images.validation.unique": [
+    "lib/validations/product.ts"
+  ],
+  "admin.invoices.amountAria": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.amountPlaceholder": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.column.actions": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.column.due": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.column.open": [
+    "app/admin/(panel)/customers/page.tsx",
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.creditAria": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.creditIntro": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.creditLimitAria": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.creditSet": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.creditToast": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.empty": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.error.amountExceeds": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.amountFormat": [
+    "server/actions/admin/invoices.ts"
+  ],
+  "admin.invoices.error.amountPositive": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.cancelled": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.changed": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.customerNotFound": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.invalidAmount": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.notFound": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.notOverdue": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.paid": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.reminder1First": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.reminder1Sent": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.error.reminder2Sent": [
+    "server/invoices.ts"
+  ],
+  "admin.invoices.noCredits": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.overdue": [
+    "app/admin/(panel)/customers/[id]/page.tsx",
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.pay": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.payToast": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.reminder": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.reminder1": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.reminder1Toast": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.reminder2": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.reminder2Toast": [
+    "components/admin/invoice-actions.tsx"
+  ],
+  "admin.invoices.tab.open": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.tab.overdue": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.tab.paid": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.tabsAria": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.title": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.invoices.used": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.label.create": [
+    "components/admin/label-actions.tsx"
+  ],
+  "admin.label.created": [
+    "components/admin/label-actions.tsx"
+  ],
+  "admin.label.error.conflict": [
+    "server/shipping/label.ts"
+  ],
+  "admin.label.error.fileMissing": [
+    "server/shipping/label.ts"
+  ],
+  "admin.label.error.invalidPath": [
+    "server/shipping/label.ts"
+  ],
+  "admin.label.error.missing": [
+    "server/shipping/label.ts"
+  ],
+  "admin.label.error.notPacked": [
+    "server/shipping/label.ts"
+  ],
+  "admin.label.error.storage": [
+    "server/shipping/label.ts"
+  ],
+  "admin.label.open": [
+    "app/admin/(panel)/orders/[id]/page.tsx",
+    "components/admin/label-actions.tsx"
+  ],
+  "admin.label.shipment": [
+    "components/admin/label-actions.tsx"
+  ],
+  "admin.language.aria": [
+    "components/admin/language-switcher.tsx"
+  ],
+  "admin.language.switchTo": [
+    "components/admin/language-switcher.tsx"
+  ],
+  "admin.languages.code": [
+    "components/admin/languages-editor.tsx"
+  ],
+  "admin.languages.create": [
+    "components/admin/languages-editor.tsx"
+  ],
+  "admin.languages.intlLocale": [
+    "components/admin/languages-editor.tsx"
+  ],
+  "admin.languages.intro": [
+    "app/admin/(panel)/translations/languages/page.tsx"
+  ],
+  "admin.languages.saved": [
+    "components/admin/languages-editor.tsx"
+  ],
+  "admin.languages.validation.codeShape": [
+    "server/actions/admin/translations.ts",
+    "server/i18n.ts"
+  ],
+  "admin.languages.validation.localeRequired": [
+    "server/actions/admin/translations.ts",
+    "server/i18n.ts"
+  ],
+  "admin.languages.validation.nameRequired": [
+    "server/actions/admin/translations.ts",
+    "server/i18n.ts"
+  ],
+  "admin.languages.validation.positionInvalid": [
+    "server/i18n.ts"
+  ],
+  "admin.login.cardIntro": [
+    "app/admin/(auth)/login/page.tsx"
+  ],
+  "admin.login.demoHint": [
+    "app/admin/(auth)/login/page.tsx"
+  ],
+  "admin.login.description": [
+    "app/admin/(auth)/login/page.tsx"
+  ],
+  "admin.login.email": [
+    "components/admin/login-form.tsx"
+  ],
+  "admin.login.emailInvalid": [
+    "server/actions/admin/auth.ts"
+  ],
+  "admin.login.password": [
+    "components/admin/login-form.tsx"
+  ],
+  "admin.login.passwordRequired": [
+    "server/actions/admin/auth.ts"
+  ],
+  "admin.login.submit": [
+    "components/admin/login-form.tsx"
+  ],
+  "admin.login.title": [
+    "app/admin/(auth)/login/page.tsx"
+  ],
+  "admin.mails.empty": [
+    "app/admin/(panel)/mails/page.tsx"
+  ],
+  "admin.mails.emptyNote": [
+    "app/admin/(panel)/mails/page.tsx"
+  ],
+  "admin.mails.intro": [
+    "app/admin/(panel)/mails/page.tsx"
+  ],
+  "admin.mails.title": [
+    "app/admin/(panel)/mails/page.tsx"
+  ],
+  "admin.mails.to": [
+    "app/admin/(panel)/mails/page.tsx"
+  ],
+  "admin.meta.catalogTypeEdit.description": [
+    "app/admin/(panel)/catalog-types/[key]/page.tsx"
+  ],
+  "admin.meta.catalogTypeEdit.title": [
+    "app/admin/(panel)/catalog-types/[key]/page.tsx"
+  ],
+  "admin.meta.catalogTypes.description": [
+    "app/admin/(panel)/catalog-types/page.tsx"
+  ],
+  "admin.meta.catalogTypes.title": [
+    "app/admin/(panel)/catalog-types/page.tsx"
+  ],
+  "admin.meta.customerDetail.description": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.meta.customerDetail.title": [
+    "app/admin/(panel)/customers/[id]/page.tsx"
+  ],
+  "admin.meta.customers.description": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.meta.customers.title": [
+    "app/admin/(panel)/customers/page.tsx"
+  ],
+  "admin.meta.dashboard.description": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.meta.dashboard.title": [
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.meta.discounts.description": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.meta.discounts.title": [
+    "app/admin/(panel)/discounts/page.tsx"
+  ],
+  "admin.meta.invoices.description": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.meta.invoices.title": [
+    "app/admin/(panel)/invoices/page.tsx"
+  ],
+  "admin.meta.languages.description": [
+    "app/admin/(panel)/translations/languages/page.tsx"
+  ],
+  "admin.meta.languages.title": [
+    "app/admin/(panel)/translations/languages/page.tsx"
+  ],
+  "admin.meta.mails.description": [
+    "app/admin/(panel)/mails/page.tsx"
+  ],
+  "admin.meta.mails.title": [
+    "app/admin/(panel)/mails/page.tsx"
+  ],
+  "admin.meta.orderDetail.description": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.meta.orders.description": [
+    "app/admin/(panel)/orders/page.tsx"
+  ],
+  "admin.meta.orders.title": [
+    "app/admin/(panel)/orders/page.tsx"
+  ],
+  "admin.meta.packing.description": [
+    "app/admin/(panel)/packing/page.tsx"
+  ],
+  "admin.meta.packing.title": [
+    "app/admin/(panel)/packing/page.tsx"
+  ],
+  "admin.meta.packingSlip.description": [
+    "app/admin/(panel)/packing/[id]/page.tsx"
+  ],
+  "admin.meta.pickup.description": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.meta.pickup.title": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.meta.poDetail.description": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.meta.poDetail.title": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.meta.productDetail.description": [
+    "app/admin/(panel)/products/[id]/page.tsx"
+  ],
+  "admin.meta.productDetail.title": [
+    "app/admin/(panel)/products/[id]/page.tsx"
+  ],
+  "admin.meta.products.description": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.meta.products.title": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.meta.purchasing.description": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.meta.purchasing.title": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.meta.reviews.description": [
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.meta.reviews.title": [
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.meta.settings.description": [
+    "app/admin/(panel)/settings/page.tsx"
+  ],
+  "admin.meta.settings.title": [
+    "app/admin/(panel)/settings/page.tsx"
+  ],
+  "admin.meta.stockUnits.description": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.meta.stockUnits.title": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.meta.suppliers.description": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.meta.suppliers.title": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.meta.translationEdit.description": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.meta.translationEdit.title": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.meta.translations.description": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.meta.translations.title": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.mobile.openNav": [
+    "components/admin/mobile-nav.tsx"
+  ],
+  "admin.nav.aria": [
+    "components/admin/mobile-nav.tsx",
+    "components/admin/sidebar.tsx"
+  ],
+  "admin.nav.catalogTypes": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.customers": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.dashboard": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.discounts": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.invoices": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.mails": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.orders": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.packing": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.pickup": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.products": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.purchasing": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.reviews": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.settings": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.stockUnits": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.suppliers": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.nav.translations": [
+    "components/admin/admin-nav.ts"
+  ],
+  "admin.orders.back": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.cancel": [
+    "components/admin/transition-buttons.tsx"
+  ],
+  "admin.orders.cap": [
+    "app/admin/(panel)/orders/page.tsx"
+  ],
+  "admin.orders.column.customer": [
+    "app/admin/(panel)/invoices/page.tsx",
+    "app/admin/(panel)/orders/[id]/page.tsx",
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/packing/page.tsx",
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.orders.column.date": [
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/packing/page.tsx",
+    "app/admin/(panel)/page.tsx",
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.orders.column.items": [
+    "app/admin/(panel)/orders/[id]/page.tsx",
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/packing/page.tsx",
+    "app/admin/(panel)/purchasing/[id]/page.tsx",
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.orders.column.order": [
+    "app/admin/(panel)/invoices/page.tsx",
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/packing/page.tsx",
+    "app/admin/(panel)/page.tsx",
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.orders.column.status": [
+    "app/admin/(panel)/discounts/page.tsx",
+    "app/admin/(panel)/invoices/page.tsx",
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/packing/page.tsx",
+    "app/admin/(panel)/page.tsx",
+    "app/admin/(panel)/pickup/page.tsx",
+    "app/admin/(panel)/purchasing/page.tsx",
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.orders.column.total": [
+    "app/admin/(panel)/invoices/page.tsx",
+    "app/admin/(panel)/orders/[id]/page.tsx",
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/page.tsx",
+    "app/admin/(panel)/pickup/page.tsx",
+    "app/admin/(panel)/purchasing/[id]/page.tsx",
+    "app/admin/(panel)/purchasing/page.tsx",
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.orders.customerAria": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.empty": [
+    "app/admin/(panel)/orders/page.tsx"
+  ],
+  "admin.orders.error.conflict": [
+    "server/invoices.ts",
+    "server/orders-admin.ts",
+    "server/pickup.ts"
+  ],
+  "admin.orders.error.failed": [
+    "server/actions/admin/orders.ts"
+  ],
+  "admin.orders.error.illegalTransition": [
+    "server/actions/admin/orders.ts"
+  ],
+  "admin.orders.heading": [
+    "app/admin/(panel)/orders/[id]/page.tsx",
+    "components/admin/pack-list.tsx"
+  ],
+  "admin.orders.history": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.historyAria": [
+    "app/admin/(panel)/orders/[id]/page.tsx",
+    "components/admin/status-timeline.tsx"
+  ],
+  "admin.orders.none": [
+    "app/admin/(panel)/customers/[id]/page.tsx",
+    "app/admin/(panel)/page.tsx"
+  ],
+  "admin.orders.noTransitions": [
+    "components/admin/transition-buttons.tsx"
+  ],
+  "admin.orders.openCustomer": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.parcelWeight": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.pickup.code": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.pickup.hint": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.pickup.paid": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.pickup.pickedUpAt": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.pickup.title": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.pickupAria": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.shipping": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.statusFilterAria": [
+    "app/admin/(panel)/orders/page.tsx",
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.orders.statusUpdated": [
+    "components/admin/transition-buttons.tsx"
+  ],
+  "admin.orders.title": [
+    "app/admin/(panel)/customers/[id]/page.tsx",
+    "app/admin/(panel)/orders/page.tsx",
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.orders.totals.discount": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.totals.free": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.totals.invoice": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.totals.invoiceOpen": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.totals.paid": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.totals.payment": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.totals.subtotal": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.tracking": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.orders.transitions": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.packing.back": [
+    "app/admin/(panel)/packing/[id]/page.tsx"
+  ],
+  "admin.packing.empty": [
+    "app/admin/(panel)/packing/page.tsx"
+  ],
+  "admin.packing.intro": [
+    "app/admin/(panel)/packing/page.tsx"
+  ],
+  "admin.packing.labelNote": [
+    "app/admin/(panel)/packing/[id]/page.tsx"
+  ],
+  "admin.packing.openOrder": [
+    "app/admin/(panel)/packing/[id]/page.tsx"
+  ],
+  "admin.packing.slip.article": [
+    "components/admin/pack-list.tsx"
+  ],
+  "admin.packing.slip.quantity": [
+    "components/admin/pack-list.tsx"
+  ],
+  "admin.packing.slip.title": [
+    "components/admin/pack-list.tsx"
+  ],
+  "admin.packing.slip.totalWeight": [
+    "components/admin/pack-list.tsx"
+  ],
+  "admin.packing.slip.variant": [
+    "components/admin/pack-list.tsx"
+  ],
+  "admin.packing.slip.weight": [
+    "components/admin/pack-list.tsx"
+  ],
+  "admin.packing.slipHeading": [
+    "app/admin/(panel)/packing/[id]/page.tsx"
+  ],
+  "admin.packing.title": [
+    "app/admin/(panel)/packing/page.tsx"
+  ],
+  "admin.pagination.aria": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.pagination.next": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.pagination.page": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.pagination.previous": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.palette.action.newPurchaseOrder": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.kind.action": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.kind.page": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.placeholder": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.shortcuts.close": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.shortcuts.description": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.shortcuts.help": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.shortcuts.move": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.shortcuts.open": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.shortcuts.select": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.shortcuts.title": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.supplierLeadTime": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.palette.title": [
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.picker.hint": [
+    "components/admin/picker-dialog.tsx"
+  ],
+  "admin.picker.minChars": [
+    "components/admin/picker-dialog.tsx"
+  ],
+  "admin.picker.noHits": [
+    "components/admin/picker-dialog.tsx"
+  ],
+  "admin.picker.searching": [
+    "components/admin/picker-dialog.tsx"
+  ],
+  "admin.pickup.code": [
+    "components/admin/pickup-actions.tsx"
+  ],
+  "admin.pickup.column.action": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.pickup.column.code": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.pickup.empty": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.pickup.error.codeMismatch": [
+    "server/pickup.ts"
+  ],
+  "admin.pickup.error.notOpen": [
+    "server/pickup.ts"
+  ],
+  "admin.pickup.error.notReady": [
+    "server/pickup.ts"
+  ],
+  "admin.pickup.handover": [
+    "components/admin/pickup-actions.tsx"
+  ],
+  "admin.pickup.handoverToast": [
+    "components/admin/pickup-actions.tsx"
+  ],
+  "admin.pickup.intro": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.pickup.markReady": [
+    "components/admin/pickup-actions.tsx"
+  ],
+  "admin.pickup.markReadyToast": [
+    "components/admin/pickup-actions.tsx"
+  ],
+  "admin.pickup.paymentType.*": [
+    "app/admin/(panel)/orders/[id]/page.tsx"
+  ],
+  "admin.pickup.paymentType.card": [
+    "components/admin/pickup-actions.tsx"
+  ],
+  "admin.pickup.paymentType.cash": [
+    "components/admin/pickup-actions.tsx"
+  ],
+  "admin.pickup.readyAt": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.pickup.title": [
+    "app/admin/(panel)/pickup/page.tsx"
+  ],
+  "admin.po.back": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.column.ordered": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.column.product": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.column.qty": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.column.received": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.column.unitPrice": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.created": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.error.linesMin": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.po.error.qtyMin": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.po.error.skuDuplicate": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.po.error.skuRequired": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.po.error.supplierRequired": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.po.expectedArrival": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx",
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.expectedArrivalToast": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.markOrdered": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.markOrderedToast": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.receive": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.receivedPartialToast": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.receivedQty": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.receivedQtyAria": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.receivedToast": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.serials": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.serialsAria": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.serialsPlaceholder": [
+    "components/admin/po-status-actions.tsx"
+  ],
+  "admin.po.status.*": [
+    "components/admin/po-status-badge.tsx"
+  ],
+  "admin.po.stillOpen": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.supplier": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.supplierUnknown": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.times": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx"
+  ],
+  "admin.po.title": [
+    "app/admin/(panel)/purchasing/[id]/page.tsx",
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.poForm.addArticle": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.article": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.articleSearchPlaceholder": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.chooseArticle": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.chooseSupplier": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.emptyLines": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.leadTime": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.metaLastPrice": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.metaStock": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.noOpenPos": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.openPos": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.price": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.qty": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.removeLine": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.search": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.submit": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.supplier": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.poForm.supplierSearchPlaceholder": [
+    "components/admin/po-create-form.tsx"
+  ],
+  "admin.products.back": [
+    "app/admin/(panel)/products/[id]/page.tsx"
+  ],
+  "admin.products.column.action": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.column.brand": [
+    "app/admin/(panel)/products/page.tsx",
+    "components/admin/product-core-form.tsx"
+  ],
+  "admin.products.column.price": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.column.product": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.column.stock": [
+    "app/admin/(panel)/products/page.tsx",
+    "components/admin/variant-editor.tsx"
+  ],
+  "admin.products.column.type": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.column.variants": [
+    "app/admin/(panel)/products/[id]/page.tsx",
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.coreHeading": [
+    "app/admin/(panel)/products/[id]/page.tsx"
+  ],
+  "admin.products.count": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.count.forQuery": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.editAria": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.empty": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.featured": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.featuredAdd": [
+    "components/admin/product-core-form.tsx"
+  ],
+  "admin.products.featuredRemove": [
+    "components/admin/product-core-form.tsx"
+  ],
+  "admin.products.field.price": [
+    "components/admin/product-core-form.tsx"
+  ],
+  "admin.products.imagesAria": [
+    "app/admin/(panel)/products/[id]/page.tsx"
+  ],
+  "admin.products.imagesHeading": [
+    "app/admin/(panel)/products/[id]/page.tsx"
+  ],
+  "admin.products.resetFilters": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.saved": [
+    "components/admin/product-core-form.tsx"
+  ],
+  "admin.products.searchAria": [
+    "components/admin/product-search.tsx"
+  ],
+  "admin.products.searchPlaceholder": [
+    "components/admin/product-search.tsx"
+  ],
+  "admin.products.title": [
+    "app/admin/(panel)/products/page.tsx",
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.products.typeFilterAria": [
+    "app/admin/(panel)/products/page.tsx"
+  ],
+  "admin.products.validation.brandRequired": [
+    "lib/validations/product.ts"
+  ],
+  "admin.products.validation.descriptionRequired": [
+    "lib/validations/product.ts"
+  ],
+  "admin.products.validation.nameRequired": [
+    "lib/validations/product.ts"
+  ],
+  "admin.products.variantsHeading": [
+    "app/admin/(panel)/products/[id]/page.tsx"
+  ],
+  "admin.purchasing.cap": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.column.arrival": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.column.po": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.column.supplier": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.empty": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.error.checkInputs": [
+    "server/actions/admin/purchasing.ts"
+  ],
+  "admin.purchasing.error.formInvalid": [
+    "server/actions/admin/purchasing.ts"
+  ],
+  "admin.purchasing.error.invalidDate": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.invalidInput": [
+    "server/actions/admin/discounts.ts",
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.invalidQty": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.invalidQuantities": [
+    "server/actions/admin/purchasing.ts"
+  ],
+  "admin.purchasing.error.invalidSerials": [
+    "server/actions/admin/purchasing.ts"
+  ],
+  "admin.purchasing.error.onlyDraftOrdered": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.onlyOrderedArrival": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.onlyOrderedReceive": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.productNotFound": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.serialDuplicate": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.serialInvalid": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.serialsNeeded": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.supplierNameTaken": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.supplierNotFound": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.error.unknownSku": [
+    "server/purchasing.ts"
+  ],
+  "admin.purchasing.listAria": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.newDescription": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.newTitle": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.noSuppliers": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.section": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.suppliersLink": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.title": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.purchasing.unknownSupplier": [
+    "app/admin/(panel)/purchasing/page.tsx"
+  ],
+  "admin.reviews.action.approve": [
+    "components/admin/review-actions.tsx"
+  ],
+  "admin.reviews.action.hide": [
+    "components/admin/review-actions.tsx"
+  ],
+  "admin.reviews.action.reply": [
+    "components/admin/review-actions.tsx"
+  ],
+  "admin.reviews.empty": [
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.reviews.error.replyRequired": [
+    "server/actions/admin/reviews.ts"
+  ],
+  "admin.reviews.reply.aria": [
+    "components/admin/review-actions.tsx"
+  ],
+  "admin.reviews.reply.placeholder": [
+    "components/admin/review-actions.tsx"
+  ],
+  "admin.reviews.reply.prefix": [
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.reviews.status.*": [
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.reviews.title": [
+    "app/admin/(panel)/reviews/page.tsx"
+  ],
+  "admin.settings.column.hint": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.column.kind": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.column.price": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.current": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.error.freeFrom": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.noActivePayment": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.noActiveShipping": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.paymentKeys": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.paymentKeyShape": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.paymentKind": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.paymentNameMissing": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.shippingKeys": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.shippingKeyShape": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.shippingNameMissing": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.shippingPrice": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.error.vatRange": [
+    "server/shop-settings.ts"
+  ],
+  "admin.settings.express": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.expressAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.expressTitle": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.freeFrom": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.intro": [
+    "app/admin/(panel)/settings/page.tsx"
+  ],
+  "admin.settings.kind.*": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.kindAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.paymentAdd": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.paymentKeyAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.paymentNameAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.paymentRemoveAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.paymentTitle": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.saved": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.shippingAdd": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.shippingHintAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.shippingKeyAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.shippingNameAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.shippingPriceAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.shippingRemoveAria": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.shippingTitle": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.storePickup": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.settings.title": [
+    "app/admin/(panel)/settings/page.tsx"
+  ],
+  "admin.settings.validation.amount": [
+    "server/actions/admin/settings.ts"
+  ],
+  "admin.settings.validation.keyShape": [
+    "server/actions/admin/settings.ts"
+  ],
+  "admin.settings.validation.nameRequired": [
+    "server/actions/admin/catalog-types.ts",
+    "server/actions/admin/settings.ts"
+  ],
+  "admin.settings.validation.paymentRequired": [
+    "server/actions/admin/settings.ts"
+  ],
+  "admin.settings.validation.percent": [
+    "server/actions/admin/settings.ts"
+  ],
+  "admin.settings.validation.shippingRequired": [
+    "server/actions/admin/settings.ts"
+  ],
+  "admin.settings.vatRate": [
+    "components/admin/shop-settings-form.tsx"
+  ],
+  "admin.sidebar.commands": [
+    "components/admin/sidebar.tsx"
+  ],
+  "admin.sidebar.shortcuts": [
+    "components/admin/sidebar.tsx"
+  ],
+  "admin.stockUnits.cap": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.stockUnits.empty": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.stockUnits.intro": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.stockUnits.searchAria": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.stockUnits.searchPlaceholder": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.stockUnits.sku": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.stockUnits.status.*": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.stockUnits.title": [
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "admin.supplier.error.emailInvalid": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.supplier.error.leadInt": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.supplier.error.nameRequired": [
+    "lib/validations/purchasing.ts"
+  ],
+  "admin.supplierForm.create": [
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.supplierForm.created": [
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.supplierForm.lead": [
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.supplierForm.phoneOptional": [
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.supplierForm.saved": [
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.suppliers.active": [
+    "app/admin/(panel)/suppliers/page.tsx",
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.suppliers.cancel": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.column.action": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.column.email": [
+    "app/admin/(panel)/suppliers/page.tsx",
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.suppliers.column.lead": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.column.name": [
+    "app/admin/(panel)/suppliers/page.tsx",
+    "components/admin/supplier-form.tsx"
+  ],
+  "admin.suppliers.column.phone": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.edit": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.editAria": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.editDescription": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.editTitle": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.empty": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.inactive": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.leadDays": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.listAria": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.newDescription": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.newTitle": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.overview": [
+    "app/admin/(panel)/suppliers/page.tsx"
+  ],
+  "admin.suppliers.title": [
+    "app/admin/(panel)/suppliers/page.tsx",
+    "components/admin/command-palette.tsx"
+  ],
+  "admin.translations.allAreas": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.allComplete": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.allReviewed": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.area.*": [
+    "app/admin/(panel)/translations/page.tsx",
+    "components/admin/translation-editor.tsx",
+    "components/admin/translations-table.tsx"
+  ],
+  "admin.translations.areaAria": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.areaLabel": [
+    "components/admin/translation-editor.tsx"
+  ],
+  "admin.translations.backToTranslations": [
+    "app/admin/(panel)/translations/languages/page.tsx"
+  ],
+  "admin.translations.cap": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.column.de": [
+    "components/admin/translations-table.tsx"
+  ],
+  "admin.translations.deactivated": [
+    "components/admin/translation-editor.tsx"
+  ],
+  "admin.translations.deLabel": [
+    "components/admin/translation-editor.tsx"
+  ],
+  "admin.translations.editCellAria": [
+    "components/admin/translations-table.tsx"
+  ],
+  "admin.translations.editTitle": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.empty": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.filter": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.history.actor": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.history.empty": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.history.system": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.history.title": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.history.to": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.intro": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.keyHint": [
+    "components/admin/translation-editor.tsx"
+  ],
+  "admin.translations.languages": [
+    "app/admin/(panel)/translations/languages/page.tsx",
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.missing": [
+    "app/admin/(panel)/translations/[key]/page.tsx",
+    "components/admin/translations-table.tsx"
+  ],
+  "admin.translations.missingAria": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.missingIn": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.needsReview": [
+    "components/admin/translations-table.tsx"
+  ],
+  "admin.translations.needsReviewIn": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.new": [
+    "app/admin/(panel)/translations/[key]/page.tsx",
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.notFound": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.reviewAria": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.saved": [
+    "components/admin/translation-editor.tsx",
+    "components/admin/translations-table.tsx"
+  ],
+  "admin.translations.searchAria": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.searchPlaceholder": [
+    "app/admin/(panel)/translations/page.tsx"
+  ],
+  "admin.translations.textsHint": [
+    "components/admin/translation-editor.tsx"
+  ],
+  "admin.translations.title": [
+    "app/admin/(panel)/translations/page.tsx",
+    "components/admin/translation-editor.tsx"
+  ],
+  "admin.translations.usage.none": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.usage.preview": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.usage.previewAria": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.usage.title": [
+    "app/admin/(panel)/translations/[key]/page.tsx"
+  ],
+  "admin.translations.validation.areaInvalid": [
+    "server/i18n.ts"
+  ],
+  "admin.translations.validation.deRequired": [
+    "server/actions/admin/translations.ts",
+    "server/i18n.ts"
+  ],
+  "admin.translations.validation.keyShape": [
+    "server/actions/admin/translations.ts",
+    "server/i18n.ts"
+  ],
+  "admin.translations.validation.unknownLanguage": [
+    "server/i18n.ts"
+  ],
+  "admin.validation.valueRequired": [
+    "lib/validations/product.ts"
+  ],
+  "admin.validation.wholeCents": [
+    "lib/validations/product.ts"
+  ],
+  "admin.validation.wholeGrams": [
+    "lib/validations/product.ts"
+  ],
+  "admin.validation.wholeQuantity": [
+    "lib/validations/product.ts"
+  ],
+  "admin.variants.error.missingValue": [
+    "server/products-admin.ts"
+  ],
+  "admin.variants.error.notFound": [
+    "server/products-admin.ts"
+  ],
+  "admin.variants.error.serialTracked": [
+    "server/products-admin.ts"
+  ],
+  "admin.variants.error.stockConflict": [
+    "server/products-admin.ts"
+  ],
+  "admin.variants.error.unknownAttributes": [
+    "server/products-admin.ts"
+  ],
+  "admin.variants.field.priceDelta": [
+    "components/admin/variant-editor.tsx"
+  ],
+  "admin.variants.field.weight": [
+    "components/admin/variant-editor.tsx"
+  ],
+  "admin.variants.fieldAria": [
+    "components/admin/variant-editor.tsx"
+  ],
+  "admin.variants.incoming": [
+    "components/admin/variant-editor.tsx"
+  ],
+  "admin.variants.saved": [
+    "components/admin/variant-editor.tsx"
+  ],
+  "admin.variants.serials": [
+    "components/admin/variant-editor.tsx"
+  ],
+  "invoice.pdf.billTo": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.creditor": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.currencyAmount": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.demoFooter": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.discount": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.due": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.issued": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.line": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.open": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.order": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.payableBy": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.paymentPart": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.positions": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.receipt": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.received": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.reference": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.serials": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.shipping": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.subtotal": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.title": [
+    "server/invoices-pdf.ts"
+  ],
+  "invoice.pdf.total": [
+    "server/invoices-pdf.ts"
+  ],
+  "mail.confirm.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.confirm.cta": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.confirm.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.greeting.formal": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.invoice.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.invoice.cta": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.invoice.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.layout.copyLink": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.layout.footer": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.pickup.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.pickup.payment": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.pickup.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.reminder.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.reminder.second": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.reminder.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.reset.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.reset.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.restock.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.restock.cta": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.restock.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.shipped.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.shipped.cta": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.shipped.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.welcome.account": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.welcome.body": [
+    "lib/mail-templates.ts"
+  ],
+  "mail.welcome.subject": [
+    "lib/mail-templates.ts"
+  ],
+  "shop.account.address.default": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.deleteAria": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.edit": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.editAria": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.empty": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.field.kind": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.field.label": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.kind.billing": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.kind.shipping": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.labelPlaceholder": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.new": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.address.saved": [
+    "components/storefront/address-book.tsx",
+    "server/actions/account.ts"
+  ],
+  "shop.account.address.setDefault": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.account.addresses.title": [
+    "app/[lang]/(storefront)/account/(portal)/addresses/page.tsx"
+  ],
+  "shop.account.changePassword": [
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx",
+    "components/storefront/customer-password-form.tsx"
+  ],
+  "shop.account.claim.add": [
+    "components/storefront/claim-order-form.tsx"
+  ],
+  "shop.account.claim.added": [
+    "components/storefront/claim-order-form.tsx"
+  ],
+  "shop.account.claim.email": [
+    "components/storefront/claim-order-form.tsx"
+  ],
+  "shop.account.claim.orderNumber": [
+    "components/storefront/claim-order-form.tsx"
+  ],
+  "shop.account.claim.success": [
+    "server/actions/account.ts"
+  ],
+  "shop.account.currentPassword": [
+    "components/storefront/customer-password-form.tsx"
+  ],
+  "shop.account.error.addressLimit": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.addressNotFound": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.emailTaken": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.notFound": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.orderClaimed": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.orderEmailMismatch": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.orderNotFound": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.passwordChanged": [
+    "server/actions/account.ts"
+  ],
+  "shop.account.error.registerBusy": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.registerThrottled": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.resetLinkInvalid": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.resetSent": [
+    "server/customers.ts"
+  ],
+  "shop.account.error.resetThrottled": [
+    "server/customers.ts"
+  ],
+  "shop.account.invoices.emptyHint": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.account.invoices.none": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.account.invoices.openLine": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.account.invoices.paidLine": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.account.nav.addresses": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx",
+    "components/storefront/account-nav.tsx"
+  ],
+  "shop.account.nav.aria": [
+    "components/storefront/account-nav.tsx"
+  ],
+  "shop.account.nav.invoices": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx",
+    "components/storefront/account-nav.tsx"
+  ],
+  "shop.account.nav.orders": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx",
+    "components/storefront/account-nav.tsx"
+  ],
+  "shop.account.nav.overview": [
+    "components/storefront/account-nav.tsx"
+  ],
+  "shop.account.nav.profile": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx",
+    "components/storefront/account-nav.tsx"
+  ],
+  "shop.account.nav.wishlist": [
+    "app/[lang]/(storefront)/account/(portal)/wishlist/page.tsx",
+    "components/storefront/account-nav.tsx"
+  ],
+  "shop.account.noOrders": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx"
+  ],
+  "shop.account.orderCount": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx"
+  ],
+  "shop.account.orders.adjustQuery": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.emptyHint": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.items": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx",
+    "lib/i18n.ts"
+  ],
+  "shop.account.orders.noMatch": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.none": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.pickup": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.searchAria": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.searchPlaceholder": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.shipment": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.shopNow": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.orders.title": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.account.profile.accountData": [
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx"
+  ],
+  "shop.account.profile.emailNote": [
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx"
+  ],
+  "shop.account.profile.name": [
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx"
+  ],
+  "shop.account.reorder.action": [
+    "components/storefront/reorder-button.tsx"
+  ],
+  "shop.account.reorder.added": [
+    "components/storefront/reorder-button.tsx",
+    "lib/i18n.ts"
+  ],
+  "shop.account.reorder.noneAvailable": [
+    "components/storefront/reorder-button.tsx"
+  ],
+  "shop.account.reorder.skipped": [
+    "components/storefront/reorder-button.tsx",
+    "lib/i18n.ts"
+  ],
+  "shop.account.section.addresses.text": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx"
+  ],
+  "shop.account.section.orders.text": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx"
+  ],
+  "shop.account.section.profile.text": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx"
+  ],
+  "shop.account.signedInAs": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx"
+  ],
+  "shop.account.wishlist.discover": [
+    "app/[lang]/(storefront)/account/(portal)/wishlist/page.tsx"
+  ],
+  "shop.account.wishlist.empty": [
+    "app/[lang]/(storefront)/account/(portal)/wishlist/page.tsx"
+  ],
+  "shop.account.wishlist.removeError": [
+    "components/storefront/wishlist-remove-button.tsx"
+  ],
+  "shop.action.add": [
+    "components/storefront/claim-order-form.tsx"
+  ],
+  "shop.action.addToCart": [
+    "components/storefront/product-detail.tsx"
+  ],
+  "shop.action.cancel": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.action.checkout": [
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.action.close": [
+    "components/ui/dialog.tsx",
+    "components/ui/sheet.tsx"
+  ],
+  "shop.action.continueShopping": [
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/cart-page-view.tsx",
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.action.discountInvalid": [
+    "components/storefront/discount-input.tsx",
+    "server/actions/discounts.ts",
+    "server/discounts.ts"
+  ],
+  "shop.action.invalidForm": [
+    "server/actions/account.ts",
+    "server/actions/admin/account.ts",
+    "server/actions/admin/auth.ts",
+    "server/actions/checkout.ts",
+    "server/actions/restock-alerts.ts",
+    "server/actions/reviews.ts",
+    "server/checkout.ts",
+    "server/customers.ts"
+  ],
+  "shop.action.login": [
+    "app/[lang]/(storefront)/account/(auth)/login/page.tsx",
+    "app/[lang]/(storefront)/checkout/page.tsx",
+    "components/storefront/customer-login-form.tsx",
+    "components/storefront/register-form.tsx"
+  ],
+  "shop.action.loginRequired": [
+    "server/actions/account.ts"
+  ],
+  "shop.action.logout": [
+    "app/[lang]/(storefront)/account/(portal)/page.tsx",
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx"
+  ],
+  "shop.action.orderAccessEmail": [
+    "server/actions/order-access.ts"
+  ],
+  "shop.action.rateLimited": [
+    "server/actions/checkout.ts"
+  ],
+  "shop.action.register": [
+    "app/[lang]/(storefront)/account/(auth)/register/page.tsx",
+    "app/[lang]/(storefront)/checkout/page.tsx",
+    "components/storefront/register-form.tsx"
+  ],
+  "shop.action.remove": [
+    "components/storefront/discount-input.tsx",
+    "components/storefront/wishlist-remove-button.tsx"
+  ],
+  "shop.action.reviewLogin": [
+    "server/actions/reviews.ts"
+  ],
+  "shop.action.save": [
+    "components/storefront/address-book.tsx"
+  ],
+  "shop.action.search": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx",
+    "app/admin/(panel)/customers/page.tsx",
+    "app/admin/(panel)/stock-units/page.tsx"
+  ],
+  "shop.auth.consent": [
+    "components/storefront/register-form.tsx"
+  ],
+  "shop.auth.field.password": [
+    "components/storefront/customer-login-form.tsx",
+    "components/storefront/register-form.tsx"
+  ],
+  "shop.auth.forgotHint": [
+    "app/[lang]/(storefront)/account/(auth)/forgot-password/page.tsx"
+  ],
+  "shop.auth.forgotLink": [
+    "components/storefront/customer-login-form.tsx"
+  ],
+  "shop.auth.hasAccount": [
+    "components/storefront/register-form.tsx"
+  ],
+  "shop.auth.newPassword": [
+    "components/storefront/customer-password-form.tsx",
+    "components/storefront/password-reset-forms.tsx"
+  ],
+  "shop.auth.noAccount": [
+    "components/storefront/customer-login-form.tsx"
+  ],
+  "shop.auth.registerLink": [
+    "components/storefront/customer-login-form.tsx"
+  ],
+  "shop.auth.requestLink": [
+    "components/storefront/password-reset-forms.tsx"
+  ],
+  "shop.auth.resetInvalid": [
+    "app/[lang]/(storefront)/account/(auth)/reset-password/page.tsx"
+  ],
+  "shop.auth.setPassword": [
+    "components/storefront/password-reset-forms.tsx"
+  ],
+  "shop.breadcrumbs.aria": [
+    "app/[lang]/(storefront)/products/[slug]/page.tsx",
+    "lib/i18n.ts"
+  ],
+  "shop.breadcrumbs.start": [
+    "app/[lang]/(storefront)/products/[slug]/page.tsx"
+  ],
+  "shop.card.featured": [
+    "components/storefront/product-card.tsx"
+  ],
+  "shop.cart.decrease": [
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.emptyDrawer": [
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.cart.emptyPage": [
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.emptySubtitle": [
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.freeShipping": [
+    "components/storefront/free-shipping-progress.tsx"
+  ],
+  "shop.cart.freeShippingProgress": [
+    "components/storefront/free-shipping-progress.tsx"
+  ],
+  "shop.cart.freeShippingUnlocked": [
+    "components/storefront/free-shipping-progress.tsx"
+  ],
+  "shop.cart.increase": [
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.maxStock": [
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.remove": [
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.subtotal": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx",
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/cart-page-view.tsx",
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.cart.summary": [
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.summaryNote": [
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.cart.title": [
+    "components/admin/translation-editor.tsx",
+    "components/storefront/cart-drawer.tsx",
+    "components/storefront/cart-page-view.tsx"
+  ],
+  "shop.checkout.agb": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.card.cvc": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.card.expiry": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.card.name": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.card.number": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.demoNotice": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.discount": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.emptyTitle": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.error.failed": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.inFlight": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.invoiceCreditExhausted": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.invoiceGuestOnly": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.invoiceNeedsDelivery": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.outOfStock": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.payAtPickupNeedsPickup": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.paymentGone": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.priceChanged": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.error.shippingGone": [
+    "server/checkout.ts"
+  ],
+  "shop.checkout.field.city": [
+    "components/storefront/address-book.tsx",
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.field.email": [
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx",
+    "components/storefront/checkout-form.tsx",
+    "components/storefront/customer-login-form.tsx",
+    "components/storefront/password-reset-forms.tsx",
+    "components/storefront/register-form.tsx"
+  ],
+  "shop.checkout.field.name": [
+    "components/storefront/checkout-form.tsx",
+    "components/storefront/register-form.tsx"
+  ],
+  "shop.checkout.field.phone": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.field.postalCode": [
+    "components/storefront/address-book.tsx",
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.field.street": [
+    "components/storefront/address-book.tsx",
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.free": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx",
+    "components/storefront/checkout-form.tsx",
+    "server/invoices-pdf.ts"
+  ],
+  "shop.checkout.guestHint": [
+    "app/[lang]/(storefront)/checkout/page.tsx"
+  ],
+  "shop.checkout.guestQuestion": [
+    "app/[lang]/(storefront)/checkout/page.tsx"
+  ],
+  "shop.checkout.invoiceLink": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.invoiceNote": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.legend.address": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.legend.payment": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.legend.shipping": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.or": [
+    "app/[lang]/(storefront)/checkout/page.tsx"
+  ],
+  "shop.checkout.paymentHint.immediate": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.paymentHint.invoice": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.paymentHint.pickup": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.pickupNote": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.sample.city": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.shipping": [
+    "lib/i18n.ts"
+  ],
+  "shop.checkout.submit": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.submitInvoice": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.successDescription": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.successTitle": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.summary.shipping": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.summaryTitle": [
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.total": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx",
+    "components/storefront/checkout-form.tsx"
+  ],
+  "shop.checkout.vatNote": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx",
+    "components/storefront/checkout-form.tsx",
+    "server/invoices-pdf.ts"
+  ],
+  "shop.compare.action": [
+    "components/storefront/compare-tray.tsx"
+  ],
+  "shop.compare.add": [
+    "components/storefront/compare-toggle.tsx"
+  ],
+  "shop.compare.addShort": [
+    "components/storefront/compare-toggle.tsx"
+  ],
+  "shop.compare.back": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.caption": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.clear": [
+    "components/storefront/compare-tray.tsx"
+  ],
+  "shop.compare.countLine": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.difference": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.discover": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.feature": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.heading": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.needTwo": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.none": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.compare.remove": [
+    "components/storefront/compare-toggle.tsx"
+  ],
+  "shop.compare.removeShort": [
+    "components/storefront/compare-toggle.tsx"
+  ],
+  "shop.compare.row.availability": [
+    "lib/compare.ts"
+  ],
+  "shop.compare.row.brand": [
+    "lib/compare.ts"
+  ],
+  "shop.compare.row.price": [
+    "lib/compare.ts"
+  ],
+  "shop.compare.row.variants": [
+    "lib/compare.ts"
+  ],
+  "shop.compare.row.weight": [
+    "lib/compare.ts"
+  ],
+  "shop.compare.stockValue": [
+    "lib/compare.ts"
+  ],
+  "shop.compare.trayCount": [
+    "components/storefront/compare-tray.tsx"
+  ],
+  "shop.discount.code": [
+    "components/storefront/discount-input.tsx"
+  ],
+  "shop.discount.exhausted": [
+    "server/discounts.ts"
+  ],
+  "shop.discount.expired": [
+    "server/discounts.ts"
+  ],
+  "shop.discount.minOrder": [
+    "server/discounts.ts"
+  ],
+  "shop.discount.redeem": [
+    "components/storefront/discount-input.tsx"
+  ],
+  "shop.discount.usedAlready": [
+    "server/discounts.ts"
+  ],
+  "shop.filter.brand": [
+    "components/storefront/filter-sidebar.tsx"
+  ],
+  "shop.filter.groupClothing": [
+    "components/storefront/filter-sidebar.tsx"
+  ],
+  "shop.filter.groupEu": [
+    "components/storefront/filter-sidebar.tsx"
+  ],
+  "shop.footer.assortment": [
+    "components/storefront/footer.tsx"
+  ],
+  "shop.footer.copyright": [
+    "components/storefront/footer.tsx"
+  ],
+  "shop.footer.payment": [
+    "components/storefront/footer.tsx"
+  ],
+  "shop.footer.returns": [
+    "components/storefront/footer.tsx"
+  ],
+  "shop.footer.service": [
+    "components/storefront/footer.tsx"
+  ],
+  "shop.footer.shipping": [
+    "components/storefront/footer.tsx"
+  ],
+  "shop.footer.tagline": [
+    "components/storefront/footer.tsx"
+  ],
+  "shop.gallery.next": [
+    "components/storefront/gallery.tsx"
+  ],
+  "shop.gallery.previous": [
+    "components/storefront/gallery.tsx"
+  ],
+  "shop.gallery.thumb": [
+    "components/storefront/gallery.tsx"
+  ],
+  "shop.header.account": [
+    "app/[lang]/(storefront)/account/(portal)/layout.tsx",
+    "components/storefront/header.tsx"
+  ],
+  "shop.header.cart": [
+    "components/storefront/cart-button.tsx"
+  ],
+  "shop.header.nav.categories": [
+    "components/storefront/header.tsx"
+  ],
+  "shop.header.nav.main": [
+    "components/storefront/header.tsx"
+  ],
+  "shop.header.theme": [
+    "components/storefront/theme-toggle.tsx"
+  ],
+  "shop.home.blurb.*": [
+    "app/[lang]/(storefront)/page.tsx",
+    "components/storefront/mega-menu.tsx"
+  ],
+  "shop.home.categories": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.categoryBlurb": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.categoryView": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.collectionsAria": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.featured": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.heroBadge": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.heroDiscover": [
+    "app/[lang]/(storefront)/page.tsx",
+    "app/[lang]/(storefront)/products/compare/page.tsx",
+    "components/storefront/mega-menu.tsx"
+  ],
+  "shop.home.heroLead": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.heroTitle": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.home.viewAll": [
+    "app/[lang]/(storefront)/page.tsx"
+  ],
+  "shop.invoice.notFound": [
+    "app/[lang]/(storefront)/orders/[number]/invoice/route.ts",
+    "app/admin/invoices/[orderId]/route.ts"
+  ],
+  "shop.label.demoDisclaimer": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.label.moreSerials": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.label.order": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.label.recipient": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.label.serials": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.label.shipping": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.label.title": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.label.weight": [
+    "server/shipping/mock.ts"
+  ],
+  "shop.listing.all": [
+    "components/storefront/listing-shell.tsx"
+  ],
+  "shop.listing.allProducts": [
+    "components/storefront/listing-shell.tsx"
+  ],
+  "shop.listing.collection": [
+    "components/storefront/listing-shell.tsx"
+  ],
+  "shop.listing.count": [
+    "components/storefront/listing-shell.tsx"
+  ],
+  "shop.listing.countOne": [
+    "lib/i18n.ts"
+  ],
+  "shop.listing.countOther": [
+    "lib/i18n.ts"
+  ],
+  "shop.listing.emptyBody": [
+    "components/storefront/empty-state.tsx"
+  ],
+  "shop.listing.emptyTitle": [
+    "components/storefront/empty-state.tsx"
+  ],
+  "shop.listing.filter": [
+    "components/storefront/filter-sidebar.tsx",
+    "components/storefront/listing-shell.tsx"
+  ],
+  "shop.listing.removeCollection": [
+    "components/storefront/listing-shell.tsx"
+  ],
+  "shop.listing.resetFilters": [
+    "components/storefront/empty-state.tsx"
+  ],
+  "shop.listing.sort": [
+    "components/storefront/sort-select.tsx"
+  ],
+  "shop.menu.allOfType": [
+    "components/storefront/mega-menu.tsx"
+  ],
+  "shop.menu.brands": [
+    "components/storefront/mega-menu.tsx"
+  ],
+  "shop.meta.account.description": [
+    "app/[lang]/(storefront)/account/layout.tsx"
+  ],
+  "shop.meta.account.title": [
+    "app/[lang]/(storefront)/account/layout.tsx"
+  ],
+  "shop.meta.accountOrders.description": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.meta.accountOrders.title": [
+    "app/[lang]/(storefront)/account/(portal)/orders/page.tsx"
+  ],
+  "shop.meta.addresses.description": [
+    "app/[lang]/(storefront)/account/(portal)/addresses/page.tsx"
+  ],
+  "shop.meta.addresses.title": [
+    "app/[lang]/(storefront)/account/(portal)/addresses/page.tsx"
+  ],
+  "shop.meta.cart.description": [
+    "app/[lang]/(storefront)/cart/page.tsx"
+  ],
+  "shop.meta.cart.title": [
+    "app/[lang]/(storefront)/cart/page.tsx"
+  ],
+  "shop.meta.checkout.description": [
+    "app/[lang]/(storefront)/checkout/page.tsx"
+  ],
+  "shop.meta.checkout.title": [
+    "app/[lang]/(storefront)/checkout/page.tsx"
+  ],
+  "shop.meta.compare.description": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.meta.compare.title": [
+    "app/[lang]/(storefront)/products/compare/page.tsx"
+  ],
+  "shop.meta.forgot.description": [
+    "app/[lang]/(storefront)/account/(auth)/forgot-password/page.tsx"
+  ],
+  "shop.meta.forgot.title": [
+    "app/[lang]/(storefront)/account/(auth)/forgot-password/page.tsx"
+  ],
+  "shop.meta.invoices.description": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.meta.login.description": [
+    "app/[lang]/(storefront)/account/(auth)/login/page.tsx"
+  ],
+  "shop.meta.login.title": [
+    "app/[lang]/(storefront)/account/(auth)/login/page.tsx"
+  ],
+  "shop.meta.notFound.description": [
+    "app/[lang]/not-found.tsx",
+    "app/not-found.tsx"
+  ],
+  "shop.meta.notFound.title": [
+    "app/[lang]/not-found.tsx",
+    "app/admin/not-found.tsx",
+    "app/not-found.tsx",
+    "components/not-found-content.tsx"
+  ],
+  "shop.meta.order.description": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.meta.order.title": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.meta.product.description": [
+    "app/[lang]/(storefront)/products/[slug]/page.tsx"
+  ],
+  "shop.meta.products.description": [
+    "app/[lang]/(storefront)/products/page.tsx"
+  ],
+  "shop.meta.products.title": [
+    "app/[lang]/(storefront)/products/page.tsx"
+  ],
+  "shop.meta.profile.description": [
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx"
+  ],
+  "shop.meta.profile.title": [
+    "app/[lang]/(storefront)/account/(portal)/profile/page.tsx"
+  ],
+  "shop.meta.register.description": [
+    "app/[lang]/(storefront)/account/(auth)/register/page.tsx"
+  ],
+  "shop.meta.register.title": [
+    "app/[lang]/(storefront)/account/(auth)/register/page.tsx"
+  ],
+  "shop.meta.reset.description": [
+    "app/[lang]/(storefront)/account/(auth)/reset-password/page.tsx"
+  ],
+  "shop.meta.reset.title": [
+    "app/[lang]/(storefront)/account/(auth)/reset-password/page.tsx"
+  ],
+  "shop.meta.site.description": [
+    "app/site-metadata.ts"
+  ],
+  "shop.meta.site.title": [
+    "app/site-metadata.ts"
+  ],
+  "shop.meta.wishlist.description": [
+    "app/[lang]/(storefront)/account/(portal)/wishlist/page.tsx"
+  ],
+  "shop.notFound.body": [
+    "components/not-found-content.tsx"
+  ],
+  "shop.notFound.home": [
+    "components/not-found-content.tsx"
+  ],
+  "shop.notFound.listing": [
+    "components/not-found-content.tsx"
+  ],
+  "shop.order.access.email": [
+    "components/storefront/order-access-form.tsx"
+  ],
+  "shop.order.access.submit": [
+    "components/storefront/order-access-form.tsx"
+  ],
+  "shop.order.access.text": [
+    "components/storefront/order-access-form.tsx"
+  ],
+  "shop.order.access.title": [
+    "components/storefront/order-access-form.tsx"
+  ],
+  "shop.order.accessMismatch": [
+    "server/order-access.ts"
+  ],
+  "shop.order.accessThrottled": [
+    "server/order-access.ts"
+  ],
+  "shop.order.addressDelivery": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.addressInvoice": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.cancelled.at": [
+    "components/storefront/order-status-chain.tsx"
+  ],
+  "shop.order.cancelled.title": [
+    "components/storefront/order-status-chain.tsx"
+  ],
+  "shop.order.chain.aria": [
+    "components/storefront/order-status-chain.tsx"
+  ],
+  "shop.order.contact": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.discount": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.heading": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.invoice.due": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.invoice.open": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx",
+    "lib/i18n.ts"
+  ],
+  "shop.order.invoice.paid": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.invoice.pdf": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.invoice.title": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.parcelWeight": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.paymentReference": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.code": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.paidVia": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.payment.*": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.pickedUp": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.qrAlt": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.ready": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.title": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.pickup.waiting": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.placedAt": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.thanks": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.order.tracking": [
+    "app/[lang]/(storefront)/orders/[number]/page.tsx"
+  ],
+  "shop.pagination.label": [
+    "components/storefront/pagination.tsx"
+  ],
+  "shop.pagination.next": [
+    "components/storefront/pagination.tsx"
+  ],
+  "shop.pagination.previous": [
+    "components/storefront/pagination.tsx"
+  ],
+  "shop.pagination.showing": [
+    "components/storefront/pagination.tsx"
+  ],
+  "shop.password.allMet": [
+    "components/password-rules-checklist.tsx"
+  ],
+  "shop.password.met": [
+    "components/password-rules-checklist.tsx"
+  ],
+  "shop.password.notAllMet": [
+    "components/password-rules-checklist.tsx"
+  ],
+  "shop.password.rule.*": [
+    "components/password-rules-checklist.tsx"
+  ],
+  "shop.password.unmet": [
+    "components/password-rules-checklist.tsx"
+  ],
+  "shop.price.from": [
+    "components/storefront/product-card.tsx",
+    "components/storefront/product-detail.tsx",
+    "lib/compare.ts"
+  ],
+  "shop.product.arrival.days": [
+    "lib/purchasing/incoming.ts"
+  ],
+  "shop.product.arrival.today": [
+    "lib/purchasing/incoming.ts"
+  ],
+  "shop.product.arrival.tomorrow": [
+    "lib/purchasing/incoming.ts"
+  ],
+  "shop.product.arrival.weeks": [
+    "lib/purchasing/incoming.ts"
+  ],
+  "shop.product.decrease": [
+    "components/storefront/product-detail.tsx"
+  ],
+  "shop.product.description": [
+    "app/[lang]/(storefront)/products/[slug]/page.tsx",
+    "components/admin/product-core-form.tsx"
+  ],
+  "shop.product.details": [
+    "app/[lang]/(storefront)/products/[slug]/page.tsx"
+  ],
+  "shop.product.incoming": [
+    "lib/purchasing/incoming.ts"
+  ],
+  "shop.product.incomingTitle": [
+    "components/storefront/product-detail.tsx"
+  ],
+  "shop.product.increase": [
+    "components/storefront/product-detail.tsx"
+  ],
+  "shop.product.related": [
+    "components/storefront/related-products.tsx"
+  ],
+  "shop.product.selectMissing": [
+    "components/storefront/product-detail.tsx"
+  ],
+  "shop.product.variantInfo": [
+    "components/storefront/product-detail.tsx"
+  ],
+  "shop.product.vatNote": [
+    "components/storefront/product-detail.tsx"
+  ],
+  "shop.recent.title": [
+    "components/storefront/recently-viewed.tsx"
+  ],
+  "shop.restock.emailAria": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.restock.emailPlaceholder": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.restock.error.email": [
+    "server/actions/restock-alerts.ts"
+  ],
+  "shop.restock.error.notFound": [
+    "server/restock-alerts.ts"
+  ],
+  "shop.restock.errorToast": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.restock.inStockToast": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.restock.notifiedToast": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.restock.submit": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.restock.subscribed": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.restock.title": [
+    "components/storefront/restock-alert-form.tsx"
+  ],
+  "shop.review.error.accountNotFound": [
+    "server/reviews.ts"
+  ],
+  "shop.review.error.alreadyReviewed": [
+    "server/reviews.ts"
+  ],
+  "shop.review.error.buyersOnly": [
+    "server/reviews.ts"
+  ],
+  "shop.review.error.productNotFound": [
+    "server/reviews.ts"
+  ],
+  "shop.reviews.bodyPlaceholder": [
+    "components/storefront/review-form.tsx"
+  ],
+  "shop.reviews.buyersOnly": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.count": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.countOne": [
+    "lib/i18n.ts"
+  ],
+  "shop.reviews.countOther": [
+    "lib/i18n.ts"
+  ],
+  "shop.reviews.distributionAria": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.done": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.formTitle": [
+    "components/storefront/review-form.tsx"
+  ],
+  "shop.reviews.none": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.pending": [
+    "components/storefront/review-form.tsx",
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.ratingLegend": [
+    "components/storefront/review-form.tsx"
+  ],
+  "shop.reviews.reply": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.starAria": [
+    "components/storefront/review-form.tsx",
+    "components/storefront/star-rating.tsx"
+  ],
+  "shop.reviews.submit": [
+    "components/storefront/review-form.tsx"
+  ],
+  "shop.reviews.title": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.reviews.titlePlaceholder": [
+    "components/storefront/review-form.tsx"
+  ],
+  "shop.reviews.verified": [
+    "components/storefront/review-section.tsx"
+  ],
+  "shop.search.label": [
+    "components/storefront/search-instant.tsx"
+  ],
+  "shop.search.noHits": [
+    "components/storefront/search-instant.tsx"
+  ],
+  "shop.search.placeholder": [
+    "components/storefront/search-instant.tsx"
+  ],
+  "shop.search.results": [
+    "components/storefront/search-instant.tsx"
+  ],
+  "shop.sort.newest": [
+    "components/storefront/sort-select.tsx"
+  ],
+  "shop.sort.priceAsc": [
+    "components/storefront/sort-select.tsx"
+  ],
+  "shop.sort.priceDesc": [
+    "components/storefront/sort-select.tsx"
+  ],
+  "shop.sort.rating": [
+    "components/storefront/sort-select.tsx"
+  ],
+  "shop.state.open": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.state.overdue": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.state.paid": [
+    "app/[lang]/(storefront)/account/(portal)/invoices/page.tsx"
+  ],
+  "shop.state.soldOut": [
+    "components/storefront/product-card.tsx",
+    "components/storefront/product-detail.tsx",
+    "components/storefront/stock-indicator.tsx",
+    "lib/compare.ts"
+  ],
+  "shop.status.*": [
+    "app/admin/(panel)/orders/page.tsx",
+    "components/admin/status-timeline.tsx",
+    "components/admin/transition-buttons.tsx",
+    "components/order-status-badge.tsx",
+    "components/storefront/order-status-chain.tsx"
+  ],
+  "shop.stock.in": [
+    "components/storefront/stock-indicator.tsx"
+  ],
+  "shop.stock.low": [
+    "components/storefront/stock-indicator.tsx",
+    "lib/i18n.ts"
+  ],
+  "shop.switcher.aria": [
+    "components/storefront/language-switcher.tsx"
+  ],
+  "shop.validation.field.addressId": [
+    "lib/validations/account.ts",
+    "server/actions/account.ts"
+  ],
+  "shop.validation.field.addressLabel": [
+    "lib/validations/account.ts"
+  ],
+  "shop.validation.field.cartEmpty": [
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.field.city": [
+    "lib/validations/account.ts",
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.field.consent": [
+    "lib/validations/account.ts"
+  ],
+  "shop.validation.field.email": [
+    "lib/validations/account.ts",
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.field.loginEmail": [
+    "lib/validations/account.ts"
+  ],
+  "shop.validation.field.loginPassword": [
+    "lib/validations/account.ts"
+  ],
+  "shop.validation.field.maxQty": [
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.field.name": [
+    "lib/validations/account.ts",
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.field.phone": [
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.field.postalCode": [
+    "lib/validations/account.ts",
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.field.reviewBody": [
+    "server/actions/reviews.ts"
+  ],
+  "shop.validation.field.street": [
+    "lib/validations/account.ts",
+    "lib/validations/checkout.ts"
+  ],
+  "shop.validation.password": [
+    "lib/validations/account.ts"
+  ],
+  "shop.validation.password.length": [
+    "lib/validations/account.ts"
+  ],
+  "shop.validation.password.letterDigit": [
+    "lib/validations/account.ts"
+  ],
+  "shop.wishlist.add": [
+    "components/storefront/wishlist-heart.tsx"
+  ],
+  "shop.wishlist.addShort": [
+    "components/storefront/wishlist-heart.tsx"
+  ],
+  "shop.wishlist.remove": [
+    "components/storefront/wishlist-heart.tsx"
+  ],
+  "shop.wishlist.removeShort": [
+    "components/storefront/wishlist-heart.tsx"
+  ]
+}

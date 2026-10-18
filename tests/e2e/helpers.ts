@@ -52,7 +52,7 @@ interface ApiProduct {
 // assertions: the unit price stays below the configured threshold — read from
 // /api/shop-settings (data, never a hard-coded price) and cheapest-first — so earlier
 // specs consuming stock can never flip a locked free-shipping bar out from under an
-// assertion. (#58: extracted from cart-translations.spec.ts for reuse.)
+// assertion. (#58: extracted from a per-area translation spec for reuse.)
 // `qty` sizes the line (with matching stock) so a spec can order twice and still get
 // two distinct orders — the idempotent checkout (#15) answers identical submits with
 // the same order.

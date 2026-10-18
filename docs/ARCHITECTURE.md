@@ -151,7 +151,8 @@ src/
                             # through saveCatalogTypeCore)
         translations/page.tsx          # translation table: search + area/missing/review
                             # filters, inline-editable cells via TranslationsTable (#58)
-        translations/[key]/page.tsx    # one text: German base + every language column (#58)
+        translations/[key]/page.tsx    # one text: German base + every language column, usage
+                            # context + per-language preview links + change history (#58)
         translations/languages/page.tsx # language rows editor — a new language is a form,
                             # deactivate instead of delete (#58)
       labels/[orderId]/route.ts    # GET label PDF (session-guarded, §4)
@@ -274,6 +275,10 @@ src/
     site.ts                 # SITE_URL + absoluteUrl (metadata, JSON-LD)
     locale-path.ts          # splitLanguagePrefix/localizedPath — the language prefix as
                             # pure path arithmetic, codes passed in as data (#58)
+    translation-usage.ts    # usageFilesFor — one row key to the files referencing it
+                            # (exact, prefix and plural-family entries, #58 editor slice)
+    translation-previews.ts # previewTemplateFor/previewPathFor — namespace table lookup,
+                            # admin nav fallback, sample placeholders (#58 editor slice)
     images.ts               # isPhotoSrc — photo vs placeholder rule (§11)
     orders/state-machine.ts # statuses, transitions + validation + logging (pure)
     orders/labels.ts        # German order status labels — badge fallback only, the UI
@@ -315,6 +320,14 @@ src/
                             # row ({ key, area, de, texts }), read only by translation-seed.ts (#58)
     translation-seed.ts     # DEFAULT_TRANSLATIONS typed from translations.json — the file's
                             # only reader (seed, server fallback, labels provider) (#58)
+    translation-usage.ts    # TRANSLATION_USAGE typed from translation-usage.json — the
+                            # checked-in AST extraction of where each key is used, kept
+                            # honest by tests/translation-usage.test.ts (#58 editor slice)
+    translation-usage.json  # usage entries (exact keys, `…​.*` prefixes, plural bases) →
+                            # the src files referencing them — generated data, git-tracked
+    translation-previews.ts # PREVIEW_TABLE typed from translation-previews.json + the
+                            # request-time preview samples ({slug}, {number} — queries)
+    translation-previews.json # key namespace → preview route template (#58 editor slice)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET,
                             # CUSTOMER_REGISTER_LIMIT_PER_HOUR,
                             # CUSTOMER_RESET_LIMIT_PER_HOUR,
@@ -728,6 +741,19 @@ in the test's exemption registry — file + exact text + reason, each entry one 
 boundary (stored-data notes, developer logs, internal UPS errors, the SPC payload,
 seed/default content, invisible skeleton fillers, machine payloads, the
 `STATUS_LABELS` fallback). Changed texts re-flag, stale exemptions fail their own test.
+The AST walker lives in `src/test/ast-texts.ts` and is shared with the usage extraction.
+
+**Usage context + previews (#58 editor slice).** Where a text is used is a fact about
+the code: `tests/translation-usage.test.ts` extracts every key-shaped string literal and
+template head from the production files (dynamic heads become prefix entries like
+`shop.status.*`) into the checked-in `src/server/translation-usage.json` — a file
+snapshot refreshed with `vitest -u`, so the editor can never drift from reality. The
+preview route is a fact about routes: `src/server/translation-previews.json` maps key
+namespaces to route templates (`{slug}`/`{number}` filled from live queries — first
+product by slug, newest order; no sample, no link), `src/lib/translation-previews.ts`
+resolves them purely (longest prefix wins, `admin.*` falls back to its own nav page),
+and the edit page renders one preview link per active language row via `localizedPath`
+(admin links stay prefix-free — the admin follows the language cookie).
 
 ## 4. Server functions, actions and route handlers
 
@@ -1178,8 +1204,13 @@ Specs (the three required journeys):
 - `translations.spec.ts` (#58) — admin edits a seeded text's French column and sees it on
   reload → creates a new key (German base + one language, untranslated columns show the
   visible „fehlt" marker) → adds a language row (Portuguese) through the languages editor
-  → inline editing in the list: Enter saves a cell instantly (survives reload), Esc
-  cancels, editing the German base flags the other languages for review.
+  → inline editing in the list: Enter saves a cell instantly (survives reload) and keeps
+  focus on the cell, Esc cancels and returns focus, editing the German base flags the
+  other languages for review.
+- `translation-usage.spec.ts` (#58 editor slice) — the edit page lists the files that
+  reference the key (the checked-in usage extraction) and offers one preview link per
+  active language (`/fr/cart` for the cart title, `target="_blank"`) → an `admin.*` key
+  previews its own nav page → a key no production file references says so.
 - `language-routing.spec.ts` (#58) — browser language picks the prefix and `<html lang>` →
   hreflang lists every active language + x-default for the same path → switcher keeps page,
   query and the remembered choice → every language serves the listing → unknown product
@@ -1188,11 +1219,6 @@ Specs (the three required journeys):
   French confirmation (thanks, heading, status chain/badge, totals, addresses) → a stranger
   opening the same URL sees the French access form, never the German one. Together with
   `storefront.spec` this is step 5's two-language completed checkout.
-- `remaining-literals.spec.ts` (#58 step 3, last-literals slice) — the French comparison
-  table shows French row labels and the French plural stock value with German absent →
-  the French product page ships the French meta description and localized site
-  title/description (Open Graph) and a French switcher aria → after a French purchase,
-  review and admin approval the published rating reads its stars in French.
 
 Run order for the full gate: `npm run build && npm run test:e2e` (the build is a hard
 prerequisite; `npm test` and `npm run lint` are independent).

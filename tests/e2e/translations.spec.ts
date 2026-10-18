@@ -241,6 +241,7 @@ test("translations: inline editing in the list — Enter saves, Esc cancels", as
     await input("Français").press("Enter");
     await saved();
     await expect(cell("Français")).toContainText("Panier en ligne");
+    await expect(cell("Français")).toBeFocused();
     await page.goto("/admin/translations?q=shop.cart.title");
     await expect(row()).toContainText("Panier en ligne");
 
@@ -250,6 +251,7 @@ test("translations: inline editing in the list — Enter saves, Esc cancels", as
     await input("Italiano").press("Escape");
     await expect(row().getByRole("textbox")).toHaveCount(0);
     await expect(cell("Italiano")).toContainText("Carrello");
+    await expect(cell("Italiano")).toBeFocused();
     await expect(row()).not.toContainText("Carrello cancellato");
 
     // Editing the German base inline flags the other languages for review.
