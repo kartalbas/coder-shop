@@ -39,6 +39,16 @@ const structureKeys = [
       ),
     ),
   ],
+  ...[
+    ...new Set(
+      generateCatalog().flatMap((product) =>
+        product.variants
+          .map((variant) => variant.attributes.material)
+          .filter((material) => material !== undefined)
+          .map((material) => valueLabelKey("material", String(material))),
+      ),
+    ),
+  ],
 ];
 
 const structureRows = DEFAULT_TRANSLATIONS.filter(
@@ -94,6 +104,18 @@ describe("catalog structure rows (issue #58 step B1b)", () => {
     for (const color of colors) {
       const row = structureRows.find((row) => row.key === valueLabelKey("color", color))!;
       expect(row.de, color).toBe(color);
+    }
+    const materials = new Set(
+      generateCatalog().flatMap((product) =>
+        product.variants
+          .map((variant) => variant.attributes.material)
+          .filter((material) => material !== undefined)
+          .map(String),
+      ),
+    );
+    for (const material of materials) {
+      const row = structureRows.find((row) => row.key === valueLabelKey("material", material))!;
+      expect(row.de, material).toBe(material);
     }
   });
 

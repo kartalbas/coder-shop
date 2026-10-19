@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activeLanguages,
   contentLabel,
+  contentSaveIsNoop,
   createTranslator,
   defaultLanguage,
   DEFAULT_LANGUAGES,
@@ -19,6 +20,7 @@ import {
   resolveLanguage,
   splitOnPlaceholder,
   textFor,
+  translationChanges,
   typeLabelKey,
   dimensionLabelKey,
   valueLabelKey,
@@ -447,5 +449,41 @@ describe("needsReview (#58 editor slice — texts older than their German base)"
         "de",
       ),
     ).toBe(false);
+  });
+});
+
+describe("translationChanges and contentSaveIsNoop (#58 review — untouched saves)", () => {
+  const stored = { de: "Produkt", texts: { fr: "Produit", it: "Prodotto" } };
+
+  it("the diff moves only what actually changed", () => {
+    expect(translationChanges(stored, { de: "Produkt", texts: { fr: "Produit" } })).toEqual([]);
+    expect(
+      translationChanges(stored, { de: "Neu", texts: { fr: "Produit" } }).map((c) => c.language),
+    ).toEqual(["de"]);
+    expect(
+      translationChanges(stored, { de: "Produkt", texts: { fr: "", it: "Prodotto nuovo" } })
+        .map((c) => `${c.language}:${c.newValue}`)
+        .sort(),
+    ).toEqual(["fr:", "it:Prodotto nuovo"]);
+    // A new row changes on `de` alone — the base is the change, blank texts add none.
+    expect(translationChanges(null, { de: "Produkt", texts: { fr: "" } })).toEqual([
+      { language: "de", oldValue: "", newValue: "Produkt" },
+    ]);
+  });
+
+  it("an untouched content-block save is a no-op, a real change is not", () => {
+    expect(contentSaveIsNoop(stored, "Produkt", { fr: "Produit", it: "Prodotto" })).toBe(true);
+    // A blank for a code the row does not carry is "still missing" — not a change.
+    expect(contentSaveIsNoop({ de: "Produkt", texts: { fr: "Produit" } }, "Produkt", {
+      fr: "Produit",
+      it: "",
+    })).toBe(true);
+    // Clearing an existing text is a deliberate change, not a no-op.
+    expect(contentSaveIsNoop(stored, "Produkt", { fr: "Produit", it: "" })).toBe(false);
+    expect(contentSaveIsNoop(stored, "Produkt", { fr: "Autre" })).toBe(false);
+    expect(contentSaveIsNoop(stored, "Neuer Name", { fr: "Produit" })).toBe(false);
+    // No row yet: blank everywhere creates nothing, one text is a deliberate add.
+    expect(contentSaveIsNoop(undefined, "Produkt", { fr: "", it: "  " })).toBe(true);
+    expect(contentSaveIsNoop(undefined, "Produkt", { fr: "Produit" })).toBe(false);
   });
 });

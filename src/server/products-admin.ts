@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { deriveFilter, dimensionsFromAttributes, type VariantForFacets } from "@/lib/facets";
 import { variantLabel, type CatalogDimensionConfig } from "@/lib/catalog-types";
-import { interpolate, label, productContentKeys } from "@/lib/i18n";
+import { contentSaveIsNoop, interpolate, label, productContentKeys } from "@/lib/i18n";
 import { escapeRegex } from "@/lib/regex";
 import type { ProductType } from "@/models/product";
 import { ProductModel, type Product, type Variant } from "@/models/product";
@@ -338,13 +338,22 @@ export async function saveProductContentCore(
     nameTexts[code] = texts.name;
     descriptionTexts[code] = texts.description;
   }
-  const name = await saveTranslationCore({
-    key: keys.name,
-    area: "catalog",
-    de: product.name,
-    texts: nameTexts,
-  });
-  if (!name.ok) return name;
+  // #58 review: an untouched save writes nothing — no update, no de-only row.
+  const rows = await getTranslations();
+  const nameRow = rows.find((row) => row.key === keys.name);
+  const descriptionRow = rows.find((row) => row.key === keys.description);
+  if (!contentSaveIsNoop(nameRow, product.name, nameTexts)) {
+    const name = await saveTranslationCore({
+      key: keys.name,
+      area: "catalog",
+      de: product.name,
+      texts: nameTexts,
+    });
+    if (!name.ok) return name;
+  }
+  if (contentSaveIsNoop(descriptionRow, product.description, descriptionTexts)) {
+    return { ok: true };
+  }
   return saveTranslationCore({
     key: keys.description,
     area: "catalog",

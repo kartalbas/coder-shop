@@ -16,6 +16,12 @@ export interface LanguageConfig {
 
 export const BASE_LANGUAGE = "de";
 
+// The one shapes (#58 review): a language code and a config key are validated by
+// several schemas and by the Accept-Language guard below — they share these patterns,
+// so a shape change is one edit and the guards can never drift apart.
+export const LANGUAGE_CODE_PATTERN = /^[a-z]{2,3}$/;
+export const CONFIG_KEY_PATTERN = /^[a-z][a-z0-9-]*$/;
+
 // Issue #58 step 2: the proxy writes this cookie whenever a request arrives with a
 // language prefix, so the choice is remembered for prefix-free links and the next visit.
 export const LANGUAGE_COOKIE = "lang";
@@ -115,7 +121,7 @@ export function intlLocaleOf(languages: readonly LanguageConfig[], code: string)
 
 function normalizeCode(value: string | null | undefined): string | null {
   const code = value?.trim().toLowerCase();
-  return code && /^[a-z]{2,3}$/.test(code) ? code : null;
+  return code && LANGUAGE_CODE_PATTERN.test(code) ? code : null;
 }
 
 // Accept-Language → plain language codes in the client's preference order: q-values
@@ -181,6 +187,51 @@ export function needsReview(entry: TranslationEntry, code: string): boolean {
   const baseAt = entry.textUpdatedAt?.[BASE_LANGUAGE];
   if (!textAt || !baseAt) return false;
   return textAt < baseAt;
+}
+
+// One change of one language in one row — the unit `saveTranslationCore` stamps and
+// logs, and the unit the content blocks compare against to decide "nothing to write".
+export interface TranslationChange {
+  language: string;
+  oldValue: string;
+  newValue: string;
+}
+
+// The per-code diff of a save against the stored row (#58 review): the German base
+// changes when the row is new or its `de` moved; a text changes when its trimmed
+// presence or its value differs (blank means "cleared"). The one core computes its
+// stamps and history from this, the on-demand content blocks below decide with it —
+// the rule can never drift between them.
+export function translationChanges(
+  stored: Pick<TranslationEntry, "de" | "texts"> | null,
+  entry: Pick<TranslationEntry, "de" | "texts">,
+): TranslationChange[] {
+  const changes: TranslationChange[] = [];
+  if (!stored || stored.de !== entry.de) {
+    changes.push({ language: BASE_LANGUAGE, oldValue: stored?.de ?? "", newValue: entry.de });
+  }
+  for (const [code, text] of Object.entries(entry.texts)) {
+    const next = text.trim() ? text : null;
+    const previous = stored?.texts[code];
+    if ((previous ?? null) === next) continue;
+    changes.push({ language: code, oldValue: previous ?? "", newValue: next ?? "" });
+  }
+  return changes;
+}
+
+// No-op check for the on-demand content blocks (#58 review): saving the product form's
+// translation section or the type editor's label block with every field untouched
+// writes nothing — no row update, and no de-only row created when the payload adds no
+// text at all, so rows appear only where an admin deliberately adds a translation.
+// The general translations editor keeps its own semantics (there, saving a new key
+// with only `de` is the deliberate act of creating the row).
+export function contentSaveIsNoop(
+  stored: Pick<TranslationEntry, "de" | "texts"> | undefined,
+  de: string,
+  texts: Record<string, string>,
+): boolean {
+  if (!stored) return Object.values(texts).every((text) => !text.trim());
+  return translationChanges(stored, { de, texts }).length === 0;
 }
 
 // Admin list filter (#58 editor): free text over key, German base and every language

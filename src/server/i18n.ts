@@ -12,6 +12,7 @@ import {
   labelMap,
   LANGUAGE_COOKIE,
   resolveLanguage,
+  translationChanges,
   type LanguageConfig,
   type Translator,
   type TranslationEntry,
@@ -176,24 +177,20 @@ export async function saveTranslationCore(
   }
   await connectDB();
   const stored = await TranslationModel.findOne({ key: entry.key }).lean().exec();
-  const storedTexts = (stored?.texts ?? {}) as Record<string, string>;
   const at = new Date();
   const atIso = at.toISOString();
+  const changes = translationChanges(
+    stored ? { de: stored.de, texts: (stored.texts ?? {}) as Record<string, string> } : null,
+    entry,
+  );
   const set: Record<string, string> = { key: entry.key, area: entry.area, de: entry.de };
   const unset: Record<string, string> = {};
-  const changes: { language: string; oldValue: string; newValue: string }[] = [];
-  if (!stored || stored.de !== entry.de) {
-    changes.push({ language: BASE_LANGUAGE, oldValue: stored?.de ?? "", newValue: entry.de });
+  for (const change of changes) {
+    set[`textUpdatedAt.${change.language}`] = atIso;
+    if (change.language === BASE_LANGUAGE) continue;
+    if (change.newValue === "") unset[`texts.${change.language}`] = "";
+    else set[`texts.${change.language}`] = change.newValue;
   }
-  for (const [code, text] of Object.entries(entry.texts)) {
-    const next = text.trim() ? text : null;
-    const previous = storedTexts[code];
-    if ((previous ?? null) === next) continue;
-    if (next === null) unset[`texts.${code}`] = "";
-    else set[`texts.${code}`] = next;
-    changes.push({ language: code, oldValue: previous ?? "", newValue: next ?? "" });
-  }
-  for (const change of changes) set[`textUpdatedAt.${change.language}`] = atIso;
   const update: Record<string, Record<string, string>> = { $set: set };
   if (Object.keys(unset).length > 0) update.$unset = unset;
   await TranslationModel.updateOne({ key: entry.key }, update, { upsert: true }).exec();

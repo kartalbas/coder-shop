@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { label, TRANSLATION_AREAS, type LabelMap } from "@/lib/i18n";
+import { label, LANGUAGE_CODE_PATTERN, TRANSLATION_AREAS, type LabelMap } from "@/lib/i18n";
 import { getRequestLabels, saveLanguageCore, saveTranslationCore } from "@/server/i18n";
 import { requireAdminSession } from "@/server/session";
 
@@ -67,7 +67,7 @@ function createLanguageSchema(labels: LabelMap) {
     code: z
       .string()
       .trim()
-      .regex(/^[a-z]{2,3}$/, label(labels, "admin.languages.validation.codeShape")),
+      .regex(LANGUAGE_CODE_PATTERN, label(labels, "admin.languages.validation.codeShape")),
     label: z
       .string()
       .trim()

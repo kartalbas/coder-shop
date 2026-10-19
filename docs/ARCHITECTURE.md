@@ -789,7 +789,7 @@ category, compare rows); admin, `/api/products` and stored orders stay German by
 construction. The client-fetch APIs `/api/search` and `/api/recently-viewed` resolve
 `getRequestLabels()` (the proxy-written `lang` cookie) — hits localize while **matching
 stays on the stored German name/brand** (DECISIONS). The structure demo rows are
-derived from `DEFAULT_CATALOG_TYPES` and the generator's distinct colours
+derived from `DEFAULT_CATALOG_TYPES` and the generator's distinct colours and materials
 (`tests/catalog-structure.test.ts` pins set, byte-identity and review flags).
 
 **Catalog content editing (#58 step B2).** The product form carries a translation
@@ -802,7 +802,13 @@ German truth: every write sends the document's current name/description as the r
 syncs the **existing** row through the same core — synced, never created, so mass
 renames cannot bloat the table and `contentLabel`'s fallback stays intact. The
 catalog-type editor gained the same block for its label row
-(`catalog-type-translations.tsx`, `saveCatalogTypeLabelAction`).
+(`catalog-type-translations.tsx`, `saveCatalogTypeLabelAction`). Both blocks are
+no-ops when every field is untouched: `contentSaveIsNoop` (over the shared
+`translationChanges` rule that `saveTranslationCore` itself stamps and logs from)
+skips the write, so an unchanged save moves no row and creates no de-only row
+(#58 review). The one language-code and config-key shapes are exported from
+`src/lib/i18n` (`LANGUAGE_CODE_PATTERN`, `CONFIG_KEY_PATTERN`) and reused by every
+schema that validates them.
 
 **Usage context + previews (#58 editor slice).** Where a text is used is a fact about
 the code: `tests/translation-usage.test.ts` extracts every key-shaped string literal and

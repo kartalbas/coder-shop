@@ -2927,3 +2927,36 @@ Done — M1–M6 + QA complete.
   catalog, then the done-when re-check and closing the umbrella. Recorded limitations
   unchanged (search matches stored German names, `/api/products` stays German, stored
   orders/cart keep their creation language).
+
+## ISSUES — queue session 51 (2026-10-19)
+
+### Gate report ✅ no defect + #58 (closing slice) — material values, B2 review nits, done-when re-check ✅
+- **Gate report:** `GET /produkte → HTTP 308` and „the HTML links to no product page
+  (/produkt/…)" are again the intended #63 English-URL behaviour, re-verified live:
+  `/produkte` → 308 → `/products` → 307 → `/de/products` (200, product links present),
+  `/api/health` 200.
+- **Material value labels (the audit's real gap).** Material was the only attribute
+  dimension whose values had no rows: on `/fr` the clothing facet group „Matière" and the
+  recomposed variant labels listed German `Baumwolle/Polyester/…`. Six
+  `catalog.value.material.<slugified>` rows × 5 languages joined `translations.json`,
+  derived from the generator's own pool — German bases byte-identical, machine texts
+  past-stamped so `needsReview` flags exactly them. No code change: `valueLabelKey` +
+  `contentLabel` + the recomposed variant labels localize for free.
+- **The three B2 review nits.** (1) DECISIONS now records that the product form's two
+  per-key `saveTranslationCore` calls are deliberately not atomic. (2) One shared shape
+  source: `LANGUAGE_CODE_PATTERN` and `CONFIG_KEY_PATTERN` exported from `src/lib/i18n`
+  and reused by the catalog-type, translation and product-content schemas and by the
+  Accept-Language guard (was duplicated in five places). (3) No-op guard: the product
+  form's section and the type editor's label block compare the payload against the
+  stored row through `contentSaveIsNoop` (over the shared `translationChanges` rule that
+  `saveTranslationCore` itself stamps and logs from) and write nothing when no field
+  changed — no update, no history, and no de-only row created on an untouched save.
+- **Tests (fail without the change):** +2 units in `src/lib/i18n.test.ts` (the diff
+  moves only what changed; untouched/blank-everywhere saves are no-ops, a clear is not);
+  +1 integration in `tests/catalog-content.test.ts` (untouched save creates no row,
+  moves no history, leaves the rows byte-identical — red on the pre-guard core, which
+  upserted a de-only row); `tests/catalog-structure.test.ts` derivation extended to
+  materials (red without the rows); the French listing e2e now also checks the localized
+  material group and value.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 724 (74 files),
+  `npm run test:e2e` ✅ 88/88; tree clean, nothing running.

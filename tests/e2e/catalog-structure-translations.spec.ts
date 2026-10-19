@@ -37,6 +37,12 @@ test("the French listing localizes type tabs and facet groups and values", async
   await expect(page.getByText(textFr(dimensionLabelKey("color")), { exact: true }).first()).toBeVisible();
   await expect(page.getByText(textFr(valueLabelKey("color", "schwarz")), { exact: true }).first()).toBeVisible();
   await expect(page.getByText("schwarz", { exact: true })).toHaveCount(0);
+  // Material is a facet dimension too — its values localize from the table (#58).
+  await expect(page.getByText(textFr(dimensionLabelKey("material")), { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText(textFr(valueLabelKey("material", "Baumwolle")), { exact: true }).first(),
+  ).toBeVisible();
+  await expect(page.getByText("Baumwolle", { exact: true })).toHaveCount(0);
 });
 
 test("the French product page localizes the picker legend and values", async ({ page }) => {

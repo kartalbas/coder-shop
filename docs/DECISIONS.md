@@ -1108,4 +1108,10 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   and `contentLabel`'s document fallback keeps working. Rows are created only where an
   admin deliberately adds a translation: the product form's translation section and the
   type editor's label block, which always send the document's current values as `de` —
-  the row's base can never drift from the document.
+  the row's base can never drift from the document. The product form's two per-key
+  `saveTranslationCore` calls (name, description) are deliberately **not atomic**: each
+  is a valid row write on its own, and a refused second call leaves a correct first —
+  wrapping them in a transaction would add no guarantee the table does not already
+  give per row. An untouched save is a no-op (#58 review): the content blocks compare
+  the payload against the stored row through the shared `translationChanges` rule and
+  write nothing — and create no de-only row — when no field actually changed.

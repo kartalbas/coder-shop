@@ -2,8 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { label, typeLabelKey, type LabelMap } from "@/lib/i18n";
-import { getRequestLabels, saveTranslationCore } from "@/server/i18n";
+import {
+  CONFIG_KEY_PATTERN,
+  contentSaveIsNoop,
+  LANGUAGE_CODE_PATTERN,
+  label,
+  typeLabelKey,
+  type LabelMap,
+} from "@/lib/i18n";
+import { getRequestLabels, getTranslations, saveTranslationCore } from "@/server/i18n";
 import { getCatalogType, saveCatalogTypeCore } from "@/server/catalog-types";
 import { requireAdminSession } from "@/server/session";
 
@@ -23,7 +30,7 @@ function createCatalogTypeSchema(labels: LabelMap) {
     key: z
       .string()
       .trim()
-      .regex(/^[a-z][a-z0-9-]*$/, label(labels, "admin.catalogTypes.validation.keyShape")),
+      .regex(CONFIG_KEY_PATTERN, label(labels, "admin.catalogTypes.validation.keyShape")),
     label: z.string().trim().min(1, label(labels, "admin.settings.validation.nameRequired")),
     position: z.coerce.number().int().min(0).max(999),
     stockTracking: z.enum(["quantity", "serial"]),
@@ -101,8 +108,8 @@ function createCatalogTypeLabelSchema(labels: LabelMap) {
     key: z
       .string()
       .trim()
-      .regex(/^[a-z][a-z0-9-]*$/, label(labels, "admin.catalogTypes.validation.keyShape")),
-    texts: z.record(z.string().regex(/^[a-z]{2,3}$/), z.string().trim().max(200)),
+      .regex(CONFIG_KEY_PATTERN, label(labels, "admin.catalogTypes.validation.keyShape")),
+    texts: z.record(z.string().regex(LANGUAGE_CODE_PATTERN), z.string().trim().max(200)),
   });
 }
 
@@ -127,13 +134,17 @@ export async function saveCatalogTypeLabelAction(
   }
   const config = await getCatalogType(parsed.data.key);
   if (!config) return { ok: false, error: label(labels, "admin.catalogTypes.notFound") };
-  const result = await saveTranslationCore({
-    key: typeLabelKey(config.key),
-    area: "catalog",
-    de: config.label,
-    texts: parsed.data.texts,
-  });
-  if (!result.ok) return { ok: false, error: result.error };
+  // #58 review: an untouched save writes nothing — no update, no de-only row.
+  const stored = (await getTranslations()).find((row) => row.key === typeLabelKey(config.key));
+  if (!contentSaveIsNoop(stored, config.label, parsed.data.texts)) {
+    const result = await saveTranslationCore({
+      key: typeLabelKey(config.key),
+      area: "catalog",
+      de: config.label,
+      texts: parsed.data.texts,
+    });
+    if (!result.ok) return { ok: false, error: result.error };
+  }
   revalidatePath("/admin/catalog-types/[key]", "page");
   return { ok: true };
 }

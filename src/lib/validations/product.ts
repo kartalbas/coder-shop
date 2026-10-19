@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { label, interpolate, type LabelMap } from "@/lib/i18n";
+import { label, interpolate, LANGUAGE_CODE_PATTERN, type LabelMap } from "@/lib/i18n";
 import { isPhotoSrc } from "@/lib/images";
 
 // Issue #58 step 3: the messages come from the translation table in the request
@@ -26,7 +26,7 @@ export function createProductCoreSchema(labels: LabelMap) {
 export function createProductContentSchema(labels: LabelMap) {
   return z.object({
     texts: z.record(
-      z.string().regex(/^[a-z]{2,3}$/, label(labels, "admin.error.invalidRequest")),
+      z.string().regex(LANGUAGE_CODE_PATTERN, label(labels, "admin.error.invalidRequest")),
       z.object({
         name: z.string().trim().max(120),
         description: z.string().trim().max(2000),

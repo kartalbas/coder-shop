@@ -328,6 +328,41 @@ describe("German base sync and product content editing (issue #58 step B2)", () 
     expect(row!.texts.it).toBe("Prodotto cancellato");
   });
 
+  it("an untouched save writes nothing — no de-only row, no history (#58 review)", async () => {
+    const id = await createProduct("unberuehrt", "Unberührt Produkt", "Ein Ausgangstext.");
+    const keys = productContentKeys("unberuehrt");
+    const both = { $in: [keys.name, keys.description] };
+
+    // Every field blank (the form sends all active languages with empty texts):
+    // nothing is added, so nothing may be created — no de-only row.
+    expect(
+      (
+        await saveProductContentCore(id, {
+          texts: { fr: { name: "", description: "" }, it: { name: "", description: "" } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(await TranslationModel.countDocuments({ key: both })).toBe(0);
+
+    // A deliberate add creates the rows…
+    expect(
+      (await saveProductContentCore(id, { texts: { fr: { name: "Produit intact", description: "Un texte." } } })).ok,
+    ).toBe(true);
+    const historyBefore = await TranslationHistoryModel.countDocuments({ key: both });
+    const rowsBefore = await TranslationModel.find({ key: both }).lean().exec();
+
+    // …and saving the very same values again moves nothing at all.
+    expect(
+      (
+        await saveProductContentCore(id, {
+          texts: { fr: { name: "Produit intact", description: "Un texte." }, it: { name: "", description: "" } },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(await TranslationHistoryModel.countDocuments({ key: both })).toBe(historyBefore);
+    expect(await TranslationModel.find({ key: both }).lean().exec()).toEqual(rowsBefore);
+  });
+
   it("saveCatalogTypeCore syncs the existing type label row when the label changed", async () => {
     const smartphone = DEFAULT_CATALOG_TYPES.find((type) => type.key === "smartphone")!;
     const key = typeLabelKey("smartphone");
