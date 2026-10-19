@@ -35,7 +35,11 @@ test("translation editor: admin keys preview their nav page, unused keys say so"
   await expect(adminPreview).toHaveAttribute("href", "/admin/products");
   await expect(adminPreview).toHaveAttribute("target", "_blank");
 
-  // A key no production file references states that instead of listing files.
+  // A two-segment key the code references lists its file (the relaxed extraction).
   await page.goto("/admin/translations/shop.skip");
+  await expect(page.getByText("components/storefront/skip-link.tsx")).toBeVisible();
+
+  // A real row no production file references states that instead of listing files.
+  await page.goto("/admin/translations/shop.header.title");
   await expect(page.getByText("Keine Verwendung im Code gefunden.")).toBeVisible();
 });

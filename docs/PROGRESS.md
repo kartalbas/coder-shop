@@ -2754,3 +2754,25 @@ Done — M1–M6 + QA complete.
   `npm run test:e2e` ✅ 80/80; tree clean, nothing running.
 - **Left open (#58):** translatable catalog content + admin editing + five-language
   demo content (plan sessions B1–B3), then the done-when re-check and closing.
+
+## ISSUES — queue session 48 (2026-10-19)
+
+### Gate report ✅ no defect + #58 (usage-extraction defect) — single-segment keys no longer drop out ✅ — issue stays open
+
+- **Gate report:** `GET /produkte → 308` and no `/produkt/` links in the HTML are the
+  intended #63 contract (permanent German→English redirects), asserted by the green
+  `language-routing`/`english-urls` specs — re-confirmed, no defect.
+- **Defect (review of 302544f):** `EXACT_KEY` in `tests/translation-usage.test.ts` ended
+  in `(\.[A-Za-z0-9]+)+` — at least two segments after the namespace — so real
+  two-segment keys never entered the extraction: `shop.skip` (skip-link.tsx) and
+  `mail.greeting` (mail-templates.ts) showed "no usage" in the editor, and the e2e
+  cemented it by using `shop.skip` as its none-case.
+- **Fix:** relaxed to `(\.[A-Za-z0-9]+)*` (namespace + one segment); snapshot refreshed —
+  the diff is exactly the two recovered keys (1123 entries), no false positives; unit
+  test pins `shop.skip`/`mail.greeting` resolution (red on the old regex); the e2e
+  none-case now uses `shop.header.title`, a real row computed to have no usage entry,
+  and asserts `shop.skip` lists its file.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 688 (70 files),
+  `npm run test:e2e` ✅ 80/80; tree clean, nothing running.
+- **Left open (#58):** translatable catalog content + admin editing + five-language
+  demo content (plan sessions B1–B3), then the done-when re-check and closing.

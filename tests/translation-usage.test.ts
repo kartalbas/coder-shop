@@ -15,7 +15,7 @@ import { TRANSLATION_USAGE } from "@/server/translation-usage";
 // prefix entry `shop.status.*`; a plural base covers its `.one`/`.other` family rows.
 
 const KEY_NAMESPACE = /^(shop|admin|mail|invoice|catalog)\./;
-const EXACT_KEY = /^(shop|admin|mail|invoice|catalog)\.[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)+$/;
+const EXACT_KEY = /^(shop|admin|mail|invoice|catalog)\.[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*$/;
 
 function extractUsage(): Record<string, string[]> {
   const usage = new Map<string, Set<string>>();
@@ -65,6 +65,12 @@ it("resolves a row key to its usage — exact, prefix and plural family", () => 
   expect(family).toBeDefined();
   const member = DEFAULT_TRANSLATIONS.find((row) => row.key.startsWith(`${family}.`))!;
   expect(usageFilesFor(TRANSLATION_USAGE, member.key)).toEqual(TRANSLATION_USAGE[family!]);
+  // Single-segment keys (namespace + one segment) are exact keys too — the relaxed
+  // EXACT_KEY keeps referenced texts like `shop.skip` from claiming "no usage".
+  expect(usageFilesFor(TRANSLATION_USAGE, "shop.skip")).toEqual([
+    "components/storefront/skip-link.tsx",
+  ]);
+  expect(usageFilesFor(TRANSLATION_USAGE, "mail.greeting")).toEqual(["lib/mail-templates.ts"]);
   // An unknown key with no covering entry has no usage.
   expect(usageFilesFor(TRANSLATION_USAGE, "shop.definitely.unused.key")).toEqual([]);
 });

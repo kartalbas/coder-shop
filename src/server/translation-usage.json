@@ -2183,6 +2183,9 @@
   "mail.confirm.subject": [
     "lib/mail-templates.ts"
   ],
+  "mail.greeting": [
+    "lib/mail-templates.ts"
+  ],
   "mail.greeting.formal": [
     "lib/mail-templates.ts"
   ],
@@ -3443,6 +3446,9 @@
   ],
   "shop.search.results": [
     "components/storefront/search-instant.tsx"
+  ],
+  "shop.skip": [
+    "components/storefront/skip-link.tsx"
   ],
   "shop.sort.newest": [
     "components/storefront/sort-select.tsx"
