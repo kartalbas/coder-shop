@@ -2111,7 +2111,16 @@
   "admin.variants.serials": [
     "components/admin/variant-editor.tsx"
   ],
+  "catalog.dimension.*": [
+    "lib/i18n.ts"
+  ],
   "catalog.product.*": [
+    "lib/i18n.ts"
+  ],
+  "catalog.type.*": [
+    "lib/i18n.ts"
+  ],
+  "catalog.value.*": [
     "lib/i18n.ts"
   ],
   "invoice.pdf.billTo": [

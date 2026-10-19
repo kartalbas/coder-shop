@@ -1,5 +1,5 @@
 import type { CatalogDimensionConfig } from "@/lib/catalog-types";
-import { formatDimensionValue } from "@/lib/catalog-types";
+import { formatLocalizedDimensionValue } from "@/lib/catalog-types";
 import type { ProductDto } from "@/lib/dto";
 import { createFormatters } from "@/lib/format";
 import { interpolate, label, plural, type LabelMap } from "@/lib/i18n";
@@ -43,9 +43,15 @@ function formatWeight(product: ProductDto, intlLocale: string): string {
   return min === max ? weight(min) : `${number(min)}–${number(max)} g`;
 }
 
-function formatDimension(dimension: CatalogDimensionConfig, product: ProductDto): string {
+// Issue #58 step B1b: the attribute values in a dimension row resolve through the
+// table too (machine values without rows — sizes, GB — stay the value itself).
+function formatDimension(
+  dimension: CatalogDimensionConfig,
+  product: ProductDto,
+  labels: LabelMap,
+): string {
   return (product.filter[dimension.key] ?? [])
-    .map((value) => formatDimensionValue(dimension, value))
+    .map((value) => formatLocalizedDimensionValue(dimension, value, labels))
     .join(", ");
 }
 
@@ -78,7 +84,7 @@ export function buildComparisonRows(
     { label: label(labels, "shop.compare.row.brand"), value: (product) => product.brand },
     ...dimensions.map((dimension) => ({
       label: dimension.label,
-      value: (product: ProductDto) => formatDimension(dimension, product),
+      value: (product: ProductDto) => formatDimension(dimension, product, labels),
     })),
     { label: label(labels, "shop.compare.row.weight"), value: (product) => formatWeight(product, intlLocale) },
     { label: label(labels, "shop.compare.row.variants"), value: (product) => `${product.variants.length}` },

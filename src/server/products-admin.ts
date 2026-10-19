@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { deriveFilter, dimensionsFromAttributes, type VariantForFacets } from "@/lib/facets";
-import { formatDimensionValue, type CatalogDimensionConfig } from "@/lib/catalog-types";
+import { variantLabel, type CatalogDimensionConfig } from "@/lib/catalog-types";
 import { interpolate, label } from "@/lib/i18n";
 import { escapeRegex } from "@/lib/regex";
 import type { ProductType } from "@/models/product";
@@ -225,9 +225,9 @@ export async function updateVariantCore(
     stock,
     weightGrams: parsed.data.weightGrams,
     attributes: normalizedAttributes,
-    label: dimensions
-      .map((dimension) => formatDimensionValue(dimension, String(normalizedAttributes[dimension.key])))
-      .join(" / "),
+    // The one composition rule (#58 step B1b) — the stored label stays the German
+    // base; the storefront resolves it per request language.
+    label: variantLabel(dimensions, normalizedAttributes),
   };
 
   const set: Record<string, unknown> = {

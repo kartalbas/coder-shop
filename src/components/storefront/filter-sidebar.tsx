@@ -3,7 +3,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useLabels } from "@/components/labels";
-import { interpolate, label } from "@/lib/i18n";
+import { contentLabel, interpolate, label, valueLabelKey } from "@/lib/i18n";
 import type { CatalogDimensionConfig } from "@/lib/catalog-types";
 import { isNumericFacetValue } from "@/lib/facet-order";
 import type { FacetCounts, FacetValue } from "@/server/search";
@@ -12,6 +12,9 @@ interface Group {
   key: string;
   label: string;
   unit?: string;
+  // The configured dimension behind the group (#58 step B1b) — its values resolve
+  // through the table; the brand column is not a dimension and stays the brand.
+  dimension?: CatalogDimensionConfig;
   values: FacetValue[];
 }
 
@@ -38,17 +41,25 @@ function buildGroups(
           key: dimension.key,
           label: interpolate(label(labels, "shop.filter.groupEu"), { label: dimension.label }),
           unit: dimension.unit,
+          dimension,
           values: numeric,
         },
         {
           key: dimension.key,
           label: interpolate(label(labels, "shop.filter.groupClothing"), { label: dimension.label }),
           unit: dimension.unit,
+          dimension,
           values: letters,
         },
       );
     } else {
-      groups.push({ key: dimension.key, label: dimension.label, unit: dimension.unit, values });
+      groups.push({
+        key: dimension.key,
+        label: dimension.label,
+        unit: dimension.unit,
+        dimension,
+        values,
+      });
     }
   }
   return groups.filter((group) => group.values.length > 0);
@@ -83,7 +94,14 @@ export function FilterSidebar({ facets, dimensions, selected, onToggle }: Props)
                     onCheckedChange={() => onToggle(group.key, facet.value)}
                   />
                   <Label htmlFor={id} className="flex-1 cursor-pointer font-normal">
-                    {group.unit ? `${facet.value} ${group.unit}` : facet.value}
+                    {(() => {
+                      // #58 step B1b: dimension values are table rows (fallback: the
+                      // value itself); the unit suffix stays the display convention.
+                      const text = group.dimension
+                        ? contentLabel(labels, valueLabelKey(group.key, facet.value), facet.value)
+                        : facet.value;
+                      return group.unit ? `${text} ${group.unit}` : text;
+                    })()}
                   </Label>
                   <span className="text-xs text-muted-foreground">{facet.count}</span>
                 </li>

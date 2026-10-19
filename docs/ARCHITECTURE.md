@@ -75,6 +75,7 @@ scripts/
   seed/
     seed.ts                 # deterministic seed entry (npm run seed → tsx scripts/seed/seed.ts)
     catalog.ts              # deterministic product data generation (mulberry32 PRNG)
+    demo-content.ts         # the bounded #58 demo set: first three products per type by slug
   images/
     generate.ts             # image pipeline entry (npm run images → tsx scripts/images/generate.ts)
     prompt.ts               # pure prompt/seed/view logic (unit-tested)
@@ -242,13 +243,17 @@ src/
                           # (guard test: tests/lib-purity.test.ts)
     product-types.ts        # ProductType = string — types are data now (#61), the alias only names it
     catalog-types.ts        # CatalogTypeConfig/CatalogDimensionConfig shapes + DEFAULT_CATALOG_TYPES
-                            # (seed content only) + pure dimension/facet helpers (#61)
+                            # (seed content only) + pure dimension/facet helpers (#61) +
+                            # localizeCatalogTypes/localizeDimensions/variantLabel/value
+                            # localization (#58 step B1b)
+    slug.ts                 # the one slugify (SKU builder + translation value segments, #58 B1b)
     shop-settings.ts        # ShopSettings shape (VAT, shipping + payment methods) +
                             # DEFAULT_SHOP_SETTINGS (seed content only) + VAT copy helpers (#64)
     i18n.ts                 # languages + translation entries as data, resolveLanguage precedence
                             # (prefix > cookie > browser > default), German fallback + missing
                             # report, DEFAULT_LANGUAGES seed rows, contentLabel +
-                            # productContentKeys for catalog content (#58; the translation seed
+                            # productContentKeys + typeLabelKey/dimensionLabelKey/valueLabelKey
+                            # for catalog content and structure (#58; the translation seed
                             # content lives in src/server/translations.json)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # createFormatters(intlLocale): CHF, dates, weights (#58);
@@ -328,7 +333,8 @@ src/
                             # the src files referencing them — generated data, git-tracked
     translation-previews.ts # PREVIEW_TABLE typed from translation-previews.json + the
                             # request-time preview samples ({slug}, {number} — queries)
-    translation-previews.json # key namespace → preview route template (#58 editor slice)
+    translation-previews.json # key namespace → preview route template (#58 editor slice;
+                            # catalog.type/dimension/value → /products since step B1b)
     env.ts                  # zod-validated env access (MONGODB_URI, UPS_*, SMTP_*, SESSION_SECRET,
                             # CUSTOMER_REGISTER_LIMIT_PER_HOUR,
                             # CUSTOMER_RESET_LIMIT_PER_HOUR,
@@ -381,8 +387,10 @@ src/
     dashboard.ts            # revenue series, open counts, low stock, recent orders
     search.ts               # Mongo query/aggregate builders + toProductDto() shared DTO mapper
                             # (#58 step B1a: optional label map resolves name/description
-                            # through the table; without one the DTO stays German)
-    wishlist.ts             # account wishlist: sync (merge/replace), list, remove (#46)
+                            # through the table; step B1b: with the type's dimensions the
+                            # variant labels recompose too; without a map the DTO stays German)
+    wishlist.ts             # account wishlist: sync (merge/replace), list, remove (#46);
+                            # #58 step B1b: the list takes the request label map
     restock-alerts.ts       # subscribe + notifyRestockedCore (goods receipt / cancel
                             # restock → one mail per waiting address, #46)
     reviews.ts              # review cores: submit (buyer check), lists, moderation,
@@ -759,6 +767,26 @@ admin pages, JSON APIs, stored orders and cart lines stay German by construction
 generator (first three products per type by slug, byte-identical German bases pinned by
 `tests/catalog-content.test.ts`); its machine texts seed with a fixed past
 `textUpdatedAt` so the existing `needsReview` rule flags exactly them.
+
+**Catalog structure (#58 step B1b).** Type, dimension and attribute-value labels are
+rows of the same table — `catalog.type.<key>`, `catalog.dimension.<key>`,
+`catalog.value.<dimensionKey>.<slugified value>` (key sources `typeLabelKey` /
+`dimensionLabelKey` / `valueLabelKey` in `src/lib/i18n`; the shared `slugify`
+(`src/lib/slug.ts`) is the one value-segment spelling, identical to the SKU builder).
+Resolution is one mechanism over the configuration: `localizeCatalogTypes` /
+`localizeDimensions` resolve type and dimension captions, `variantLabel` recomposes a
+variant label from translated values (order, unit and joiner stay the display
+convention; the seed and `updateVariantCore` compose the stored German label through
+the same function), and `formatLocalizedDimensionValue` localizes a single value with
+its unit. Machine values without rows (EU sizes, GB counts) fall back to themselves.
+The server-rendered storefront passes the request labels (header/footer/menu, listing
+tabs + facet groups and values, picker legends and chips, breadcrumbs, JSON-LD
+category, compare rows); admin, `/api/products` and stored orders stay German by
+construction. The client-fetch APIs `/api/search` and `/api/recently-viewed` resolve
+`getRequestLabels()` (the proxy-written `lang` cookie) — hits localize while **matching
+stays on the stored German name/brand** (DECISIONS). The structure demo rows are
+derived from `DEFAULT_CATALOG_TYPES` and the generator's distinct colours
+(`tests/catalog-structure.test.ts` pins set, byte-identity and review flags).
 
 **Usage context + previews (#58 editor slice).** Where a text is used is a fact about
 the code: `tests/translation-usage.test.ts` extracts every key-shaped string literal and

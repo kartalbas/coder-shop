@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/storefront/product-image";
 import { buildComparisonRows, comparableProducts, COMPARE_MAX_PRODUCTS } from "@/lib/compare";
-import { dimensionsForTypes } from "@/lib/catalog-types";
+import { dimensionsForTypes, localizeCatalogTypes } from "@/lib/catalog-types";
 import { cn } from "@/lib/utils";
 import { getCatalogTypes } from "@/server/catalog-types";
 import { getProductsBySlugs } from "@/server/search";
@@ -60,7 +60,9 @@ export default async function ComparePage({
   const query = await searchParams;
   const raw = typeof query.slugs === "string" ? query.slugs : undefined;
   if (!raw) notFound();
-  const types = await getCatalogTypes();
+  // Issue #58 step B1b: the comparable type's name and the attribute row captions are
+  // table rows; the row values resolve through the same label map in the lib.
+  const types = localizeCatalogTypes(await getCatalogTypes(), labels);
   const comparableTypes = types.filter((type) => type.comparable);
   const comparableKeys = new Set(comparableTypes.map((type) => type.key));
   // Issue #58 step B1a: the compared products' names resolve through the table.

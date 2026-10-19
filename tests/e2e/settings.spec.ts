@@ -13,7 +13,6 @@ async function saveSettings(page: Page, vat: string, standardPrice: string): Pro
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page.getByText("Konfiguration gespeichert")).toBeVisible();
 }
-
 test("admin edits VAT rate and a shipping price — the storefront follows (issue #64)", async ({
   page,
 }) => {
@@ -46,6 +45,10 @@ test("admin edits VAT rate and a shipping price — the storefront follows (issu
   await expect(page.getByText(/Standard CHF\s4\.90/).first()).toBeVisible();
 });
 
+// Issue #64 + #58 step B1b: the catalog type is configuration and its storefront label
+// is a row of the one translation table (the config label stays the admin-side name).
+// Renaming the storefront name therefore edits both — the config and the German base
+// row — through the admin UIs, with no code change.
 test("admin renames a catalog type — the mega-menu follows (issue #64)", async ({ page }) => {
   test.setTimeout(150_000);
   await loginAsAdmin(page);
@@ -58,6 +61,11 @@ test("admin renames a catalog type — the mega-menu follows (issue #64)", async
     await page.fill("#typeLabel", label);
     await page.getByRole("button", { name: "Speichern" }).click();
     await expect(page.getByText("Katalogtyp gespeichert")).toBeVisible();
+    await page.goto("/admin/translations/catalog.type.smartphone");
+    await expect(page.getByRole("heading", { name: /catalog\.type\.smartphone/ })).toBeVisible();
+    await page.fill("#translation-de", label);
+    await page.getByRole("button", { name: "Speichern" }).click();
+    await expect(page.getByText("Übersetzung gespeichert")).toBeVisible();
   };
 
   try {

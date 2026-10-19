@@ -7,7 +7,7 @@ import { listProducts } from "@/server/search";
 import { getCatalogTypes } from "@/server/catalog-types";
 import { getLabels } from "@/server/i18n";
 import { label } from "@/lib/i18n";
-import { allFacetDimensionKeys } from "@/lib/catalog-types";
+import { allFacetDimensionKeys, localizeCatalogTypes } from "@/lib/catalog-types";
 import { menuCategories } from "@/lib/menu";
 import { parseListingParams } from "@/lib/validations/listing";
 import { ListingShell } from "@/components/storefront/listing-shell";
@@ -39,13 +39,13 @@ async function ProductsView({
   const types = await getCatalogTypes();
   const parsed = parseListingParams(await searchParams, types);
   // Issue #58 step B1a: the grid's product names resolve through the table in the
-  // request language.
+  // request language. Issue #58 step B1b: so do the tab and heading type labels.
   const labels = await getLabels((await params).lang);
   const initial = await listProducts(parsed, labels);
   return (
     <ListingShell
       initial={initial}
-      categories={menuCategories(types)}
+      categories={menuCategories(localizeCatalogTypes(types, labels))}
       facetKeys={allFacetDimensionKeys(types)}
     />
   );

@@ -30,10 +30,9 @@ export async function generateMetadata({
 export default async function WishlistPage({ params }: PageProps<"/[lang]/account/wishlist">) {
   await connection();
   const userId = await requireCustomerSession();
-  const [products, labels] = await Promise.all([
-    getWishlistProductsCore(userId),
-    getLabels((await params).lang),
-  ]);
+  // Issue #58 step B1b: the wishlist cards answer in the page language.
+  const labels = await getLabels((await params).lang);
+  const products = await getWishlistProductsCore(userId, labels);
 
   return (
     <div className="space-y-6">

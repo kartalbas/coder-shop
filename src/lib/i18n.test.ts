@@ -19,6 +19,9 @@ import {
   resolveLanguage,
   splitOnPlaceholder,
   textFor,
+  typeLabelKey,
+  dimensionLabelKey,
+  valueLabelKey,
   type TranslationEntry,
 } from "./i18n";
 import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
@@ -199,6 +202,19 @@ describe("contentLabel / productContentKeys (#58 step B1a — catalog content)",
       name: "catalog.product.jack-wolfskin-bergjacke-143.name",
       description: "catalog.product.jack-wolfskin-bergjacke-143.description",
     });
+  });
+});
+
+describe("catalog structure keys (#58 step B1b — type, dimension, value)", () => {
+  it("typeLabelKey and dimensionLabelKey key off the machine values", () => {
+    expect(typeLabelKey("smartphone")).toBe("catalog.type.smartphone");
+    expect(dimensionLabelKey("color")).toBe("catalog.dimension.color");
+  });
+
+  it("valueLabelKey slugifies the value so the segment passes the key guard", () => {
+    expect(valueLabelKey("color", "grün")).toBe("catalog.value.color.grun");
+    expect(valueLabelKey("color", "schwarz")).toBe("catalog.value.color.schwarz");
+    expect(valueLabelKey("storage", "256")).toBe("catalog.value.storage.256");
   });
 });
 

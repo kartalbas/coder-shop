@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generateCatalog, type SeedProduct } from "../scripts/seed/catalog";
+import { firstThreePerTypeBySlug } from "../scripts/seed/demo-content";
 import { isTranslated, needsReview, productContentKeys } from "@/lib/i18n";
 import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { ProductModel } from "@/models/product";
@@ -14,18 +14,6 @@ import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 // stays the German base; the demo set is derived from the seed's own catalog
 // generator — the first three products per type by slug — so a generator change fails
 // here loudly instead of silently diverging from the seeded rows.
-
-function firstThreePerTypeBySlug(): SeedProduct[] {
-  const byType = new Map<string, SeedProduct[]>();
-  for (const product of generateCatalog()) {
-    const list = byType.get(product.type) ?? [];
-    list.push(product);
-    byType.set(product.type, list);
-  }
-  return [...byType.values()].flatMap((products) =>
-    [...products].sort((a, b) => a.slug.localeCompare(b.slug)).slice(0, 3),
-  );
-}
 
 const demo = firstThreePerTypeBySlug();
 const demoKeys = demo.flatMap((product) => {

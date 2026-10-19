@@ -1,5 +1,7 @@
 import { ProductModel, type Product } from "@/models/product";
 import { UserModel, type User } from "@/models/user";
+import { dimensionsForTypes } from "@/lib/catalog-types";
+import type { LabelMap } from "@/lib/i18n";
 import { toProductDto, type ProductDto } from "./search";
 import { connectDB } from "./db";
 import { getCatalogTypes } from "./catalog-types";
@@ -33,8 +35,13 @@ export async function syncWishlistCore(
   return next;
 }
 
-// The account's wishlist as DTOs, in the stored (newest-first) order.
-export async function getWishlistProductsCore(userId: string): Promise<ProductDto[]> {
+// The account's wishlist as DTOs, in the stored (newest-first) order. Issue #58 step
+// B1b: with the request language's label map the product names and variant labels
+// resolve through the table; without one they stay German by construction.
+export async function getWishlistProductsCore(
+  userId: string,
+  content?: LabelMap,
+): Promise<ProductDto[]> {
   await connectDB();
   const user = await UserModel.findById(userId).select("wishlist").lean<User>().exec();
   const slugs = user?.wishlist ?? [];
@@ -47,7 +54,14 @@ export async function getWishlistProductsCore(userId: string): Promise<ProductDt
   return slugs
     .map((slug) => bySlug.get(slug))
     .filter((doc): doc is NonNullable<typeof doc> => doc !== undefined)
-    .map((doc) => toProductDto(doc, types.some((t) => t.key === doc.type && t.comparable)));
+    .map((doc) =>
+      toProductDto(
+        doc,
+        types.some((t) => t.key === doc.type && t.comparable),
+        content,
+        content ? dimensionsForTypes(types, [doc.type]) : undefined,
+      ),
+    );
 }
 
 export async function removeFromWishlistCore(userId: string, slug: string): Promise<boolean> {

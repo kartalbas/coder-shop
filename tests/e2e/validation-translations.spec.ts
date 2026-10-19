@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { seedCart } from "./helpers";
+import { valueLabelKey } from "../../src/lib/i18n";
+import translationsJson from "../../src/server/translations.json";
 
 // Issue #58 step 3 (server-messages slice): customer-facing validation and action
 // messages read the translation table. Before the change every zod message and action
@@ -150,10 +152,14 @@ test("the restock form refuses an invalid e-mail in French", async ({ page }) =>
   test.skip(target === null, "seed has no sold-out variant");
 
   await page.goto(`/fr/products/${target!.slug}`);
-  // Variant attribute values are catalog content (step 5) — still German everywhere,
-  // so the picker buttons are addressed by their value text.
+  // Issue #58 step B1b: on /fr the picker chips carry the translated value (fallback:
+  // the value itself) — the display text is derived from the same seed file the
+  // server renders from, exactly like the storefront resolves it.
+  const rows = translationsJson as { key: string; texts: Record<string, string> }[];
   for (const [group, value] of Object.entries(target!.attributes)) {
-    const display = group === "storage" ? `${value} GB` : String(value);
+    const row = rows.find((candidate) => candidate.key === valueLabelKey(group, String(value)));
+    const text = row?.texts.fr?.trim() || String(value);
+    const display = group === "storage" ? `${text} GB` : text;
     await page.getByRole("button", { name: display, exact: true }).first().click();
   }
 

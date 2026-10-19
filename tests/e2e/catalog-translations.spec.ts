@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { generateCatalog, type SeedProduct } from "../../scripts/seed/catalog";
+import { generateCatalog } from "../../scripts/seed/catalog";
+import { firstThreePerTypeBySlug } from "../../scripts/seed/demo-content";
 import { productContentKeys } from "../../src/lib/i18n";
 import translationsJson from "../../src/server/translations.json";
 
@@ -16,18 +17,6 @@ interface Row {
 
 const rows = translationsJson as Row[];
 const rowFor = (key: string): Row => rows.find((row) => row.key === key)!;
-
-function firstThreePerTypeBySlug(): SeedProduct[] {
-  const byType = new Map<string, SeedProduct[]>();
-  for (const product of generateCatalog()) {
-    const list = byType.get(product.type) ?? [];
-    list.push(product);
-    byType.set(product.type, list);
-  }
-  return [...byType.values()].flatMap((products) =>
-    [...products].sort((a, b) => a.slug.localeCompare(b.slug)).slice(0, 3),
-  );
-}
 
 const demo = firstThreePerTypeBySlug();
 const demoSlugs = new Set(demo.map((product) => product.slug));

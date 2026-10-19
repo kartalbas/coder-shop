@@ -1,11 +1,12 @@
 import { COLLECTIONS } from "@/lib/collections";
 import {
   DEFAULT_CATALOG_TYPES,
-  formatDimensionValue,
+  variantLabel,
   type CatalogDimensionConfig,
   type CatalogTypeConfig,
 } from "@/lib/catalog-types";
 import { deriveFilter, type ProductAttributes } from "@/lib/facets";
+import { slugify } from "@/lib/slug";
 
 // Demo catalog generator (the seed's content). Issue #61: the product types, their
 // dimensions and brands come from the catalog type configuration
@@ -51,14 +52,6 @@ export function mulberry32(seed: number): () => number {
 type Rng = () => number;
 const int = (rng: Rng, min: number, max: number) => min + Math.floor(rng() * (max - min + 1));
 const pick = <T>(rng: Rng, arr: readonly T[]): T => arr[Math.floor(rng() * arr.length)];
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 
 // Seed content per type key: demo models per brand, price/weight ranges, the value
 // pools for each dimension and the German description grammar.
@@ -224,9 +217,7 @@ function buildVariants(
         String(index).padStart(4, "0"),
         ...values.map((value) => slugify(value).toUpperCase()),
       ].join("-"),
-      label: type.dimensions
-        .map((dimension, position) => formatDimensionValue(dimension, values[position]))
-        .join(" / "),
+      label: variantLabel(type.dimensions, attributes),
       priceDeltaCents,
       stock: stockFor(rng, threshold, type),
       restockThreshold: threshold,

@@ -1071,3 +1071,33 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   `textUpdatedAt` and `de` stays unstamped, so the existing `needsReview` rule (stamp
   < base, base falls back to `createdAt`) flags exactly the machine translations
   until an admin saves a corrected text.
+- **Catalog structure labels are table rows keyed off the machine values (#58 step
+  B1b).** Type, dimension and attribute-value labels translate as `catalog.type.<key>`,
+  `catalog.dimension.<key>` and `catalog.value.<dimensionKey>.<segment>` rows (area
+  `catalog`), resolved through the same `contentLabel` — fallback is the configured
+  label or the value itself, so a runtime-added type (#61) or a machine value (EU size,
+  GB count) needs no row and stays itself. The value segment is **slugified** by the
+  one shared `slugify` (`grün` → `grun`) — the same spelling the SKU builder uses and
+  the only one that passes the key guard; a second spelling is forbidden.
+  `localizeCatalogTypes`/`localizeDimensions`/`variantLabel` (pure, `lib/catalog-types`)
+  are the single resolution points: with a label map the storefront reads translated
+  type/dimension captions and variant labels recomposed from translated values (the
+  composition rule — order, unit, joiner — stays the display convention, German output
+  byte-identical); without one everything is German by construction, so admin, the
+  documented JSON APIs and stored orders never change. The seed and the admin variant
+  write path now compose the stored label through `variantLabel` too — one rule, no
+  second spelling.
+- **Client-fetch APIs answer the remembered language (#58 step B1b).** `/api/search`
+  and `/api/recently-viewed` sit outside the proxy matcher, so no prefix header exists;
+  they resolve `getRequestLabels()` — the `lang` cookie the proxy writes on every
+  prefixed navigation, then `Accept-Language`, then the first active row. **Search
+  matching stays on the stored German name/brand** (a recorded limitation:
+  translated-name search would need translated indexes); only the hits' name and
+  variant hint localize.
+- **A catalog type rename edits the table row, not just the config (#58 step B1b).**
+  Since the storefront type label resolves through the table, the config label stays
+  the admin-side machine name and the German base row is what the storefront shows —
+  the settings e2e now renames both (config + `catalog.type.smartphone` German base)
+  through the admin UIs. Until the catalog-type editor writes the row directly (B2
+  pattern), the translation editor is the interim text editor, same decision as for
+  product content.

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { localizeCatalogTypes } from "@/lib/catalog-types";
 import { menuCategories } from "@/lib/menu";
 import { vatLabel } from "@/lib/shop-settings";
 import { getCatalogTypes } from "@/server/catalog-types";
@@ -38,13 +39,19 @@ async function HeaderSlot({ lang }: { lang: string }) {
   await connection();
   // Issue #58 step 3: the chrome texts come from the translation table, resolved to
   // the request language and handed to the client header as a plain label map.
+  // Issue #58 step B1b: the category labels are table rows too — the type
+  // configuration is localized before it becomes menu categories.
   const [types, languages, labels] = await Promise.all([
     getCatalogTypes(),
     getActiveLanguages(),
     getLabels(lang),
   ]);
   return (
-    <Header categories={menuCategories(types)} languages={languages} labels={labels} />
+    <Header
+      categories={menuCategories(localizeCatalogTypes(types, labels))}
+      languages={languages}
+      labels={labels}
+    />
   );
 }
 
@@ -97,7 +104,7 @@ async function FooterSlot({ lang }: { lang: string }) {
   ]);
   return (
     <Footer
-      categories={menuCategories(types)}
+      categories={menuCategories(localizeCatalogTypes(types, labels))}
       vatLabelText={vatLabel(settings.vatRatePercent)}
       labels={labels}
     />

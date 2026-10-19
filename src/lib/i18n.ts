@@ -4,6 +4,8 @@
 // module is the pure decision layer: which language answers a request, which text a key
 // has in it, and which keys are missing.
 
+import { slugify } from "@/lib/slug";
+
 export interface LanguageConfig {
   code: string;
   label: string;
@@ -257,6 +259,25 @@ export function productContentKeys(slug: string): { name: string; description: s
     name: `catalog.product.${slug}.name`,
     description: `catalog.product.${slug}.description`,
   };
+}
+
+// Catalog structure keys (#58 step B1b): the labels of a product type, of one of its
+// variant dimensions and of one attribute value are rows of the same table, keyed off
+// the machine values (type key, dimension key, value) — a runtime-added type or
+// dimension gets its rows the same way, and machine values without rows (sizes, GB
+// counts) simply stay the value itself through `contentLabel`'s fallback. The value
+// segment is slugified (`grün` → `gruen`) because translation keys only allow
+// [a-zA-Z0-9-]; the shared `slugify` keeps that spelling identical to the SKU builder.
+export function typeLabelKey(typeKey: string): string {
+  return `catalog.type.${typeKey}`;
+}
+
+export function dimensionLabelKey(dimensionKey: string): string {
+  return `catalog.dimension.${dimensionKey}`;
+}
+
+export function valueLabelKey(dimensionKey: string, value: string): string {
+  return `catalog.value.${dimensionKey}.${slugify(value)}`;
 }
 
 // Fills `{name}` placeholders in a translated text (issue #58 step 3) — the texts stay

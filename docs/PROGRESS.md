@@ -2840,3 +2840,54 @@ Done — M1–M6 + QA complete.
   name/description on the product form through `saveTranslationCore`; **B3** —
   five-language demo content for the whole seeded catalog, then the done-when
   re-check and closing the umbrella.
+
+## ISSUES — queue session 50 (2026-10-19)
+
+### #58 (step B1b) — catalog structure in the one table; client-fetch APIs answer the remembered language ✅ — issue stays open
+- **Review nit (step 0).** `firstThreePerTypeBySlug` was duplicated between
+  `tests/catalog-content.test.ts` and the e2e spec — now one shared derivation in
+  `scripts/seed/demo-content.ts`, both files import it.
+- **Pure layer (step 1).** One `slugify` moved to `src/lib/slug.ts` (the SKU builder
+  and the value key segments share the single spelling — `grün` → `grun`); key sources
+  `typeLabelKey`/`dimensionLabelKey`/`valueLabelKey` in `lib/i18n`; pure
+  `localizeCatalogTypes`/`localizeDimensions`/`variantLabel`/
+  `formatLocalizedDimensionValue` in `lib/catalog-types` — with a label map the
+  structure resolves through the table (fallback: configured label / the value
+  itself), without one everything is German by construction. The seed and
+  `updateVariantCore` now compose the stored variant label through `variantLabel`
+  (German byte-identical, one rule instead of two spellings).
+- **Storefront (step 2).** `toProductDto` + the six readers take the type's dimensions
+  and recompose localized variant labels; header/footer/mega-menu, listing tabs +
+  heading + facet groups and values, home tiles, product page (category label,
+  breadcrumbs, JSON-LD category, picker legends and chips), compare rows and the
+  wishlist page all pass the request labels. Admin, `/api/products` and stored
+  orders/cart lines stay German by construction.
+- **Client-fetch APIs (step 3).** `/api/search` and `/api/recently-viewed` resolve
+  `getRequestLabels()` (the proxy-written `lang` cookie → Accept-Language → first
+  active row); hits localize, **matching stays on the stored German name/brand**
+  (recorded limitation).
+- **Demo rows (step 4).** 17 rows × 5 languages derived from `DEFAULT_CATALOG_TYPES`
+  and the generator's distinct colours (3 types, 4 dimensions, 10 colours), German
+  bases byte-identical, machine texts past-stamped so `needsReview` flags exactly
+  them; preview table gained `catalog.type|dimension|value → /products`; usage
+  snapshot refreshed (three new prefix entries, diff reviewed).
+- **Settings e2e updated for the new text source:** a type rename now edits the
+  config label **and** the `catalog.type.smartphone` German base row (the table
+  drives the storefront, DECISIONS); both restored in `finally`.
+- **Tests (fail without the change):** unit +5 (`catalog-types.test.ts`: localize
+  with/without a map, machine values stay, `variantLabel` German byte-identity +
+  French composition + unit rule; i18n key shapes incl. the slugified umlaut);
+  integration `tests/catalog-structure.test.ts` (derived set, byte-identity, review
+  flags, DTO variant labels, search localize + German-only matching) and
+  `tests/catalog-api-language.test.ts` (mocked `lang` cookie → French hits/items,
+  no cookie → German); new e2e `catalog-structure-translations.spec.ts` (French
+  tabs/facet groups/values, French picker legend/chips, German pages byte-identical).
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 716 (74 files),
+  `npm run test:e2e` green; tree clean, nothing running. Gate report (`/produkte`
+  308, no `/produkt/` links) re-confirmed as the intended #63 contract.
+- **Left open (#58):** **B2** — admin editing of per-language product content on the
+  product form through `saveTranslationCore` (and the same pattern for the
+  catalog-type editor); **B3** — five-language demo content for the whole seeded
+  catalog, then the done-when re-check and closing the umbrella. Recorded
+  limitations: search matches stored German names, `/api/products` stays German,
+  stored orders/cart keep their creation language.

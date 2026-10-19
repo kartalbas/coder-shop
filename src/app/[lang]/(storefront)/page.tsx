@@ -9,6 +9,7 @@ import { ProductCard } from "@/components/storefront/product-card";
 import { RecentlyViewedRail } from "@/components/storefront/recently-viewed";
 import { ProductCardSkeleton } from "@/components/storefront/skeletons";
 import { interpolate, label } from "@/lib/i18n";
+import { localizeCatalogTypes } from "@/lib/catalog-types";
 import { menuCategories } from "@/lib/menu";
 import { vatLabel } from "@/lib/shop-settings";
 import { getCatalogTypes } from "@/server/catalog-types";
@@ -77,13 +78,11 @@ function HeroSkeleton() {
 }
 
 // Issue #61: the category tiles are the catalog type configuration — a new type
-// appears here without a code change.
+// appears here without a code change. Issue #58 step B1b: their labels are table rows.
 async function Categories({ lang }: { lang: string }) {
   await connection();
-  const [categories, labels] = await Promise.all([
-    getCatalogTypes().then(menuCategories),
-    getLabels(lang),
-  ]);
+  const [types, labels] = await Promise.all([getCatalogTypes(), getLabels(lang)]);
+  const categories = menuCategories(localizeCatalogTypes(types, labels));
   if (categories.length === 0) return null;
   return (
     <section className="mx-auto max-w-7xl px-4 py-12" aria-labelledby="kategorien-heading">

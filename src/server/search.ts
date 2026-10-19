@@ -7,7 +7,10 @@ import type {
   VariantDto,
 } from "@/lib/dto";
 import {
+  dimensionsForTypes,
   facetDimensionsFor,
+  localizeDimensions,
+  variantLabel,
   type CatalogDimensionConfig,
   type CatalogTypeConfig,
 } from "@/lib/catalog-types";
@@ -35,14 +38,18 @@ function isComparableType(types: readonly CatalogTypeConfig[], type: string): bo
 // per-language fields. `content` is the request language's label map: with one,
 // name and description resolve through the translation table (falling back to the
 // document's German); without one the DTO is German by construction, so admin pages,
-// the JSON APIs and stored orders never change.
+// the JSON APIs and stored orders never change. Issue #58 step B1b: with the product
+// type's configured `dimensions` too, the variant labels are recomposed from the
+// translated attribute values (the stored German label stays untouched).
 export function toProductDto(
   product: LeanProduct | HydratedDocument<Product>,
   comparable = false,
   content?: LabelMap,
+  dimensions?: readonly CatalogDimensionConfig[],
 ): ProductDto {
   const p = ("toObject" in product ? product.toObject() : product) as unknown as LeanProduct;
   const keys = productContentKeys(p.slug);
+  const localizeVariantLabel = content !== undefined && dimensions !== undefined;
   return {
     id: String(p._id),
     slug: p.slug,
@@ -64,7 +71,9 @@ export function toProductDto(
     ),
     variants: p.variants.map((v) => ({
       sku: v.sku,
-      label: v.label,
+      label: localizeVariantLabel
+        ? variantLabel(dimensions, v.attributes, content)
+        : v.label,
       priceDeltaCents: v.priceDeltaCents,
       stock: v.stock,
       restockThreshold: v.restockThreshold,
@@ -74,6 +83,15 @@ export function toProductDto(
     rating: { average: p.rating?.average ?? 0, count: p.rating?.count ?? 0 },
     createdAt: p.createdAt.toISOString(),
   };
+}
+
+// The configured dimensions of one product type — what `toProductDto` needs to
+// recompose localized variant labels (#58 step B1b).
+function dimensionsOfType(
+  types: readonly CatalogTypeConfig[],
+  type: string,
+): CatalogDimensionConfig[] {
+  return dimensionsForTypes(types, [type]);
 }
 
 export interface ListingQuery {
@@ -205,13 +223,20 @@ export async function listProducts(
 
   return {
     items: docs.map((doc) =>
-      toProductDto(doc, isComparableType(types, doc.type), content),
+      toProductDto(
+        doc,
+        isComparableType(types, doc.type),
+        content,
+        content ? dimensionsOfType(types, doc.type) : undefined,
+      ),
     ),
     total,
     page,
     pageSize,
     facets: facetResult,
-    dimensions,
+    // #58 step B1b: with a content map the sidebar's dimension captions answer in the
+    // request language (keys and units stay the machine values).
+    dimensions: content ? localizeDimensions(dimensions, content) : dimensions,
   };
 }
 
@@ -225,7 +250,12 @@ export async function getProductBySlug(
     getCatalogTypes(),
   ]);
   return product
-    ? toProductDto(product, isComparableType(types, product.type), content)
+    ? toProductDto(
+        product,
+        isComparableType(types, product.type),
+        content,
+        content ? dimensionsOfType(types, product.type) : undefined,
+      )
     : null;
 }
 
@@ -245,7 +275,14 @@ export async function getProductsBySlugs(
   return slugs
     .map((slug) => bySlug.get(slug))
     .filter((doc): doc is LeanProduct => doc !== undefined)
-    .map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
+    .map((doc) =>
+      toProductDto(
+        doc,
+        isComparableType(types, doc.type),
+        content,
+        content ? dimensionsOfType(types, doc.type) : undefined,
+      ),
+    );
 }
 
 export async function getRelatedProducts(
@@ -269,7 +306,14 @@ export async function getRelatedProducts(
   const others = docs.filter((d) => d.brand !== product.brand);
   return [...sameBrand, ...others]
     .slice(0, limit)
-    .map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
+    .map((doc) =>
+      toProductDto(
+        doc,
+        isComparableType(types, doc.type),
+        content,
+        content ? dimensionsOfType(types, doc.type) : undefined,
+      ),
+    );
 }
 
 export async function getFeaturedProducts(
@@ -285,7 +329,14 @@ export async function getFeaturedProducts(
       .exec(),
     getCatalogTypes(),
   ]);
-  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
+  return docs.map((doc) =>
+    toProductDto(
+      doc,
+      isComparableType(types, doc.type),
+      content,
+      content ? dimensionsOfType(types, doc.type) : undefined,
+    ),
+  );
 }
 
 // Products of one featured collection (issue #23), newest first.
@@ -303,7 +354,14 @@ export async function getCollectionProducts(
       .exec(),
     getCatalogTypes(),
   ]);
-  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
+  return docs.map((doc) =>
+    toProductDto(
+      doc,
+      isComparableType(types, doc.type),
+      content,
+      content ? dimensionsOfType(types, doc.type) : undefined,
+    ),
+  );
 }
 
 export interface SearchHit {
@@ -316,24 +374,41 @@ export interface SearchHit {
   variantHint: string;
 }
 
-export async function searchProducts(query: string, limit = 8): Promise<SearchHit[]> {
+// Issue #58 step B1b: with a content map the hit's name and variant hint answer in the
+// request language — **matching stays on the stored German name/brand** (translated-
+// name search is a recorded limitation), so a French reader still finds "iPhone".
+export async function searchProducts(
+  query: string,
+  limit = 8,
+  content?: LabelMap,
+): Promise<SearchHit[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
   await connectDB();
   const prefix = new RegExp(`(?:^|\\b)${escapeRegex(trimmed)}`, "i");
-  const docs = await ProductModel.find({ $or: [{ name: prefix }, { brand: prefix }] })
-    .limit(limit)
-    .lean<LeanProduct[]>()
-    .exec();
-  return docs.map((doc) => ({
-    slug: doc.slug,
-    name: doc.name,
-    type: doc.type,
-    ...(() => {
-      const price = buyablePriceCents(doc.priceCents, doc.variants.map((v) => v.priceDeltaCents));
-      return { priceCents: price.priceCents, priceFrom: price.from };
-    })(),
-    image: doc.images[0]?.src ?? null,
-    variantHint: doc.variants[0]?.label ?? "",
-  }));
+  const [docs, types] = await Promise.all([
+    ProductModel.find({ $or: [{ name: prefix }, { brand: prefix }] })
+      .limit(limit)
+      .lean<LeanProduct[]>()
+      .exec(),
+    content ? getCatalogTypes() : Promise.resolve([]),
+  ]);
+  return docs.map((doc) => {
+    const keys = productContentKeys(doc.slug);
+    const first = doc.variants[0];
+    return {
+      slug: doc.slug,
+      name: content ? contentLabel(content, keys.name, doc.name) : doc.name,
+      type: doc.type,
+      ...(() => {
+        const price = buyablePriceCents(doc.priceCents, doc.variants.map((v) => v.priceDeltaCents));
+        return { priceCents: price.priceCents, priceFrom: price.from };
+      })(),
+      image: doc.images[0]?.src ?? null,
+      variantHint:
+        content && first
+          ? variantLabel(dimensionsOfType(types, doc.type), first.attributes, content)
+          : (first?.label ?? ""),
+    };
+  });
 }

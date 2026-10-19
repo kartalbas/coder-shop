@@ -6,7 +6,7 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFormatters } from "@/components/locale-formatters";
 import { useLabels } from "@/components/labels";
-import { interpolate, label } from "@/lib/i18n";
+import { contentLabel, interpolate, label, valueLabelKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { addToCart, openCartDrawer } from "@/stores/cart";
 import type { ProductDto } from "@/server/search";
@@ -17,6 +17,7 @@ import {
   imageIndexForColor,
   matchesSelection,
   missingDimensions,
+  type Dimension,
   type Selection,
 } from "@/lib/product-selection";
 import { buyablePriceCents } from "@/lib/pricing";
@@ -88,6 +89,15 @@ export function ProductDetail({
     setImageTouched(false);
     setQty(1);
   };
+
+  // #58 step B1b: a dimension value is a table row (fallback: the value itself —
+  // sizes and GB counts carry no rows and stay values); the unit suffix stays the
+  // display convention.
+  const valueText = (dimension: Dimension, value: string): string =>
+    formatSelectionValue(
+      dimension,
+      contentLabel(labels, valueLabelKey(dimension.key, value), value),
+    );
 
   const canAdd = variant !== undefined && stock > 0;
 
@@ -174,7 +184,7 @@ export function ProductDetail({
               {dimension.label}
               {selection[dimension.key] && (
                 <span className="ml-2 font-normal text-muted-foreground">
-                  {formatSelectionValue(dimension, selection[dimension.key] as string)}
+                  {valueText(dimension, selection[dimension.key] as string)}
                 </span>
               )}
             </legend>
@@ -206,7 +216,7 @@ export function ProductDetail({
                       !available && "cursor-not-allowed text-muted-foreground/50 line-through",
                     )}
                   >
-                    {formatSelectionValue(dimension, value)}
+                    {valueText(dimension, value)}
                     {onOrder && (
                       <span
                         aria-hidden

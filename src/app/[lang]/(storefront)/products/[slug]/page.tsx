@@ -16,7 +16,8 @@ import { RecentlyViewedRail, RecentlyViewedTracker } from "@/components/storefro
 import { RelatedProducts } from "@/components/storefront/related-products";
 import { ReviewSection } from "@/components/storefront/review-section";
 import { getIntlLocale, getLabels } from "@/server/i18n";
-import { interpolate, label } from "@/lib/i18n";
+import { contentLabel, interpolate, label, typeLabelKey } from "@/lib/i18n";
+import { localizeCatalogTypes } from "@/lib/catalog-types";
 import { getCatalogType } from "@/server/catalog-types";
 import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductBySlug, getRelatedProducts } from "@/server/search";
@@ -72,7 +73,17 @@ async function ProductView({ params }: PagePropsLocal) {
     getCatalogType(product.type),
     getIncomingBySkuCore(product.variants.map((variant) => variant.sku)),
   ]);
-  const categoryLabel = typeConfig?.label ?? product.type;
+  // Issue #58 step B1b: the category label and the picker's dimension captions are
+  // table rows too — resolved through the same label map (fallback: the configured
+  // German label); attribute values localize in the client picker and the DTO.
+  const categoryLabel = contentLabel(
+    labels,
+    typeLabelKey(product.type),
+    typeConfig?.label ?? product.type,
+  );
+  const typeDimensions = typeConfig
+    ? localizeCatalogTypes([typeConfig], labels)[0].dimensions
+    : [];
   const incomingBySku = Object.fromEntries(
     [...incoming].map(([sku, info]) => [sku, { qty: info.qty, arrival: info.arrival.toISOString() }]),
   );
@@ -90,7 +101,7 @@ async function ProductView({ params }: PagePropsLocal) {
       <div className="mt-6">
         <ProductDetail
           product={product}
-          typeDimensions={typeConfig?.dimensions ?? []}
+          typeDimensions={typeDimensions}
           incomingBySku={incomingBySku}
         />
       </div>
