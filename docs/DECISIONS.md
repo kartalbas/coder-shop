@@ -1046,3 +1046,28 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   (two-language checkout, localized server refusals, routing, formats, switcher,
   editor). The guard plus the byte-identity German specs cover what they proved, in
   milliseconds instead of browser minutes.
+- **Catalog content is a table row whose fallback is the document, not the key (#58
+  step B1a).** Product names and descriptions translate as `catalog.product.<slug>.name`
+  / `.description` rows (area `catalog`), but `contentLabel(labels, key, germanBase)`
+  falls back to the **stored German base of the document** when the row is missing or
+  blank — a product without a translation must still read as the product it is, while
+  an unknown UI key stays visibly missing (`label`'s contract). `productContentKeys`
+  in `lib/i18n` is the single source of the key shape; its template heads feed the
+  usage extraction and the preview table (`"catalog.product": "/products/{slug}"`).
+- **Product documents stay German; translation happens at the DTO boundary (#58 step
+  B1a).** No per-language fields on the product document — one source. `toProductDto`
+  takes an optional label map: with one, name and description resolve through the
+  table; without one they are German by construction, so admin pages, the JSON APIs,
+  the wishlist sync and stored orders never change. Cart line names keep the language
+  they were added in and orders the language of the checkout — the legal-document
+  rule, same as mails. Client-fetch paths (`/api/search`, `/api/recently-viewed`)
+  stay German until cookie-based resolution (B1b).
+- **The five-language demo content is a bounded set derived from the seed generator
+  (#58 step B1a).** `translations.json` carries name/description rows for the first
+  three products **per catalog type by slug** from `generateCatalog()` — no hard-coded
+  slugs, and an integration test pins both the derivation and the byte-identity of
+  every German base to the generator documents, so a generator change fails loudly.
+  Freshness needs no new mechanism: the machine texts seed with a fixed past
+  `textUpdatedAt` and `de` stays unstamped, so the existing `needsReview` rule (stamp
+  < base, base falls back to `createdAt`) flags exactly the machine translations
+  until an admin saves a corrected text.

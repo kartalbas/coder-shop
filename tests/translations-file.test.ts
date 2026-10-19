@@ -43,6 +43,17 @@ describe("translations.json — the one seed file (#58)", () => {
     }
   });
 
+  it("stamps textUpdatedAt with ISO strings only (#58 catalog content rows)", () => {
+    for (const row of rows) {
+      for (const [code, stamp] of Object.entries(row.textUpdatedAt ?? {})) {
+        expect(SEEDED_CODES, `${row.key} stamp for unknown language ${code}`).toContain(code);
+        expect(stamp, `${row.key} stamp for ${code}`).toMatch(
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+        );
+      }
+    }
+  });
+
   it("carries texts only for seeded languages and translates every key in all of them", () => {
     for (const row of rows) {
       for (const code of Object.keys(row.texts)) {

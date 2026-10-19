@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activeLanguages,
+  contentLabel,
   createTranslator,
   defaultLanguage,
   DEFAULT_LANGUAGES,
@@ -13,6 +14,7 @@ import {
   needsReview,
   parseAcceptLanguage,
   plural,
+  productContentKeys,
   RETIRED_TRANSLATION_KEYS,
   resolveLanguage,
   splitOnPlaceholder,
@@ -169,6 +171,34 @@ describe("labelMap / label / interpolate (#58 step 3)", () => {
 
   it("fills {placeholder} values and leaves unknown ones standing", () => {
     expect(interpolate("Hallo {name}, {vat}", { name: "Welt" })).toBe("Hallo Welt, {vat}");
+  });
+});
+
+describe("contentLabel / productContentKeys (#58 step B1a — catalog content)", () => {
+  const labels = {
+    "catalog.product.demo-1.name": "Veste de montagne",
+    "catalog.product.demo-2.name": "   ",
+  };
+
+  it("answers the language text when the row exists", () => {
+    expect(contentLabel(labels, "catalog.product.demo-1.name", "Bergjacke")).toBe(
+      "Veste de montagne",
+    );
+  });
+
+  it("a missing key falls back to the stored German base, not the key", () => {
+    expect(contentLabel(labels, "catalog.product.demo-3.name", "Bergjacke")).toBe("Bergjacke");
+  });
+
+  it("a blank text falls back to the German base like textFor does", () => {
+    expect(contentLabel(labels, "catalog.product.demo-2.name", "Bergjacke")).toBe("Bergjacke");
+  });
+
+  it("productContentKeys is the single source of the content key shape", () => {
+    expect(productContentKeys("jack-wolfskin-bergjacke-143")).toEqual({
+      name: "catalog.product.jack-wolfskin-bergjacke-143.name",
+      description: "catalog.product.jack-wolfskin-bergjacke-143.description",
+    });
   });
 });
 

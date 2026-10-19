@@ -236,6 +236,29 @@ export function label(labels: Readonly<Record<string, string>>, key: string): st
   return labels[key] ?? key;
 }
 
+// Translatable catalog content (#58 step B1a): product names and descriptions are rows
+// like any other text, but their fallback is the **stored German base of the document**,
+// not the key — a product without a translation must still read as the product it is,
+// while an unknown UI key stays visibly missing (`label`'s contract). A present but
+// blank text falls back the same way `textFor` does.
+export function contentLabel(
+  labels: Readonly<Record<string, string>>,
+  key: string,
+  germanBase: string,
+): string {
+  const text = labels[key];
+  return text && text.trim() ? text : germanBase;
+}
+
+// The content keys of one product — the single source of the key shape (area
+// `catalog`); the template heads feed the usage extraction and the preview table.
+export function productContentKeys(slug: string): { name: string; description: string } {
+  return {
+    name: `catalog.product.${slug}.name`,
+    description: `catalog.product.${slug}.description`,
+  };
+}
+
 // Fills `{name}` placeholders in a translated text (issue #58 step 3) — the texts stay
 // whole sentences per language, the values (VAT label, year, counts) come from code.
 export function interpolate(

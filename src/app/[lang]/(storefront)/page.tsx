@@ -127,10 +127,9 @@ function CategoriesSkeleton() {
 
 async function FeaturedRail({ lang }: { lang: string }) {
   await connection();
-  const [featured, labels] = await Promise.all([
-    getFeaturedProducts(12),
-    getLabels(lang),
-  ]);
+  // Issue #58 step B1a: the rail's product names resolve through the table.
+  const labels = await getLabels(lang);
+  const featured = await getFeaturedProducts(12, labels);
   return (
     <section className="mx-auto max-w-7xl px-4 pb-16" aria-labelledby="beliebt-heading">
       <div className="mb-6 flex items-center justify-between">
@@ -160,15 +159,14 @@ async function FeaturedRail({ lang }: { lang: string }) {
 // by the collection itself (`shop.home.blurb.<collection>`) — a new collection is data.
 async function Collections({ lang }: { lang: string }) {
   await connection();
-  const [labels, sections] = await Promise.all([
-    getLabels(lang),
-    Promise.all(
-      COLLECTIONS.map(async (collection) => ({
-        collection,
-        products: await getCollectionProducts(collection, 4),
-      })),
-    ),
-  ]);
+  // Issue #58 step B1a: the rails' product names resolve through the table.
+  const labels = await getLabels(lang);
+  const sections = await Promise.all(
+    COLLECTIONS.map(async (collection) => ({
+      collection,
+      products: await getCollectionProducts(collection, 4, labels),
+    })),
+  );
   const filled = sections.filter((section) => section.products.length > 0);
   if (filled.length === 0) return null;
   return (

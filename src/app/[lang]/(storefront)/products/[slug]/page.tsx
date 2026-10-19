@@ -35,11 +35,10 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
   await connection();
   const { slug, lang } = await params;
   // Issue #28: the real product name, not the de-slugged URL ("oneplus oneplus 13t 067").
-  const [product, settings, labels] = await Promise.all([
-    getProductBySlug(slug),
-    getShopSettings(),
-    getLabels(lang),
-  ]);
+  // Issue #58 step B1a: the labels come first — the product DTO resolves its name and
+  // description through the table, so the meta title's {name} localizes for free.
+  const [settings, labels] = await Promise.all([getShopSettings(), getLabels(lang)]);
+  const product = await getProductBySlug(slug, labels);
   const name = product?.name ?? slug.replace(/-/g, " ");
   // #58 step 3: the description is a table row — {name} and the configured VAT label
   // fill it, so every language ships its own sentence.
@@ -55,7 +54,11 @@ export async function generateMetadata({ params }: PagePropsLocal): Promise<Meta
 async function ProductView({ params }: PagePropsLocal) {
   await connection();
   const { slug, lang } = await params;
-  const product = await getProductBySlug(slug);
+  // Issue #58 step B1a: the request language's label map resolves the product's
+  // content keys — h1, breadcrumb entry and description answer in the request
+  // language, the stored German only as the fallback.
+  const labels = await getLabels(lang);
+  const product = await getProductBySlug(slug, labels);
   // Issue #28: this runs before any Suspense fallback can start the stream, so
   // unknown slugs answer with a real HTTP 404 (see docs: loading.md "Status codes").
   if (!product) notFound();
@@ -63,12 +66,11 @@ async function ProductView({ params }: PagePropsLocal) {
   // type's configuration.
   // Issue #62 (#55): what is on order for this product's variants — derived from the
   // open purchase orders, shown on low/zero-stock variants.
-  const [related, { aggregate }, typeConfig, incoming, labels] = await Promise.all([
-    getRelatedProducts(product),
+  const [related, { aggregate }, typeConfig, incoming] = await Promise.all([
+    getRelatedProducts(product, 4, labels),
     getProductReviewsCore(product.id),
     getCatalogType(product.type),
     getIncomingBySkuCore(product.variants.map((variant) => variant.sku)),
-    getLabels(lang),
   ]);
   const categoryLabel = typeConfig?.label ?? product.type;
   const incomingBySku = Object.fromEntries(

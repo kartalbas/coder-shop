@@ -26,13 +26,22 @@ export async function generateMetadata({
   };
 }
 
-async function ProductsView({ searchParams }: { searchParams: PageProps<"/[lang]/products">["searchParams"] }) {
+async function ProductsView({
+  params,
+  searchParams,
+}: {
+  params: PageProps<"/[lang]/products">["params"];
+  searchParams: PageProps<"/[lang]/products">["searchParams"];
+}) {
   await connection();
   // Issue #61: everything the listing knows about types, facets and labels comes from
   // the catalog type configuration.
   const types = await getCatalogTypes();
   const parsed = parseListingParams(await searchParams, types);
-  const initial = await listProducts(parsed);
+  // Issue #58 step B1a: the grid's product names resolve through the table in the
+  // request language.
+  const labels = await getLabels((await params).lang);
+  const initial = await listProducts(parsed, labels);
   return (
     <ListingShell
       initial={initial}
@@ -42,10 +51,10 @@ async function ProductsView({ searchParams }: { searchParams: PageProps<"/[lang]
   );
 }
 
-export default function ProductsPage({ searchParams }: PageProps<"/[lang]/products">) {
+export default function ProductsPage({ params, searchParams }: PageProps<"/[lang]/products">) {
   return (
     <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-8"><ProductGridSkeleton /></div>}>
-      <ProductsView searchParams={searchParams} />
+      <ProductsView params={params} searchParams={searchParams} />
     </Suspense>
   );
 }

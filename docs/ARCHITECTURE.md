@@ -247,7 +247,8 @@ src/
                             # DEFAULT_SHOP_SETTINGS (seed content only) + VAT copy helpers (#64)
     i18n.ts                 # languages + translation entries as data, resolveLanguage precedence
                             # (prefix > cookie > browser > default), German fallback + missing
-                            # report, DEFAULT_LANGUAGES seed rows (#58; the translation seed
+                            # report, DEFAULT_LANGUAGES seed rows, contentLabel +
+                            # productContentKeys for catalog content (#58; the translation seed
                             # content lives in src/server/translations.json)
     dto.ts                  # ProductDto/VariantDto types (server/search re-exports + maps)
     format.ts               # createFormatters(intlLocale): CHF, dates, weights (#58);
@@ -379,6 +380,8 @@ src/
                             # the order, ledger search with PO numbers (#62)
     dashboard.ts            # revenue series, open counts, low stock, recent orders
     search.ts               # Mongo query/aggregate builders + toProductDto() shared DTO mapper
+                            # (#58 step B1a: optional label map resolves name/description
+                            # through the table; without one the DTO stays German)
     wishlist.ts             # account wishlist: sync (merge/replace), list, remove (#46)
     restock-alerts.ts       # subscribe + notifyRestockedCore (goods receipt / cancel
                             # restock → one mail per waiting address, #46)
@@ -742,6 +745,20 @@ boundary (stored-data notes, developer logs, internal UPS errors, the SPC payloa
 seed/default content, invisible skeleton fillers, machine payloads, the
 `STATUS_LABELS` fallback). Changed texts re-flag, stale exemptions fail their own test.
 The AST walker lives in `src/test/ast-texts.ts` and is shared with the usage extraction.
+
+**Catalog content (#58 step B1a).** Product names and descriptions are rows too
+(`catalog.product.<slug>.name` / `.description`, area `catalog`), but their fallback is
+the **stored German base of the document**, not the key: `contentLabel(labels, key,
+germanBase)` in `src/lib/i18n` (a product without a translation still reads as the
+product it is). Documents stay German — one source, no per-language fields — and
+translation happens where the request is answered: `toProductDto(product, comparable,
+content?)` and the server readers take the request language's label map, so the
+server-rendered storefront (product page, listing, home rails, compare) localizes while
+admin pages, JSON APIs, stored orders and cart lines stay German by construction
+(DECISIONS). The five-language demo set is derived from the seed's own catalog
+generator (first three products per type by slug, byte-identical German bases pinned by
+`tests/catalog-content.test.ts`); its machine texts seed with a fixed past
+`textUpdatedAt` so the existing `needsReview` rule flags exactly them.
 
 **Usage context + previews (#58 editor slice).** Where a text is used is a fact about
 the code: `tests/translation-usage.test.ts` extracts every key-shaped string literal and
@@ -1211,6 +1228,11 @@ Specs (the three required journeys):
   reference the key (the checked-in usage extraction) and offers one preview link per
   active language (`/fr/cart` for the cart title, `target="_blank"`) → an `admin.*` key
   previews its own nav page → a key no production file references says so.
+- `catalog-translations.spec.ts` (#58 step B1a) — a demo product on `/fr/…` shows the
+  French name in the h1 and the French description in the accordion → `/de/…` stays
+  byte-identical to the stored document → an unseeded product falls back to the German
+  name visibly. Slugs and expected texts are derived from the seed generator and the
+  seed file, nothing hard-coded.
 - `language-routing.spec.ts` (#58) — browser language picks the prefix and `<html lang>` →
   hreflang lists every active language + x-default for the same path → switcher keeps page,
   query and the remembered choice → every language serves the listing → unknown product

@@ -2776,3 +2776,67 @@ Done — M1–M6 + QA complete.
   `npm run test:e2e` ✅ 80/80; tree clean, nothing running.
 - **Left open (#58):** translatable catalog content + admin editing + five-language
   demo content (plan sessions B1–B3), then the done-when re-check and closing.
+
+## ISSUES — queue session 49 (2026-10-19)
+
+### Gate report ✅ no defect + #58 (step B1a slice) — product names and descriptions answer in the request language ✅ — issue stays open
+
+- **Gate report:** `GET /produkte → 308` and „no `/produkt/…` links" are again the
+  intended #63/#65 English-URL contract (permanent German→English redirects, product
+  links `/products/…`), asserted by the green `english-urls`/`language-routing` specs —
+  nothing to fix. The #58 review of 50ffa34 (usage-extraction fix) is ok; the recorded
+  remainder is the catalog content (B1–B3), delivered as **B1a** per the 00:12 plan.
+- **Mechanism (pure, `src/lib/i18n.ts`):** `contentLabel(labels, key, germanBase)` —
+  the language's text when present and non-blank, otherwise the **stored German base
+  of the document**, not the key (that stays `label`'s visibly-missing UI contract);
+  `productContentKeys(slug)` is the single source of the
+  `catalog.product.<slug>.name|.description` key shape (area `catalog`); its template
+  head enters the usage extraction (`catalog.product.*` → lib/i18n.ts, snapshot
+  refreshed, diff reviewed) and `translation-previews.json` gained
+  `"catalog.product": "/products/{slug}"` so content rows preview per language.
+- **Resolution at the DTO boundary:** the stored product document stays German —
+  `toProductDto(product, comparable, content?)` and the optional `content` parameter on
+  `getProductBySlug`/`listProducts`/`getProductsBySlugs`/`getRelatedProducts`/
+  `getFeaturedProducts`/`getCollectionProducts`; with a label map name+description
+  resolve through the table, without one they are German **by construction**, so admin,
+  wishlist, `/api/*` and stored orders are untouched. Storefront callers pass the
+  request labels: product page (`generateMetadata` — the meta title's `{name}` and
+  JSON-LD localize for free — and `ProductView` incl. related products), listing
+  (`ProductsView` gained `params` + `getLabels`), home `FeaturedRail`/`Collections`,
+  compare page. Stay German this slice (recorded, B1b): variant/attribute labels,
+  `/api/search`, `/api/recently-viewed`, the wishlist sync — client-fetch paths need
+  cookie-based resolution; cart lines keep the add-time language, orders the checkout
+  language (legal-document rule, DECISIONS).
+- **Bounded demo content:** `translations.json` gained 18 `catalog.product.*` rows ×
+  5 languages — the first 3 products **per catalog type by slug** derived from
+  `generateCatalog()` (no hard-coded slugs), German bases byte-identical to the
+  generator (verified at generation and pinned by the integration test), fr/it/rm/es
+  machine texts. Freshness without a new mechanism: `textUpdatedAt` seeds a fixed past
+  ISO for fr/it/rm/es and leaves `de` unstamped, so the existing `needsReview` rule
+  (base falls back to `createdAt`) flags exactly the machine texts; saving a corrected
+  text clears the mark. `tests/translations-file.test.ts` gained the ISO-shape check
+  for `textUpdatedAt`; the seed stays insert-only and a re-seed changes nothing.
+- **Tests:** unit +4 (`contentLabel` hit/missing→German base/blank→German base,
+  `productContentKeys` shape); new `tests/catalog-content.test.ts` +6 (demo set equals
+  the derived set ×5 languages, German bases byte-identical to `generateCatalog()`,
+  seeded rows flagged by `needsReview` in fr/it/rm/es and not de, re-seed idempotent,
+  `toProductDto` with/without a map, `getProductBySlug` answers French for a demo
+  product and German for an unseeded one — all red without the change); new e2e
+  `catalog-translations.spec.ts` (French h1 + accordion description with the German
+  gone, German page byte-identical, unseeded product falls back visibly — slugs and
+  texts derived from the generator and the seed file; verified failing on a rebuilt
+  pre-change tree that kept the rows but not the resolution: the French h1 assertion
+  is red, the two German guards stay green).
+- **Docs:** DECISIONS (content fallback = document base, DTO-boundary resolution +
+  cart/order language-at-creation rule, derived demo set + freshness stamping),
+  ARCHITECTURE (Translation §catalog-content paragraph, `i18n.ts`/`search.ts` entries,
+  e2e list), PROGRESS here.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 699 (71 files),
+  `npm run test:e2e` ✅ 83/83; tree clean, nothing running.
+- **Left open (#58):** **B1b** — attribute value labels (`catalog.value.<dimensionKey>.
+  <value>`), type labels (`catalog.type.<key>`), facets/menu/breadcrumbs/comparison
+  rows, variant labels, cookie-based language for `/api/search`,
+  `/api/recently-viewed` and the wishlist; **B2** — admin editing of per-language
+  name/description on the product form through `saveTranslationCore`; **B3** —
+  five-language demo content for the whole seeded catalog, then the done-when
+  re-check and closing the umbrella.

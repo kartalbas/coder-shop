@@ -63,7 +63,11 @@ export default async function ComparePage({
   const types = await getCatalogTypes();
   const comparableTypes = types.filter((type) => type.comparable);
   const comparableKeys = new Set(comparableTypes.map((type) => type.key));
-  const products = comparableProducts(await getProductsBySlugs(parseSlugs(raw)), comparableKeys);
+  // Issue #58 step B1a: the compared products' names resolve through the table.
+  const products = comparableProducts(
+    await getProductsBySlugs(parseSlugs(raw), labels),
+    comparableKeys,
+  );
 
   // The copy names the comparable type (catalog data); with none configured there is
   // nothing to compare at all — its own hint, no German fallback in code.

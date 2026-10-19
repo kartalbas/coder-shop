@@ -15,5 +15,6 @@
   "shop.home": "/",
   "shop.account": "/account/login",
   "shop.auth": "/account/login",
-  "shop.password": "/account/login"
+  "shop.password": "/account/login",
+  "catalog.product": "/products/{slug}"
 }

@@ -12,6 +12,7 @@ import {
   type CatalogTypeConfig,
 } from "@/lib/catalog-types";
 import { compareFacetValues } from "@/lib/facet-order";
+import { contentLabel, productContentKeys, type LabelMap } from "@/lib/i18n";
 import { buyablePriceCents } from "@/lib/pricing";
 import { escapeRegex } from "@/lib/regex";
 import type { SortKey } from "@/lib/validations/listing";
@@ -30,16 +31,23 @@ function isComparableType(types: readonly CatalogTypeConfig[], type: string): bo
   return types.some((candidate) => candidate.key === type && candidate.comparable);
 }
 
+// Issue #58 step B1a: the stored document stays the German base — one source, no
+// per-language fields. `content` is the request language's label map: with one,
+// name and description resolve through the translation table (falling back to the
+// document's German); without one the DTO is German by construction, so admin pages,
+// the JSON APIs and stored orders never change.
 export function toProductDto(
   product: LeanProduct | HydratedDocument<Product>,
   comparable = false,
+  content?: LabelMap,
 ): ProductDto {
   const p = ("toObject" in product ? product.toObject() : product) as unknown as LeanProduct;
+  const keys = productContentKeys(p.slug);
   return {
     id: String(p._id),
     slug: p.slug,
-    name: p.name,
-    description: p.description,
+    name: content ? contentLabel(content, keys.name, p.name) : p.name,
+    description: content ? contentLabel(content, keys.description, p.description) : p.description,
     type: p.type,
     comparable,
     brand: p.brand,
@@ -170,7 +178,10 @@ async function facetCounts(
   return counts;
 }
 
-export async function listProducts(query: ListingQuery): Promise<ListingResult> {
+export async function listProducts(
+  query: ListingQuery,
+  content?: LabelMap,
+): Promise<ListingResult> {
   await connectDB();
   const types = await getCatalogTypes();
   const dimensions = facetDimensionsFor(types, query.type);
@@ -193,7 +204,9 @@ export async function listProducts(query: ListingQuery): Promise<ListingResult> 
     .exec();
 
   return {
-    items: docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type))),
+    items: docs.map((doc) =>
+      toProductDto(doc, isComparableType(types, doc.type), content),
+    ),
     total,
     page,
     pageSize,
@@ -202,18 +215,26 @@ export async function listProducts(query: ListingQuery): Promise<ListingResult> 
   };
 }
 
-export async function getProductBySlug(slug: string): Promise<ProductDto | null> {
+export async function getProductBySlug(
+  slug: string,
+  content?: LabelMap,
+): Promise<ProductDto | null> {
   await connectDB();
   const [product, types] = await Promise.all([
     ProductModel.findOne({ slug }).lean<LeanProduct>().exec(),
     getCatalogTypes(),
   ]);
-  return product ? toProductDto(product, isComparableType(types, product.type)) : null;
+  return product
+    ? toProductDto(product, isComparableType(types, product.type), content)
+    : null;
 }
 
 // Products behind remembered slugs (issue #46 "Zuletzt angesehen"), in the requested
 // order; unknown slugs are skipped.
-export async function getProductsBySlugs(slugs: string[]): Promise<ProductDto[]> {
+export async function getProductsBySlugs(
+  slugs: string[],
+  content?: LabelMap,
+): Promise<ProductDto[]> {
   if (slugs.length === 0) return [];
   await connectDB();
   const [docs, types] = await Promise.all([
@@ -224,10 +245,14 @@ export async function getProductsBySlugs(slugs: string[]): Promise<ProductDto[]>
   return slugs
     .map((slug) => bySlug.get(slug))
     .filter((doc): doc is LeanProduct => doc !== undefined)
-    .map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
+    .map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
 }
 
-export async function getRelatedProducts(product: ProductDto, limit = 4): Promise<ProductDto[]> {
+export async function getRelatedProducts(
+  product: ProductDto,
+  limit = 4,
+  content?: LabelMap,
+): Promise<ProductDto[]> {
   await connectDB();
   const [docs, types] = await Promise.all([
     ProductModel.find({
@@ -244,10 +269,13 @@ export async function getRelatedProducts(product: ProductDto, limit = 4): Promis
   const others = docs.filter((d) => d.brand !== product.brand);
   return [...sameBrand, ...others]
     .slice(0, limit)
-    .map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
+    .map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
 }
 
-export async function getFeaturedProducts(limit = 12): Promise<ProductDto[]> {
+export async function getFeaturedProducts(
+  limit = 12,
+  content?: LabelMap,
+): Promise<ProductDto[]> {
   await connectDB();
   const [docs, types] = await Promise.all([
     ProductModel.find({ featured: true })
@@ -257,11 +285,15 @@ export async function getFeaturedProducts(limit = 12): Promise<ProductDto[]> {
       .exec(),
     getCatalogTypes(),
   ]);
-  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
+  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
 }
 
 // Products of one featured collection (issue #23), newest first.
-export async function getCollectionProducts(collection: string, limit = 4): Promise<ProductDto[]> {
+export async function getCollectionProducts(
+  collection: string,
+  limit = 4,
+  content?: LabelMap,
+): Promise<ProductDto[]> {
   await connectDB();
   const [docs, types] = await Promise.all([
     ProductModel.find({ collection })
@@ -271,7 +303,7 @@ export async function getCollectionProducts(collection: string, limit = 4): Prom
       .exec(),
     getCatalogTypes(),
   ]);
-  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type)));
+  return docs.map((doc) => toProductDto(doc, isComparableType(types, doc.type), content));
 }
 
 export interface SearchHit {
