@@ -6,11 +6,12 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { FeaturedToggle, ProductCoreForm } from "@/components/admin/product-core-form";
+import { ProductContentTranslations } from "@/components/admin/product-content-translations";
 import { ImageEditor } from "@/components/admin/image-editor";
 import { VariantEditor } from "@/components/admin/variant-editor";
-import { interpolate, label } from "@/lib/i18n";
+import { BASE_LANGUAGE, interpolate, label, productContentKeys } from "@/lib/i18n";
 import { getCatalogType } from "@/server/catalog-types";
-import { getRequestLabels } from "@/server/i18n";
+import { getActiveLanguages, getRequestLabels, getTranslations } from "@/server/i18n";
 import { getIncomingBySkuCore } from "@/server/purchasing";
 import { getProductForAdmin } from "@/server/products-admin";
 
@@ -35,10 +36,18 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
   // Issue #61: type label and the variant editor's attribute fields come from the
   // product type's configuration.
   // Issue #62 (#55): incoming quantities per variant come from the open purchase orders.
-  const [typeConfig, incoming] = await Promise.all([
+  // Issue #58 step B2: the translation section edits the product's content rows —
+  // the two rows of this slug and the active languages minus the base drive it, so a
+  // sixth language appears there without a code change.
+  const [typeConfig, incoming, allRows, languages] = await Promise.all([
     getCatalogType(product.type),
     getIncomingBySkuCore(product.variants.map((variant) => variant.sku)),
+    getTranslations(),
+    getActiveLanguages(),
   ]);
+  const keys = productContentKeys(product.slug);
+  const contentRows = allRows.filter((row) => row.key === keys.name || row.key === keys.description);
+  const contentLanguages = languages.filter((language) => language.code !== BASE_LANGUAGE);
 
   return (
     <div className="max-w-5xl">
@@ -80,6 +89,17 @@ async function ProductAdminDetail({ params }: PagePropsLocal) {
           dimensions={typeConfig?.dimensions ?? []}
           incomingBySku={Object.fromEntries([...incoming].map(([sku, info]) => [sku, info.qty]))}
           serialTracked={typeConfig?.stockTracking === "serial"}
+        />
+      </section>
+
+      <section className="mt-6" aria-label={label(labels, "admin.contentTranslations.heading")}>
+        <h2 className="mb-3 text-sm font-semibold">
+          {label(labels, "admin.contentTranslations.heading")}
+        </h2>
+        <ProductContentTranslations
+          product={product}
+          rows={contentRows}
+          languages={contentLanguages}
         />
       </section>
 

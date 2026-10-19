@@ -5,9 +5,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { CatalogTypeEditor } from "@/components/admin/catalog-type-editor";
+import { CatalogTypeTranslations } from "@/components/admin/catalog-type-translations";
 import type { CatalogTypeConfig } from "@/lib/catalog-types";
-import { interpolate, label } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
+import { BASE_LANGUAGE, interpolate, label, typeLabelKey } from "@/lib/i18n";
+import { getActiveLanguages, getRequestLabels, getTranslations } from "@/server/i18n";
 import { getCatalogType } from "@/server/catalog-types";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -71,6 +72,33 @@ export default async function CatalogTypeEditPage({ params }: PagePropsLocal) {
       <div className="mt-6">
         <CatalogTypeEditor config={config} />
       </div>
+      {/* Issue #58 step B2: an existing type also edits its label's translations —
+          the configured label stays the German truth, the active languages minus the
+          base drive the block, so a sixth language needs no code change. */}
+      {key !== "new" && (
+        <div className="mt-6">
+          <CatalogTypeLabelTranslations typeKey={config.key} germanLabel={config.label} />
+        </div>
+      )}
     </div>
+  );
+}
+
+// The row and the languages are read server-side; the client block only edits.
+async function CatalogTypeLabelTranslations({
+  typeKey,
+  germanLabel,
+}: {
+  typeKey: string;
+  germanLabel: string;
+}) {
+  const [rows, languages] = await Promise.all([getTranslations(), getActiveLanguages()]);
+  return (
+    <CatalogTypeTranslations
+      typeKey={typeKey}
+      germanLabel={germanLabel}
+      row={rows.find((row) => row.key === typeLabelKey(typeKey)) ?? null}
+      languages={languages.filter((language) => language.code !== BASE_LANGUAGE)}
+    />
   );
 }

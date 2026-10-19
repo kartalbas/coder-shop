@@ -1,6 +1,6 @@
-import { interpolate, label } from "@/lib/i18n";
+import { interpolate, label, typeLabelKey } from "@/lib/i18n";
 import { connectDB } from "./db";
-import { getRequestLabels } from "./i18n";
+import { getRequestLabels, getTranslations, saveTranslationCore } from "./i18n";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
 import {
   ProductTypeConfigModel,
@@ -55,6 +55,7 @@ export async function saveCatalogTypeCore(
     }
   }
   await connectDB();
+  const stored = await ProductTypeConfigModel.findOne({ key: config.key }).lean().exec();
   await ProductTypeConfigModel.updateOne(
     { key: config.key },
     {
@@ -70,5 +71,17 @@ export async function saveCatalogTypeCore(
     },
     { upsert: true },
   ).exec();
+
+  // Issue #58 step B2: the configuration is the German truth — a changed label syncs
+  // the existing `catalog.type.<key>` row through the one validated core (history, the
+  // `textUpdatedAt.de` stamp that flags the other languages for review, cache
+  // invalidation). Synced, never created: a type without translations needs no row,
+  // `contentLabel`'s fallback answers the configured label.
+  if (stored && stored.label !== config.label) {
+    const key = typeLabelKey(config.key);
+    if ((await getTranslations()).some((row) => row.key === key)) {
+      await saveTranslationCore({ key, area: "catalog", de: config.label, texts: {} });
+    }
+  }
   return { ok: true };
 }

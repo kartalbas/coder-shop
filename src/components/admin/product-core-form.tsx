@@ -63,7 +63,10 @@ export function ProductCoreForm({ product }: { product: ProductDto }) {
             id={`${formId}-price`}
             name="price"
             type="number"
-            step="0.05"
+            // Cent precision (`step="0.01"`): prices are integer cents and the schema accepts
+            // any of them — a coarser step makes the browser reject a stored price like
+            // 53.81 and silently block every submit of this form.
+            step="0.01"
             min={0}
             defaultValue={(product.priceCents / 100).toFixed(2)}
             required

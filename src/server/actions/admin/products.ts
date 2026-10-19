@@ -6,6 +6,7 @@ import { label } from "@/lib/i18n";
 import { objectIdSchema } from "@/lib/validations/common";
 import { getRequestLabels } from "@/server/i18n";
 import {
+  saveProductContentCore,
   toggleFeaturedCore,
   updateImagesCore,
   updateProductCore,
@@ -81,6 +82,25 @@ export async function updateImagesAction(
   if (!productId.success || payload === null) return { error: invalidRequest };
 
   const result = await updateImagesCore(productId.data, payload);
+  if (!result.ok) return { error: result.error };
+
+  revalidateProducts(productId.data);
+  return { ok: true };
+}
+
+// Issue #58 step B2: the product form's translation section saves through the core —
+// the same validated write path as everything else.
+export async function saveProductContentAction(
+  _previous: ProductActionState | null,
+  formData: FormData,
+): Promise<ProductActionState> {
+  await requireAdminSession();
+  const invalidRequest = label(await getRequestLabels(), "admin.error.invalidRequest");
+  const productId = objectIdSchema.safeParse(formData.get("productId"));
+  const payload = parsePayload(formData);
+  if (!productId.success || payload === null) return { error: invalidRequest };
+
+  const result = await saveProductContentCore(productId.data, payload);
   if (!result.ok) return { error: result.error };
 
   revalidateProducts(productId.data);

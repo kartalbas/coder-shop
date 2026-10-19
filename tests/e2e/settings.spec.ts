@@ -13,6 +13,7 @@ async function saveSettings(page: Page, vat: string, standardPrice: string): Pro
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page.getByText("Konfiguration gespeichert")).toBeVisible();
 }
+
 test("admin edits VAT rate and a shipping price — the storefront follows (issue #64)", async ({
   page,
 }) => {
@@ -59,8 +60,13 @@ test("admin renames a catalog type — the mega-menu follows (issue #64)", async
     await page.getByRole("link", { name: "Bearbeiten" }).first().click();
     await expect(page.getByRole("heading", { name: /Katalogtyp bearbeiten/ })).toBeVisible();
     await page.fill("#typeLabel", label);
-    await page.getByRole("button", { name: "Speichern" }).click();
+    // #58 step B2: the editor page also carries the label's translation block with its
+    // own save button — the config form is the one with the `#typeLabel` field.
+    await page.locator("form").filter({ has: page.locator("#typeLabel") }).getByRole("button", { name: "Speichern" }).click();
     await expect(page.getByText("Katalogtyp gespeichert")).toBeVisible();
+    // #58 step B2: the German base row follows the configuration automatically (the
+    // document is the German truth) — the manual row edit below is now a no-op kept
+    // as the regression check that the sync produced exactly this value.
     await page.goto("/admin/translations/catalog.type.smartphone");
     await expect(page.getByRole("heading", { name: /catalog\.type\.smartphone/ })).toBeVisible();
     await page.fill("#translation-de", label);

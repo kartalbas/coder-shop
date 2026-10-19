@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import { deriveFilter, dimensionsFromAttributes, type VariantForFacets } from "@/lib/facets";
 import { variantLabel, type CatalogDimensionConfig } from "@/lib/catalog-types";
-import { interpolate, label } from "@/lib/i18n";
+import { interpolate, label, productContentKeys } from "@/lib/i18n";
 import { escapeRegex } from "@/lib/regex";
 import type { ProductType } from "@/models/product";
 import { ProductModel, type Product, type Variant } from "@/models/product";
 import {
+  createProductContentSchema,
   createProductCoreSchema,
   createProductImagesSchema,
   createVariantCoreSchema,
@@ -13,7 +14,7 @@ import {
 import { toProductDto, type ProductDto } from "./search";
 import { connectDB } from "./db";
 import { getCatalogType, getCatalogTypes } from "./catalog-types";
-import { getRequestLabels } from "./i18n";
+import { getRequestLabels, getTranslations, saveTranslationCore } from "./i18n";
 
 // Issue #61: the dimensions a product's `filter` block and its variant attributes are
 // validated against come from the product type's configuration; products whose type
@@ -27,6 +28,18 @@ async function dimensionsForProductType(
 }
 
 export type ProductAdminResult = { ok: true } | { ok: false; error: string };
+
+// Issue #58 step B2: the document is the German truth. When its German base changes,
+// an **existing** content row follows through the one validated core (history, the
+// `textUpdatedAt.de` stamp that flags every other language for review, cache
+// invalidation) — rows are synced, never created: a product without translations
+// needs none, the document base is the fallback, so mass renames cannot bloat the
+// table.
+async function syncGermanContentRow(key: string, de: string): Promise<void> {
+  const exists = (await getTranslations()).some((row) => row.key === key);
+  if (!exists) return;
+  await saveTranslationCore({ key, area: "catalog", de, texts: {} });
+}
 
 interface ProductAdminListItem {
   id: string;
@@ -143,6 +156,16 @@ export async function updateProductCore(id: string, input: unknown): Promise<Pro
     },
   );
   if (result.matchedCount === 0) return { ok: false, error: notFound };
+
+  // #58 step B2: a changed German base syncs the existing content rows (see
+  // `syncGermanContentRow`) — the table's `de` can never drift from the document.
+  const contentKeys = productContentKeys(product.slug);
+  if (product.name !== parsed.data.name) {
+    await syncGermanContentRow(contentKeys.name, parsed.data.name);
+  }
+  if (product.description !== parsed.data.description) {
+    await syncGermanContentRow(contentKeys.description, parsed.data.description);
+  }
   return { ok: true };
 }
 
@@ -279,6 +302,55 @@ export async function updateImagesCore(productId: string, input: unknown): Promi
   );
   if (result.matchedCount === 0) return { ok: false, error: notFound };
   return { ok: true };
+}
+
+// Issue #58 step B2: the product form edits the per-language content where the content
+// lives. The document stays the German truth — every write sends the document's
+// current values as `de`, so the row's base can never drift; the payload only ever
+// moves the other languages' texts (blank clears one text, absent codes stay — the
+// per-code semantics of the one validated core). Rows are created on demand here: this
+// is the place where an admin deliberately adds a translation.
+export async function saveProductContentCore(
+  productId: string,
+  input: unknown,
+): Promise<ProductAdminResult> {
+  const labels = await getRequestLabels();
+  const parsed = createProductContentSchema(labels).safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.error.invalidRequest"),
+    };
+  }
+  await connectDB();
+  const notFound = label(labels, "admin.error.productNotFound");
+  if (!mongoose.isValidObjectId(productId)) return { ok: false, error: notFound };
+  const product = await ProductModel.findById(productId)
+    .select("slug name description")
+    .lean()
+    .exec();
+  if (!product) return { ok: false, error: notFound };
+
+  const keys = productContentKeys(product.slug);
+  const nameTexts: Record<string, string> = {};
+  const descriptionTexts: Record<string, string> = {};
+  for (const [code, texts] of Object.entries(parsed.data.texts)) {
+    nameTexts[code] = texts.name;
+    descriptionTexts[code] = texts.description;
+  }
+  const name = await saveTranslationCore({
+    key: keys.name,
+    area: "catalog",
+    de: product.name,
+    texts: nameTexts,
+  });
+  if (!name.ok) return name;
+  return saveTranslationCore({
+    key: keys.description,
+    area: "catalog",
+    de: product.description,
+    texts: descriptionTexts,
+  });
 }
 
 export async function toggleFeaturedCore(productId: string): Promise<ProductAdminResult> {

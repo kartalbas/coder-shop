@@ -1,11 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { firstThreePerTypeBySlug } from "../scripts/seed/demo-content";
-import { isTranslated, needsReview, productContentKeys } from "@/lib/i18n";
+import { DEFAULT_CATALOG_TYPES } from "@/lib/catalog-types";
+import { isTranslated, needsReview, productContentKeys, typeLabelKey } from "@/lib/i18n";
 import { DEFAULT_TRANSLATIONS } from "@/server/translation-seed";
 import { ProductModel } from "@/models/product";
+import { TranslationHistoryModel } from "@/models/translation-history";
 import { TranslationModel } from "@/models/translation";
 import { getLabels, getTranslations, invalidateI18nCache } from "@/server/i18n";
+import { saveCatalogTypeCore } from "@/server/catalog-types";
 import { getProductBySlug, toProductDto } from "@/server/search";
+import { saveProductContentCore, updateProductCore } from "@/server/products-admin";
 import { seedTranslations } from "../scripts/seed/seed";
 import { clearCollections, connectTestDB, disconnectTestDB } from "@/test/db";
 
@@ -180,5 +184,169 @@ describe("content resolution at the DTO boundary (issue #58 step B1a)", () => {
     const unseeded = await getProductBySlug("test-produkt", labels);
     expect(unseeded!.name).toBe("Test Produkt");
     expect(unseeded!.description).toBe("Ein Testprodukt für die DTO-Auflösung.");
+  });
+});
+
+// Issue #58 step B2: the document is the German truth. A core write that changes a
+// German base syncs the **existing** content row through the one validated core (and
+// never creates rows); the product form saves per-language texts through
+// `saveProductContentCore`, always sending the document's current values as `de`.
+// These tests fail without the change: before it, a rename left the row's `de` stale
+// and the product form had no write path to the table at all.
+describe("German base sync and product content editing (issue #58 step B2)", () => {
+  beforeAll(async () => {
+    await connectTestDB();
+    await clearCollections();
+    await seedTranslations();
+    invalidateI18nCache();
+  });
+
+  afterAll(async () => {
+    await clearCollections();
+    invalidateI18nCache();
+    await disconnectTestDB();
+  });
+
+  async function createProduct(slug: string, name: string, description: string) {
+    const created = await ProductModel.create({
+      slug,
+      name,
+      description,
+      type: "shoes",
+      brand: "Testmarke",
+      priceCents: 10_000,
+      images: [{ src: `/products/${slug}-1.webp`, alt: "Test" }],
+      featured: false,
+      filter: { color: ["schwarz"], size: ["42"], storage: [""], material: [] },
+      variants: [
+        {
+          sku: `B2-${slug}`,
+          label: "42 / schwarz",
+          priceDeltaCents: 0,
+          stock: 5,
+          restockThreshold: 3,
+          weightGrams: 400,
+          attributes: { color: "schwarz", size: "42" },
+        },
+      ],
+    });
+    return created._id.toString();
+  }
+
+  it("renaming a translated product follows the row's de, keeps the other texts and flags review", async () => {
+    const target = demo[0]!;
+    const keys = productContentKeys(target.slug);
+    const id = await createProduct(target.slug, target.name, target.description);
+
+    const result = await updateProductCore(id, {
+      name: "Neuer Name",
+      description: target.description,
+      brand: target.brand,
+      priceCents: target.priceCents,
+    });
+    expect(result.ok).toBe(true);
+
+    const row = await TranslationModel.findOne({ key: keys.name }).lean().exec();
+    expect(row!.de).toBe("Neuer Name");
+    // The French text is byte-untouched — only the German base moved.
+    const seedRow = DEFAULT_TRANSLATIONS.find((candidate) => candidate.key === keys.name)!;
+    expect(row!.texts.fr).toBe(seedRow.texts.fr);
+    // The moved base stamp makes the older French text need review, and the sync
+    // appended one history entry for `de` (actor null outside a request scope).
+    const entries = await getTranslations();
+    const entry = entries.find((candidate) => candidate.key === keys.name)!;
+    expect(needsReview(entry, "fr")).toBe(true);
+    const history = await TranslationHistoryModel.find({ key: keys.name, language: "de" })
+      .lean()
+      .exec();
+    expect(history.some((h) => h.newValue === "Neuer Name" && h.actor === null)).toBe(true);
+    // The description row was not touched — its German base did not change.
+    const descriptionRow = await TranslationModel.findOne({ key: keys.description })
+      .lean()
+      .exec();
+    expect(descriptionRow!.de).toBe(target.description);
+  });
+
+  it("renaming a product without rows creates none (sync, never create)", async () => {
+    const id = await createProduct("ohne-zeilen", "Alter Name", "Ein Ausgangstext für den Test.");
+    const keys = productContentKeys("ohne-zeilen");
+
+    const result = await updateProductCore(id, {
+      name: "Neuer Name",
+      description: "Ein neuer Beschreibungstext.",
+      brand: "Testmarke",
+      priceCents: 10_000,
+    });
+    expect(result.ok).toBe(true);
+    expect(await TranslationModel.countDocuments({ key: { $in: [keys.name, keys.description] } })).toBe(0);
+  });
+
+  it("saveProductContentCore creates the rows on demand and the storefront answers French", async () => {
+    const id = await createProduct("neu-uebersetzt", "Neu Produkt", "Ein Produkt zum Übersetzen.");
+    const keys = productContentKeys("neu-uebersetzt");
+
+    const result = await saveProductContentCore(id, {
+      texts: { fr: { name: "Produit nouveau", description: "Un produit à traduire." } },
+    });
+    expect(result.ok).toBe(true);
+
+    const row = await TranslationModel.findOne({ key: keys.name }).lean().exec();
+    expect(row!.area).toBe("catalog");
+    expect(row!.de).toBe("Neu Produkt");
+    expect(row!.texts.fr).toBe("Produit nouveau");
+
+    const labels = await getLabels("fr");
+    const french = await getProductBySlug("neu-uebersetzt", labels);
+    expect(french!.name).toBe("Produit nouveau");
+    expect(french!.description).toBe("Un produit à traduire.");
+    const german = await getProductBySlug("neu-uebersetzt");
+    expect(german!.name).toBe("Neu Produkt");
+  });
+
+  it("a blank text clears only that code; absent codes stay untouched", async () => {
+    const id = await createProduct("loeschen", "Lösch Produkt", "Ein Produkt mit zwei Sprachen.");
+    const keys = productContentKeys("loeschen");
+    expect(
+      (
+        await saveProductContentCore(id, {
+          texts: {
+            fr: { name: "Produit effacé", description: "Un texte." },
+            it: { name: "Prodotto cancellato", description: "Un testo." },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+
+    expect(
+      (
+        await saveProductContentCore(id, { texts: { fr: { name: "", description: "Un texte." } } })
+      ).ok,
+    ).toBe(true);
+
+    const row = await TranslationModel.findOne({ key: keys.name }).lean().exec();
+    expect(row!.texts.fr).toBeUndefined();
+    expect(row!.texts.it).toBe("Prodotto cancellato");
+  });
+
+  it("saveCatalogTypeCore syncs the existing type label row when the label changed", async () => {
+    const smartphone = DEFAULT_CATALOG_TYPES.find((type) => type.key === "smartphone")!;
+    const key = typeLabelKey("smartphone");
+    const stored = await TranslationModel.findOne({ key }).lean().exec();
+    expect(stored).not.toBeNull();
+    const frBefore = stored!.texts.fr;
+
+    // Creating the configuration is not a rename — the row stays untouched.
+    expect((await saveCatalogTypeCore(smartphone)).ok).toBe(true);
+    expect((await TranslationModel.findOne({ key }).lean().exec())!.de).toBe(smartphone.label);
+
+    expect((await saveCatalogTypeCore({ ...smartphone, label: "Handys" })).ok).toBe(true);
+    const row = await TranslationModel.findOne({ key }).lean().exec();
+    expect(row!.de).toBe("Handys");
+    expect(row!.texts.fr).toBe(frBefore);
+
+    // An unchanged label moves nothing — no second history entry.
+    const historyBefore = await TranslationHistoryModel.countDocuments({ key, language: "de" });
+    expect((await saveCatalogTypeCore({ ...smartphone, label: "Handys" })).ok).toBe(true);
+    expect(await TranslationHistoryModel.countDocuments({ key, language: "de" })).toBe(historyBefore);
   });
 });

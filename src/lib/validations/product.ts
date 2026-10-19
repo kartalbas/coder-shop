@@ -19,6 +19,22 @@ export function createProductCoreSchema(labels: LabelMap) {
   });
 }
 
+// Issue #58 step B2: the product form's translation section sends one payload with a
+// per-language name and description. Texts may be blank (that clears the text — the
+// document base shows through again); the language codes themselves are validated
+// against the language rows by `saveTranslationCore`.
+export function createProductContentSchema(labels: LabelMap) {
+  return z.object({
+    texts: z.record(
+      z.string().regex(/^[a-z]{2,3}$/, label(labels, "admin.error.invalidRequest")),
+      z.object({
+        name: z.string().trim().max(120),
+        description: z.string().trim().max(2000),
+      }),
+    ),
+  });
+}
+
 // Issue #61: variant attributes are a generic record keyed by the catalog type's
 // dimension keys — which keys must be present (and what they mean) is validated
 // against the type configuration in `updateVariantCore`, not here.

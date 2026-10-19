@@ -99,7 +99,7 @@ function VariantRow({
         <Input
           name="priceDelta"
           type="number"
-          step="0.05"
+          step="0.01"
           defaultValue={(variant.priceDeltaCents / 100).toFixed(2)}
           className="h-8 text-sm"
           aria-label={fieldAria(label(labels, "admin.variants.field.priceDelta"))}

@@ -2891,3 +2891,39 @@ Done — M1–M6 + QA complete.
   catalog, then the done-when re-check and closing the umbrella. Recorded
   limitations: search matches stored German names, `/api/products` stays German,
   stored orders/cart keep their creation language.
+
+### #58 (step B2) — the admin edits catalog content where the content lives ✅ — issue stays open
+- **Product form (translation section).** `product-content-translations.tsx` on the
+  product editor: the two `catalog.product.<slug>` rows and the active languages minus
+  the base drive one form (a sixth language is one more fieldset, no code change); one
+  save sends one payload through `saveProductContentAction` → `saveProductContentCore`
+  → `saveTranslationCore` — rows are created on demand here, blank clears a text and
+  the document base shows through again. Every write sends the document's current
+  name/description as the row's `de`, so the base can never drift.
+- **German truth syncs.** A changed German base on the core form
+  (`updateProductCore` → `syncGermanContentRow`) and a renamed catalog type config
+  (`saveCatalogTypeCore`) move the `de` of the **existing** row through the same core
+  (history, review flags, invalidation) — synced, never created (DECISIONS). The type
+  editor gained its own label block (`catalog-type-translations.tsx`,
+  `saveCatalogTypeLabelAction`); the settings rename e2e now scopes its Speichern click
+  to the config form and keeps the row check as the sync regression.
+- **Gate-fix root cause (review finding "the click never submitted"):** the price
+  inputs in `product-core-form.tsx` and `variant-editor.tsx` used `step="0.05"` while
+  prices are integer cents — a stored price like CHF 53.81 is not a multiple of 0.05,
+  so browser constraint validation silently blocked every submit of the core form
+  (click, even `requestSubmit()`, fired no submit event). Both steps are now `0.01`,
+  the currency precision the schema actually accepts; the new rename spec is the
+  regression test (red on the old step: no POST, no toast, no error).
+- **Tests (fail without the change):** +5 in `tests/catalog-content.test.ts` (rename
+  follows the row's `de`, keeps other texts and flags review; rename without rows
+  creates none; `saveProductContentCore` creates the rows on demand and `/fr` answers
+  French; blank clears only that code, absent codes stay; type rename syncs the
+  existing label row); new e2e
+  `catalog-content-admin.spec.ts` (French edit on the form → `/fr` follows; German
+  rename moves the row, French stays; everything restored).
+- **Gate:** `npm run build`/lint ✅, `npm test` ✅ 721 (74 files),
+  `npm run test:e2e` ✅ 88/88; tree clean, nothing running.
+- **Left open (#58):** **B3** — five-language demo content for the whole seeded
+  catalog, then the done-when re-check and closing the umbrella. Recorded limitations
+  unchanged (search matches stored German names, `/api/products` stays German, stored
+  orders/cart keep their creation language).

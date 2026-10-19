@@ -1098,6 +1098,14 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   Since the storefront type label resolves through the table, the config label stays
   the admin-side machine name and the German base row is what the storefront shows —
   the settings e2e now renames both (config + `catalog.type.smartphone` German base)
-  through the admin UIs. Until the catalog-type editor writes the row directly (B2
-  pattern), the translation editor is the interim text editor, same decision as for
-  product content.
+  through the admin UIs. Step B2 closed the interim: the catalog-type editor and the
+  product form now write the rows directly.
+- **The document syncs existing content rows, never creates them (#58 step B2).** The
+  product document and the catalog type config stay the German truth: a changed German
+  base (product rename, type rename) moves the `de` of an **existing** `catalog.*` row
+  through `saveTranslationCore` (history, review flags, invalidation — the one write
+  path), and creates nothing when no row exists, so mass renames cannot bloat the table
+  and `contentLabel`'s document fallback keeps working. Rows are created only where an
+  admin deliberately adds a translation: the product form's translation section and the
+  type editor's label block, which always send the document's current values as `de` —
+  the row's base can never drift from the document.

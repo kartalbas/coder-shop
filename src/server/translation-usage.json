@@ -48,8 +48,10 @@
   ],
   "admin.action.save": [
     "components/admin/catalog-type-editor.tsx",
+    "components/admin/catalog-type-translations.tsx",
     "components/admin/languages-editor.tsx",
     "components/admin/po-status-actions.tsx",
+    "components/admin/product-content-translations.tsx",
     "components/admin/product-core-form.tsx",
     "components/admin/shop-settings-form.tsx",
     "components/admin/supplier-form.tsx",
@@ -164,7 +166,8 @@
     "app/admin/(panel)/catalog-types/[key]/page.tsx"
   ],
   "admin.catalogTypes.notFound": [
-    "app/admin/(panel)/catalog-types/[key]/page.tsx"
+    "app/admin/(panel)/catalog-types/[key]/page.tsx",
+    "server/actions/admin/catalog-types.ts"
   ],
   "admin.catalogTypes.order.*": [
     "components/admin/catalog-type-editor.tsx"
@@ -200,6 +203,14 @@
   ],
   "admin.catalogTypes.validation.photoNounMissing": [
     "server/actions/admin/catalog-types.ts"
+  ],
+  "admin.contentTranslations.heading": [
+    "app/admin/(panel)/products/[id]/page.tsx",
+    "components/admin/catalog-type-translations.tsx"
+  ],
+  "admin.contentTranslations.saved": [
+    "components/admin/catalog-type-translations.tsx",
+    "components/admin/product-content-translations.tsx"
   ],
   "admin.customers.action.block": [
     "components/admin/customer-actions.tsx"
@@ -488,6 +499,7 @@
     "server/customers-admin.ts"
   ],
   "admin.error.invalidRequest": [
+    "lib/validations/product.ts",
     "server/actions/admin/catalog-types.ts",
     "server/actions/admin/customers.ts",
     "server/actions/admin/discounts.ts",
@@ -525,6 +537,7 @@
   "admin.field.name": [
     "components/admin/catalog-type-editor.tsx",
     "components/admin/languages-editor.tsx",
+    "components/admin/product-content-translations.tsx",
     "components/admin/product-core-form.tsx",
     "components/admin/shop-settings-form.tsx"
   ],
@@ -1999,6 +2012,8 @@
   ],
   "admin.translations.missing": [
     "app/admin/(panel)/translations/[key]/page.tsx",
+    "components/admin/catalog-type-translations.tsx",
+    "components/admin/product-content-translations.tsx",
     "components/admin/translations-table.tsx"
   ],
   "admin.translations.missingAria": [
@@ -2008,6 +2023,8 @@
     "app/admin/(panel)/translations/page.tsx"
   ],
   "admin.translations.needsReview": [
+    "components/admin/catalog-type-translations.tsx",
+    "components/admin/product-content-translations.tsx",
     "components/admin/translations-table.tsx"
   ],
   "admin.translations.needsReviewIn": [
@@ -3323,6 +3340,7 @@
   ],
   "shop.product.description": [
     "app/[lang]/(storefront)/products/[slug]/page.tsx",
+    "components/admin/product-content-translations.tsx",
     "components/admin/product-core-form.tsx"
   ],
   "shop.product.details": [

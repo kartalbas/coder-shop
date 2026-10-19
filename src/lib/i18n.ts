@@ -266,7 +266,7 @@ export function productContentKeys(slug: string): { name: string; description: s
 // the machine values (type key, dimension key, value) — a runtime-added type or
 // dimension gets its rows the same way, and machine values without rows (sizes, GB
 // counts) simply stay the value itself through `contentLabel`'s fallback. The value
-// segment is slugified (`grün` → `gruen`) because translation keys only allow
+// segment is slugified (`grün` → `grun`) because translation keys only allow
 // [a-zA-Z0-9-]; the shared `slugify` keeps that spelling identical to the SKU builder.
 export function typeLabelKey(typeKey: string): string {
   return `catalog.type.${typeKey}`;

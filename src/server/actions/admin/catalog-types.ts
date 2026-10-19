@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { label, type LabelMap } from "@/lib/i18n";
-import { getRequestLabels } from "@/server/i18n";
-import { saveCatalogTypeCore } from "@/server/catalog-types";
+import { label, typeLabelKey, type LabelMap } from "@/lib/i18n";
+import { getRequestLabels, saveTranslationCore } from "@/server/i18n";
+import { getCatalogType, saveCatalogTypeCore } from "@/server/catalog-types";
 import { requireAdminSession } from "@/server/session";
 
 export interface CatalogTypeActionState {
@@ -89,6 +89,51 @@ export async function saveCatalogTypeAction(
   });
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath("/admin/catalog-types");
+  revalidatePath("/admin/catalog-types/[key]", "page");
+  return { ok: true };
+}
+
+// Issue #58 step B2: the type editor edits the label's translations through the one
+// validated translation core — the configuration stays the German truth (`de` always
+// comes from the stored config label, never from the payload).
+function createCatalogTypeLabelSchema(labels: LabelMap) {
+  return z.object({
+    key: z
+      .string()
+      .trim()
+      .regex(/^[a-z][a-z0-9-]*$/, label(labels, "admin.catalogTypes.validation.keyShape")),
+    texts: z.record(z.string().regex(/^[a-z]{2,3}$/), z.string().trim().max(200)),
+  });
+}
+
+export async function saveCatalogTypeLabelAction(
+  _previous: CatalogTypeActionState | null,
+  formData: FormData,
+): Promise<CatalogTypeActionState> {
+  await requireAdminSession();
+  const labels = await getRequestLabels();
+  let payload: unknown;
+  try {
+    payload = JSON.parse(String(formData.get("payload") ?? ""));
+  } catch {
+    return { ok: false, error: label(labels, "admin.error.invalidRequest") };
+  }
+  const parsed = createCatalogTypeLabelSchema(labels).safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? label(labels, "admin.error.invalidRequest"),
+    };
+  }
+  const config = await getCatalogType(parsed.data.key);
+  if (!config) return { ok: false, error: label(labels, "admin.catalogTypes.notFound") };
+  const result = await saveTranslationCore({
+    key: typeLabelKey(config.key),
+    area: "catalog",
+    de: config.label,
+    texts: parsed.data.texts,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
   revalidatePath("/admin/catalog-types/[key]", "page");
   return { ok: true };
 }

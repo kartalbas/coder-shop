@@ -207,6 +207,8 @@ src/
                             # writes the shared lang cookie (#58 admin slice)
       status-timeline.tsx, transition-buttons.tsx,
       product-search.tsx, product-core-form.tsx, variant-editor.tsx, image-editor.tsx,
+      product-content-translations.tsx # per-language name/description on the product
+                            # form — one payload, the one saveTranslationCore (#58 B2)
        po-create-form.tsx, picker-dialog.tsx, # PO form + keyboard picker dialog (#42)
        command-palette.tsx, # ⌘K/Ctrl+K palette + "?" shortcut overlay on the picker (#49)
       po-status-actions.tsx, po-status-badge.tsx, supplier-form.tsx,
@@ -218,6 +220,8 @@ src/
          review-actions.tsx,         # approve / hide / answer a review (#47)
          shop-settings-form.tsx,     # VAT + shipping + payment method editor (#64)
          catalog-type-editor.tsx     # catalog type form: label, dimensions, brands (#64)
+         catalog-type-translations.tsx # the label's languages on the type editor —
+                            # the config stays the German truth (#58 step B2)
          translation-editor.tsx      # one text: key, area, German base, language columns (#58)
          translations-table.tsx      # list table with keyboard inline editing per cell —
                             # Enter/blur saves one code through saveTranslationAction,
@@ -788,6 +792,18 @@ stays on the stored German name/brand** (DECISIONS). The structure demo rows are
 derived from `DEFAULT_CATALOG_TYPES` and the generator's distinct colours
 (`tests/catalog-structure.test.ts` pins set, byte-identity and review flags).
 
+**Catalog content editing (#58 step B2).** The product form carries a translation
+section (`product-content-translations.tsx`): the two rows of the slug and the active
+languages minus the base drive it, one save button sends one payload through
+`saveProductContentCore` → `saveTranslationCore` — rows are created here on demand,
+because this is where an admin deliberately adds a translation. The document stays the
+German truth: every write sends the document's current name/description as the row's
+`de`, and a changed German base on the core form (or a renamed catalog type config)
+syncs the **existing** row through the same core — synced, never created, so mass
+renames cannot bloat the table and `contentLabel`'s fallback stays intact. The
+catalog-type editor gained the same block for its label row
+(`catalog-type-translations.tsx`, `saveCatalogTypeLabelAction`).
+
 **Usage context + previews (#58 editor slice).** Where a text is used is a fact about
 the code: `tests/translation-usage.test.ts` extracts every key-shaped string literal and
 template head from the production files (dynamic heads become prefix entries like
@@ -1261,6 +1277,11 @@ Specs (the three required journeys):
   byte-identical to the stored document → an unseeded product falls back to the German
   name visibly. Slugs and expected texts are derived from the seed generator and the
   seed file, nothing hard-coded.
+- `catalog-content-admin.spec.ts` (#58 step B2) — the admin edits the French name and
+  description on the product form and `/fr/…` answers with them on the next request
+  (German document text gone, not hidden) → renaming the German on the core form moves
+  the row's base while the French text stays → both restored for the shared server.
+  The product and restore values are derived from the seed generator and the seed file.
 - `language-routing.spec.ts` (#58) — browser language picks the prefix and `<html lang>` →
   hreflang lists every active language + x-default for the same path → switcher keeps page,
   query and the remembered choice → every language serves the listing → unknown product
