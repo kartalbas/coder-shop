@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { label, type LabelMap } from "@/lib/i18n";
+import { CONFIG_KEY_PATTERN, label, type LabelMap } from "@/lib/i18n";
 import { getRequestLabels } from "@/server/i18n";
 import { saveShopSettingsCore } from "@/server/shop-settings";
 import { requireAdminSession } from "@/server/session";
@@ -19,7 +19,7 @@ function createShopSettingsSchema(labels: LabelMap) {
   const methodKey = z
     .string()
     .trim()
-    .regex(/^[a-z][a-z0-9-]*$/, label(labels, "admin.settings.validation.keyShape"));
+    .regex(CONFIG_KEY_PATTERN, label(labels, "admin.settings.validation.keyShape"));
   const chfToCents = z
     .string()
     .trim()

@@ -10,6 +10,7 @@ import {
   intlLocaleOf,
   label,
   labelMap,
+  LANGUAGE_CODE_PATTERN,
   LANGUAGE_COOKIE,
   resolveLanguage,
   translationChanges,
@@ -17,6 +18,7 @@ import {
   type Translator,
   type TranslationEntry,
   TRANSLATION_AREAS,
+  TRANSLATION_KEY_PATTERN,
 } from "@/lib/i18n";
 import { DEFAULT_TRANSLATIONS } from "./translation-seed";
 import { LANGUAGE_HEADER } from "@/lib/locale-path";
@@ -125,7 +127,7 @@ export async function getRequestFormatters(): Promise<Formatters> {
 }
 
 function validKey(key: string): boolean {
-  return /^[a-z][a-z0-9-]*(\.[a-zA-Z0-9-]+)+$/.test(key);
+  return TRANSLATION_KEY_PATTERN.test(key);
 }
 
 // The actor of a history entry (#58 editor slice): the session admin's e-mail, the
@@ -241,7 +243,7 @@ export async function saveLanguageCore(
   // Issue #58 step 3: refusals answer from the translation table in the request
   // language; outside a request scope the first active language answers.
   const labels = await getRequestLabels();
-  if (!/^[a-z]{2,3}$/.test(language.code)) {
+  if (!LANGUAGE_CODE_PATTERN.test(language.code)) {
     return { ok: false, error: label(labels, "admin.languages.validation.codeShape") };
   }
   if (!language.label.trim()) {

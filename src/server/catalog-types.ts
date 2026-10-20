@@ -1,4 +1,4 @@
-import { interpolate, label, typeLabelKey } from "@/lib/i18n";
+import { CONFIG_KEY_PATTERN, interpolate, label, typeLabelKey } from "@/lib/i18n";
 import { connectDB } from "./db";
 import { getRequestLabels, getTranslations, saveTranslationCore } from "./i18n";
 import { DEFAULT_CATALOG_TYPES, type CatalogTypeConfig } from "@/lib/catalog-types";
@@ -32,7 +32,7 @@ export async function saveCatalogTypeCore(
   const labels = await getRequestLabels();
   const withKey = (key: string, value: string) =>
     interpolate(label(labels, key), { key: value });
-  if (!/^[a-z][a-z0-9-]*$/.test(config.key)) {
+  if (!CONFIG_KEY_PATTERN.test(config.key)) {
     return { ok: false, error: label(labels, "admin.catalogTypes.error.keyShape") };
   }
   if (!config.label.trim()) return { ok: false, error: label(labels, "admin.catalogTypes.error.nameMissing") };

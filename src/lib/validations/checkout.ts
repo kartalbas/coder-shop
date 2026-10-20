@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { interpolate, label } from "@/lib/i18n";
+import { CONFIG_KEY_PATTERN, interpolate, label } from "@/lib/i18n";
 
 // Issue #64: shipping and payment methods are configuration rows — the schema only
 // bounds the key shape; `createOrderCore` validates the keys against the active
 // configuration (existence, active, kind/shipping combination).
-const methodKeySchema = z.string().trim().min(1).max(32).regex(/^[a-z][a-z0-9-]*$/);
+const methodKeySchema = z.string().trim().min(1).max(32).regex(CONFIG_KEY_PATTERN);
 
 // Anti-abuse limits (issue #8): a real basket is small; a scripted drain sends many
 // distinct SKUs at max quantity. Per-SKU merging in createOrderCore closes the

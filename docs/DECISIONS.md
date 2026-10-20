@@ -1115,3 +1115,12 @@ Recorded per REQUIREMENTS ("choose the professional default and record the decis
   give per row. An untouched save is a no-op (#58 review): the content blocks compare
   the payload against the stored row through the shared `translationChanges` rule and
   write nothing — and create no de-only row — when no field actually changed.
+- **Shared shapes have one source, enforced by a guard (#58 review nit).** The closing
+  slice exported `LANGUAGE_CODE_PATTERN`/`CONFIG_KEY_PATTERN` from `src/lib/i18n` and
+  said every schema reuses them — an overstatement: the settings action schema, the
+  checkout method-key schema, the settings and catalog-type cores and the language core
+  still inlined the same regexes, and the translation-key shape was duplicated between
+  the translation core and its action schema. All of them now use the exported patterns,
+  `TRANSLATION_KEY_PATTERN` joined them as the third shared shape, and
+  `tests/shared-key-shapes.test.ts` scans every production file so an inlined copy can
+  never come back — the claim in ARCHITECTURE is now a checked fact, not a promise.

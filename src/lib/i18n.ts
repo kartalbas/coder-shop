@@ -16,11 +16,13 @@ export interface LanguageConfig {
 
 export const BASE_LANGUAGE = "de";
 
-// The one shapes (#58 review): a language code and a config key are validated by
-// several schemas and by the Accept-Language guard below — they share these patterns,
-// so a shape change is one edit and the guards can never drift apart.
+// The one shapes (#58 review): a language code, a config key and a translation key are
+// validated by several schemas and cores and by the Accept-Language guard below — they
+// share these patterns, so a shape change is one edit and the guards can never drift
+// apart. tests/shared-key-shapes.test.ts keeps every producer using them.
 export const LANGUAGE_CODE_PATTERN = /^[a-z]{2,3}$/;
 export const CONFIG_KEY_PATTERN = /^[a-z][a-z0-9-]*$/;
+export const TRANSLATION_KEY_PATTERN = /^[a-z][a-z0-9-]*(\.[a-zA-Z0-9-]+)+$/;
 
 // Issue #58 step 2: the proxy writes this cookie whenever a request arrives with a
 // language prefix, so the choice is remembered for prefix-free links and the next visit.

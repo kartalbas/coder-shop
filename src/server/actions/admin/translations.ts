@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { label, LANGUAGE_CODE_PATTERN, TRANSLATION_AREAS, type LabelMap } from "@/lib/i18n";
+import {
+  label,
+  LANGUAGE_CODE_PATTERN,
+  TRANSLATION_AREAS,
+  TRANSLATION_KEY_PATTERN,
+  type LabelMap,
+} from "@/lib/i18n";
 import { getRequestLabels, saveLanguageCore, saveTranslationCore } from "@/server/i18n";
 import { requireAdminSession } from "@/server/session";
 
@@ -22,10 +28,7 @@ function createTranslationSchema(labels: LabelMap) {
     key: z
       .string()
       .trim()
-      .regex(
-        /^[a-z][a-z0-9-]*(\.[a-zA-Z0-9-]+)+$/,
-        label(labels, "admin.translations.validation.keyShape"),
-      ),
+      .regex(TRANSLATION_KEY_PATTERN, label(labels, "admin.translations.validation.keyShape")),
     area: z.enum(TRANSLATION_AREAS),
     de: z
       .string()

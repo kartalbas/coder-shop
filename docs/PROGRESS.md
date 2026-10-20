@@ -2960,3 +2960,27 @@ Done — M1–M6 + QA complete.
   material group and value.
 - **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 724 (74 files),
   `npm run test:e2e` ✅ 88/88; tree clean, nothing running.
+
+## ISSUES — queue session 52 (2026-10-20)
+
+### Gate report ✅ no defect + #58 review nit closed — the shared shapes are now truly one source ✅
+- **Gate report:** `GET /produkte → HTTP 308` and „the HTML links to no product page
+  (/produkt/…)" are again the intended #63/#65 English-URL contract, re-verified live:
+  `/produkte` → 308 → `/products` → 200 with `/products/…` links, `/api/health` 200;
+  the repo gate checks exactly that, the mapping itself is proven by the green
+  `english-urls` spec. Queue empty — no open issues.
+- **The review nit (ARCHITECTURE overstated).** The closing slice claimed the exported
+  `LANGUAGE_CODE_PATTERN`/`CONFIG_KEY_PATTERN` were „reused by every schema", but the
+  settings action schema, the checkout method-key schema, the settings core (both
+  method loops), the catalog-type core and the language core still inlined the same
+  regexes, and the translation-key shape was duplicated between the translation core
+  and its action schema. All eight sites now use the exported patterns;
+  `TRANSLATION_KEY_PATTERN` joined them in `src/lib/i18n` as the third shared shape.
+  Behaviour-identical (byte-identical regexes), so no validation changes.
+- **Test (fails without the change):** new `tests/shared-key-shapes.test.ts` scans every
+  production file for the three pattern sources and allows them only in `lib/i18n.ts`
+  (red on the pre-fix tree: six files flagged), plus a shape unit (accepts/rejects per
+  pattern). ARCHITECTURE's sentence now names all three patterns and the guard;
+  DECISIONS records the nit and its closure.
+- **Gate:** `npm run build`/lint/knip/tsc ✅, `npm test` ✅ 726 (75 files),
+  `npm run test:e2e` ✅ 88/88; tree clean, nothing running.

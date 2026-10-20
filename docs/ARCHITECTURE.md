@@ -806,9 +806,12 @@ catalog-type editor gained the same block for its label row
 no-ops when every field is untouched: `contentSaveIsNoop` (over the shared
 `translationChanges` rule that `saveTranslationCore` itself stamps and logs from)
 skips the write, so an unchanged save moves no row and creates no de-only row
-(#58 review). The one language-code and config-key shapes are exported from
-`src/lib/i18n` (`LANGUAGE_CODE_PATTERN`, `CONFIG_KEY_PATTERN`) and reused by every
-schema that validates them.
+(#58 review). The language-code, config-key and translation-key shapes have exactly one
+source — `LANGUAGE_CODE_PATTERN`, `CONFIG_KEY_PATTERN` and `TRANSLATION_KEY_PATTERN` in
+`src/lib/i18n` — used by every schema and core that validates them (checkout, settings
+action and core, catalog-type schema and core, translation and language schemas and
+cores, product content, the Accept-Language guard); `tests/shared-key-shapes.test.ts`
+fails on any production file that inlines one of the shapes again (#58 review nit).
 
 **Usage context + previews (#58 editor slice).** Where a text is used is a fact about
 the code: `tests/translation-usage.test.ts` extracts every key-shaped string literal and

@@ -1,4 +1,4 @@
-import { interpolate, label } from "@/lib/i18n";
+import { CONFIG_KEY_PATTERN, interpolate, label } from "@/lib/i18n";
 import { connectDB } from "./db";
 import { getRequestLabels } from "./i18n";
 import { DEFAULT_SHOP_SETTINGS, type ShopSettings } from "@/lib/shop-settings";
@@ -44,7 +44,7 @@ export async function saveShopSettingsCore(
     return { ok: false, error: label(labels, "admin.settings.error.paymentKeys") };
   }
   for (const method of settings.shippingMethods) {
-    if (!/^[a-z][a-z0-9-]*$/.test(method.key)) {
+    if (!CONFIG_KEY_PATTERN.test(method.key)) {
       return { ok: false, error: withKey("admin.settings.error.shippingKeyShape", method.key) };
     }
     if (!method.label.trim()) {
@@ -55,7 +55,7 @@ export async function saveShopSettingsCore(
     }
   }
   for (const method of settings.paymentMethods) {
-    if (!/^[a-z][a-z0-9-]*$/.test(method.key)) {
+    if (!CONFIG_KEY_PATTERN.test(method.key)) {
       return { ok: false, error: withKey("admin.settings.error.paymentKeyShape", method.key) };
     }
     if (!method.label.trim()) {
